@@ -179,6 +179,29 @@ class TaskRowSemanticsTest {
         assertEquals(0, focuses)
     }
 
+    private fun assertActionsButtonOffersTheSameMenu(fontScale: Float) {
+        var deletes = 0
+        setRow(fontScale, outstanding(), onDelete = { deletes++ }, onFocus = {})
+
+        // The visible route to the same menu. Long press is kept and still
+        // works, but it is a gesture with nothing on screen to suggest it, and
+        // Delete and Focus live nowhere else.
+        rule.onNodeWithContentDescription("Show task actions").performClick()
+
+        rule.onNodeWithText("Delete").assertIsDisplayed()
+        rule.onNodeWithText("Delete").performClick()
+
+        assertEquals(1, deletes)
+    }
+
+    @Test
+    fun actionsButton_offersTheSameMenu_at100() =
+        assertActionsButtonOffersTheSameMenu(FontScale100)
+
+    @Test
+    fun actionsButton_offersTheSameMenu_at200() =
+        assertActionsButtonOffersTheSameMenu(FontScale200)
+
     @Test
     fun longPress_offersFocusAndDelete_at100() =
         assertLongPressOffersFocusAndDelete(FontScale100)

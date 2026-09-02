@@ -40,8 +40,30 @@ collection structure: `ListItemDefaults.segmentedShapes(index, count)`,
 
 ## Anatomy
 
-[FD] Checkbox leading, title, optional metadata line beneath. Nothing else. No
-trailing icon, no drag handle, no chevron, no avatar.
+[FD] Checkbox leading, title, optional metadata line beneath, and one trailing
+button that opens the actions menu. Nothing else: no drag handle, no chevron,
+no avatar.
+
+[FD] The trailing button is new, and it reverses a rule this file used to state
+as "nothing else, no trailing icon". The reason it changed: Delete and Focus
+live only in the actions menu, Task Details deliberately excludes both, and
+long press was the only way to reach them. `PRODUCT.md` says the UI must not
+depend exclusively on gestures, and a gesture with nothing on screen to suggest
+it was exactly that.
+
+Long press is kept. Assistive technology reaches the menu through the row's
+labelled long-press action, so the button is a second route rather than a
+replacement, and it is discoverability the button adds rather than access.
+
+[IMPL] `IconButtonDefaults.extraSmallContainerSize(IconButtonWidthOption.Narrow)`,
+which draws 28 by 32. Narrow is what makes the container taller than it is wide,
+and every number is a Material token. The container is only what is drawn:
+`IconButton` applies `minimumInteractiveComponentSize` first, so the target is
+48dp without the row carrying a 48dp square.
+
+[FD] The menu anchors to the row's end, where the button is. A long press
+anywhere on the row opens the same menu in the same place; one position is
+easier to learn than a menu that appears wherever the finger landed.
 
 | Element | Role | Colour |
 | --- | --- | --- |
@@ -49,8 +71,13 @@ trailing icon, no drag handle, no chevron, no avatar.
 | Metadata | `bodySmall` | `onSurfaceVariant` |
 | Overdue date within metadata | `bodySmall` | `error` |
 
-[FD] Exactly two levels of hierarchy in a row. A third would compete with the
-title, and the title is the thing the user is scanning for.
+[FD] Two levels of *text* hierarchy in a row, still. The trailing button is a
+control rather than a third line of content, and it carries no label, so the
+title remains the only thing being scanned.
+
+[FD] What it costs is width, and the cost is real. Adding it pushed two of five
+seeded titles onto a second line until the screen margin was returned to `md`.
+Anything else that wants room in a row is competing with the title for it.
 
 [IMPL] The row carries a minimum height from `FocuslistDimensions`. A floor,
 not a height: a row with metadata or a wrapped title is already taller and
@@ -96,8 +123,9 @@ list selection and would contradict a settled product decision. See `focus.md`.
 
 ## Interaction
 
-[FD] Tap opens Task Details. Long press opens the actions menu. The checkbox
-toggles completion and is not part of the row's click target.
+[FD] Tap opens Task Details. The trailing button opens the actions menu, and
+long press opens the same menu in the same position. The checkbox toggles
+completion and is not part of the row's click target.
 
 [FD] The row does not change shape or size when pressed. Material's ripple and
 state layer are the entire press feedback. A springing row in a list of twelve

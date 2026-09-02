@@ -1,8 +1,13 @@
 package com.vignesh.focuslist.ui.component
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ListItemColors
 import androidx.compose.material3.ListItemShapes
 import androidx.compose.material3.Text
@@ -12,13 +17,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import com.vignesh.focuslist.R
 import com.vignesh.focuslist.core.domain.Recurrence
 import com.vignesh.focuslist.core.domain.Task
 import java.time.LocalDate
-
 /**
  * A task in a list, with the actions menu its long press opens.
  *
@@ -68,8 +74,6 @@ internal fun TaskListRow(
 ) {
     var areActionsVisible by remember { mutableStateOf(false) }
     var isPickerOpen by rememberSaveable { mutableStateOf(false) }
-
-    // The menu anchors to the row it acts on.
     Box(modifier = modifier) {
         TaskRow(
             title = task.title,
@@ -82,14 +86,19 @@ internal fun TaskListRow(
             onLongClickLabel = stringResource(R.string.task_actions),
             colors = colors,
             metadata = taskMetadata(task = task, today = today),
+            trailingContent = { TaskActionsButton(onClick = { areActionsVisible = true }) },
             // A day that has already passed. The date text already says so on
             // its own; the colour is the second cue on top of it.
             isOverdue = task.scheduledDate?.isBefore(today) == true && !task.isCompleted
         )
-
+        // Anchored to the row's end rather than its start, because that is
+        // where the button that opens it sits. A long press anywhere on the row
+        // opens the same menu in the same place: one position is easier to
+        // learn than a menu that appears wherever the finger landed.
         DropdownMenu(
             expanded = areActionsVisible,
-            onDismissRequest = { areActionsVisible = false }
+            onDismissRequest = { areActionsVisible = false },
+            modifier = Modifier.align(Alignment.TopEnd)
         ) {
             if (onReschedule != null) {
                 // A day the task is already on is left off rather than shown
@@ -104,7 +113,6 @@ internal fun TaskListRow(
                         }
                     )
                 }
-
                 val tomorrow = today.plusDays(1)
                 if (task.scheduledDate != tomorrow) {
                     DropdownMenuItem(
@@ -115,7 +123,6 @@ internal fun TaskListRow(
                         }
                     )
                 }
-
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.task_reschedule_pick)) },
                     onClick = {
@@ -124,7 +131,6 @@ internal fun TaskListRow(
                     }
                 )
             }
-
             if (onFocus != null) {
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.task_focus)) },
@@ -134,7 +140,6 @@ internal fun TaskListRow(
                     }
                 )
             }
-
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.task_delete)) },
                 onClick = {
@@ -144,7 +149,6 @@ internal fun TaskListRow(
             )
         }
     }
-
     if (isPickerOpen && onReschedule != null) {
         TaskDatePickerDialog(
             // Opens on the day the task is already on, so a small correction
@@ -155,7 +159,41 @@ internal fun TaskListRow(
         )
     }
 }
-
+/**
+ * The control that opens a row's actions.
+ *
+ * Long press opened this menu and still does. It is kept because assistive
+ * technology reaches the menu through the row's labelled long-press action, and
+ * because it costs nothing to leave. What it could not do is be seen: Delete
+ * and Focus were reachable only by a gesture with nothing on screen to suggest
+ * it, and `PRODUCT.md` says the UI must not depend exclusively on gestures.
+ *
+ * Extra small and narrow, which is a real Material size rather than a chosen
+ * one: `IconButtonWidthOption.Narrow` is what makes the container taller than
+ * it is wide, and 28 by 32 is within four points of the design on both axes.
+ *
+ * The small container is only what is drawn. `IconButton` applies
+ * `minimumInteractiveComponentSize` before it, so the target stays 48dp and the
+ * row does not have to carry a 48dp square to be hittable.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun TaskActionsButton(onClick: () -> Unit) {
+    IconButton(
+        onClick = onClick,
+        modifier = Modifier.size(
+            IconButtonDefaults.extraSmallContainerSize(
+                IconButtonDefaults.IconButtonWidthOption.Narrow
+            )
+        )
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_more_vert),
+            contentDescription = stringResource(R.string.task_actions),
+            modifier = Modifier.size(IconButtonDefaults.extraSmallIconSize)
+        )
+    }
+}
 /**
  * Turns the domain fields of a [Task] into the row's display metadata.
  *
@@ -165,22 +203,17 @@ internal fun TaskListRow(
 @Composable
 private fun taskMetadata(task: Task, today: LocalDate): List<String> {
     val segments = mutableListOf<String>()
-
     task.scheduledDate?.let { segments += scheduledDateLabel(it, today) }
-
     task.estimatedDurationMinutes?.let { minutes ->
         segments += stringResource(R.string.task_duration_minutes, minutes)
     }
-
     // Last, because it says something about the task's future rather than
     // about the occurrence in front of the user. It earns a place at all
     // because completing a repeating task does something a one-off does not,
     // and the row is the only warning before the tap.
     task.recurrence?.let { segments += stringResource(it.labelRes) }
-
     return segments
 }
-
 private val Recurrence.labelRes: Int
     get() = when (this) {
         Recurrence.DAILY -> R.string.task_recurrence_daily

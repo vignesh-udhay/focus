@@ -69,6 +69,9 @@ import com.vignesh.focuslist.ui.theme.FocuslistTheme
  * @param metadata optional supporting details, rendered below the title and
  * separated by a middot, for example "Today" and "45 min". When empty, no
  * supporting content is emitted and no vertical space is reserved for it.
+ * @param trailingContent an optional control at the end of the row. Supplied by
+ * `TaskListRow` as the actions menu's button; a row with no actions to offer
+ * passes nothing and keeps the two-element anatomy.
  * @param isOverdue whether the task's day has already passed. Colours the
  * first metadata segment with the error role as a second cue. The date is
  * always that first segment when a task has one, so this needs no more than a
@@ -88,6 +91,7 @@ fun TaskRow(
     onLongClickLabel: String? = null,
     colors: ListItemColors = ListItemDefaults.segmentedColors(),
     metadata: List<String> = emptyList(),
+    trailingContent: (@Composable () -> Unit)? = null,
     isOverdue: Boolean = false
 ) {
     val titleColor by animateColorAsState(
@@ -171,6 +175,7 @@ fun TaskRow(
                     .semantics { contentDescription = toggleDescription }
             )
         },
+        trailingContent = trailingContent,
         supportingContent = if (metadataText == null) {
             null
         } else {

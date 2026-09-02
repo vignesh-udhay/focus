@@ -340,6 +340,16 @@ different levels of importance do not get different corner radii to say so.
 | Section label above its group | `md` |
 | Section label below the group before it | `lg` |
 
+[FD] The screen margin stays at `md`, and 24dp has been tried. The design draws
+its rows at 364 in a 412 frame, which is `lg` a side, and it was adopted and
+reverted in the same session. Taken together with the row's new trailing button,
+`lg` cost enough width to push two of five seeded titles onto a second line and
+the Completed band off the bottom of the screen; at `md` both titles fit again.
+
+The mock is not wrong, it is drawn with short titles. Any future attempt at
+`lg` has to be measured against real ones, and the two changes have to be
+weighed together, because they spend the same width.
+
 [IMPL] Never write a raw dimension in a screen or component. Every value comes
 from `FocuslistSpacing`, from `MaterialTheme.shapes`, or from a Material
 default such as `SegmentedGap`. The codebase currently has zero violations of
