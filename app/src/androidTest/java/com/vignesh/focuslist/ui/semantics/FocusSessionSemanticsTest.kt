@@ -1,5 +1,6 @@
 package com.vignesh.focuslist.ui.semantics
 
+import android.Manifest
 import androidx.compose.material3.Text
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
@@ -15,6 +16,7 @@ import androidx.compose.ui.test.waitUntilExactlyOneExists
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vignesh.focuslist.ui.focus.FocusScreen
 import com.vignesh.focuslist.ui.task.TaskListViewModel
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -36,6 +38,21 @@ class FocusSessionSemanticsTest {
 
     @get:Rule
     val rule = createComposeRule()
+
+    /**
+     * A session with an estimate asks to post notifications, so the estimate
+     * can be announced when it is reached. Left ungranted, the system dialog
+     * opens over the screen and every assertion after it fails against a
+     * hierarchy that is no longer in front.
+     *
+     * The tests that pass without this are the ones whose task carries no
+     * estimate, which is why the split looked like a queue-length problem and
+     * was not.
+     */
+    @Before
+    fun grantNotifications() {
+        grantRuntimePermission(Manifest.permission.POST_NOTIFICATIONS)
+    }
 
     private fun setFocus(
         fontScale: Float,

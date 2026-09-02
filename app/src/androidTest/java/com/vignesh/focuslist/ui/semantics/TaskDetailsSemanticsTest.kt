@@ -184,8 +184,12 @@ class TaskDetailsSemanticsTest {
         assertEveryRecurrenceOptionIsReachable(FontScale200)
 
     private fun assertEveryPlacementOptionIsReachable(fontScale: Float) {
+        // Composed once, outside the loop. `setContent` may be called only
+        // once per activity, so setting it per option threw before the second
+        // assertion ever ran. The recurrence test above is the correct shape.
+        setSheet(fontScale)
+
         listOf(INBOX, ANYTIME, SOMEDAY).forEach { option ->
-            setSheet(fontScale)
             rule.onNode(hasText(option) and isSelectable()).performScrollTo().assertIsDisplayed()
         }
     }

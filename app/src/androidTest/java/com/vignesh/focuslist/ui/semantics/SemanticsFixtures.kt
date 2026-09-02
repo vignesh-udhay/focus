@@ -1,5 +1,6 @@
 package com.vignesh.focuslist.ui.semantics
 
+import android.os.Build
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
@@ -11,6 +12,7 @@ import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.unit.Density
 import androidx.lifecycle.SavedStateHandle
+import androidx.test.platform.app.InstrumentationRegistry
 import com.vignesh.focuslist.core.notification.FocusAlarms
 import com.vignesh.focuslist.core.domain.Recurrence
 import com.vignesh.focuslist.core.domain.Task
@@ -65,6 +67,32 @@ internal fun ComposeContentTestRule.setFocuslistContent(
             FocuslistTheme(dynamicColor = false) { content() }
         }
     }
+}
+
+/**
+ * Grants a runtime permission to the app under test.
+ *
+ * A screen that asks for a permission gets a system dialog, and that dialog is
+ * a window belonging to another process drawn over ours. Compose then finds no
+ * hierarchy to assert against and the failure reads as though the app died,
+ * which is a long way from what happened. Granting first keeps the dialog from
+ * ever opening, so the test sees the screen it came to look at.
+ *
+ * Done through `UiAutomation` rather than `GrantPermissionRule`, which lives in
+ * `androidx.test:rules` and is not a dependency of this project. `AGENTS.md`
+ * asks for a reason before adding one, and there is none: this is four lines.
+ *
+ * A no-op below API 33, where the runtime notification permission does not
+ * exist and granting it throws.
+ */
+internal fun grantRuntimePermission(permission: String) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+
+    val instrumentation = InstrumentationRegistry.getInstrumentation()
+    instrumentation.uiAutomation.grantRuntimePermission(
+        instrumentation.targetContext.packageName,
+        permission
+    )
 }
 
 /** Matches a node marked as a heading for accessibility services. */
