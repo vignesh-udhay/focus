@@ -194,10 +194,26 @@ bar draws it at `displaySmall` expanded and shrinks it as the bar collapses;
 naming a style here would fight that and freeze the collapsed state at the
 expanded size.
 
-[FD] The subtitle is a slot rather than a string, because Today spends it on the
-date *and* a pill carrying the total time still planned, which no single string
-can express. A screen with nothing to say there passes nothing and gets a
-shorter bar.
+[FD] The subtitle is a slot rather than a string, because Today spends it on two
+facts at once. A screen with nothing to say there passes nothing.
+
+[FD] A subtitle holding two facts tells them apart by position: the first at the
+start, the second at the end, and neither in a container. Today reads
+"Wednesday, September 2" against "2h 5m planned"; Inbox has one fact and simply
+states it. The total was briefly given a tinted pill, and it read as decoration,
+which `PRODUCT.md` rules out. Alignment does the same work for nothing.
+
+[IMPL] A right-aligned subtitle needs a small end padding. Material insets the
+bar's title area by 16dp at the start and 4dp at the end, because the end is
+where action icons would sit and these bars have none. `xxs` takes most of the
+difference back: measured on device, the text lands 1.5dp outside the edge the
+rows end on, against 5.7dp with no padding. Deliberately not exact. Closing the
+last 1.5dp would mean compensating for the trailing bearing of whichever glyph
+the value ends with, which is a number with no meaning and no token.
+
+[FD] A count says nothing when there is nothing to count. Inbox drops its
+subtitle entirely when the list is empty, rather than reading "0 items waiting
+to process" above an empty state that already says so.
 
 [FD] No actions, no navigation icon: every destination is reachable from the
 navigation bar, so there is nothing for an app bar action to do that the bar
