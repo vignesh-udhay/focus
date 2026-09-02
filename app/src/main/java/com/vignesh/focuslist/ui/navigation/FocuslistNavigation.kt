@@ -134,19 +134,25 @@ fun FocuslistNavigationBar(
     onOpenSecondary: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Material's default, and the reason it is the default is the pill.
+    // One step above the task collection, which is what this role is for.
     //
-    // The active indicator is `secondaryContainer`, tone 90 in light. A bar at
-    // tone 90 or 92 lands on top of its own indicator: `surfaceContainerHighest`
-    // was tried once and the two came out 0.2 apart, separated only by chroma.
-    // `surfaceContainer` sits at tone 94 and clears it.
+    // Material's default here is `surfaceContainer`, and that is also where the
+    // collection sits, so the two came out identical: a row scrolled to the
+    // bottom edge met the bar at the same tone with nothing between them.
+    // Measured 94.0 against 94.0 in light and 8.8 against 8.8 in dark.
     //
-    // This was `surfaceContainerLow` while the page was on a container role and
-    // the bar had to dodge it. The page is `surface` again, so the dodge went
-    // with it.
+    // The bar moves rather than the collection, because moving the collection
+    // would eat into a page-to-collection separation that is already only 3.9.
+    //
+    // The cost is the active indicator. It is `secondaryContainer` at tone 90,
+    // and every step the bar takes toward it is separation lost: this is the
+    // pairing that once came out 0.2 apart under `surfaceContainerHighest` and
+    // read as a bar with no pill on it at all. Measured after this change and
+    // recorded in `expressive-design-system.md`; if it is ever moved again,
+    // measure that pair first.
     NavigationBar(
         modifier = modifier,
-        containerColor = MaterialTheme.colorScheme.surfaceContainer
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
         TopLevelDestinations.forEach { destination ->
             TopLevelItem(
@@ -167,12 +173,12 @@ fun FocuslistNavigationBar(
  * navigation model with two presentations. Nothing becomes reachable or
  * unreachable by resizing the window; only where the control sits changes.
  *
- * The container is `surfaceContainer`, matching the bar rather than the rail's
- * Material default of `surface`. The page is `surface` now, and at the
+ * The container is `surfaceContainerHigh`, matching the bar rather than the
+ * rail's Material default of `surface`. The page is `surface` now, and at the
  * breakpoint the content column leaves no gutter, so a `surface` rail would
- * meet the task collection at almost the same lightness. Matching the bar keeps
- * the separation the rest of the hierarchy already has, and keeps the active
- * indicator legible for the same reason the bar does.
+ * meet the task collection at almost the same lightness. Matching the bar is
+ * the whole rule here: one navigation model with two presentations, so a change
+ * to one is a change to both.
  *
  * No header. Material offers the slot for a floating action button, but this
  * one belongs to Today and Inbox rather than to the chrome. It stays on the
@@ -187,7 +193,7 @@ fun FocuslistNavigationRail(
 ) {
     NavigationRail(
         modifier = modifier,
-        containerColor = MaterialTheme.colorScheme.surfaceContainer
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
         TopLevelDestinations.forEach { destination ->
             val selected = currentRoute == destination.route
