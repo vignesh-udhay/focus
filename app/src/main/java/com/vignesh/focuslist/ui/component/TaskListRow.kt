@@ -86,68 +86,77 @@ internal fun TaskListRow(
             onLongClickLabel = stringResource(R.string.task_actions),
             colors = colors,
             metadata = taskMetadata(task = task, today = today),
-            trailingContent = { TaskActionsButton(onClick = { areActionsVisible = true }) },
+            // The menu is emitted beside the button rather than beside the row.
+            // A popup anchors to where it sits in the layout, so placed in the
+            // row it opened at the row's start, a long way from the control that
+            // opens it. `Modifier.align` does not fix that: a DropdownMenu's
+            // modifier styles the menu content, not the anchor.
+            //
+            // A long press anywhere on the row opens the same menu in the same
+            // place. One position is easier to learn than a menu that appears
+            // wherever the finger landed.
+            trailingContent = {
+                Box {
+                    TaskActionsButton(onClick = { areActionsVisible = true })
+
+                    DropdownMenu(
+                        expanded = areActionsVisible,
+                        onDismissRequest = { areActionsVisible = false }
+                    ) {
+                        if (onReschedule != null) {
+                            // A day the task is already on is left off rather than shown
+                            // and ignored. An action that visibly does nothing is worse
+                            // than one that is not there at all.
+                            if (task.scheduledDate != today) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.task_reschedule_today)) },
+                                    onClick = {
+                                        areActionsVisible = false
+                                        onReschedule(today)
+                                    }
+                                )
+                            }
+                            val tomorrow = today.plusDays(1)
+                            if (task.scheduledDate != tomorrow) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.task_reschedule_tomorrow)) },
+                                    onClick = {
+                                        areActionsVisible = false
+                                        onReschedule(tomorrow)
+                                    }
+                                )
+                            }
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.task_reschedule_pick)) },
+                                onClick = {
+                                    areActionsVisible = false
+                                    isPickerOpen = true
+                                }
+                            )
+                        }
+                        if (onFocus != null) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.task_focus)) },
+                                onClick = {
+                                    areActionsVisible = false
+                                    onFocus()
+                                }
+                            )
+                        }
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.task_delete)) },
+                            onClick = {
+                                areActionsVisible = false
+                                onDelete()
+                            }
+                        )
+                    }
+                }
+            },
             // A day that has already passed. The date text already says so on
             // its own; the colour is the second cue on top of it.
             isOverdue = task.scheduledDate?.isBefore(today) == true && !task.isCompleted
         )
-        // Anchored to the row's end rather than its start, because that is
-        // where the button that opens it sits. A long press anywhere on the row
-        // opens the same menu in the same place: one position is easier to
-        // learn than a menu that appears wherever the finger landed.
-        DropdownMenu(
-            expanded = areActionsVisible,
-            onDismissRequest = { areActionsVisible = false },
-            modifier = Modifier.align(Alignment.TopEnd)
-        ) {
-            if (onReschedule != null) {
-                // A day the task is already on is left off rather than shown
-                // and ignored. An action that visibly does nothing is worse
-                // than one that is not there at all.
-                if (task.scheduledDate != today) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.task_reschedule_today)) },
-                        onClick = {
-                            areActionsVisible = false
-                            onReschedule(today)
-                        }
-                    )
-                }
-                val tomorrow = today.plusDays(1)
-                if (task.scheduledDate != tomorrow) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.task_reschedule_tomorrow)) },
-                        onClick = {
-                            areActionsVisible = false
-                            onReschedule(tomorrow)
-                        }
-                    )
-                }
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.task_reschedule_pick)) },
-                    onClick = {
-                        areActionsVisible = false
-                        isPickerOpen = true
-                    }
-                )
-            }
-            if (onFocus != null) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.task_focus)) },
-                    onClick = {
-                        areActionsVisible = false
-                        onFocus()
-                    }
-                )
-            }
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.task_delete)) },
-                onClick = {
-                    areActionsVisible = false
-                    onDelete()
-                }
-            )
-        }
     }
     if (isPickerOpen && onReschedule != null) {
         TaskDatePickerDialog(
