@@ -13,10 +13,10 @@ new component because an existing one is nearly right; say what is missing.
 
 [FD] Keep and refine, never replace:
 
-    SegmentedListItem      Checkbox        MediumExtendedFloatingActionButton
+    SegmentedListItem      Checkbox        FloatingActionButton
     NavigationBar          DropdownMenu    ModalBottomSheet
     DatePickerDialog       OutlinedTextField                Snackbar
-    TopAppBar              PrimaryTabRow   Button / TextButton / OutlinedButton
+    LargeFlexibleTopAppBar PrimaryTabRow   Button / TextButton / OutlinedButton
 
 [FD] Do not introduce, unless a later product decision explicitly requires one:
 
@@ -154,14 +154,32 @@ the `completion` token. This is the only component with that privilege.
 # Top app bar
 
 [IMPL] `FocuslistTopAppBar`, one component for every screen, wrapping
-`TopAppBar`. Callers pass a title and, where the screen has something to scroll
-under the bar, a `pinnedScrollBehavior`. Focus passes none because there is
-nothing to scroll, and the placement screen passes none because the tabs below
-the bar have to stay reachable.
+`LargeFlexibleTopAppBar`. Callers pass a title, optionally a subtitle, and where
+the screen has something to scroll under the bar, a scroll behaviour. Today
+passes `exitUntilCollapsedScrollBehavior` so the large title collapses as the
+list moves under it; a pinned behaviour would hold all 152dp of a two-row bar in
+place. Focus passes none because there is nothing to scroll, and the placement
+screen passes none because the tabs below the bar have to stay reachable.
 
-[FD] Title in `titleLargeEmphasized`, carrying heading semantics. No actions,
-no navigation icon: every destination is reachable from the navigation bar, so
-there is nothing for an app bar action to do that the bar does not already do.
+[FD] The title carries heading semantics and no style of our own. The flexible
+bar draws it at `displaySmall` expanded and shrinks it as the bar collapses;
+naming a style here would fight that and freeze the collapsed state at the
+expanded size.
+
+[FD] The subtitle is a slot rather than a string, because Today spends it on the
+date *and* a pill carrying the total time still planned, which no single string
+can express. A screen with nothing to say there passes nothing and gets a
+shorter bar.
+
+[FD] No actions, no navigation icon: every destination is reachable from the
+navigation bar, so there is nothing for an app bar action to do that the bar
+does not already do.
+
+[FD] The bar names no colour. Material's default is `surface` at rest lifting to
+`surfaceContainer`, and the page is `surface`, so bar and page are one ground
+and the collection is the only thing on it. An earlier override existed only
+because the page had been moved onto a container role; it went when the page
+came back.
 
 [IMPL] Shared rather than repeated because those two properties are always
 applied together and six copies drifted apart on both. Do not build a bar by
@@ -231,43 +249,42 @@ pick from than four that each look like something.
 
 # Floating action button
 
-[IMPL] `AddTaskFab`, one component wrapping `MediumExtendedFloatingActionButton`,
-on Today and Inbox only. Both screens previously wrote the same button out in
-full; they now call this.
+[IMPL] `AddTaskFab`, one component wrapping `FloatingActionButton`, on Today and
+Inbox only. Both screens previously wrote the same button out in full; they now
+call this.
 
 [FD] The container is the **Material default**, `primaryContainer` with
 `onPrimaryContainer` content. `AddTaskFab` names no colour.
 
-[IMPL] It was briefly overridden to `primary`, to make the button strong in
-light and pale in dark the way a base role inverts. That has been reverted.
-
 [M3] Material documents no base-role floating action button. The regular button
-has Primary, Secondary, Tertiary and Surface styles and the extended button has
-the same set; the one *named* Primary is `colorPrimaryContainer` with
-`colorOnPrimaryContainer`, and every other variant is a container role too.
-Nothing in the specification maps a floating action button to `colorPrimary`.
+has Primary, Secondary, Tertiary and Surface styles and every one of them is a
+*container* role; the one named Primary is `colorPrimaryContainer` with
+`colorOnPrimaryContainer`. Nothing in the specification maps a floating action
+button to `colorPrimary`.
 
-[FD] The consequence is worth stating plainly rather than discovering again:
-the button is pale on a light screen and dark on a dark one, and it is
-therefore never the highest-contrast element on the page. That is what Material
-intends for it. If the product ever decides it must dominate, that is a
-deliberate departure from the specification and should be recorded as one.
+[IMPL] It was briefly overridden to `primary`, to make it strong in light and
+pale in dark the way a base role inverts. That was reverted, and the consequence
+is worth stating rather than rediscovering: the button is pale on a light screen
+and dark on a dark one, and it is therefore never the highest-contrast element
+on the page. That is what Material intends. If the product ever decides it must
+dominate, that is a deliberate departure from the specification and should be
+recorded as one.
 
-`MediumExtendedFloatingActionButton` defaults to `primaryContainer`, a container
-role: tone 90 in light and tone 30 in dark. That makes the button pale on a pale
-screen and dark on a dark one, so it never becomes the most prominent thing in
-either theme. `primary` is a base role and inverts the way a prominent action
-should, tone 40 in light and tone 80 in dark. Capture is the primary action on
-both screens it appears on, so it takes the primary role.
+[FD] Regular rather than extended. The button was
+`MediumExtendedFloatingActionButton`, which spent 80dp of the content column
+carrying the words "Add task" and repeated, in text, what a plus on a task
+screen already says. At 56dp it clears more of the list. The label survives as
+the icon's content description, so nothing is lost to a screen reader, and the
+semantics test asserts it there rather than as visible text.
 
-[IMPL] Pass only `containerColor`. `contentColorFor` maps `primary` to
-`onPrimary` by itself, and naming the content colour would be a second place for
-it to be wrong.
+[FD] The glyph is a bare plus. The design's own is `add_circle`, which draws a
+circle inside the button's own circle; Material pairs this container with a
+plain glyph, because the container is already the circle.
 
 [FD] Keep the current behaviour exactly. It does not collapse or expand on
-scroll for now. Lists must reserve clearance beneath their last row so the
-button never covers a task; that clearance is a dimension token, not a number
-written into a screen.
+scroll. Lists must reserve clearance beneath their last row so the button never
+covers a task; that clearance is `FocuslistDimensions.FabClearance`, a dimension
+token composed from the spacing scale, not a number written into a screen.
 
 ---
 

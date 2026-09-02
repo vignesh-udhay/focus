@@ -32,8 +32,9 @@ The task titles are the content. Everything else is chrome and should recede.
 
 The task collection occupies the dominant visual area of the screen.
 
-The header is compact at rest and stays that way. Screen furniture earns its
-height by helping the user choose a task, and a screen title does not.
+Screen furniture earns its height by helping the user choose a task. A screen
+title does not, which is why the header spends most of its height on the date
+and on how much time is still planned, and names the screen only once.
 
 ## Fast
 
@@ -47,10 +48,10 @@ network.
 A single `Scaffold`:
 
     Scaffold
-    ├── topBar                 TopAppBar, compact
+    ├── topBar                 LargeFlexibleTopAppBar, title and subtitle
     ├── snackbarHost           SnackbarHost, carrying the undo offer
     ├── bottomBar              NavigationBar, passed in by the caller
-    ├── floatingActionButton   MediumExtendedFloatingActionButton
+    ├── floatingActionButton   FloatingActionButton
     └── content                LazyColumn, or the empty state
 
 The bar is hoisted rather than built here, so Today does not decide what the
@@ -83,110 +84,59 @@ for.
 
 # Top app bar
 
-Use the compact `TopAppBar`, start-aligned.
+Use `LargeFlexibleTopAppBar`, start-aligned, through `FocuslistTopAppBar`.
 
 - title: `Text("Today")`
-- subtitle: none
+- subtitle: the date, and a pill carrying the total time still planned
 - navigationIcon: omitted, because Today is a root destination
 - actions: none. Reaching the other lists is the navigation bar's job, not the
   app bar's.
-- expandedHeight: the default, `TopAppBarDefaults.TopAppBarExpandedHeight`
-- colors: `TopAppBarDefaults.topAppBarColors()`
+- expandedHeight: the default, 152dp with a subtitle
+- colors: the Material default, named nowhere
 
-The header is compact in its resting state and stays compact. Do not use
-`LargeFlexibleTopAppBar`, `LargeTopAppBar`, `MediumFlexibleTopAppBar`, or
-`MediumTopAppBar` here, and do not raise `expandedHeight` to give the title
-more presence.
+## This reverses an earlier rule, deliberately
 
-Today is named once, quietly. A tall header would spend the most valuable
-part of the screen restating a label the user already knows, and it would
-push the first tasks down out of the opening view. Task visibility wins over
-header prominence.
+This section previously said the opposite. It named
+`LargeFlexibleTopAppBar` among the components to avoid, and argued:
 
-Do not use `CenterAlignedTopAppBar` either. A start-aligned title is the
-Android convention for a root list destination, and a centered one reads as
-an iOS navigation bar.
+> A tall header would spend the most valuable part of the screen restating a
+> label the user already knows, and it would push the first tasks down out of
+> the opening view. Task visibility wins over header prominence.
 
-Do not override the app bar's title typography. The component supplies it.
+That argument is right **about a title**, and it is kept for one: "Today" is a
+label the user already knows, because they tapped Today to get here. If the
+header carried only a title, the old rule would still stand.
 
----
+Two things it assumed are no longer true.
 
-# Task collection
+**The header now carries information rather than a label.** The date is not
+available anywhere else on the screen, and the planned total answers the
+question `PRODUCT.md` puts at the centre of Today: knowing that two hours of
+work remain is part of deciding what to do next. Neither restates anything.
 
-Tasks render as one segmented collection, exactly as specified in
-`task-row.md`.
+**The old bar was pinned.** It held its 64dp in every scroll position and never
+gave it back. This one collapses to 64dp as soon as the list moves under it, so
+the extra height is spent only on the opening view and returned immediately.
 
-Use the existing `TaskRow`, through the shared `TaskListRow` that wraps it
-with the metadata derivation and the long-press actions menu every task list
-needs. Do not build a second task presentation.
+The cost is real and worth stating: at rest the header is 152dp against the old
+64dp, which is roughly one task row below the fold. That was accepted knowingly.
 
-    TaskRow(
-        title = task.title,
-        isCompleted = task.isCompleted,
-        shapes = ListItemDefaults.segmentedShapes(index = index, count = count),
-        onToggleComplete = { ... },
-        onClick = { ... },
-        metadata = taskMetadata(task, today)
-    )
+`MediumFlexibleTopAppBar` was considered as a middle option and rejected. With a
+subtitle it is 136dp, so it saves 16dp, and it drops the subtitle to
+`labelLarge` at 14sp, which makes the date and the pill harder to read. It costs
+fidelity to the design and buys almost nothing. If the opening view ever has to
+be protected, go back to the compact bar and find another home for the date and
+the pill; do not take the middle.
 
-Rules:
+## Still true
 
-- one `LazyColumn`, holding one collection
-- `itemsIndexed` with a stable `key` derived from the task id
-- `count` is the size of the whole list, so the first and last rows round
-  their outer corners
-- `verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)`
-- no dividers, no borders, no per-task `Card`
+Do not use `CenterAlignedTopAppBar`. A start-aligned title is the Android
+convention for a root list destination, and a centered one reads as an iOS
+navigation bar.
 
-There are no section headers in the first implementation. Every task in the
-list belongs to the same collection.
-
----
-
-# Empty state
-
-Material 3 has no empty-state component. Compose it from a centered `Column`
-and two `Text`s.
-
-- headline: `titleMedium`, `onSurface`
-- supporting line: `bodyMedium`, `onSurfaceVariant`
-
-The copy should be plain and calm. Something like:
-
-    Nothing scheduled for today
-
-    Add a task when you are ready.
-
-Do not congratulate the user, and do not use an illustration, an icon, or an
-animation. Finishing the list is not an achievement to celebrate. It is just
-an empty list.
-
-The add-task affordance stays visible in the empty state, so the screen is
-never a dead end.
-
----
-
-# Add-task affordance
-
-Use `MediumExtendedFloatingActionButton` with a text label:
-
-    MediumExtendedFloatingActionButton(onClick = ...) {
-        Text("Add task")
-    }
-
-Position: `FabPosition.End`, the Scaffold default.
-
-The label carries the meaning, so no icon is needed. This is deliberate:
-`androidx.compose.material:material-icons-core` is not a dependency of this
-project, so `Icons.Default.Add` and every other `Icons.*` reference will not
-resolve. Do not add the dependency to get an icon. If an icon is wanted
-later, add a vector drawable under `res/drawable` and load it with
-`painterResource`.
-
-The button opens Quick Add: a `ModalBottomSheet` holding one title field and
-a Save action, defined in `QuickAddSheet`. Saving captures a task scheduled
-for today. Dismissing the sheet creates nothing. The sheet is the only thing
-the button opens; it must not navigate to a new destination.
+Do not override the app bar's title typography. The component supplies it, and
+shrinks it as the bar collapses; naming a style freezes the collapsed state at
+the expanded size.
 
 ---
 
@@ -194,18 +144,17 @@ the button opens; it must not navigate to a new destination.
 
 The `LazyColumn` is the only scroll container on the screen.
 
-Keep the app bar pinned:
+Let the app bar collapse:
 
-- create the behavior with `TopAppBarDefaults.pinnedScrollBehavior()`
+- create the behavior with `TopAppBarDefaults.exitUntilCollapsedScrollBehavior()`
 - apply `Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)` to the
   `Scaffold`
 - pass the same `scrollBehavior` to the app bar
 
-The bar holds its height and changes its container color once content scrolls
-underneath it. That is enough to show the list continues upward, and it costs
-no motion.
-
-There is nothing to collapse, because the bar is already at its smallest.
+The bar gives back its extra height as the list moves under it and settles at
+64dp, changing its container color on the way. A pinned behaviour would hold all
+152dp of a two-row bar in every scroll position, which is the thing the old
+compact rule was right to object to.
 `TopAppBarDefaults.enterAlwaysScrollBehavior()` is the alternative worth
 trying if the bar starts to feel like it is in the way: it scrolls the bar
 off and returns it on the first upward scroll, handing those few dp back to
@@ -259,9 +208,9 @@ for this screen.
 The screen is two surfaces: the background, and the segmented collection
 sitting on it.
 
-- Scaffold `containerColor`: `surfaceContainerLow`
+- Scaffold `containerColor`: `surface`
 - segments: `ListItemDefaults.segmentedColors(containerColor = surfaceContainer)`
-- app bar: `TopAppBarDefaults.topAppBarColors()`
+- app bar: the Material default, named nowhere
 
 Both overrides matter. The default segment container color resolves to
 `surface`, and the Scaffold's default `containerColor` is `background`, which

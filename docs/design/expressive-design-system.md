@@ -64,92 +64,85 @@ too.
 
 | Use | Role |
 | --- | --- |
-| Screen background | `surfaceContainerHigh` |
-| Task collection | `surfaceContainerLowest` |
+| Screen background | `surface` |
+| Task collection | `surfaceContainer` |
 | Task title, outstanding | `onSurface` |
 | Task title, completed | `onSurfaceVariant` |
 | Metadata, section labels, supporting text | `onSurfaceVariant` |
 | Overdue date | `error` |
 | Destructive menu item | `error` |
-| Floating action button | `MediumExtendedFloatingActionButton` default, `primaryContainer` |
+| Floating action button | `FloatingActionButton` default, `primaryContainer` |
 | Selected navigation item | `NavigationBarItem` default, the secondary family |
-| Navigation bar container | `surfaceContainerLow` |
-| Top app bar, at rest | `surfaceContainerHigh`, the same as the page |
-| Top app bar, lifted | `surfaceContainerHighest` |
+| Navigation bar and rail container | `surfaceContainerHigh` |
+| Top app bar | `TopAppBar` default: `surface` at rest, `surfaceContainer` lifted |
 
-[FD] The collection runs *away* from the page, toward the tonal extreme:
-white in light, near-black in dark. The page is the tinted ground and the list
-is the thing sitting on it.
+[FD] The page is the ground and the collection sits on it. That is the pairing
+[M3] the colour-roles guidance describes in as many words: use `surface` for a
+background area, and container roles for the components on it.
 
-The polarity is the point, not just the amount. Material's other convention has
-containers climb *toward* the middle as they rise, which is what this used
-before: the collection was darker than the page in light and lighter in dark.
-That is legal and it is what an elevation model implies, but measured against
-Material products it is backwards, and at one tonal step it gave 2.0 L\* of
-separation in both themes, which is at the floor of what the eye resolves.
+An earlier arrangement inverted both halves, putting the page on
+`surfaceContainerHigh` and running the collection out to `surfaceContainerLowest`
+so that it was white in light and near-black in dark. It bought more separation
+and it was measured carefully, but it inverted the guidance in both slots and
+every screen then needed an override to hold it together. Those overrides are
+gone rather than adjusted.
 
-[IMPL] Measured against a Google Play reference, in CIELAB:
+[IMPL] The stack, and what it measures under dynamic colour on a Pixel
+emulator, in CIELAB. dE is the full colour difference; dL is lightness alone.
 
-| | page | collection | separation |
-| --- | --- | --- | --- |
-| Reference, light | 94.2 | 100.0 | 5.8, collection lighter |
-| Reference, dark | 12.3 | 4.0 | 8.3, collection darker |
-| Focuslist, light | 94.1 | 100.0 | 5.9, collection lighter |
-| Focuslist, dark | 12.1 | 4.0 | 8.1, collection darker |
+| | page | collection | nav bar | selected pill |
+| --- | --- | --- | --- | --- |
+| Role | `surface` | `surfaceContainer` | `surfaceContainerHigh` | `secondaryContainer` |
+| Light L\* | 97.9 | 94.0 | 91.9 | 90.1 |
+| Dark L\* | 4.0 | 8.8 | 11.8 | 25.0 |
 
-Both roles are Material's. Nothing here is a literal colour copied from the
-reference; only the relationship is.
+| Pairing | light dL / dE | dark dL / dE |
+| --- | --- | --- |
+| page to collection | 3.9 / 4.3 | 4.8 / 5.3 |
+| collection to nav bar | 2.1 / 2.1 | 3.0 / 3.1 |
+| nav bar to selected pill | 1.8 / 7.3 | 13.2 / 14.9 |
+
+Monotonic in both themes, and every pairing separates.
+
+[FD] Read dE, not dL, before calling a pairing too close. The nav bar and the
+selected pill are 1.8 apart in lightness in light, which looks alarming and is
+not: the pill is `secondaryContainer` at chroma 12.1 against the bar's 5.2, so
+it separates by colour rather than tone and comes out at dE 7.3, the most
+distinct pairing in the chrome. This is the same lesson recorded in the
+navigation bar section of `expressive-components.md`, reached from the other
+direction.
 
 [FD] Do not add a third surface level to a list screen, and do not put a
 container inside the collection.
 
-[IMPL] The resulting stack, with the fallback palette:
+## The navigation bar is not a free variable
 
-| | collection | navigation bar | page and app bar | app bar lifted |
-| --- | --- | --- | --- | --- |
-| Role | `surfaceContainerLowest` | `surfaceContainerLow` | `surfaceContainerHigh` | `surfaceContainerHighest` |
-| Light | 100.0 | 96.1 | 92.0 | 89.9 |
-| Dark | 4.0 | 10.1 | 16.9 | 22.0 |
+[M3] Material's default for a navigation bar is `surfaceContainer`. So is the
+task collection, so taking both defaults renders them identically: measured 94.0
+against 94.0 in light and 8.8 against 8.8 in dark, with a row scrolled to the
+bottom edge meeting the bar and nothing between them.
 
-Monotonic in both themes. Measured on the emulator: page to collection 8.1 in
-light and 11.8 in dark, page to navigation bar 4.1 and 5.9, selected pill to
-navigation bar 6.0 and 19.1.
+[FD] The **bar** moves, to `surfaceContainerHigh`, not the collection. Moving
+the collection would eat into a page-to-collection separation that is already
+only 3.9.
 
-## Why the chrome moved off its Material defaults
-
-[M3] Material's own defaults are a matched set built around a `surface` page:
-the top app bar is `surface`, lifts to `surfaceContainer`, and the navigation
-bar is `surfaceContainer`. That puts about 3.8 L\* in light and 5.9 in dark
-between the page and the navigation bar.
-
-[IMPL] Moving the page onto a container role broke both halves of that set, and
-the order in which they must be fixed is not obvious.
-
-The app bar's `surface` default ended up two tones from the collection and read
-as part of it. Giving it the page's own role removes the question: the bar and
-the page are one ground, the collection is the only thing floating on it, and
-the lift still shows because `scrolledContainerColor` moves one step further
-out.
-
-**The navigation bar is not a free variable, and this is the trap.** Its
-container is pinned by its own active indicator, not by the page. The indicator
-is `secondaryContainer`, which the tonal scheme puts at tone 90 in light;
-Material's default bar of `surfaceContainer`, tone 94, is what makes the
-indicator visible at all. The first attempt moved the bar out to
-`surfaceContainerHighest` to clear the page, which is also tone 90, and the bar
-landed on top of its own pill: measured 0.0 apart under dynamic colour and 0.2
-in the fallback, separated by nothing but chroma.
-
-The bar therefore stays on the light side of the pill at
-`surfaceContainerLow`, and **the page moves instead**, to
-`surfaceContainerHigh`. That clears the pill by 6.0 in light and 19.1 in dark
-while keeping page to bar at 4.1 and 5.9, which is the separation Material's
-own pairing produces.
+[FD] The bar's own active indicator is the constraint on how far it can go. The
+indicator is `secondaryContainer`, and every step the bar takes toward it is
+separation lost. An earlier attempt put the bar on `surfaceContainerHighest`
+and landed 0.2 from its own pill, separated by nothing but chroma; that is the
+failure mode to check for. If the bar ever moves again, measure that pair first.
 
 [FD] The lesson generalises: when a surface role moves, check every component
 whose default was chosen relative to it, including that component's own inner
-parts. Measure in CIELAB, and check the light theme specifically, because the
-light container roles are only two tones apart and collide easily.
+parts. Measure in CIELAB, use dE rather than L\* alone, and check the light
+theme specifically, because the light container roles are only two tones apart
+and collide easily.
+
+[IMPL] Verified under a non-default system palette as well. With the emulator's
+system colour forced to red, the hierarchy holds and widens, because a more
+chromatic neutral palette separates further: page to collection dE 8.8,
+collection to bar 3.8, bar to pill 11.0. Nothing in the app is a literal colour,
+so this follows for free.
 
 ## Semantic colour
 
@@ -186,8 +179,8 @@ content, so it keeps Material's container treatment. See the navigation bar
 section of `expressive-components.md`, and do not "fix" it to match the button.
 
 [IMPL] This is worth stating because Material's own component defaults do not
-always pick the family a given product wants. `MediumExtendedFloatingActionButton`
-defaults to `primaryContainer`; Focuslist overrides it. See
+always pick the family a given product wants. `FloatingActionButton` defaults
+to `primaryContainer`, and Focuslist keeps that default. See
 `expressive-components.md`.
 
 ## Never
@@ -242,7 +235,7 @@ and the rest are available through `MaterialTheme.typography`.
 | Where | Role |
 | --- | --- |
 | Focus task title | `headlineMediumEmphasized` |
-| Screen titles in the app bar | `titleLargeEmphasized` |
+| Screen titles in the app bar | `LargeFlexibleTopAppBar` default, `displaySmall` |
 | Empty-state headlines | `titleMediumEmphasized` |
 
 [FD] Everything else uses the standard scale:
@@ -262,11 +255,15 @@ wants to be legible at a glance: what am I working on, where am I, and why is
 this list empty. Applying it to task titles would make every row shout and none
 of them stand out.
 
-[IMPL] `Type.kt` already customises eight roles: `bodyLarge` 16/24,
-`bodyMedium` 14/20, `bodySmall` 12/16, `headlineMedium`, `headlineSmall` and
+[IMPL] `Type.kt` customises nine roles: `bodyLarge` 16/24, `bodyMedium` 14/20,
+`bodySmall` 12/16, `displaySmall`, `headlineMedium`, `headlineSmall` and
 `titleLarge` at SemiBold, `titleMedium` and `labelLarge` at Medium. Keep all of
 it. The emphasized roles come from the Material defaults and do not need to be
 declared.
+
+`displaySmall` is there because `LargeFlexibleTopAppBar` draws its expanded
+title with it, and Material's default weight for it is Regular. Without the
+override the largest text in the app would also be the lightest.
 
 ## Wrapping and scale
 
@@ -410,7 +407,7 @@ safe.
 single item composable; sharing the data and the menu is as close as the
 framework allows, and it is enough to stop them drifting apart.
 
-[FD] The rail container is `surfaceContainerLow`, matching the bar rather than
+[FD] The rail container is `surfaceContainerHigh`, matching the bar rather than
 the rail's Material default of `surface`. The default sits about two tones from
 the task collection in both themes, and at the breakpoint the content column
 leaves no gutter, so rows would meet the rail at almost the same lightness.
@@ -487,7 +484,7 @@ encodes Material's internals into our suite.
 | --- | --- | --- |
 | `FocuslistSpacing` | the 4dp scale | exists, unchanged |
 | `FocuslistShapes` | the eight corner sizes | exists, needs the monotonic fix |
-| `FocuslistTypography` | the eight customised roles | exists, unchanged |
+| `FocuslistTypography` | the nine customised roles | exists |
 | Fallback colour scheme | light and dark, from one seed | to be built |
 | Motion tokens | the four semantic animation specs | to be built, see `expressive-motion.md` |
 | Dimension tokens | touch target, row height, FAB clearance, content width | to be built |
