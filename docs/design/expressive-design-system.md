@@ -69,7 +69,7 @@ too.
 | Task title, outstanding | `onSurface` |
 | Task title, completed | `onSurfaceVariant` |
 | Metadata, section labels, supporting text | `onSurfaceVariant` |
-| Overdue date | `error` |
+| Overdue date | `tertiary` |
 | Destructive menu item | `error` |
 | Floating action button | `FloatingActionButton` default, `primaryContainer` |
 | Selected navigation item | `NavigationBarItem` default, the secondary family |
@@ -146,10 +146,39 @@ so this follows for free.
 
 ## Semantic colour
 
-[FD] `error` is the only semantic colour in the app, and it carries exactly two
-meanings: a date that has slipped, and an action that destroys something.
-Adding a third meaning to it dilutes both. There is no success colour, no
-warning colour, and no per-placement colour.
+[FD] `error` means one thing: an action that destroys something. There is no
+success colour, no warning colour, and no per-placement colour.
+
+[FD] An overdue date takes `tertiary`, not `error`. It used to take `error`, and
+the change is deliberate.
+
+[M3] Material scopes `error` to error *states*, its own example being an
+incorrect password, and describes it as a **static** colour that does not change
+even under dynamic colour. `tertiary` is scoped to "contrasting accents that
+balance primary and secondary or bring heightened attention to an element",
+explicitly usable as text against a surface, and applied at the designer's
+discretion.
+
+[FD] An overdue task is not an error state. Nothing failed; a day passed. Three
+things follow from moving it:
+
+- `error` was the app's only fixed hue, so it was the one thing that could not
+  harmonise with a wallpaper. Under a red system palette it collided with the
+  theme around it. `tertiary` is seed-derived and harmonises by construction.
+- `PRODUCT.md` asks for calm and rules out gamification. A red date is the app
+  telling the user off for a day passing.
+- `error` now carries a single meaning, which is what makes it mean anything.
+
+[FD] What it costs, measured on device across five system palettes: separation
+between the overdue date and the duration text beside it falls from about dE 65
+to about dE 24. Still clearly distinct, and about a third the shout. That trade
+was made knowingly. Contrast against the row is unaffected, 5.5:1 against
+error's 5.6:1, so both pass AA for text at this size.
+
+[FD] The safety net is what makes the trade affordable: overdue is readable
+without colour at all, because an overdue task shows a date where a current one
+reads "Today". If that ever stops being true, this decision has to be revisited
+before the colour is weakened further.
 
 ## Base roles and container roles
 
@@ -166,8 +195,10 @@ most prominent thing in either theme. A container role does the opposite: pale
 on pale, dark on dark, so it never dominates. Neither is wrong; they are for
 different jobs.
 
-[FD] `error` is the app's only base-role use, and it earns it: an overdue date
-reads strong red in light and pale salmon in dark.
+[FD] `tertiary` on an overdue date is the app's main base-role use, and it earns
+the family for the same reason: strong in light, pale in dark, prominent in
+either. `error` keeps the family too, on the one menu item that destroys
+something.
 
 [IMPL] The floating action button was briefly given `primary` for the same
 inversion and has been returned to the Material default. Material documents no
@@ -215,7 +246,7 @@ known conflict, recorded at the end of this document.
 ## Light and dark
 
 [FD] What stays identical across themes: every role assignment above, the
-surface relationship, strikethrough on completed tasks, `error` on overdue
+surface relationship, strikethrough on completed tasks, `tertiary` on overdue
 dates. A screenshot of either theme should be describable by the same sentence.
 
 What may differ: absolute luminance, and the neutral temperature of the

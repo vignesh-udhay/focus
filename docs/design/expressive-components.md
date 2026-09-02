@@ -69,7 +69,7 @@ easier to learn than a menu that appears wherever the finger landed.
 | --- | --- | --- |
 | Title | `bodyLarge` | `onSurface` |
 | Metadata | `bodySmall` | `onSurfaceVariant` |
-| Overdue date within metadata | `bodySmall` | `error` |
+| Overdue date within metadata | `bodySmall` | `tertiary` |
 
 [FD] Two levels of *text* hierarchy in a row, still. The trailing button is a
 control rather than a third line of content, and it carries no label, so the
@@ -105,7 +105,7 @@ short, and truncating a date is worse than wrapping it.
 | Default | `onSurface` title on `surfaceContainer` | |
 | Pressed | Material ripple and state layer | |
 | Completed | `onSurfaceVariant` title, strikethrough | the strikethrough |
-| Overdue | date rendered in `error` | the date reads as a past date |
+| Overdue | date rendered in `tertiary` | the date reads as a past date |
 | Scheduled today | date reads "Today" | the word itself |
 | Focused | **no treatment at all** | |
 
@@ -114,8 +114,9 @@ both colour blindness and a greyscale screenshot.
 
 **Overdue** is safe for the same reason without extra work: the metadata for an
 overdue task shows an actual date such as "Aug 31" where a current task shows
-"Today". The `error` colour is a second cue on top of a distinction that is
-already textual.
+"Today". The colour is a second cue on top of a distinction that is already
+textual, which is what makes `tertiary` affordable where `error` used to sit.
+See `expressive-design-system.md` for why it moved.
 
 **Focused rows get nothing.** Focus is a single-task execution mode, not a
 selection state on a list. Marking the focused row would make Focus look like

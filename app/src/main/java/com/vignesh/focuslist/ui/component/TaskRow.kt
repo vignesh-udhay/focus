@@ -73,7 +73,7 @@ import com.vignesh.focuslist.ui.theme.FocuslistTheme
  * `TaskListRow` as the actions menu's button; a row with no actions to offer
  * passes nothing and keeps the two-element anatomy.
  * @param isOverdue whether the task's day has already passed. Colours the
- * first metadata segment with the error role as a second cue. The date is
+ * first metadata segment with the tertiary role as a second cue. The date is
  * always that first segment when a task has one, so this needs no more than a
  * flag; the state is still readable without colour, because an overdue task
  * shows a date where a current one reads "Today".
@@ -130,7 +130,10 @@ fun TaskRow(
     val metadataText = metadataAnnotatedString(
         metadata = metadata,
         isOverdue = isOverdue,
-        overdueColor = MaterialTheme.colorScheme.error
+        // `tertiary`, not `error`. Material scopes error to error states, and
+        // makes it a static red that never follows the wallpaper; an overdue
+        // task is neither. See `expressive-design-system.md`.
+        overdueColor = MaterialTheme.colorScheme.tertiary
     )
 
     val toggleDescription = stringResource(
@@ -216,7 +219,7 @@ private const val CompletionPressScale = 0.8f
  * Returns null when there is nothing to say, so the row can omit its
  * supporting slot entirely rather than reserving empty space for it.
  *
- * Only the first segment takes the error colour. `taskMetadata` puts the date
+ * Only the first segment takes the overdue colour. `taskMetadata` puts the date
  * first whenever a task has one, and the duration, which is never overdue,
  * after it.
  */
