@@ -67,8 +67,10 @@ class TodayScreenSemanticsTest {
     private fun assertAddButtonIsLabelled(fontScale: Float) {
         setToday(fontScale, withOneTask())
 
-        // The button carries no icon description; its text is its whole name.
-        rule.onNodeWithText(ADD_TASK).assertIsDisplayed()
+        // The button carries no text; its icon's description is its whole name.
+        // That is the regular floating action button's contract: 56dp of glyph,
+        // and the label lives where a screen reader can still reach it.
+        rule.onNodeWithContentDescription(ADD_TASK).assertIsDisplayed()
     }
 
     @Test
@@ -80,7 +82,7 @@ class TodayScreenSemanticsTest {
     private fun assertAddButtonOpensQuickAdd(fontScale: Float) {
         setToday(fontScale, withOneTask())
 
-        rule.onNodeWithText(ADD_TASK).performClick()
+        rule.onNodeWithContentDescription(ADD_TASK).performClick()
 
         rule.waitUntilExactlyOneExists(hasText(QUICK_ADD_LABEL), TIMEOUT_MILLIS)
         rule.onNodeWithText(QUICK_ADD_LABEL).assertIsDisplayed()

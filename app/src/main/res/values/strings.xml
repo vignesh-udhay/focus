@@ -8,6 +8,18 @@
     <string name="today_empty_supporting">Add a task when you are ready.</string>
     <string name="today_section_overdue">Overdue</string>
     <string name="today_section_completed">Completed</string>
+
+    <!-- Today header. The date reads long-form; the pill carries the total
+         time planned for the day's outstanding work. -->
+    <string name="today_planned">%1$s planned</string>
+    <string name="today_planned_description">%1$s planned today</string>
+
+    <!-- Compact durations, for places where a total sits beside other text.
+         Spoken forms exist because "3h 20m" read aloud is not a sentence. -->
+    <string name="duration_compact_minutes">%1$dm</string>
+    <string name="duration_compact_hours">%1$dh</string>
+    <string name="duration_compact_hours_minutes">%1$dh %2$dm</string>
+    <string name="duration_spoken_hours_minutes">%1$s %2$s</string>
     <string name="task_due_today">Today</string>
     <string name="task_due_tomorrow">Tomorrow</string>
     <string name="task_duration_minutes">%1$d min</string>
@@ -77,4 +89,13 @@
     <string name="quick_add_title_label">New task</string>
     <string name="quick_add_save">Save</string>
     <string name="quick_add_scheduled_for">Scheduled for %1$s</string>
+
+    <plurals name="duration_spoken_minutes">
+        <item quantity="one">%1$d minute</item>
+        <item quantity="other">%1$d minutes</item>
+    </plurals>
+    <plurals name="duration_spoken_hours">
+        <item quantity="one">%1$d hour</item>
+        <item quantity="other">%1$d hours</item>
+    </plurals>
 </resources>

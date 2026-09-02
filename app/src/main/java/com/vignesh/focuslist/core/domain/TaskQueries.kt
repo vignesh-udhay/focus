@@ -77,6 +77,27 @@ enum class TodayBand {
 data class TodaySection(val band: TodayBand, val tasks: List<Task>)
 
 /**
+ * Total estimated minutes still to do today, or null when nothing says.
+ *
+ * Counts every outstanding task the Today view shows, which means overdue work
+ * as well as work scheduled for today: both are on the plate, and a total that
+ * quietly omitted the overdue half would understate the day. Completed tasks
+ * are excluded because the number answers "how much is left", not "how much was
+ * there".
+ *
+ * Null rather than zero when no outstanding task carries an estimate. Zero and
+ * "unknown" are different facts, and the header shows nothing for the second
+ * rather than claiming a day with no work in it.
+ */
+fun todayPlannedMinutes(tasks: List<Task>, today: LocalDate): Int? {
+    val estimates = todayTasks(tasks, today)
+        .filterNot(Task::isCompleted)
+        .mapNotNull(Task::estimatedDurationMinutes)
+
+    return if (estimates.isEmpty()) null else estimates.sum()
+}
+
+/**
  * [todayTasks], split at the points where its band changes.
  *
  * A reading of the existing order rather than a second sort: the tasks arrive

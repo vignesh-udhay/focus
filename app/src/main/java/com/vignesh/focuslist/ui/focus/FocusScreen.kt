@@ -167,7 +167,7 @@ private fun FocusContent(
 
     Scaffold(
         modifier = modifier,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        containerColor = MaterialTheme.colorScheme.surface,
         snackbarHost = { UndoSnackbarHost(snackbarHostState) },
         bottomBar = { if (!isSessionActive) bottomBar() },
         topBar = {

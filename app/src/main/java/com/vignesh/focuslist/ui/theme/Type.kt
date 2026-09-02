@@ -5,6 +5,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 val FocuslistTypography = Typography(
+    // The flexible top app bar draws its expanded title at displaySmall, and
+    // Material's default weight for it is Regular. Every other title role here
+    // is already SemiBold; leaving this one alone would make the largest text
+    // in the app the lightest.
+    displaySmall = Typography().displaySmall.copy(
+        fontWeight = FontWeight.SemiBold
+    ),
+
     headlineMedium = Typography().headlineMedium.copy(
         fontWeight = FontWeight.SemiBold
     ),

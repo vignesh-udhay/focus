@@ -47,15 +47,18 @@ object FocuslistDimensions {
      *
      * The Scaffold's content padding accounts for window insets and a bottom
      * bar but not for the button, so the list has to clear the button itself.
-     * The medium extended button is 80dp tall and the Scaffold floats it 16dp
-     * above the bottom of the content area; the last term is a comfortable gap
-     * between the final task and the button.
+     * The regular button is 56dp tall and the Scaffold floats it 16dp above the
+     * bottom of the content area; the last term is a comfortable gap between
+     * the final task and the button.
+     *
+     * Composed from the spacing scale rather than written as a total, so the
+     * three quantities it is made of stay visible: button, float, gap.
      *
      * Shared, because Today and Inbox both need it and previously computed it
      * separately, which is two chances to get it wrong.
      */
     val FabClearance =
-        FocuslistSpacing.xxl + FocuslistSpacing.xl +
+        FocuslistSpacing.xxl + FocuslistSpacing.xs +
             FocuslistSpacing.md +
-            FocuslistSpacing.md
+            FocuslistSpacing.xs
 }

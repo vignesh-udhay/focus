@@ -272,7 +272,7 @@ private fun TaskRowPreview(
     FocuslistTheme(dynamicColor = false) {
         // A lone segment rounds all four corners. The surrounding colour is a
         // container role so the segment reads against it.
-        Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+        Surface(color = MaterialTheme.colorScheme.surface) {
             TaskRow(
                 title = sample.title,
                 isCompleted = sample.isCompleted,

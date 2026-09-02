@@ -2,6 +2,7 @@ package com.vignesh.focuslist.ui.today
 
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -12,6 +13,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -22,9 +24,12 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vignesh.focuslist.R
@@ -38,11 +43,14 @@ import com.vignesh.focuslist.core.domain.TaskPlacement
 import com.vignesh.focuslist.core.domain.TodayBand
 import com.vignesh.focuslist.core.domain.TodaySection
 import com.vignesh.focuslist.core.domain.todaySections
+import com.vignesh.focuslist.core.domain.todayPlannedMinutes
 import com.vignesh.focuslist.core.domain.todayTasks
 import com.vignesh.focuslist.ui.component.AddTaskFab
+import com.vignesh.focuslist.ui.component.DurationLabel
 import com.vignesh.focuslist.ui.component.FocuslistTopAppBar
 import com.vignesh.focuslist.ui.component.TaskListEmptyState
 import com.vignesh.focuslist.ui.component.TaskListRow
+import com.vignesh.focuslist.ui.component.durationLabel
 import com.vignesh.focuslist.ui.component.UndoSnackbarHost
 import com.vignesh.focuslist.ui.task.QuickAddSheet
 import com.vignesh.focuslist.ui.task.TaskDetailsSheetHost
@@ -51,6 +59,7 @@ import com.vignesh.focuslist.ui.task.UndoSnackbarEffect
 import com.vignesh.focuslist.ui.theme.FocuslistTheme
 import java.time.Instant
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 /**
  * Today, the default task view.
@@ -157,14 +166,17 @@ private fun TodayContent(
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     bottomBar: @Composable () -> Unit = {}
 ) {
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    // The large title collapses into a small bar as the list moves under it.
+    // A pinned behaviour would hold all 152dp of it in place, which spends a
+    // sixth of the screen on a word the user just tapped to get to.
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     // The collection runs away from the page rather than sitting a step above
     // it: toward white in light, toward black in dark. The page is the tinted
     // ground and the list is the thing on it, which is the relationship the
     // Material products this was measured against use.
     val taskColors = ListItemDefaults.segmentedColors(
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
+        containerColor = MaterialTheme.colorScheme.surfaceContainer
     )
 
     // The bands todayTasks already sorted into. Reading them here, rather than
@@ -180,12 +192,13 @@ private fun TodayContent(
 
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        containerColor = MaterialTheme.colorScheme.surface,
         snackbarHost = { UndoSnackbarHost(snackbarHostState) },
         bottomBar = bottomBar,
         topBar = {
             FocuslistTopAppBar(
                 title = stringResource(R.string.today_title),
+                subtitle = { TodaySubtitle(today = today, tasks = tasks) },
                 scrollBehavior = scrollBehavior
             )
         },
@@ -312,6 +325,74 @@ private fun LazyListState.HoldViewportAcross(sections: List<TodaySection>) {
         previous.value = order
     }
 }
+
+/**
+ * The line under the Today title: the date, and what is still on the plate.
+ *
+ * The date is the anchor. "Today" alone does not say which day it is, and a
+ * task list is one of the few screens where that matters.
+ *
+ * The total sits in a pill because it is a different kind of fact from the
+ * date and would otherwise read as part of it. It is the one container on this
+ * screen that carries no content of its own, and it earns that by answering
+ * "how much is left", which is the question `PRODUCT.md` puts at the centre
+ * of Today. It is not a score: nothing accumulates, nothing is compared, and a
+ * day with no estimates simply has no pill.
+ */
+@Composable
+private fun TodaySubtitle(today: LocalDate, tasks: List<Task>) {
+    val planned = todayPlannedMinutes(tasks, today)
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(FocuslistSpacing.xs)
+    ) {
+        Text(text = today.format(SubtitleDateFormat))
+
+        if (planned != null) {
+            PlannedPill(durationLabel(planned))
+        }
+    }
+}
+
+/**
+ * The total planned time, in a tinted pill.
+ *
+ * `secondaryContainer` rather than an accent: this marks a quantity, it is not
+ * something to press, and the navigation bar's own indicator already
+ * establishes that the secondary family is what Focuslist marks with.
+ *
+ * The compact text carries a content description with the spoken form, because
+ * "3h 20m" is not a sentence and the pill is the only place this number
+ * appears.
+ */
+@Composable
+private fun PlannedPill(duration: DurationLabel) {
+    val description = stringResource(R.string.today_planned_description, duration.spoken)
+
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        shape = MaterialTheme.shapes.extraLarge
+    ) {
+        Text(
+            text = stringResource(R.string.today_planned, duration.text),
+            style = MaterialTheme.typography.labelLarge,
+            modifier = Modifier
+                .padding(horizontal = FocuslistSpacing.xs, vertical = FocuslistSpacing.xxs)
+                .semantics { contentDescription = description }
+        )
+    }
+}
+
+/**
+ * The subtitle's date format: weekday and day, without the year.
+ *
+ * The year is noise on a screen about today, and the localized skeleton keeps
+ * the field order right in locales that do not lead with the weekday.
+ */
+private val SubtitleDateFormat: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("EEEE, MMMM d")
 
 /**
  * A band's name, above the tasks in it.
