@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -13,7 +14,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -332,56 +332,51 @@ private fun LazyListState.HoldViewportAcross(sections: List<TodaySection>) {
  * The date is the anchor. "Today" alone does not say which day it is, and a
  * task list is one of the few screens where that matters.
  *
- * The total sits in a pill because it is a different kind of fact from the
- * date and would otherwise read as part of it. It is the one container on this
- * screen that carries no content of its own, and it earns that by answering
- * "how much is left", which is the question `PRODUCT.md` puts at the centre
- * of Today. It is not a score: nothing accumulates, nothing is compared, and a
- * day with no estimates simply has no pill.
+ * Two facts on one line, told apart by where they sit rather than by drawing a
+ * container around one of them. The total was briefly given a tinted pill; it
+ * read as decoration, which `PRODUCT.md` rules out, and alignment separates the
+ * two just as well for nothing.
+ *
+ * The total is not a score: nothing accumulates, nothing is compared, and a day
+ * with no estimates simply shows no total.
  */
 @Composable
 private fun TodaySubtitle(today: LocalDate, tasks: List<Task>) {
     val planned = todayPlannedMinutes(tasks, today)
 
     Row(
+        // The app bar insets its title area by 16dp at the start and only 4dp
+        // at the end, because the end is where action icons would sit and this
+        // bar has none. Left alone the total overhangs the task collection by
+        // about 6dp, and `xxs` takes most of that back: measured, the text
+        // lands within 2dp of the edge the rows end on, which is closer than
+        // the eye resolves at this size.
+        //
+        // Not an exact figure, and deliberately not tuned to one. Landing it
+        // dead on would mean compensating for the trailing bearing of whatever
+        // glyph the total happens to end with, which is a number with no
+        // meaning and no token.
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(end = FocuslistSpacing.xxs),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(FocuslistSpacing.xs)
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(text = today.format(SubtitleDateFormat))
 
         if (planned != null) {
-            PlannedPill(durationLabel(planned))
+            val duration = durationLabel(planned)
+            val description =
+                stringResource(R.string.today_planned_description, duration.spoken)
+
+            // The compact form is what fits beside a date. It is not a
+            // sentence, so the spoken form rides along as a description; the
+            // total appears nowhere else.
+            Text(
+                text = stringResource(R.string.today_planned, duration.text),
+                modifier = Modifier.semantics { contentDescription = description }
+            )
         }
-    }
-}
-
-/**
- * The total planned time, in a tinted pill.
- *
- * `secondaryContainer` rather than an accent: this marks a quantity, it is not
- * something to press, and the navigation bar's own indicator already
- * establishes that the secondary family is what Focuslist marks with.
- *
- * The compact text carries a content description with the spoken form, because
- * "3h 20m" is not a sentence and the pill is the only place this number
- * appears.
- */
-@Composable
-private fun PlannedPill(duration: DurationLabel) {
-    val description = stringResource(R.string.today_planned_description, duration.spoken)
-
-    Surface(
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-        shape = MaterialTheme.shapes.extraLarge
-    ) {
-        Text(
-            text = stringResource(R.string.today_planned, duration.text),
-            style = MaterialTheme.typography.labelLarge,
-            modifier = Modifier
-                .padding(horizontal = FocuslistSpacing.xs, vertical = FocuslistSpacing.xxs)
-                .semantics { contentDescription = description }
-        )
     }
 }
 

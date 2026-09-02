@@ -21,6 +21,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -132,7 +133,8 @@ private fun InboxContent(
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     bottomBar: @Composable () -> Unit = {}
 ) {
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    // The large title collapses as the list moves under it, as on Today.
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     val taskColors = ListItemDefaults.segmentedColors(
         containerColor = MaterialTheme.colorScheme.surfaceContainer
@@ -148,6 +150,22 @@ private fun InboxContent(
         topBar = {
             FocuslistTopAppBar(
                 title = stringResource(R.string.inbox_title),
+                // Nothing to count when the list is empty, and "0 items
+                // waiting to process" above an empty state says the same
+                // thing twice, the second time worse.
+                subtitle = if (tasks.isEmpty()) {
+                    null
+                } else {
+                    {
+                        Text(
+                            text = pluralStringResource(
+                                R.plurals.inbox_waiting,
+                                tasks.size,
+                                tasks.size
+                            )
+                        )
+                    }
+                },
                 scrollBehavior = scrollBehavior
             )
         },
