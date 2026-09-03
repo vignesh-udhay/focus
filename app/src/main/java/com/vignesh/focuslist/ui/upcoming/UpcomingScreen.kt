@@ -21,6 +21,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -106,7 +107,10 @@ private fun UpcomingContent(
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     bottomBar: @Composable () -> Unit = {}
 ) {
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    // Collapses as the list moves under it, as Today and Inbox do. A pinned
+    // behaviour would hold the full height of a two-row bar in every scroll
+    // position, which is a lot of chrome for a screen that is only a list.
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     val taskColors = ListItemDefaults.segmentedColors(
         containerColor = MaterialTheme.colorScheme.surfaceContainer
@@ -122,6 +126,21 @@ private fun UpcomingContent(
         topBar = {
             FocuslistTopAppBar(
                 title = stringResource(R.string.upcoming_title),
+                // Nothing to count when the list is empty, and the empty state
+                // already says so.
+                subtitle = if (tasks.isEmpty()) {
+                    null
+                } else {
+                    {
+                        Text(
+                            text = pluralStringResource(
+                                R.plurals.upcoming_scheduled,
+                                tasks.size,
+                                tasks.size
+                            )
+                        )
+                    }
+                },
                 scrollBehavior = scrollBehavior
             )
         }

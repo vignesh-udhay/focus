@@ -15,6 +15,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -22,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -134,16 +136,24 @@ private fun PlacementContent(
 
     val gutter = focuslistContentGutter()
 
+    // The bar shrinks rather than leaves. Its full height above a tab row is a
+    // lot of chrome for a list, and collapsing gives most of it back; the tabs
+    // ride up with it and stay reachable, which is the property the pinned
+    // version was protecting. This screen passed no scroll behaviour at all,
+    // which was right when the bar was 64dp and is not now it is 120.
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+
     Scaffold(
-        modifier = modifier,
+        modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.surface,
         snackbarHost = { UndoSnackbarHost(snackbarHostState) },
         bottomBar = bottomBar,
         topBar = {
-            // The bar does not scroll away: the tabs below it have to stay
-            // reachable, so there is no pinnedScrollBehavior here.
             Column {
-                FocuslistTopAppBar(title = stringResource(placement.labelRes))
+                FocuslistTopAppBar(
+                    title = stringResource(placement.labelRes),
+                    scrollBehavior = scrollBehavior
+                )
 
                 PrimaryTabRow(selectedTabIndex = PlacementTabs.indexOf(placement)) {
                     PlacementTabs.forEach { tab ->

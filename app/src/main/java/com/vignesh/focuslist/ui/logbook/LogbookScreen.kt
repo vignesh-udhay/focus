@@ -107,7 +107,10 @@ private fun LogbookContent(
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     bottomBar: @Composable () -> Unit = {}
 ) {
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    // Collapses as the list moves under it, as the other lists do. No
+    // subtitle: the Logbook is not in the design, and a count of everything
+    // ever finished is not a fact this screen is for.
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     val taskColors = ListItemDefaults.segmentedColors(
         containerColor = MaterialTheme.colorScheme.surfaceContainer

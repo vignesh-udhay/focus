@@ -90,6 +90,10 @@
     <string name="quick_add_save">Save</string>
     <string name="quick_add_scheduled_for">Scheduled for %1$s</string>
 
+    <plurals name="upcoming_scheduled">
+        <item quantity="one">%1$d task scheduled</item>
+        <item quantity="other">%1$d tasks scheduled</item>
+    </plurals>
     <plurals name="inbox_waiting">
         <item quantity="one">%1$d item waiting to process</item>
         <item quantity="other">%1$d items waiting to process</item>
