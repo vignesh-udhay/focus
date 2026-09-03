@@ -84,6 +84,7 @@
     <string name="task_details_clear_duration">Clear estimated duration</string>
     <string name="task_schedule_heading">Schedule</string>
     <string name="task_schedule_done">Done</string>
+    <string name="task_schedule_add_due">Add due date</string>
     <string name="task_schedule_back">Back to task details</string>
     <string name="task_schedule_no_date">No date</string>
     <string name="task_details_cancel">Cancel</string>

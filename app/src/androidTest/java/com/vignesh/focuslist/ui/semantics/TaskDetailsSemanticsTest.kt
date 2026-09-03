@@ -314,6 +314,44 @@ class TaskDetailsSemanticsTest {
     @Test
     fun blankTitle_refusesSave_at200() = assertBlankTitleRefusesSave(FontScale200)
 
+    private fun assertDueDateIsRevealedOnDemand(fontScale: Float) {
+        // No deadline, which is the ordinary case and the one the field is
+        // hidden for.
+        setSheet(fontScale, task = editableTask().copy(dueDate = null))
+        openSchedule()
+
+        rule.onNodeWithText(DUE_FIELD_LABEL).assertDoesNotExist()
+
+        rule.onNodeWithText(ADD_DUE).performScrollTo().performClick()
+
+        // Revealed, and the offer to reveal it is gone: one control, two states,
+        // never both at once.
+        rule.onNodeWithText(DUE_FIELD_LABEL).performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText(ADD_DUE).assertDoesNotExist()
+    }
+
+    @Test
+    fun dueDate_isRevealedOnDemand_at100() = assertDueDateIsRevealedOnDemand(FontScale100)
+
+    @Test
+    fun dueDate_isRevealedOnDemand_at200() = assertDueDateIsRevealedOnDemand(FontScale200)
+
+    private fun assertDueDateStartsOpenWhenSet(fontScale: Float) {
+        // The fixture has one, so it is shown rather than hidden behind an
+        // offer to add what is already there.
+        setSheet(fontScale)
+        openSchedule()
+
+        rule.onNodeWithText(DUE_FIELD_LABEL).performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText(ADD_DUE).assertDoesNotExist()
+    }
+
+    @Test
+    fun dueDate_startsOpenWhenSet_at100() = assertDueDateStartsOpenWhenSet(FontScale100)
+
+    @Test
+    fun dueDate_startsOpenWhenSet_at200() = assertDueDateStartsOpenWhenSet(FontScale200)
+
     private fun assertUnreadableDateIsReportedAndRefused(fontScale: Float) {
         setSheet(fontScale)
         openSchedule()
@@ -418,6 +456,8 @@ class TaskDetailsSemanticsTest {
         val RECURRENCE_OPTIONS = listOf(NEVER, DAILY, WEEKLY, MONTHLY, YEARLY)
 
         const val SCHEDULE_HEADING = "Schedule"
+        const val ADD_DUE = "Add due date"
+        const val DUE_FIELD_LABEL = "Due"
         const val DONE = "Done"
         const val BACK = "Back to task details"
         /** How the sheet writes the fixture's existing due date into its field. */
@@ -437,6 +477,9 @@ class TaskDetailsSemanticsTest {
         )
 
         val SCHEDULE_FIELD_LABELS = listOf(
+            // Due is here because the fixture carries a deadline, so the field
+            // is open. A task without one shows an offer to add it instead;
+            // dueDate_isRevealedOnDemand covers that.
             "Due",
             "Estimated duration",
             "Repeats"

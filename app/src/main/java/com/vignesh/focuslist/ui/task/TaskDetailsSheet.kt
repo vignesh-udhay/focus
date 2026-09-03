@@ -360,13 +360,30 @@ private fun SchedulePage(
         colors = DatePickerDefaults.colors(containerColor = Color.Transparent)
     )
 
-    DateField(
-        label = stringResource(R.string.task_details_due_label),
-        text = dueText,
-        parsed = due,
-        clearDescription = stringResource(R.string.task_details_clear_due),
-        onTextChange = onDueTextChange
-    )
+    // Revealed rather than always shown. Most tasks have no deadline, and a
+    // field that is nearly always blank is a decision asked of everyone to
+    // serve a few. It opens already expanded for a task that has one, so the
+    // value is never hidden from whoever set it.
+    //
+    // Not tied to Repeats. The one place the app touches a due date is the
+    // recurrence roll-forward, but that is where the code happens to use it,
+    // not where a user needs it: a deadline is most natural on a one-off, and
+    // "every Monday" needs none at all.
+    var isDueVisible by rememberSaveable { mutableStateOf(dueText.isNotEmpty()) }
+
+    if (isDueVisible) {
+        DateField(
+            label = stringResource(R.string.task_details_due_label),
+            text = dueText,
+            parsed = due,
+            clearDescription = stringResource(R.string.task_details_clear_due),
+            onTextChange = onDueTextChange
+        )
+    } else {
+        TextButton(onClick = { isDueVisible = true }) {
+            Text(stringResource(R.string.task_schedule_add_due))
+        }
+    }
 
     Row(verticalAlignment = Alignment.Top) {
         OutlinedTextField(

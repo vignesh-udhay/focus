@@ -423,6 +423,25 @@ not be visible anyway.
 handler the system would close the whole sheet from the second page, throwing
 away the draft rather than returning to the details it came from.
 
+[FD] The due date is hidden behind an offer to add one, and shown already open
+for a task that has one. Most tasks have no deadline, and a field that is nearly
+always blank is a decision asked of everyone to serve a few.
+
+[FD] Not tied to Repeats, though that was considered. The recurrence
+roll-forward is the only place the app touches a due date, but that is where the
+code happens to use it rather than where a user needs it: a deadline is most
+natural on a one-off, and "every Monday" needs none at all. Tying the field to
+recurrence would hide it in the case it is most useful and show it in the case
+it is least.
+
+[FD] Worth knowing about `dueDate` before spending more on it: nothing reads it.
+No list filters on it, nothing sorts by it, no row shows it, and overdue is
+`scheduledDate.isBefore(today)`. `nextRecurringInstance` shifts it forward by
+the same number of days as the scheduled date, keeping whatever gap the two had,
+and that is the whole of its behaviour. It is a well-kept record with no reader.
+If it is ever to mean something, the plumbing that keeps it meaningful across a
+repeating series already exists and is tested.
+
 [FD] The day is picked from a calendar; the due date is still typed. Natural
 language stays where capture happens, in Quick Add, which is where speed is the
 point. This is the organise-later step, where a specific day is usually wanted.
