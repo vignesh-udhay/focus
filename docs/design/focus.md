@@ -89,6 +89,21 @@ The title does not move at any point. It is the fixed thing the session forms
 around, and that is what makes the session read as the same screen rather than
 a new one.
 
+What does move is the action slot, and it moves because the square is only
+reserved once there is a shape to put in it. Ready gives the region above the
+slot the title's own height, so Start sits directly under the words; Session
+grows it to the square. An earlier version reserved the full square in both,
+which kept the slot still at the cost of 145dp of nothing between a two-line
+title and the button, and more than that for a short one. Of the three things
+that cannot all hold at once — the title stays put, the shape is a square
+centred on it, the button sits below the shape — the button's position is the
+cheapest to give up, and it is the control being transformed anyway.
+
+[IMPL] The title's centre is unaffected by the region growing: the column is
+centred and everything below the title is a fixed height, so the centre works
+out to half the window less half of the gap and slot, whatever the region is
+doing. Measured at zero pixels of drift across the transition.
+
 This is Material's container transform, which M3 describes as creating "the
 strongest relationship between elements" of any of its transition patterns and
 names a persistent container as the usual way to carry it. It replaces a

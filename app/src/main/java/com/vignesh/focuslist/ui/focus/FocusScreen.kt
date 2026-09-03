@@ -20,12 +20,15 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
@@ -59,7 +62,9 @@ import androidx.compose.ui.graphics.Matrix
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -70,7 +75,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.min
 import androidx.compose.ui.util.lerp
 import androidx.graphics.shapes.Morph
@@ -465,20 +472,56 @@ private fun FocusShape(
         // the window so a narrow phone is not overflowed.
         val side = min(maxWidth, SessionShapeMaxSize)
 
-        // The shortcut sits outside the drawn box on purpose. Inside it, it
+        // The square is reserved only once there is a shape to put in it. In
+        // Ready the region above the action slot is the title's own height, so
+        // Start sits directly under the words rather than across a gap the
+        // size of a shape that has not appeared yet. Measured before this, a
+        // two line title left 145dp of nothing between the estimate and the
+        // button, and a one line title left more.
+        //
+        // The title still does not move. The column is centred and everything
+        // below the title region is a fixed height, so the title's centre
+        // works out to half the window less half of (gap + slot) whatever the
+        // region is doing; growing the region pushes the slot down and leaves
+        // the words alone. That is the property worth protecting, and it costs
+        // only that the slot travels, which is reasonable for the one control
+        // that is being transformed anyway.
+        //
+        // Null until the title has been measured once. On that first frame the
+        // region simply wraps the title, which is the same height it resolves
+        // to at rest, so nothing moves when the real value arrives.
+        val density = LocalDensity.current
+        var titleHeight by remember { mutableStateOf<Dp?>(null) }
+        // `maxOf` guards the degenerate case. A four line title at the largest
+        // font scale can be taller than the square, and interpolating toward a
+        // smaller value would compress the region as the session opened, which
+        // is the one direction this must never move in. Where the title is
+        // already the larger of the two, the region simply holds still.
+        val region = titleHeight?.let { lerp(it, maxOf(side, it), shade) }
+
+        // The slot reports its own size for the same reason the title does.
+        // The button is allowed to outgrow the nominal medium height when a
+        // label at a large font scale needs the room, and the container has to
+        // start from the rectangle the button actually occupies rather than
+        // the one it was specified at, or the drawn pill and the real button
+        // come apart.
+        var slotSize by remember { mutableStateOf(DpSize(ActionSlotWidth, ActionSlotHeight)) }
+
+        // The shortcut sits outside the drawn column on purpose. Inside it, it
         // displaced the action slot upward while the container's own rectangle
         // went on being computed as the bottom of the box, so the two came
         // apart and every label was left drawn on the wrong background.
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .width(side)
-                    .height(side + FocuslistSpacing.lg + ActionSlotHeight)
                     .drawBehind {
+                        val slotWidth = slotSize.width.toPx()
                         val ready = Rect(
-                            left = (size.width - ActionSlotWidth.toPx()) / 2f,
-                            top = size.height - ActionSlotHeight.toPx(),
-                            right = (size.width + ActionSlotWidth.toPx()) / 2f,
+                            left = (size.width - slotWidth) / 2f,
+                            top = size.height - slotSize.height.toPx(),
+                            right = (size.width + slotWidth) / 2f,
                             bottom = size.height
                         )
                         val session = Rect(0f, 0f, size.width, size.width)
@@ -496,22 +539,34 @@ private fun FocusShape(
                     }
             ) {
                 Box(
-                    modifier = Modifier.align(Alignment.TopCenter).size(side),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(if (region != null) Modifier.height(region) else Modifier),
                     contentAlignment = Alignment.Center
                 ) {
                     FocusTaskTitle(
                         task = task,
                         color = titleColor,
-                        modifier = Modifier.padding(FocuslistSpacing.lg)
+                        modifier = Modifier
+                            .onSizeChanged {
+                                titleHeight = with(density) { it.height.toDp() }
+                            }
+                            .padding(FocuslistSpacing.lg)
                     )
                 }
 
+                Spacer(Modifier.height(FocuslistSpacing.lg))
+
                 // Start becomes the shape, so what sits in this slot afterwards
-                // is the action the session is for. The slot itself never moves,
-                // and it is exactly the rectangle the container starts from.
+                // is the action the session is for. The slot is the rectangle
+                // the container starts from, and it travels with the region
+                // above it rather than being pinned to the bottom of a box the
+                // size of a shape that is not there.
                 Box(
-                    modifier = Modifier.align(Alignment.BottomCenter),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.onSizeChanged {
+                        slotSize = with(density) { DpSize(it.width.toDp(), it.height.toDp()) }
+                    }
                 ) {
                     if (leavingAlpha(shade) > 0f) {
                         FocusAction(
@@ -599,7 +654,11 @@ private fun FocusAction(
         shape = CircleShape,
         contentPadding = ButtonDefaults.contentPaddingFor(ActionSlotHeight),
         modifier = Modifier
-            .size(width = ActionSlotWidth, height = ActionSlotHeight)
+            // A floor rather than a fixed size. Pinned at exactly the medium
+            // height, a label at 200% font scale was cut through the middle of
+            // its letters; the button is allowed to grow to hold its own text.
+            .widthIn(min = ActionSlotWidth)
+            .heightIn(min = ActionSlotHeight)
             .alpha(alpha)
     ) {
         Text(text = label, style = ButtonDefaults.textStyleFor(ActionSlotHeight))

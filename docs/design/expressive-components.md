@@ -573,12 +573,22 @@ trick away. The label colour is named for the same reason.
 
 [FD] One slot, in both states, at `ButtonDefaults.MediumContainerHeight`. Ready
 puts Start in it and Session puts Complete, so the control the session is for
-appears exactly where the control that began it was. The slot never moves.
+appears exactly where the control that began it was.
+
+[FD] The slot travels between the two states, because Ready reserves only the
+title's height above it rather than the whole square. `focus.md` has the
+reasoning under "Becoming the session".
 
 [FD] Medium rather than large. The design draws its buttons at 84dp, which is
-not one of Material's five button heights; medium is the one that survives 200%
-font scale, where large is a fixed 96dp box a label at that scale has to fit
-inside.
+not one of Material's five button heights; large is a 96dp box a label has to
+fit inside at every scale.
+
+[IMPL] The medium height is a floor, not a fixed size. Pinned at exactly 56dp
+the label was cut through the middle of its letters at 200% font scale, so the
+button is allowed to grow to hold its own text, and the slot reports the size
+it actually took. The container has to start from the rectangle the button
+occupies rather than the one it was specified at, or the drawn pill and the
+real button come apart.
 
 ## The foot of the screen
 
