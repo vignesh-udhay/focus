@@ -1,6 +1,7 @@
 package com.vignesh.focuslist.ui.today
 
 import android.content.res.Configuration
+import android.text.format.DateFormat
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
@@ -27,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -345,24 +347,16 @@ private fun TodaySubtitle(today: LocalDate, tasks: List<Task>) {
     val planned = todayPlannedMinutes(tasks, today)
 
     Row(
-        // The app bar insets its title area by 16dp at the start and only 4dp
-        // at the end, because the end is where action icons would sit and this
-        // bar has none. Left alone the total overhangs the task collection by
-        // about 6dp, and `xxs` takes most of that back: measured, the text
-        // lands within 2dp of the edge the rows end on, which is closer than
-        // the eye resolves at this size.
-        //
-        // Not an exact figure, and deliberately not tuned to one. Landing it
-        // dead on would mean compensating for the trailing bearing of whatever
-        // glyph the total happens to end with, which is a number with no
-        // meaning and no token.
+        // Lines the total up with the right edge of the task collection. The
+        // app bar's own end inset is smaller than its start inset, so without
+        // this the total overhangs the rows. See the token for the measurement.
         modifier = Modifier
             .fillMaxWidth()
-            .padding(end = FocuslistSpacing.xxs),
+            .padding(end = FocuslistDimensions.AppBarTrailingTextAlignment),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(text = today.format(SubtitleDateFormat))
+        Text(text = today.format(rememberSubtitleDateFormat()))
 
         if (planned != null) {
             val duration = durationLabel(planned)
@@ -381,13 +375,34 @@ private fun TodaySubtitle(today: LocalDate, tasks: List<Task>) {
 }
 
 /**
- * The subtitle's date format: weekday and day, without the year.
+ * The subtitle's date, abbreviated.
  *
- * The year is noise on a screen about today, and the localized skeleton keeps
- * the field order right in locales that do not lead with the weekday.
+ * "Wed, Sep 2" rather than "Wednesday, September 2". The long form spent most of
+ * the line on two words the user is not reading; the short form says the same
+ * thing and leaves the width to the total at the other end.
+ *
+ * The year is left out. It is noise on a screen about today.
+ *
+ * Built from a skeleton rather than a literal pattern, because field order is
+ * not universal: `getBestDateTimePattern` returns the arrangement the locale
+ * actually uses for a weekday, a month and a day, which a hardcoded
+ * "EEE, MMM d" would get wrong everywhere it differs.
  */
-private val SubtitleDateFormat: DateTimeFormatter =
-    DateTimeFormatter.ofPattern("EEEE, MMMM d")
+@Composable
+private fun rememberSubtitleDateFormat(): DateTimeFormatter {
+    val locale = LocalConfiguration.current.locales[0]
+
+    return remember(locale) {
+        DateTimeFormatter.ofPattern(
+            DateFormat.getBestDateTimePattern(locale, SubtitleDateSkeleton),
+            locale
+        )
+    }
+}
+
+/** Weekday, month, day: the three fields the subtitle shows. */
+private const val SubtitleDateSkeleton = "EEEMMMd"
+
 
 /**
  * A band's name, above the tasks in it.

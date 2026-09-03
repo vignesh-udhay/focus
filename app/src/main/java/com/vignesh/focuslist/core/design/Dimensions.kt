@@ -11,6 +11,26 @@ import androidx.compose.ui.unit.dp
  */
 object FocuslistDimensions {
 
+    /**
+     * End padding that lines trailing app-bar text up with the content below it.
+     *
+     * The app bar insets its title area by 16dp at the start but only 4dp at the
+     * end, because the end is where action icons would sit and these bars carry
+     * none. A right-aligned subtitle therefore overhangs the task collection,
+     * and the text's own trailing bearing takes back part of the difference.
+     *
+     * 6dp is what the two together come to. Measured rather than derived: on a
+     * Pixel emulator the text lands 10.3dp from the screen edge with no padding
+     * and moves a point for a point after that, so 6dp puts it within a third of
+     * a point of the 16dp the rows end on. Both 4dp and 8dp were tried and land
+     * about two points out, one either side.
+     *
+     * Not a spacing value, which is why it is here rather than in
+     * [FocuslistSpacing]: it describes a relationship between two components'
+     * insets, not a gap anyone chose.
+     */
+    val AppBarTrailingTextAlignment = 6.dp
+
     /** The smallest an interactive target may be, in either direction. */
     val TouchTargetMin = 48.dp
 
