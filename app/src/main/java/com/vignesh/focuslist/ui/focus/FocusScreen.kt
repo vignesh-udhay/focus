@@ -74,6 +74,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import androidx.compose.ui.util.lerp
 import androidx.graphics.shapes.Morph
+import androidx.graphics.shapes.RoundedPolygon
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -85,7 +86,7 @@ import com.vignesh.focuslist.core.design.focuslistContentGutter
 import com.vignesh.focuslist.core.design.focuslistMotionEnabled
 import com.vignesh.focuslist.core.domain.Task
 import com.vignesh.focuslist.core.domain.TaskPlacement
-import com.vignesh.focuslist.core.domain.focusElapsedCycle
+import com.vignesh.focuslist.core.domain.focusElapsedPhase
 import com.vignesh.focuslist.core.domain.focusProgress
 import com.vignesh.focuslist.core.notification.FocusSessionVisibility
 import com.vignesh.focuslist.core.notification.canPostNotifications
@@ -95,6 +96,7 @@ import com.vignesh.focuslist.ui.task.TaskListViewModel
 import com.vignesh.focuslist.ui.task.UndoSnackbarEffect
 import com.vignesh.focuslist.ui.theme.FocuslistTheme
 import kotlinx.coroutines.delay
+import kotlin.math.floor
 import java.time.Instant
 import java.time.LocalDate
 
@@ -429,16 +431,31 @@ private fun FocusShape(
     onComplete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Only one Morph, and it is the session's. The button growing into the
-    // circle is a rounded rectangle whose corners stay at half its height,
-    // which is a stadium the whole way up and a circle the moment the box is
-    // square. That is how every Material container transform is built, and it
-    // keeps the app's one shape morph the one that carries information.
+    // The button growing into the circle is a rounded rectangle whose corners
+    // stay at half its height, which is a stadium the whole way up and a circle
+    // the moment the box is square. That is how every Material container
+    // transform is built.
     //
     // `MaterialShapes.Pill` is the wrong tool for it: the shapes are normalised
     // into a unit box, so stretching one back out to a wide, short rectangle
-    // gives an ellipse rather than a stadium.
-    val sessionMorph = remember { Morph(MaterialShapes.Circle, MaterialShapes.Clover4Leaf) }
+    // gives an ellipse rather than a stadium. That constraint is also why the
+    // rectangle has to finish before any polygon appears: a polygon squeezed
+    // into a box that is not yet square would be stretched the same way.
+    //
+    // The session's own shapes are a ring. Where the ring starts is not always
+    // the circle the rectangle ends at, so the last part of the growth blooms
+    // from that circle into the first shape of the ring. It is one spring with
+    // two legs rather than two animations, so it reads as a single gesture.
+    // Keyed on whether there is an estimate rather than on the list itself. The
+    // list is rebuilt on every recomposition and only compares equal because
+    // `MaterialShapes` memoises its polygons; keying on the thing that actually
+    // varies does not depend on that.
+    val determinate = task.estimatedDurationMinutes != null
+    val shapes = sessionShapes(determinate)
+    val bloomMorph = remember(determinate) { Morph(MaterialShapes.Circle, shapes.first()) }
+    val ringMorphs = remember(determinate) {
+        shapes.indices.map { Morph(shapes[it], shapes[(it + 1) % shapes.size]) }
+    }
     val path = remember { Path() }
 
     // Everything that appears and disappears here is driven off the container's
@@ -474,8 +491,10 @@ private fun FocusShape(
 
                         drawFocusContainer(
                             expansion = expansion(),
-                            progress = progress(),
-                            sessionMorph = sessionMorph,
+                            phase = progress(),
+                            determinate = determinate,
+                            bloomMorph = bloomMorph,
+                            ringMorphs = ringMorphs,
                             path = path,
                             color = containerColor,
                             ready = ready,
@@ -632,37 +651,79 @@ private fun FocusFooter(
 }
 
 /**
+ * The ring of shapes a session walks, and which way round it walks it.
+ *
+ * A task with an estimate gets two shapes and runs them once, from the busy one
+ * to the circle: the task is at its most complicated when it starts and
+ * resolves as the estimate is used up. A task without one gets a ring of six
+ * and walks round it forever, arriving nowhere.
+ *
+ * This is Material's own distinction rather than a private vocabulary. Its
+ * loading indicator ships two shape lists, a pair for the determinate case and
+ * a sequence of seven for the indeterminate one, and encodes known against
+ * unknown duration by the *kind* of motion rather than by what any one shape
+ * means. That matters, because the shape principles say in as many words that
+ * shape is versatile and not semantic: no single form here stands for
+ * anything, and swapping the ring for another set of shapes would change how
+ * the screen looks and nothing about what it says.
+ *
+ * The ring deliberately begins at the circle, so an unestimated session
+ * continues straight out of the container transform with nothing to bloom
+ * into. None of these are the elongated shapes: `Pill` and `Oval` normalise
+ * into a unit box, so a square draw would stretch them back into ovals.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+private fun sessionShapes(hasEstimate: Boolean): List<RoundedPolygon> =
+    if (hasEstimate) {
+        listOf(MaterialShapes.Clover4Leaf, MaterialShapes.Circle)
+    } else {
+        listOf(
+            MaterialShapes.Circle,
+            MaterialShapes.Cookie4Sided,
+            MaterialShapes.Sunny,
+            MaterialShapes.Cookie9Sided,
+            MaterialShapes.SoftBurst,
+            MaterialShapes.Cookie12Sided
+        )
+    }
+
+/**
  * Draws the container at wherever it currently is between the button and the
  * session.
  *
- * The rectangle is interpolated without clamping, so the spring's overshoot
- * carries into the size. That overshoot is the expressive part of the
- * expressive motion scheme and there is no reason to throw it away here.
+ * Three ways of drawing one container, and each hands over to the next at a
+ * shape they share. Up to [EntryRectSplit] it is a rounded rectangle cornered
+ * at half its own height, which is a stadium while the box is wide and a circle
+ * the instant the box is square. From there to the end of the spring it blooms
+ * from that circle into the first shape of the session's ring. After that the
+ * ring itself has it.
  *
- * Two ways of drawing one container, and they meet at a circle. On the way up
- * it is a rounded rectangle cornered at half its own height, which is a
- * stadium while the box is wide and a circle the instant the box is square.
- * Once it is square the session's morph takes over, and its start is that same
- * circle, so the handover is invisible.
+ * The rectangle is denied the spring's overshoot, which it used to get, because
+ * a polygon cannot be drawn into a box that is not square without being
+ * stretched, and the box has to be square by [EntryRectSplit]. The overshoot is
+ * not lost so much as spent on the bloom instead.
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 private fun DrawScope.drawFocusContainer(
     expansion: Float,
-    progress: Float,
-    sessionMorph: Morph,
+    phase: Float,
+    determinate: Boolean,
+    bloomMorph: Morph,
+    ringMorphs: List<Morph>,
     path: Path,
     color: Color,
     ready: Rect,
     session: Rect
 ) {
+    val grown = (expansion / EntryRectSplit).coerceIn(0f, 1f)
     val rect = Rect(
-        left = lerp(ready.left, session.left, expansion),
-        top = lerp(ready.top, session.top, expansion),
-        right = lerp(ready.right, session.right, expansion),
-        bottom = lerp(ready.bottom, session.bottom, expansion)
+        left = lerp(ready.left, session.left, grown),
+        top = lerp(ready.top, session.top, grown),
+        right = lerp(ready.right, session.right, grown),
+        bottom = lerp(ready.bottom, session.bottom, grown)
     )
 
-    if (expansion < 1f) {
+    if (grown < 1f) {
         drawRoundRect(
             color = color,
             topLeft = rect.topLeft,
@@ -672,7 +733,21 @@ private fun DrawScope.drawFocusContainer(
         return
     }
 
-    sessionMorph.toPath(progress = progress, path = path)
+    val bloom = ((expansion - EntryRectSplit) / (1f - EntryRectSplit)).coerceIn(0f, 1f)
+
+    if (bloom < 1f) {
+        bloomMorph.toPath(progress = bloom, path = path)
+    } else {
+        // One segment per pair of neighbours. The determinate ring is walked
+        // once and stops at its last shape; the indeterminate one wraps, and
+        // its final segment morphs back into the shape it began at, so the
+        // seam cannot be seen.
+        val segments = if (determinate) ringMorphs.size - 1 else ringMorphs.size
+        val walked = (phase.coerceIn(0f, 1f) * segments).coerceIn(0f, segments.toFloat())
+        val index = floor(walked).toInt().coerceIn(0, segments - 1)
+        ringMorphs[index].toPath(progress = walked - index, path = path)
+    }
+
     // The polygons are normalised, so the path arrives in a unit box and has
     // to be scaled to the rectangle and recentred on it, exactly as the
     // Material shape helper does it.
@@ -680,6 +755,15 @@ private fun DrawScope.drawFocusContainer(
     path.translate(rect.center - path.getBounds().center)
     drawPath(path, color)
 }
+
+/**
+ * Where the growth stops being a rectangle and starts being a shape.
+ *
+ * The box has to be square before a polygon can be drawn into it, and this is
+ * where it becomes square. The remaining three tenths of the spring are the
+ * bloom.
+ */
+private const val EntryRectSplit = 0.7f
 
 /**
  * Where the shape stands, as a value that can be sprung to rather than only
@@ -745,7 +829,7 @@ private fun rememberShapeProgress(
 private fun shapeValue(startedAt: Instant, estimatedDurationMinutes: Int?): Float {
     val now = Instant.now()
     return focusProgress(startedAt, now, estimatedDurationMinutes)
-        ?: focusElapsedCycle(startedAt, now)
+        ?: focusElapsedPhase(startedAt, now)
 }
 
 /**

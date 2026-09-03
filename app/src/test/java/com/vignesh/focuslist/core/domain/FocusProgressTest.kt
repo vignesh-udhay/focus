@@ -86,37 +86,39 @@ class FocusProgressTest {
 
     // The cycle, for a task with no estimate
 
-    private fun cycleAfterMinutes(minutes: Long): Float =
-        focusElapsedCycle(startedAt, startedAt.plusSeconds(minutes * 60))
+    private fun phaseAfterMinutes(minutes: Long): Float =
+        focusElapsedPhase(startedAt, startedAt.plusSeconds(minutes * 60))
 
     @Test
-    fun `a session with no estimate begins at the near shape`() {
-        assertEquals(0f, cycleAfterMinutes(0))
+    fun `a session with no estimate begins at the start of the ring`() {
+        assertEquals(0f, phaseAfterMinutes(0))
     }
 
     @Test
-    fun `the cycle reaches the far shape half way out`() {
-        assertEquals(1f, cycleAfterMinutes(10))
+    fun `the phase advances evenly across the cycle`() {
+        assertEquals(0.25f, phaseAfterMinutes(5))
+        assertEquals(0.5f, phaseAfterMinutes(10))
+        assertEquals(0.75f, phaseAfterMinutes(15))
     }
 
     @Test
-    fun `the cycle comes back rather than arriving`() {
-        // The property that keeps it from being read as progress. A ramp that
-        // stopped at the far shape would draw the same picture a used-up
-        // estimate draws, and mean something completely different.
-        assertEquals(0f, cycleAfterMinutes(20))
-        assertEquals(0.5f, cycleAfterMinutes(5))
-        assertEquals(0.5f, cycleAfterMinutes(15))
+    fun `the phase wraps rather than arriving`() {
+        // The property that keeps it from being read as progress. A value that
+        // stopped at the end would draw the same picture a used-up estimate
+        // draws, and mean something completely different. Wrapping is
+        // continuous because the ring's last shape morphs back into its first.
+        assertEquals(0f, phaseAfterMinutes(20))
+        assertEquals(0f, phaseAfterMinutes(40))
     }
 
     @Test
     fun `the cycle repeats indefinitely because there is nothing to arrive at`() {
-        assertEquals(cycleAfterMinutes(3), cycleAfterMinutes(23))
-        assertEquals(cycleAfterMinutes(3), cycleAfterMinutes(203))
+        assertEquals(phaseAfterMinutes(3), phaseAfterMinutes(23))
+        assertEquals(phaseAfterMinutes(3), phaseAfterMinutes(203))
     }
 
     @Test
     fun `a clock that has gone backwards reads as the start of the cycle too`() {
-        assertEquals(0f, focusElapsedCycle(startedAt, startedAt.minusSeconds(600)))
+        assertEquals(0f, focusElapsedPhase(startedAt, startedAt.minusSeconds(600)))
     }
 }

@@ -550,7 +550,7 @@ trick away. The label colour is named for the same reason.
 
 | Element | Treatment |
 | --- | --- |
-| Shape | `Morph(Circle, Clover4Leaf)`, `surfaceContainerHigh`, square, capped at 320dp |
+| Shape | a ring of `MaterialShapes`, `surfaceContainerHigh`, square, capped at 320dp |
 | Task title | `headlineMediumEmphasized`, `primary`, centred, max 4 lines |
 | Estimate | `bodyLarge`, `primary`, under the title |
 | Complete | the action slot: one filled `Button` |
@@ -587,6 +587,13 @@ faster than the container moves, which left labels drawn on backgrounds that
 had already gone.
 
 ## Both
+
+[FD] Which shapes, and which way round, depends on whether the task carries an
+estimate: two walked once from busy to circle when it does, a ring of six
+walked forever when it does not. `focus.md` has the reasoning under
+"Determinate and indeterminate"; the short version is that this is the
+distinction Material's own loading indicator draws, and it is carried by the
+kind of motion rather than by what any one shape means.
 
 [FD] The shape is drawn, not clipped to. A `Shape` would have to be a new
 object every tick to change, which puts the work in layout; drawing reads the

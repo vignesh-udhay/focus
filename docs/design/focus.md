@@ -98,11 +98,20 @@ not have.
 
 The container is a rounded rectangle whose corners stay at half its own height,
 so it is a stadium the whole way up and a circle the moment the box is square.
-Only then does the session's morph take over, and the morph's own starting
-shape is that same circle, so the handover cannot be seen. This matters for the
-rule in `expressive-motion.md`: the app still has exactly one shape morph, and
-it is still the one that carries progress. Growing a button into a circle is
-geometry, not a second morph.
+This matters for the rule in `expressive-motion.md`: the app still has exactly
+one shape morph, and it is still the one that carries progress. Growing a
+button into a circle is geometry, not a second morph.
+
+A polygon cannot be drawn into a box that is not square without being stretched
+the same way an elongated shape would be, so the rectangle has to finish first.
+It does, at seven tenths of the way through the spring; the remaining three
+tenths bloom from that circle into whatever shape the session's ring begins at.
+For a task with no estimate the ring begins at the circle and there is nothing
+to bloom into, so the growth simply ends. For a task with one it puckers into
+the busy shape it will spend the estimate resolving out of. Two legs of one
+spring rather than two animations, so it reads as a single gesture, and the
+cost is that the rectangle no longer carries the spring's overshoot: that is
+spent on the bloom instead.
 
 The colour is not animated separately. Given a spec of its own it would need an
 effects spec, and an effects spec settles roughly eight times stiffer than the
@@ -171,19 +180,42 @@ the argument for it: a session showing a shape that never moves does not read
 as "nothing to measure", it reads as broken, and half the sessions in a list
 that does not force estimates would look that way.
 
-What moves instead is a cycle, and the cycle is what keeps it honest. The shape
-travels out to the far form and back again over twenty minutes, and it never
-arrives anywhere. A ramp would climb to the far shape and stay, which is the
-same picture a used-up estimate draws and means something completely different;
-a user who had seen the estimate case once would read the other as "done". A
-shape that returns to where it began cannot be read that way.
+## Determinate and indeterminate
 
-So the two cases say two different things and look different doing it. With an
-estimate the shape advances and settles. Without one it wanders. Neither can be
-read to a number, and only the first is counting toward anything.
+The two cases are told apart the way Material tells them apart, which is by the
+kind of motion rather than by what any one shape means.
 
-Twenty minutes is long on purpose. The shape has to be too slow to watch, or it
-becomes the clock this screen exists to hide.
+**With an estimate**, two shapes and a single walk between them, driven by the
+fraction of the estimate used up. It starts busy and resolves to the circle:
+the task is at its most complicated when it begins and gets simpler as it goes,
+and running over settles on the plainest form there is rather than the busiest.
+
+**Without one**, a ring of six shapes walked round and round, arriving nowhere.
+The ring begins at the circle and its last shape morphs back into its first, so
+the seam cannot be seen and there is no final form to be mistaken for an
+arrival.
+
+This is Material's own encoding. Its loading indicator ships two shape lists, a
+pair for the determinate case and a sequence of seven for the indeterminate
+one, and the distinction it draws is exactly this one: known duration against
+unknown. Borrowing it means the screen is using a convention people have met in
+every spinner rather than a private vocabulary.
+
+Which matters, because Material's shape principles say plainly that shape is
+versatile and not semantic, and warn against giving a particular shape a
+particular meaning. Nothing here does. No single form stands for anything;
+swapping the ring for six other shapes would change how the screen looks and
+nothing about what it says. What carries the meaning is that one motion arrives
+and the other does not.
+
+A second version of this document had the unestimated case travel out to one
+far shape and back, a triangle wave between two forms. It was honest but slow
+to explain itself: it only announced itself as a cycle at the moment it turned
+round, ten minutes in, and everything before that looked exactly like progress
+toward a destination. A ring says it within a shape or two.
+
+Twenty minutes is long on purpose, for the whole ring. The shape has to be too
+slow to watch, or it becomes the clock this screen exists to hide.
 
 Not a timer. There is no countdown, no elapsed clock, no digits, and running
 past the estimate is ordinary: the shape settles at its final form and stays

@@ -182,12 +182,20 @@ motionless shape does not read as "nothing to measure", it reads as broken.
 [FD] So the exception is now stated by what the shape is allowed to say rather
 than by whether there is an estimate. **It says the session is running, and
 with an estimate it also says how far along it is. It never says anything
-else.** A task with an estimate gets a value that advances and settles at the
-end. A task without one gets a cycle that goes out and comes back over twenty
-minutes and arrives nowhere, so it cannot be mistaken for the first: a shape
-that returns to where it began is plainly not counting toward anything, and a
-ramp that stopped at the far shape would draw the same picture a used-up
-estimate draws.
+else.**
+
+[M3] The two cases are told apart by the kind of motion, which is how Material
+tells them apart. `LoadingIndicatorDefaults` ships two shape lists: a pair for
+the determinate indicator and a sequence of seven for the indeterminate one.
+Known duration walks between two shapes; unknown duration walks a ring. Focus
+takes the same distinction, so an estimate resolves from a busy shape to the
+circle across the estimate, and no estimate walks a ring of six forever.
+
+[M3] The shape principles are explicit that shape is versatile and not
+semantic, and warn against assigning a meaning to a particular shape. Nothing
+here does: no single form stands for anything, and swapping the ring for six
+other shapes would change how the screen looks and nothing about what it says.
+The meaning is carried by one motion arriving and the other not.
 
 [FD] Both are still derived from the clock rather than animated, and both are
 still unreadable as a gauge. What the reversal costs is that a session with no
@@ -237,8 +245,9 @@ screen does?
 
 Growing the Start button into the session's circle is not a second morph. It is
 a rounded rectangle whose corners stay at half its height, which is what every
-Material container transform is, and it hands over to the session's morph at
-the circle they share.
+Material container transform is. Where the session's ring does not begin at
+that circle, the tail of the same spring blooms from it into the ring's first
+shape; that is the one morph continuing, not a new one starting.
 
 **One expressive moment.** Completion. Everything else is restrained, including
 the session transition, which is slow rather than lively.

@@ -39,7 +39,7 @@ fun focusProgress(
 private const val MillisPerMinute = 60_000L
 
 /**
- * Where the shape stands for a session whose task carries no estimate.
+ * Where a session with no estimate stands in its cycle.
  *
  * A separate function from [focusProgress] and deliberately not a fallback for
  * it, because the two values mean different things. [focusProgress] is a
@@ -47,31 +47,29 @@ private const val MillisPerMinute = 60_000L
  * the estimate is used up. This one is a fraction of nothing. There is no
  * endpoint to reach, so it does not have one.
  *
- * A triangle wave rather than a ramp, and that is the whole of the design. A
- * ramp would climb to the far shape and stay there, which is the same picture a
- * finished estimate draws, and a user who has seen the estimate case once would
- * read it as "done". Going out and coming back cannot be read that way: a shape
- * that returns to where it began is plainly not counting toward anything.
+ * A plain sawtooth, because what consumes it is a ring of shapes rather than a
+ * journey between two. Wrapping from the end of the ring back to its start is
+ * continuous, so nothing jumps at the seam, and there is no final form to be
+ * mistaken for an arrival: the caller walks the whole ring and begins again.
+ *
+ * An earlier version returned a triangle wave, out and back between two shapes,
+ * for the same reason. That worked, but it only announced itself as a cycle at
+ * the moment it turned round, which was ten minutes in. Everything before that
+ * looked exactly like progress toward a destination. Material's own answer to
+ * an unknown duration is an indeterminate indicator that walks a sequence of
+ * shapes, and a sequence says it is not counting within a form or two.
  *
  * [CycleMillis] is long on purpose. The shape has to be too slow to watch, or
- * it becomes the clock this screen exists to hide; twenty minutes out and back
- * is slower than the eye follows from moment to moment and obviously different
- * if you look away and return.
- *
- * This is `focus.md`'s recorded exception to the shape-morphing rule being
- * widened, not the rule being dropped. The morph still says one thing and only
- * one: the session is running.
+ * it becomes the clock this screen exists to hide.
  */
-fun focusElapsedCycle(startedAt: Instant, now: Instant): Float {
+fun focusElapsedPhase(startedAt: Instant, now: Instant): Float {
     val elapsed = Duration.between(startedAt, now).toMillis()
     // A clock that has gone backwards is the same non-answer it is for
     // progress: the session has not started as far as anyone can tell.
     if (elapsed <= 0L) return 0f
 
-    val phase = (elapsed % CycleMillis).toFloat() / CycleMillis
-
-    return if (phase <= 0.5f) phase * 2f else (1f - phase) * 2f
+    return (elapsed % CycleMillis).toFloat() / CycleMillis
 }
 
-/** One full traverse out to the far shape and back. */
+/** One full walk around the ring of shapes. */
 private const val CycleMillis = 20L * 60_000L
