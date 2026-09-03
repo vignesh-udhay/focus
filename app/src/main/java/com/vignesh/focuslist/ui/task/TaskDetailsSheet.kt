@@ -1,9 +1,11 @@
 package com.vignesh.focuslist.ui.task
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -11,6 +13,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -19,11 +23,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SheetValue
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.rememberBottomSheetState
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -31,6 +38,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -40,9 +48,9 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import com.vignesh.focuslist.R
 import com.vignesh.focuslist.core.design.FocuslistSpacing
 import com.vignesh.focuslist.core.domain.ParsedDate
@@ -51,10 +59,13 @@ import com.vignesh.focuslist.core.domain.Task
 import com.vignesh.focuslist.core.domain.TaskPlacement
 import com.vignesh.focuslist.core.domain.parseDate
 import com.vignesh.focuslist.ui.component.TaskDatePickerDialog
+import com.vignesh.focuslist.ui.component.scheduledDateLabel
+import java.time.Instant
 import java.time.LocalDate
-import java.util.Locale
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+import java.util.Locale
 
 /**
  * Task details.
@@ -88,16 +99,25 @@ internal fun TaskDetailsSheet(
     // view model maps it back on save.
     var notes by rememberSaveable(task.id) { mutableStateOf(task.notes.orEmpty()) }
     var placement by rememberSaveable(task.id) { mutableStateOf(task.placement) }
-    // The dates are held as the text of their fields, because the field is
-    // where the value is edited. An existing date is written back out in a
-    // form the parser reads, so opening a task and saving it unchanged stores
-    // the same day it started with.
-    var scheduledText by rememberSaveable(task.id) { mutableStateOf(task.scheduledDate.toEntryText()) }
+    // The scheduled day is picked rather than typed, so it is held as a date
+    // and needs no parsing. The due date is still typed, and is held as the
+    // text of its field for the reason it always was: the field is where the
+    // value is edited.
+    var scheduled by rememberSaveable(task.id) { mutableStateOf(task.scheduledDate) }
     var dueText by rememberSaveable(task.id) { mutableStateOf(task.dueDate.toEntryText()) }
     var duration by rememberSaveable(task.id) {
         mutableStateOf(task.estimatedDurationMinutes?.toString().orEmpty())
     }
     var recurrence by rememberSaveable(task.id) { mutableStateOf(task.recurrence) }
+
+    // Which of the sheet's two pages is showing.
+    //
+    // One sheet rather than two stacked. A ModalBottomSheet is a dialog with
+    // its own Window, so stacking means two of them: the scrim darkens twice
+    // and back has to be dispatched across the pair. The page is also nearly
+    // the height of the screen, so a stacked sheet would cover the one beneath
+    // it anyway and the context it was meant to preserve would not be visible.
+    var isScheduleOpen by rememberSaveable(task.id) { mutableStateOf(false) }
 
     // Blank means no estimate. Anything else has to be a real number of minutes.
     val minutes = duration.trim().toIntOrNull()
@@ -105,9 +125,8 @@ internal fun TaskDetailsSheet(
 
     // Blank means no date. Anything the parser cannot read is an error rather
     // than a guess, on the same terms as the duration above.
-    val scheduled = parseDate(scheduledText, today)
     val due = parseDate(dueText, today)
-    val areDatesValid = scheduled !is ParsedDate.Unrecognized && due !is ParsedDate.Unrecognized
+    val isDueValid = due !is ParsedDate.Unrecognized
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -117,137 +136,355 @@ internal fun TaskDetailsSheet(
         ),
         modifier = modifier
     ) {
+        // Back belongs to the page, not the sheet. Without this the system
+        // would close the whole sheet from the Schedule page, throwing away
+        // the draft rather than returning to the details it came from.
+        BackHandler(enabled = isScheduleOpen) { isScheduleOpen = false }
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                // Seven fields, one of them several lines tall, do not fit at
-                // large font scales. Without this the Save button is simply
-                // off the bottom of the sheet with no way to reach it. The
-                // sheet's own nested scrolling still takes over at the top,
-                // so dragging it closed keeps working.
+                // Fields several lines tall do not fit at large font scales.
+                // Without this the confirming button is simply off the bottom
+                // of the sheet with no way to reach it. The sheet's own nested
+                // scrolling still takes over at the top, so dragging it closed
+                // keeps working.
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = FocuslistSpacing.md)
                 .padding(bottom = FocuslistSpacing.lg),
             verticalArrangement = Arrangement.spacedBy(FocuslistSpacing.md)
         ) {
-            Text(
-                text = stringResource(R.string.task_details_heading),
-                style = MaterialTheme.typography.titleMedium,
-                // Marked as a heading so a screen reader announces what this
-                // sheet is on open, and can jump to it by heading.
-                modifier = Modifier.semantics { heading() }
-            )
-
-            OutlinedTextField(
-                value = title,
-                onValueChange = { title = it },
-                label = { Text(stringResource(R.string.task_details_title_label)) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Sentences,
-                    imeAction = ImeAction.Done
-                ),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            OutlinedTextField(
-                value = notes,
-                onValueChange = { notes = it },
-                label = { Text(stringResource(R.string.task_details_notes_label)) },
-                // Free text, so it wraps and grows rather than scrolling
-                // sideways, and Enter inserts a line rather than submitting.
-                minLines = NotesMinLines,
-                maxLines = NotesMaxLines,
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Sentences
-                ),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            PlacementField(
-                placement = placement,
-                onChange = { placement = it }
-            )
-
-            DateField(
-                label = stringResource(R.string.task_details_scheduled_label),
-                text = scheduledText,
-                parsed = scheduled,
-                clearDescription = stringResource(R.string.task_details_clear_scheduled),
-                onTextChange = { scheduledText = it }
-            )
-
-            DateField(
-                label = stringResource(R.string.task_details_due_label),
-                text = dueText,
-                parsed = due,
-                clearDescription = stringResource(R.string.task_details_clear_due),
-                onTextChange = { dueText = it }
-            )
-
-            Row(verticalAlignment = Alignment.Top) {
-                OutlinedTextField(
-                    value = duration,
-                    onValueChange = { duration = it },
-                    label = { Text(stringResource(R.string.task_details_duration_label)) },
-                    suffix = { Text(stringResource(R.string.task_details_duration_suffix)) },
-                    singleLine = true,
-                    isError = !isDurationValid,
-                    supportingText = if (isDurationValid) {
-                        null
-                    } else {
-                        { Text(stringResource(R.string.task_details_duration_error)) }
-                    },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Number,
-                        imeAction = ImeAction.Done
+            if (isScheduleOpen) {
+                SchedulePage(
+                    scheduled = scheduled,
+                    onScheduledChange = { scheduled = it },
+                    dueText = dueText,
+                    due = due,
+                    onDueTextChange = { dueText = it },
+                    duration = duration,
+                    isDurationValid = isDurationValid,
+                    onDurationChange = { duration = it },
+                    recurrence = recurrence,
+                    onRecurrenceChange = { recurrence = it },
+                    isValid = isDurationValid && isDueValid,
+                    onBack = { isScheduleOpen = false }
+                )
+            } else {
+                DetailsPage(
+                    title = title,
+                    onTitleChange = { title = it },
+                    notes = notes,
+                    onNotesChange = { notes = it },
+                    placement = placement,
+                    onPlacementChange = { placement = it },
+                    scheduleSummary = scheduleSummary(
+                        scheduled = scheduled,
+                        today = today,
+                        minutes = if (duration.isBlank()) null else minutes,
+                        recurrence = recurrence
                     ),
-                    modifier = Modifier.weight(1f)
-                )
-
-                ClearButton(
-                    enabled = duration.isNotEmpty(),
-                    description = stringResource(R.string.task_details_clear_duration),
-                    onClick = { duration = "" }
-                )
-            }
-
-            RecurrenceField(
-                recurrence = recurrence,
-                onChange = { recurrence = it }
-            )
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(FocuslistSpacing.xs),
-                modifier = Modifier.align(Alignment.End)
-            ) {
-                TextButton(onClick = onDismiss) {
-                    Text(stringResource(R.string.task_details_cancel))
-                }
-
-                Button(
-                    onClick = {
+                    onOpenSchedule = { isScheduleOpen = true },
+                    isValid = title.isNotBlank() && isDurationValid && isDueValid,
+                    onDismiss = onDismiss,
+                    onSave = {
                         onSave(
                             task.copy(
                                 title = title.trim(),
                                 notes = notes.trim().takeIf { it.isNotEmpty() },
                                 placement = placement,
-                                scheduledDate = (scheduled as? ParsedDate.Recognized)?.date,
+                                scheduledDate = scheduled,
                                 dueDate = (due as? ParsedDate.Recognized)?.date,
-                                estimatedDurationMinutes = if (duration.isBlank()) null else minutes,
+                                estimatedDurationMinutes =
+                                    if (duration.isBlank()) null else minutes,
                                 recurrence = recurrence
                             )
                         )
-                    },
-                    // The title is the one thing a task cannot do without.
-                    enabled = title.isNotBlank() && isDurationValid && areDatesValid
-                ) {
-                    Text(stringResource(R.string.task_details_save))
-                }
+                    }
+                )
             }
         }
     }
 }
+
+/**
+ * What the task is: its name, anything more that needs saying, and how far it
+ * has been triaged.
+ *
+ * When the work happens is not here. It is one row, summarising what has been
+ * set, that opens the page which sets it. `PRODUCT.md` asks the app to avoid
+ * exposing every property at once, and seven controls in one sheet is what
+ * that rule exists to prevent.
+ */
+@Composable
+private fun DetailsPage(
+    title: String,
+    onTitleChange: (String) -> Unit,
+    notes: String,
+    onNotesChange: (String) -> Unit,
+    placement: TaskPlacement,
+    onPlacementChange: (TaskPlacement) -> Unit,
+    scheduleSummary: String,
+    onOpenSchedule: () -> Unit,
+    isValid: Boolean,
+    onDismiss: () -> Unit,
+    onSave: () -> Unit
+) {
+    Text(
+        text = stringResource(R.string.task_details_heading),
+        style = MaterialTheme.typography.titleMedium,
+        modifier = Modifier
+            .padding(top = FocuslistSpacing.xs)
+            .semantics { heading() }
+    )
+
+    ScheduleSummaryRow(summary = scheduleSummary, onClick = onOpenSchedule)
+
+    OutlinedTextField(
+        value = title,
+        onValueChange = onTitleChange,
+        label = { Text(stringResource(R.string.task_details_title_label)) },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(
+            capitalization = KeyboardCapitalization.Sentences
+        ),
+        modifier = Modifier.fillMaxWidth()
+    )
+
+    OutlinedTextField(
+        value = notes,
+        onValueChange = onNotesChange,
+        label = { Text(stringResource(R.string.task_details_notes_label)) },
+        maxLines = NotesMaxLines,
+        keyboardOptions = KeyboardOptions(
+            capitalization = KeyboardCapitalization.Sentences
+        ),
+        modifier = Modifier.fillMaxWidth()
+    )
+
+    PlacementField(placement = placement, onChange = onPlacementChange)
+
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(FocuslistSpacing.xs),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Spacer(Modifier.weight(1f))
+
+        TextButton(onClick = onDismiss) {
+            Text(stringResource(R.string.task_details_cancel))
+        }
+
+        // The title is the one thing a task cannot do without. The other two
+        // conditions belong to fields on the Schedule page, which is part of
+        // why the summary row states what is set: a Save disabled by something
+        // the user cannot see would be unexplainable.
+        Button(onClick = onSave, enabled = isValid) {
+            Text(stringResource(R.string.task_details_save))
+        }
+    }
+}
+
+/**
+ * When the work happens, and how big it is.
+ *
+ * The scheduled day is picked from a calendar. Typing it, and the phrases the
+ * parser reads, stay in Quick Add, where capture happens and speed is the
+ * point; this is the organise-later step, where a specific day is usually what
+ * is wanted and a calendar is the surer way to it.
+ *
+ * The due date is still typed, because a deadline is more often described than
+ * located: "next friday" is a useful thing to be able to write.
+ *
+ * There is no Time and no Reminder row. The design draws both; a task carries
+ * no time of day, and reminders are named in `PRODUCT.md` but not built, so
+ * either would be new functionality rather than a redesign.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SchedulePage(
+    scheduled: LocalDate?,
+    onScheduledChange: (LocalDate?) -> Unit,
+    dueText: String,
+    due: ParsedDate,
+    onDueTextChange: (String) -> Unit,
+    duration: String,
+    isDurationValid: Boolean,
+    onDurationChange: (String) -> Unit,
+    recurrence: Recurrence?,
+    onRecurrenceChange: (Recurrence?) -> Unit,
+    isValid: Boolean,
+    onBack: () -> Unit
+) {
+    val state = rememberDatePickerState(
+        initialSelectedDateMillis = scheduled?.toEpochMillis()
+    )
+
+    // The picker owns its selection, so the draft follows it rather than the
+    // other way round. Reading it here keeps the two from disagreeing without
+    // a second source of truth.
+    LaunchedEffect(state.selectedDateMillis) {
+        onScheduledChange(state.selectedDateMillis?.toLocalDate())
+    }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(top = FocuslistSpacing.xs)
+    ) {
+        // The visible half of the back affordance. The BackHandler above covers
+        // the gesture; this covers everyone who does not use it, and says on
+        // screen that this is a page within something rather than the sheet.
+        IconButton(onClick = onBack) {
+            Icon(
+                painter = painterResource(R.drawable.ic_arrow_back),
+                contentDescription = stringResource(R.string.task_schedule_back)
+            )
+        }
+
+        Text(
+            text = stringResource(R.string.task_schedule_heading),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.semantics { heading() }
+        )
+    }
+
+    DatePicker(
+        state = state,
+        // The page already carries a heading, and the picker's own title and
+        // headline would restate it twice over one calendar.
+        title = null,
+        headline = null,
+        showModeToggle = false,
+        // The picker defaults to a container of its own, which on a sheet
+        // draws a grey panel around the calendar and reads as a second surface
+        // floating inside the first. It is part of the page, not a card on it.
+        colors = DatePickerDefaults.colors(containerColor = Color.Transparent)
+    )
+
+    DateField(
+        label = stringResource(R.string.task_details_due_label),
+        text = dueText,
+        parsed = due,
+        clearDescription = stringResource(R.string.task_details_clear_due),
+        onTextChange = onDueTextChange
+    )
+
+    Row(verticalAlignment = Alignment.Top) {
+        OutlinedTextField(
+            value = duration,
+            onValueChange = onDurationChange,
+            label = { Text(stringResource(R.string.task_details_duration_label)) },
+            suffix = { Text(stringResource(R.string.task_details_duration_suffix)) },
+            singleLine = true,
+            isError = !isDurationValid,
+            supportingText = if (isDurationValid) {
+                null
+            } else {
+                { Text(stringResource(R.string.task_details_duration_error)) }
+            },
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Number,
+                imeAction = ImeAction.Done
+            ),
+            modifier = Modifier.weight(1f)
+        )
+
+        ClearButton(
+            enabled = duration.isNotEmpty(),
+            description = stringResource(R.string.task_details_clear_duration),
+            onClick = { onDurationChange("") }
+        )
+    }
+
+    RecurrenceField(recurrence = recurrence, onChange = onRecurrenceChange)
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Spacer(Modifier.weight(1f))
+
+        // Done returns to the details, it does not save. Nothing is written
+        // until Save there, so backing out of the whole sheet still leaves the
+        // task exactly as it was.
+        Button(onClick = onBack, enabled = isValid) {
+            Text(stringResource(R.string.task_schedule_done))
+        }
+    }
+}
+
+/**
+ * The row that stands in for everything on the Schedule page.
+ *
+ * It states what is set rather than naming the page, because a row that only
+ * ever read "Schedule" would hide its own contents: someone looking for the
+ * duration would have no reason to think it lives behind a date.
+ */
+@Composable
+private fun ScheduleSummaryRow(
+    summary: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        onClick = onClick,
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        shape = MaterialTheme.shapes.extraLarge,
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(
+                horizontal = FocuslistSpacing.md,
+                vertical = FocuslistSpacing.sm
+            )
+        ) {
+            Text(text = summary, style = MaterialTheme.typography.bodyLarge)
+
+            Spacer(Modifier.weight(1f))
+
+            Icon(
+                painter = painterResource(R.drawable.ic_chevron_forward),
+                // The row's own text already says what it opens.
+                contentDescription = null
+            )
+        }
+    }
+}
+
+/**
+ * What the summary row says.
+ *
+ * The day first, then the size, then how often it comes back: the same order
+ * and the same separator a task row uses, so the sheet and the list describe a
+ * task the same way.
+ */
+@Composable
+private fun scheduleSummary(
+    scheduled: LocalDate?,
+    today: LocalDate,
+    minutes: Int?,
+    recurrence: Recurrence?
+): String {
+    val parts = mutableListOf<String>()
+
+    parts += scheduled?.let { scheduledDateLabel(it, today) }
+        ?: stringResource(R.string.task_schedule_no_date)
+
+    minutes?.let { parts += stringResource(R.string.task_duration_minutes, it) }
+    recurrence?.let { parts += stringResource(it.labelRes) }
+
+    return parts.joinToString(SummarySeparator)
+}
+
+private const val SummarySeparator = " \u00b7 "
+
+/** Midnight UTC, which is how the Material date picker carries a day. */
+private fun LocalDate.toEpochMillis(): Long =
+    atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+
+private fun Long.toLocalDate(): LocalDate =
+    Instant.ofEpochMilli(this).atZone(ZoneOffset.UTC).toLocalDate()
 
 /**
  * How far the task has been triaged. Three mutually exclusive states.

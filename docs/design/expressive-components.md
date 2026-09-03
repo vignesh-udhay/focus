@@ -400,8 +400,40 @@ A rewrite the user cannot see is one they cannot correct. See
 
 ## Task Details
 
-[FD] Six fields: title, notes, placement, scheduled date, due date, estimated
-duration. Completion and deletion are deliberately absent; they have their own
+[FD] Two pages in one sheet. Details carries what the task is: title, notes and
+placement, plus one row summarising when it happens. Schedule carries when and
+how big: the day, the due date, the estimated duration and the recurrence.
+
+[FD] Split because seven controls at once is what `PRODUCT.md` means by
+"avoid exposing every possible property at once".
+
+[FD] The summary row states what is set rather than naming the page it opens.
+A row reading only "Schedule" would hide its own contents: someone looking for
+the duration would have no reason to think it lives behind a date. It reads
+"Today · 45 min · Daily", in the order and with the separator a task row uses.
+
+[IMPL] One `ModalBottomSheet` whose content swaps, not two stacked. A modal
+sheet on Android is a dialog with its own `Window`, so stacking means two of
+them: the scrim darkens twice and back has to be dispatched across the pair.
+The Schedule page is also nearly the height of the screen, so a stacked sheet
+would cover the one beneath it and the context it was meant to preserve would
+not be visible anyway.
+
+[FD] The Schedule page carries a back arrow and a `BackHandler`. Without the
+handler the system would close the whole sheet from the second page, throwing
+away the draft rather than returning to the details it came from.
+
+[FD] The day is picked from a calendar; the due date is still typed. Natural
+language stays where capture happens, in Quick Add, which is where speed is the
+point. This is the organise-later step, where a specific day is usually wanted.
+A deadline is more often described than located, so "next friday" still works
+there.
+
+[FD] No Time and no Reminder row. The design draws both. A task carries no time
+of day, and reminders are named in `PRODUCT.md` but not built, so either would
+be new functionality rather than a redesign.
+
+[FD] Completion and deletion are deliberately absent; they have their own
 interactions, and editing must not quietly finish or remove a task.
 
 [FD] Validation shows in the field, not on the button: an invalid field is

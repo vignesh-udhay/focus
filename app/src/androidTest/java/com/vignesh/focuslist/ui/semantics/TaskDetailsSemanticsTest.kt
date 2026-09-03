@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -71,6 +72,25 @@ class TaskDetailsSemanticsTest {
         rule.waitUntilExactlyOneExists(hasText(HEADING), TIMEOUT_MILLIS)
     }
 
+    /**
+     * Opens the Schedule page.
+     *
+     * The day, the due date, the duration and the recurrence moved off the
+     * details page and behind the summary row, so a test about any of them has
+     * to walk there first. The row is found by its trailing chevron's absence
+     * of a label and its own text varying with the fixture, so it is reached by
+     * the heading it opens.
+     */
+    private fun openSchedule() {
+        // Matched on the day rather than the whole summary: the row also
+        // carries the duration and the recurrence, so its exact text changes
+        // with whatever the fixture sets.
+        rule.onNode(hasText(SCHEDULE_SUMMARY_DAY, substring = true) and hasClickAction())
+            .performScrollTo()
+            .performClick()
+        rule.waitUntilExactlyOneExists(hasText(SCHEDULE_HEADING), TIMEOUT_MILLIS)
+    }
+
     private fun assertHeadingIsMarkedUp(fontScale: Float) {
         setSheet(fontScale)
 
@@ -87,7 +107,13 @@ class TaskDetailsSemanticsTest {
     private fun assertEveryFieldIsLabelled(fontScale: Float) {
         setSheet(fontScale)
 
-        FIELD_LABELS.forEach { label ->
+        DETAILS_FIELD_LABELS.forEach { label ->
+            rule.onNodeWithText(label).performScrollTo().assertIsDisplayed()
+        }
+
+        openSchedule()
+
+        SCHEDULE_FIELD_LABELS.forEach { label ->
             rule.onNodeWithText(label).performScrollTo().assertIsDisplayed()
         }
     }
@@ -100,8 +126,9 @@ class TaskDetailsSemanticsTest {
 
     private fun assertClearButtonsAreDistinguishable(fontScale: Float) {
         setSheet(fontScale)
+        openSchedule()
 
-        // Three buttons all reading "Clear". Only the description tells a
+        // Two buttons both reading "Clear". Only the description tells a
         // screen reader which one clears what.
         CLEAR_DESCRIPTIONS.forEach { description ->
             rule.onNodeWithContentDescription(description).performScrollTo().assertIsDisplayed()
@@ -149,6 +176,7 @@ class TaskDetailsSemanticsTest {
 
     private fun assertRecurrencePublishesCurrentOption(fontScale: Float) {
         setSheet(fontScale)
+        openSchedule()
 
         // The fixture does not repeat, so Never is the answer.
         rule.onNode(hasText(NEVER) and isSelectable()).performScrollTo().assertIsSelected()
@@ -166,6 +194,7 @@ class TaskDetailsSemanticsTest {
 
     private fun assertEveryRecurrenceOptionIsReachable(fontScale: Float) {
         setSheet(fontScale)
+        openSchedule()
 
         // The point of the wrap: at 200% these do not fit on one line, and
         // every one of them still has to be on screen and hittable rather
@@ -205,11 +234,15 @@ class TaskDetailsSemanticsTest {
     private fun assertRecurrenceSelectionMovesAndSaves(fontScale: Float) {
         val saved = mutableListOf<Task>()
         setSheet(fontScale, onSave = { task -> saved += task })
+        openSchedule()
 
         rule.onNode(hasText(WEEKLY) and isSelectable()).performScrollTo().performClick()
         rule.onNode(hasText(WEEKLY) and isSelectable()).assertIsSelected()
         rule.onNode(hasText(NEVER) and isSelectable()).assertIsNotSelected()
 
+        // The draft survives the walk back. Nothing is written until Save.
+        rule.onNodeWithContentDescription(BACK).performScrollTo().performClick()
+        rule.waitUntilExactlyOneExists(hasText(HEADING), TIMEOUT_MILLIS)
         rule.onNodeWithText(SAVE).performScrollTo().performClick()
 
         assertEquals(Recurrence.WEEKLY, saved.single().recurrence)
@@ -230,10 +263,13 @@ class TaskDetailsSemanticsTest {
             task = editableTask().copy(recurrence = Recurrence.MONTHLY),
             onSave = { task -> saved += task }
         )
+        openSchedule()
 
         rule.onNode(hasText(MONTHLY) and isSelectable()).performScrollTo().assertIsSelected()
         rule.onNode(hasText(NEVER) and isSelectable()).performScrollTo().performClick()
 
+        rule.onNodeWithContentDescription(BACK).performScrollTo().performClick()
+        rule.waitUntilExactlyOneExists(hasText(HEADING), TIMEOUT_MILLIS)
         rule.onNodeWithText(SAVE).performScrollTo().performClick()
 
         // Never is a real answer, not the absence of one.
@@ -280,12 +316,19 @@ class TaskDetailsSemanticsTest {
 
     private fun assertUnreadableDateIsReportedAndRefused(fontScale: Float) {
         setSheet(fontScale)
+        openSchedule()
 
-        rule.onNodeWithText(SCHEDULED_TEXT).performScrollTo()
+        rule.onNodeWithText(DUE_TEXT).performScrollTo()
             .performTextReplacement("the day after the thing")
 
-        // Said out loud, not dropped silently on save.
+        // Said out loud on the page that owns the field.
         rule.onNodeWithText(DATE_ERROR).performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText(DONE).performScrollTo().assertIsNotEnabled()
+
+        // And still refused on the page that saves. A field the user cannot
+        // currently see must not be able to let a bad value through.
+        rule.onNodeWithContentDescription(BACK).performScrollTo().performClick()
+        rule.waitUntilExactlyOneExists(hasText(HEADING), TIMEOUT_MILLIS)
         rule.onNodeWithText(SAVE).performScrollTo().assertIsNotEnabled()
     }
 
@@ -374,21 +417,32 @@ class TaskDetailsSemanticsTest {
 
         val RECURRENCE_OPTIONS = listOf(NEVER, DAILY, WEEKLY, MONTHLY, YEARLY)
 
-        /** How the sheet writes an existing date back into its field. */
-        const val SCHEDULED_TEXT = "2 September 2026"
+        const val SCHEDULE_HEADING = "Schedule"
+        const val DONE = "Done"
+        const val BACK = "Back to task details"
+        /** How the sheet writes the fixture's existing due date into its field. */
+        const val DUE_TEXT = "5 September 2026"
 
-        val FIELD_LABELS = listOf(
+        /**
+         * The part of the summary row that does not vary with the fixture. The
+         * row states what is set rather than naming the page it opens, so its
+         * full text carries the duration and the recurrence too.
+         */
+        const val SCHEDULE_SUMMARY_DAY = "Today"
+
+        val DETAILS_FIELD_LABELS = listOf(
             "Title",
             "Notes",
-            "Placement",
-            "Scheduled",
+            "Placement"
+        )
+
+        val SCHEDULE_FIELD_LABELS = listOf(
             "Due",
             "Estimated duration",
             "Repeats"
         )
 
         val CLEAR_DESCRIPTIONS = listOf(
-            "Clear scheduled date",
             "Clear due date",
             "Clear estimated duration"
         )

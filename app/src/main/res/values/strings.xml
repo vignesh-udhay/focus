@@ -66,7 +66,6 @@
     <string name="task_details_title_label">Title</string>
     <string name="task_details_notes_label">Notes</string>
     <string name="task_details_placement_label">Placement</string>
-    <string name="task_details_scheduled_label">Scheduled</string>
     <string name="task_details_due_label">Due</string>
     <string name="task_details_date_hint">Today, next Friday, 4 September</string>
     <string name="task_details_date_error">Not a date Focuslist understands</string>
@@ -81,9 +80,12 @@
     <string name="task_recurrence_monthly">Monthly</string>
     <string name="task_recurrence_yearly">Yearly</string>
     <string name="task_details_clear">Clear</string>
-    <string name="task_details_clear_scheduled">Clear scheduled date</string>
     <string name="task_details_clear_due">Clear due date</string>
     <string name="task_details_clear_duration">Clear estimated duration</string>
+    <string name="task_schedule_heading">Schedule</string>
+    <string name="task_schedule_done">Done</string>
+    <string name="task_schedule_back">Back to task details</string>
+    <string name="task_schedule_no_date">No date</string>
     <string name="task_details_cancel">Cancel</string>
     <string name="task_details_save">Save</string>
     <string name="quick_add_title_label">New task</string>
