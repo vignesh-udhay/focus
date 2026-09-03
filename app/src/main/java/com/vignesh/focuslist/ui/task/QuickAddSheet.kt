@@ -31,6 +31,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.foundation.text.KeyboardOptions
 import com.vignesh.focuslist.R
@@ -112,6 +113,23 @@ fun QuickAddSheet(
                 value = title,
                 onValueChange = { title = it },
                 label = { Text(stringResource(R.string.quick_add_title_label)) },
+                placeholder = {
+                    // The one place the field's own trick is taught. A day
+                    // written on the end of the title is taken as the task's
+                    // date, and nothing else on this sheet says so: without an
+                    // example, capture looks like a plain text box and the
+                    // feature is found by accident or not at all.
+                    //
+                    // Capped to one line, like every placeholder in the app.
+                    // The field is single-line but a placeholder is not held
+                    // to that, and an empty field taller than a filled one is
+                    // what happens at large font scales otherwise.
+                    Text(
+                        text = stringResource(R.string.quick_add_placeholder),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                },
                 singleLine = true,
                 visualTransformation = markTheDay,
                 supportingText = parsed.date?.let { day ->

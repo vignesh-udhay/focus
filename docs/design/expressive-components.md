@@ -393,6 +393,16 @@ words take `primary`, and a supporting line under the field names the resolved
 date. That is one field still, not two — the marking and the line are feedback
 on what was typed, not somewhere else to type.
 
+[FD] The placeholder is an example of exactly that, and it is there to teach
+it. Nothing else on the sheet says a date can be typed, so without one the
+field looks like a plain text box and the feature is found by accident or never.
+The design this screen was drawn from solved the same problem with a row of
+Today / Tomorrow / No date chips; those were declined, because they would be a
+second way to set a date alongside the one the field already has, and the two
+would need a precedence rule the user cannot see — a title ending in "tomorrow"
+with **Today** selected has to resolve somehow, and neither answer is
+defensible. An example costs nothing and adds no second mechanism.
+
 [FD] The colour is never the only signal. A screen reader cannot announce it
 and not everyone sees it, so the supporting line carries the same fact in text.
 A rewrite the user cannot see is one they cannot correct. See

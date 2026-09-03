@@ -151,7 +151,7 @@ class QuickAddSemanticsTest {
 
     private companion object {
         const val FIELD_LABEL = "New task"
-        const val SAVE = "Save"
+        const val SAVE = "Add task"
         const val TITLE = "Buy milk"
         const val DATED_TITLE = "Buy milk tomorrow"
         const val SCHEDULED_FOR_TOMORROW = "Scheduled for Tomorrow"

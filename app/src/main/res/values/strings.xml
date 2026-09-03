@@ -89,7 +89,8 @@
     <string name="task_details_cancel">Cancel</string>
     <string name="task_details_save">Save</string>
     <string name="quick_add_title_label">New task</string>
-    <string name="quick_add_save">Save</string>
+    <string name="quick_add_save">Add task</string>
+    <string name="quick_add_placeholder">Try \"Call the plumber tomorrow\"</string>
     <string name="quick_add_scheduled_for">Scheduled for %1$s</string>
 
     <plurals name="upcoming_scheduled">
