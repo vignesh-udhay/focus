@@ -88,6 +88,7 @@ class TaskRepositoryTest {
         dueDate = dueDate,
         estimatedDurationMinutes = estimatedDurationMinutes,
         recurrence = recurrence,
+        spawnedFromId = null,
         completedAt = completedAt,
         deletedAt = deletedAt
     )

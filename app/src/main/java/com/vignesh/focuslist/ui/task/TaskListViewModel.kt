@@ -490,8 +490,33 @@ class TaskListViewModel(
             val task = repository.observeTasks().first().firstOrNull { it.id == id } ?: return@launch
 
             if (task.isCompleted) {
+                // Reopening takes back the copy the completion produced, the
+                // same as the undo offer does. The offer only stands for four
+                // seconds and the checkbox is permanent, so leaving this to
+                // the snackbar meant unticking a daily task after the bar had
+                // gone left the user holding two: this one, and tomorrow's.
+                //
+                // Only while the copy is untouched. A spawn that has itself
+                // been completed has its own record and its own successor, and
+                // a deleted one the user has already dealt with; either way it
+                // is no longer a row nobody asked for, and deleting it would
+                // be destroying work rather than tidying up.
+                val tasks = repository.observeTasks().first()
+                tasks.firstOrNull { spawn ->
+                    spawn.spawnedFromId == task.id &&
+                        !spawn.isCompleted &&
+                        !spawn.isDeleted
+                }?.let { spawn -> repository.delete(spawn.id) }
+
                 repository.update(task.copy(completedAt = null))
-                withdrawOffer(PendingUndo.Completion(task.id, spawnedTaskId = null))
+
+                // Withdraw whatever offer is standing for this task, rather
+                // than a reconstructed one. Building a `Completion` here with
+                // a null `spawnedTaskId` never equalled the real offer, which
+                // carries the id it spawned, so the compare-and-set silently
+                // matched nothing and the snackbar was left offering an undo
+                // for something already undone.
+                dismissUndo(task.id)
                 return@launch
             }
 

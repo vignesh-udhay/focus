@@ -3328,6 +3328,60 @@ class TaskListViewModelTest {
     }
 
     @Test
+    fun theNextOccurrenceRecordsWhichOneItCameFrom() {
+        store(task("chore", scheduledDate = today, recurrence = Recurrence.DAILY))
+        val model = viewModel()
+        visible(model, 1)
+
+        model.toggleComplete("chore")
+
+        assertEquals("chore", awaitInsert().spawnedFromId)
+    }
+
+    @Test
+    fun reopeningARecurringTaskByHandTakesTheSpawnedOccurrenceBackWithIt() {
+        store(task("chore", scheduledDate = today, recurrence = Recurrence.DAILY))
+        val model = viewModel()
+        visible(model, 1)
+
+        model.toggleComplete("chore")
+        val spawn = awaitInsert()
+        // Past the four seconds the undo offer stands for: the checkbox is the
+        // permanent way back and has to behave like the snackbar, or ticking a
+        // daily task and unticking it a moment later leaves two.
+        model.dismissUndo("chore")
+
+        model.toggleComplete("chore")
+        awaitDeletion(spawn.id)
+
+        // What is left is the task the user started with, reopened, and only
+        // that one.
+        val remaining = runBlocking { repository.observeTasks().first { it.size == 1 } }
+        assertEquals("chore", remaining.single().id)
+        assertNull(remaining.single().completedAt)
+    }
+
+    @Test
+    fun reopeningLeavesASpawnTheUserHasAlreadyFinished() {
+        store(
+            task("chore", scheduledDate = today, recurrence = Recurrence.DAILY),
+            task("spawn", scheduledDate = tomorrow, recurrence = Recurrence.DAILY)
+                .copy(spawnedFromId = "chore", completedAt = completedAt)
+        )
+        val model = viewModel()
+        visible(model, 1)
+
+        model.toggleComplete("chore")
+        awaitUpdate()
+
+        // A finished spawn has its own record and its own successor. Deleting
+        // it would be destroying work rather than tidying up a row nobody
+        // asked for.
+        Thread.sleep(100)
+        assertTrue(dao.deleted.none { it == "spawn" })
+    }
+
+    @Test
     fun undoingACompletionTakesTheSpawnedOccurrenceBackWithIt() {
         store(task("chore", scheduledDate = today, recurrence = Recurrence.DAILY))
         val model = viewModel()

@@ -120,6 +120,9 @@ fun Task.nextRecurringInstance(today: LocalDate, id: String, createdAt: Instant)
         createdAt = createdAt,
         scheduledDate = nextScheduled,
         dueDate = dueDate?.plusDays(shift),
+        // Which occurrence produced this one. Reopening that occurrence uses
+        // it to find this copy again and take it back.
+        spawnedFromId = this.id,
         // The next occurrence is outstanding, whatever happened to this one.
         completedAt = null,
         deletedAt = null

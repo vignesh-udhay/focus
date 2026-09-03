@@ -67,6 +67,18 @@ Today additionally keeps a completed task in its bottom band when it was
 scheduled for today or earlier, so finishing something does not make it vanish
 from under the user mid-session.
 
+Reopening a recurring occurrence takes back the copy that finishing it
+produced, whether that is done through the undo offer or by unticking the box
+later. The two used to disagree: the offer removed the copy and the checkbox
+did not, so a daily task ticked and unticked a moment later left the user
+holding two, and the checkbox is the path that lasts. `spawnedFromId` records
+which occurrence a copy came from so the later path can find it.
+
+Only while the copy is untouched. A spawn that has been completed has its own
+record and its own successor, and a deleted one has already been dealt with;
+either way it has stopped being a row nobody asked for, and removing it would
+destroy work rather than tidy up.
+
 Focus adds no dimension to the table above. Being focused is not stored on a
 task: the Focus queue is Today's outstanding work, so Focus is a strict subset
 of Today and is never the only place a task can be found. It holds no completed

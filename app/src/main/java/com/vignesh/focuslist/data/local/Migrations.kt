@@ -44,4 +44,15 @@ val MIGRATION_2_3 = Migration(2, 3) { database ->
 }
 
 /** Every migration, in order, for the builder and the migration test. */
-val FocuslistMigrations = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
+/**
+ * Version 4 records which occurrence a recurring copy came from.
+ *
+ * Nullable and undefaulted, like the two before it. Every task already in the
+ * database was made by a person rather than spawned by a completion, and null
+ * is exactly what that means, so there is nothing to backfill.
+ */
+val MIGRATION_3_4 = Migration(3, 4) { database ->
+    database.execSQL("ALTER TABLE tasks ADD COLUMN spawnedFromId TEXT")
+}
+
+val FocuslistMigrations = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)

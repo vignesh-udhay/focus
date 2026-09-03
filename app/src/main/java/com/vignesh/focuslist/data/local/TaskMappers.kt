@@ -20,6 +20,7 @@ fun TaskEntity.toDomain(): Task = Task(
     dueDate = dueDate,
     estimatedDurationMinutes = estimatedDurationMinutes,
     recurrence = recurrence,
+    spawnedFromId = spawnedFromId,
     completedAt = completedAt,
     deletedAt = deletedAt
 )
@@ -34,6 +35,7 @@ fun Task.toEntity(): TaskEntity = TaskEntity(
     dueDate = dueDate,
     estimatedDurationMinutes = estimatedDurationMinutes,
     recurrence = recurrence,
+    spawnedFromId = spawnedFromId,
     completedAt = completedAt,
     deletedAt = deletedAt
 )

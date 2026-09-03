@@ -38,6 +38,7 @@ data class TaskEntity(
     val dueDate: LocalDate?,
     val estimatedDurationMinutes: Int?,
     val recurrence: Recurrence?,
+    val spawnedFromId: String?,
     val completedAt: Instant?,
     val deletedAt: Instant?
 )

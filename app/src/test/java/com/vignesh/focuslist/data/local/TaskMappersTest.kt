@@ -26,6 +26,8 @@ class TaskMappersTest {
         scheduledDate = scheduledDate,
         dueDate = dueDate,
         estimatedDurationMinutes = 45,
+        recurrence = Recurrence.WEEKLY,
+        spawnedFromId = "task-0",
         completedAt = completedAt,
         deletedAt = deletedAt
     )
@@ -40,6 +42,7 @@ class TaskMappersTest {
         dueDate = dueDate,
         estimatedDurationMinutes = 45,
         recurrence = Recurrence.WEEKLY,
+        spawnedFromId = "task-0",
         completedAt = completedAt,
         deletedAt = deletedAt
     )
@@ -58,6 +61,11 @@ class TaskMappersTest {
         assertEquals(scheduledDate, entity.scheduledDate)
         assertEquals(dueDate, entity.dueDate)
         assertEquals(45, entity.estimatedDurationMinutes)
+        // Neither of these was checked here before, which is how a column can
+        // be added to one side of the mapping and quietly dropped on the way
+        // across. "Field for field" now means it.
+        assertEquals(Recurrence.WEEKLY, entity.recurrence)
+        assertEquals("task-0", entity.spawnedFromId)
         assertEquals(completedAt, entity.completedAt)
         assertEquals(deletedAt, entity.deletedAt)
     }
@@ -80,6 +88,8 @@ class TaskMappersTest {
         assertEquals(scheduledDate, task.scheduledDate)
         assertEquals(dueDate, task.dueDate)
         assertEquals(45, task.estimatedDurationMinutes)
+        assertEquals(Recurrence.WEEKLY, task.recurrence)
+        assertEquals("task-0", task.spawnedFromId)
         assertEquals(completedAt, task.completedAt)
         assertEquals(deletedAt, task.deletedAt)
     }

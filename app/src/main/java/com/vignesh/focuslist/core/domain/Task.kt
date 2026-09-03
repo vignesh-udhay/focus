@@ -51,6 +51,16 @@ data class Task(
     val dueDate: LocalDate? = null,
     val estimatedDurationMinutes: Int? = null,
     val recurrence: Recurrence? = null,
+    /**
+     * The occurrence this one was created by finishing, for a recurring task.
+     *
+     * Null for everything a person made themselves, which is almost every
+     * task. It exists so that reopening a completed occurrence can find the
+     * copy that completion produced: without it the only way back is the undo
+     * offer, which lasts four seconds, and unticking the box afterwards left
+     * the user holding two.
+     */
+    val spawnedFromId: String? = null,
     val completedAt: Instant? = null,
     val deletedAt: Instant? = null
 ) {

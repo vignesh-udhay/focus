@@ -240,14 +240,42 @@ class MigrationTest {
             )
         }
 
-        helper.runMigrationsAndValidate(TEST_DB, LatestVersion, true, MIGRATION_2_3).use { database ->
+        helper.runMigrationsAndValidate(
+            TEST_DB,
+            LatestVersion,
+            true,
+            MIGRATION_2_3,
+            MIGRATION_3_4
+        ).use { database ->
             database.query(
-                "SELECT notes, recurrence FROM tasks WHERE id = ?",
+                "SELECT notes, recurrence, spawnedFromId FROM tasks WHERE id = ?",
                 arrayOf<Any?>("noted")
             ).use { cursor ->
                 assertTrue(cursor.moveToFirst())
                 assertEquals("Ask about the Tuesday rate", cursor.getString(0))
                 assertTrue(cursor.isNull(1))
+                assertTrue(cursor.isNull(2))
+            }
+        }
+    }
+
+    /**
+     * A row written before the column existed was made by a person, not
+     * spawned by finishing something, and null is exactly what that says.
+     */
+    @Test
+    fun migratedRowsHaveNoSpawnParent() {
+        seedVersion1()
+
+        migrate().use { database ->
+            database.query("SELECT id, spawnedFromId FROM tasks").use { cursor ->
+                var rows = 0
+                while (cursor.moveToNext()) {
+                    rows++
+                    assertTrue(cursor.getString(0) + " has a spawn parent", cursor.isNull(1))
+                }
+
+                assertEquals(3, rows)
             }
         }
     }
@@ -316,6 +344,6 @@ class MigrationTest {
         const val TEST_DB = "migration-test.db"
 
         /** The schema every migration in this test is aimed at. */
-        const val LatestVersion = 3
+        const val LatestVersion = 4
     }
 }

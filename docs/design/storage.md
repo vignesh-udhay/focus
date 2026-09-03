@@ -16,6 +16,8 @@ derives every view from the domain model rather than from SQL.
 
     1  the original nine columns
     2  adds notes
+    3  adds recurrence
+    4  adds spawnedFromId
 
 Schemas are exported to `app/schemas` and checked in. That export is what
 `MigrationTestHelper` builds an old database from, and what it validates a
@@ -42,6 +44,11 @@ Version 2 is one statement:
 No `NOT NULL`, no default, so SQLite appends the column and every existing row
 reads it as null, which is what a task written before notes existed should say
 about its notes. Nothing else is read, rewritten, or moved.
+
+Versions 3 and 4 are the same statement against `recurrence` and
+`spawnedFromId`, and null means the same kind of thing in each: a task written
+before the column existed does not recur, and was made by a person rather than
+spawned by finishing a recurring one. Nothing to backfill in either case.
 
 ---
 
