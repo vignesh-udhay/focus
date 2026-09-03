@@ -48,8 +48,20 @@ fun UndoSnackbarEffect(
                 is PendingUndo.Reschedule -> rescheduledMessage
             },
             actionLabel = undoLabel,
-            // Undo is the only way back, so give it the longer reading time.
-            duration = SnackbarDuration.Long
+            // Short, which is four seconds against the long form's ten.
+            //
+            // The long form was chosen because undo is the only way back, and
+            // that reasoning ignored how often this appears. Completing a task
+            // is the most frequent thing anyone does here, and ten seconds of
+            // a bar across the bottom of the list after every tick is the same
+            // tax `expressive-motion.md` refuses to put on the interaction
+            // itself. A user who ticks the wrong task knows at once.
+            //
+            // It costs nothing in reach: Material passes either value through
+            // `calculateRecommendedTimeoutMillis` with `containsControls` set,
+            // so anyone who has asked the system for more time to act is given
+            // it, whichever of the two is named here.
+            duration = SnackbarDuration.Short
         )
 
         when (result) {

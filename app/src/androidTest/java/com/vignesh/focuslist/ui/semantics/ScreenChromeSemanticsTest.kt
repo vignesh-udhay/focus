@@ -31,6 +31,13 @@ import org.junit.runner.RunWith
  * landed. The empty state is readable, because an empty list is otherwise
  * silence.
  *
+ * Focus is the one destination with no app bar, and so the one that passes no
+ * title. It shows a single task rather than a list, the navigation bar already
+ * says which destination it is, and the heading is the task itself — or, with
+ * no task, the empty state's headline, which every screen here is checked for
+ * anyway. A heading reading "Focus" above the task would be the screen naming
+ * itself instead of naming the work.
+ *
  * Phone layouts only, per this phase's scope. No bottom bar is supplied, since
  * `NavigationSemanticsTest` owns that contract.
  */
@@ -42,7 +49,7 @@ class ScreenChromeSemanticsTest {
 
     private fun assertChrome(
         fontScale: Float,
-        title: String,
+        title: String?,
         emptyHeadline: String,
         emptySupporting: String,
         screen: @Composable (TaskListViewModel) -> Unit
@@ -51,7 +58,9 @@ class ScreenChromeSemanticsTest {
 
         rule.setFocuslistContent(fontScale) { screen(viewModel) }
 
-        rule.onNode(hasText(title) and isHeading()).assertExists()
+        if (title != null) {
+            rule.onNode(hasText(title) and isHeading()).assertExists()
+        }
         rule.onNodeWithText(emptyHeadline).assertIsDisplayed()
         rule.onNodeWithText(emptySupporting).assertIsDisplayed()
 
@@ -146,7 +155,8 @@ class ScreenChromeSemanticsTest {
 
     private fun focus(fontScale: Float) = assertChrome(
         fontScale,
-        title = "Focus",
+        // No app bar, and so no bar title. See the note on the class.
+        title = null,
         emptyHeadline = "Nothing to focus on",
         emptySupporting = "Tasks scheduled for today appear here."
     ) { viewModel -> FocusScreen(viewModel = viewModel) }

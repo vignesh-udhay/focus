@@ -21,7 +21,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -133,21 +132,10 @@ private fun UpcomingContent(
         topBar = {
             FocuslistTopAppBar(
                 title = stringResource(R.string.upcoming_title),
-                // Nothing to count when the list is empty, and the empty state
-                // already says so.
-                subtitle = if (tasks.isEmpty()) {
-                    null
-                } else {
-                    {
-                        Text(
-                            text = pluralStringResource(
-                                R.plurals.upcoming_scheduled,
-                                tasks.size,
-                                tasks.size
-                            )
-                        )
-                    }
-                },
+                // No subtitle. It carried a count of the tasks below it, which
+                // is the one thing a list of tasks already shows: the rows are
+                // grouped by day and the days are the headings. A subtitle has
+                // to say something the list cannot.
                 scrollBehavior = scrollBehavior
             )
         }

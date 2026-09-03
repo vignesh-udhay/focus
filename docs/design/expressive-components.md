@@ -212,6 +212,18 @@ rows end on, against 5.7dp with no padding. Deliberately not exact. Closing the
 last 1.5dp would mean compensating for the trailing bearing of whichever glyph
 the value ends with, which is a number with no meaning and no token.
 
+[FD] A subtitle has to say something the list below it cannot, or it does not
+get one. Today's date is not in the list and its planned total is a sum of it;
+Inbox's count is the size of a pile the user is deciding whether to work
+through now. Upcoming had one and lost it: a count of tasks that are already
+grouped under their own day headings tells the reader what they can see.
+Anytime and the Logbook have never had one.
+
+[FD] So the bars are not all the same height, and that is correct rather than
+drift. A bar sizes to what the screen has to say, and inventing subtitles for
+the two screens with nothing to say — to make four headers agree — would be
+adding noise for symmetry.
+
 [FD] A count says nothing when there is nothing to count. Inbox drops its
 subtitle entirely when the list is empty, rather than reading "0 items waiting
 to process" above an empty state that already says so.
@@ -499,9 +511,21 @@ same field.
 
 # Snackbar
 
-[IMPL] One undo offer for the whole app, shown with `SnackbarDuration.Long`,
+[IMPL] One undo offer for the whole app, shown with `SnackbarDuration.Short`,
 through `UndoSnackbarHost`. Every screen hosts that rather than a bare
 `SnackbarHost`, so no screen can be the one that forgets.
+
+[FD] Short, which is four seconds against the long form's ten. It used to be
+long, on the grounds that undo is the only way back, and that reasoning left
+out how often the offer appears: completing a task is the most frequent thing
+anyone does here, and ten seconds of a bar across the bottom of the list after
+every tick is the same tax `expressive-motion.md` refuses to put on the
+interaction itself. A user who ticks the wrong task knows at once.
+
+[IMPL] Naming the shorter value costs nothing in reach. Material passes either
+through `calculateRecommendedTimeoutMillis` with `containsControls` set, so a
+user who has asked the system for more time to act is given it regardless of
+which is named here.
 
 [FD] Material default appearance and motion. Undo is the only action.
 
