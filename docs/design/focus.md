@@ -46,12 +46,66 @@ The estimate is shown because Today already shows it. A screen about doing the
 work should not be the one place the size of it is withheld, and the number is
 the user's own answer to how long this will take.
 
+Start is the only thing in the middle of the screen with the task, and it is
+the control that becomes the session. Everything about how it is drawn follows
+from that; see "Becoming the session" below.
+
 Complete stays available without entering a session. A task can turn out to be
 already done, or to take ten seconds, and making the user start and stop a
-session to tick it off would be ceremony for its own sake.
+session to tick it off would be ceremony for its own sake. It sits at the foot
+of the screen and it is quiet, because starting is the constructive act and
+completing without starting is the exception. That is a change of weight, not
+of availability: an earlier version of this document gave the two actions equal
+standing in the middle of the screen, and the second control competed with the
+one the screen is for.
+
+There is no top app bar, in either state. Every other screen is a list and
+wears its name; this one shows a single task, the navigation bar already says
+which destination it is, and a heading reading "Focus" above the task would be
+the screen naming itself instead of naming the work.
 
 Still absent: capture, editing, Task Details, metadata beyond the estimate, a
 floating action button.
+
+---
+
+# Becoming the session
+
+The control the user presses is the thing that becomes the session.
+
+Start is a stadium; the session is a circle with the task inside it. Pressing
+Start grows the one into the other: the container lifts off the button, travels
+up the screen and inflates around words that were already there, while its
+colour goes from the button's `primary` to the shape's quiet container role.
+The title does not move at any point. It is the fixed thing the session forms
+around, and that is what makes the session read as the same screen rather than
+a new one.
+
+This is Material's container transform, which M3 describes as creating "the
+strongest relationship between elements" of any of its transition patterns and
+names a persistent container as the usual way to carry it. It replaces a
+scale-and-fade, and replacing it was also a correction: M3 says Android avoids
+scale on enter and exit because it implies an elevation change the system does
+not have.
+
+The container is a rounded rectangle whose corners stay at half its own height,
+so it is a stadium the whole way up and a circle the moment the box is square.
+Only then does the session's morph take over, and the morph's own starting
+shape is that same circle, so the handover cannot be seen. This matters for the
+rule in `expressive-motion.md`: the app still has exactly one shape morph, and
+it is still the one that carries progress. Growing a button into a circle is
+geometry, not a second morph.
+
+The colour is not animated separately. Given a spec of its own it would need an
+effects spec, and an effects spec settles roughly eight times stiffer than the
+spatial spec the bounds are travelling on: the container turned pale while it
+was visibly still the button, and read as two things rather than one. Making
+the colour a function of how far the shape has grown means there is only one
+animation, and the two cannot come apart.
+
+Under reduced motion none of this plays. The two states swap, which is what a
+request for stillness asks for, and nothing is withheld: both states say
+everything they say in text.
 
 ---
 
@@ -77,9 +131,27 @@ should not be: a gauge invites clock-watching, which is the opposite of what
 this screen is for. The morph says time is moving. It does not invite you to
 check how much.
 
-A task with no estimate gets the starting shape and no movement at all. There
-is nothing to be a fraction of, and a shape drifting to a rhythm of its own
-would look like information and be none.
+A task with no estimate gets a shape that moves anyway, and this is a recorded
+reversal. An earlier version of this document gave it the starting shape and no
+movement at all, on the grounds that a shape drifting to a rhythm of its own
+would look like information and be none. The objection to that is simpler than
+the argument for it: a session showing a shape that never moves does not read
+as "nothing to measure", it reads as broken, and half the sessions in a list
+that does not force estimates would look that way.
+
+What moves instead is a cycle, and the cycle is what keeps it honest. The shape
+travels out to the far form and back again over twenty minutes, and it never
+arrives anywhere. A ramp would climb to the far shape and stay, which is the
+same picture a used-up estimate draws and means something completely different;
+a user who had seen the estimate case once would read the other as "done". A
+shape that returns to where it began cannot be read that way.
+
+So the two cases say two different things and look different doing it. With an
+estimate the shape advances and settles. Without one it wanders. Neither can be
+read to a number, and only the first is counting toward anything.
+
+Twenty minutes is long on purpose. The shape has to be too slow to watch, or it
+becomes the clock this screen exists to hide.
 
 Not a timer. There is no countdown, no elapsed clock, no digits, and running
 past the estimate is ordinary: the shape settles at its final form and stays
@@ -252,6 +324,19 @@ and the session continues, which is `PRODUCT.md`'s "continue to the next task"
 taken literally. The session ends only when the user stops it or the queue runs
 out.
 
+It is not silent, though. The shape springs back to the circle as the new title
+arrives, which is the one moment in a session where the shape moves for a
+reason other than the clock. It is not decoration: the clock has genuinely
+restarted, because progress is measured against *this* task's estimate, and the
+shape is saying so. Without it a task finished early would hand over to a shape
+sitting two thirds of the way along, which would be measuring the new task
+against the old one's time.
+
+An earlier version of this document had completion end the session and return
+to Ready, so each task began with a fresh Start. It was rejected for costing a
+tap per task and for contradicting the clause above; the reset is what that
+version was really after, and it can be had without leaving the mode.
+
 ---
 
 # Empty state
@@ -262,26 +347,46 @@ and everything scheduled already done.
 Deliberately one rather than two. A separate "all done" state would be a
 celebration, and `PRODUCT.md` rules those out.
 
+It is arrived at rather than cut to. The last shape unwinds to the circle and
+shrinks back into the button it came out of, and only then does the empty state
+fade in. That is the ordinary end-of-session movement doing the work, not a
+flourish added for the occasion: nothing is said that would not be said by
+stopping a session by hand. The ending is felt because the screen takes the
+time to end, which is as close to a celebration as this screen is allowed to
+get.
+
 ---
 
 # Accessibility
 
 The task title is the heading a screen reader lands on, in both states.
 
-The shape carries meaning, so it carries `progressSemantics`. Colour and form
-are never the only channel.
+The shape publishes nothing, and that is deliberate rather than an omission.
+An earlier version of this document said it carried `progressSemantics`; it
+never did, and now it should not. With an estimate there is a fraction, but the
+shape is built to be unreadable as a gauge and announcing it to the decimal
+would hand a screen reader the clock-watching this screen exists to prevent.
+Without an estimate there is no progress at all, only a cycle, and publishing a
+value that goes back down would be worse than publishing nothing.
+
+What matters is that the shape is never the only channel, and it is not: the
+task, the estimate and every control are text.
 
 Reduced motion is respected, and the line it draws is the same one the shape is
 built on. The enter transition is decoration and is skipped entirely. The morph
 is **not**, because it is information: freezing it would answer a request for
 stillness by withholding the answer. See `expressive-motion.md`.
 
-In Session the title is capped at four lines with an ellipsis, which is what
-the square holds at the largest system font scale. It is the one piece of text
-in the app with a hard ceiling, and it exists because a title that overruns a
-fixed shape is cut through the middle of a line and reads as broken rather than
-as shortened. The full title is one tap away in Task Details. Ready has no
-shape and wraps freely.
+The title is capped at four lines with an ellipsis, which is what the square
+holds at the largest system font scale. It is the one piece of text in the app
+with a hard ceiling, and it exists because a title that overruns a fixed shape
+is cut through the middle of a line and reads as broken rather than as
+shortened. The full title is one tap away in Task Details.
+
+The cap applies in Ready too. It used to be Session's alone, on the grounds
+that Ready had no shape to overrun; it now has the same square reserved whether
+or not the shape has grown into it, and a title that overran it there would
+collide with Start and then be cut anyway the moment the session began.
 
 ---
 
@@ -422,7 +527,17 @@ and 200% font scale.
 The morph cannot be tested. Spring physics and a shape advancing over
 forty-five minutes are not meaningfully assertable, so the shape is checked by
 watching it on the emulator at several points across a short estimate. State it
-that way in reports: the morph was observed, not tested. Both themes and the
+that way in reports: the morph was observed, not tested.
+
+The same goes for the container transform, and it is worth knowing how to look
+at it: the animator duration scale can be turned up, which Compose respects, so
+the growth can be sampled frame by frame instead of guessed at. Turn it back
+down afterwards.
+
+A session on a task with no estimate never stops animating, because its cycle
+has no end to reach. That is the design and not an oversight, but it means the
+screen is never idle while such a session is open, so anything that waits for
+idleness has to be told not to. Both themes and the
 session's session-survives-process-death behaviour are also checked by hand.
 
 The notification itself is checked by hand on the emulator against a

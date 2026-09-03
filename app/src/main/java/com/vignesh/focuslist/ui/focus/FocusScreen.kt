@@ -7,34 +7,38 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialShapes
-import androidx.compose.material3.toPath
-import androidx.graphics.shapes.Morph
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.toPath
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -43,14 +47,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Matrix
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -59,6 +66,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.min
+import androidx.compose.ui.util.lerp
+import androidx.graphics.shapes.Morph
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -66,14 +76,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vignesh.focuslist.R
 import com.vignesh.focuslist.core.design.FocuslistMotion
 import com.vignesh.focuslist.core.design.FocuslistSpacing
-import com.vignesh.focuslist.core.design.focuslistMotionEnabled
 import com.vignesh.focuslist.core.design.focuslistContentGutter
+import com.vignesh.focuslist.core.design.focuslistMotionEnabled
 import com.vignesh.focuslist.core.domain.Task
 import com.vignesh.focuslist.core.domain.TaskPlacement
+import com.vignesh.focuslist.core.domain.focusElapsedCycle
 import com.vignesh.focuslist.core.domain.focusProgress
 import com.vignesh.focuslist.core.notification.FocusSessionVisibility
 import com.vignesh.focuslist.core.notification.canPostNotifications
-import com.vignesh.focuslist.ui.component.FocuslistTopAppBar
 import com.vignesh.focuslist.ui.component.TaskListEmptyState
 import com.vignesh.focuslist.ui.component.UndoSnackbarHost
 import com.vignesh.focuslist.ui.task.TaskListViewModel
@@ -86,17 +96,17 @@ import java.time.LocalDate
 /**
  * Focus, the execution mode.
  *
- * Two states over one destination, and the difference between them is the
- * whole design.
+ * Two states over one destination, and one continuous piece of motion between
+ * them. Ready is a place: the task, and a control to begin. Session is a mode:
+ * the navigation goes, and what is left is the task, the action that finishes
+ * it, and a quiet line saying what follows.
  *
- * Ready is a place: the task that is next, how long it was estimated at, and a
- * control to begin. The navigation stays, because the user only navigated
- * here and may want to leave the same way.
- *
- * Session is a mode: the task grows into the screen, the navigation goes, and
- * what is left is the task, the action that finishes it, and a quiet line
- * saying what follows. Taking the navigation away is only honest because the
- * user asked for the mode and can leave it by an on-screen control or by back.
+ * The control the user presses is the thing that becomes the session. Start is
+ * a pill; the session is a shape; pressing Start grows the one into the other.
+ * That is Material's container transform, and taking it here rather than the
+ * scale-and-fade that used to be here is also a correction: M3 says Android
+ * avoids scale on enter and exit because it implies an elevation change the
+ * system does not have.
  *
  * The queue behind it is unchanged. Completing a task takes it out, the next
  * appears without an advance step, and when none are left the session ends on
@@ -143,6 +153,11 @@ fun FocusScreen(
  * Stateless: it renders the task it is handed in whichever of the two states
  * it is told, and reports starting, stopping and completing.
  *
+ * There is no top app bar in either state. Every other screen is a list and
+ * wears its name; this one shows a single task, the navigation bar already
+ * says which destination it is, and a heading reading "Focus" above the task
+ * would be the screen naming itself instead of naming the work.
+ *
  * [bottomBar] is rendered only when the session is not running. The rail on a
  * wide window is not this screen's to hide and is dealt with above the graph.
  */
@@ -169,75 +184,54 @@ private fun FocusContent(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface,
         snackbarHost = { UndoSnackbarHost(snackbarHostState) },
-        bottomBar = { if (!isSessionActive) bottomBar() },
-        topBar = {
-            // Nothing above the task in a session. The title names a
-            // destination, and in a session this is not one.
-            if (!isSessionActive) {
-                FocuslistTopAppBar(title = stringResource(R.string.focus_title))
-            }
-        }
+        bottomBar = { if (!isSessionActive) bottomBar() }
     ) { innerPadding ->
-        if (task == null) {
-            TaskListEmptyState(
-                headline = stringResource(R.string.focus_empty_headline),
-                supporting = stringResource(R.string.focus_empty_supporting),
-                modifier = Modifier.padding(innerPadding)
-            )
-        } else {
-            // Read here rather than inside transitionSpec, which is not a
-            // composable scope. One spec drives both halves: the scale is the
-            // spatial change and the fade rides along with it.
-            val sessionSpec = FocuslistMotion.focusSession<Float>()
+        // The transition is decoration in the strict sense and a user who
+        // asked for no motion gets the next state directly. The shape inside
+        // the session is not covered by this: how far the session has run is
+        // information, and holding it still would withhold an answer.
+        val animate = focuslistMotionEnabled()
 
-            // The transition is decoration: it says nothing the two states do
-            // not already say, so a user who asked for no motion simply gets
-            // the next state. The shape inside the session is not covered by
-            // this, because how far the session has run is information and
-            // holding it still would be withholding an answer.
-            val animate = focuslistMotionEnabled()
+        // Read here rather than inside transitionSpec, which is not a
+        // composable scope. An effects spec, because a fade changes no bounds.
+        val fadeSpec = FocuslistMotion.stateColor<Float>()
 
+        Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
             AnimatedContent(
-                targetState = isSessionActive,
+                targetState = task,
+                contentKey = { it == null },
                 transitionSpec = {
                     if (!animate) {
-                        return@AnimatedContent EnterTransition.None togetherWith
-                            ExitTransition.None
+                        EnterTransition.None togetherWith ExitTransition.None
+                    } else {
+                        // A fade, on the effects spec, because nothing here
+                        // changes bounds. The beat that makes an emptied queue
+                        // feel like an ending comes from the shape unwinding
+                        // into the button first, which is spatial and is
+                        // animated where it happens.
+                        fadeIn(animationSpec = fadeSpec) togetherWith
+                            fadeOut(animationSpec = fadeSpec)
                     }
-
-                    // Grows out of where the task already is. Both states
-                    // centre it, so the centre is the task, and the screen
-                    // appears to expand from the words rather than from a
-                    // corner or an edge.
-                    (scaleIn(
-                        animationSpec = sessionSpec,
-                        initialScale = SessionEnterScale,
-                        transformOrigin = TransformOrigin.Center
-                    ) + fadeIn(animationSpec = sessionSpec))
-                        .togetherWith(
-                            scaleOut(
-                                animationSpec = sessionSpec,
-                                targetScale = SessionExitScale,
-                                transformOrigin = TransformOrigin.Center
-                            ) + fadeOut(animationSpec = sessionSpec)
-                        )
                 },
-                modifier = Modifier.padding(innerPadding),
-                label = "focus session"
-            ) { inSession ->
-                if (inSession && startedAt != null) {
-                    FocusSession(
-                        task = task,
-                        nextTask = nextTask,
-                        startedAt = startedAt,
-                        onStop = onStop,
-                        onComplete = { onComplete(task.id) }
+                label = "focus content"
+            ) { current ->
+                if (current == null) {
+                    // One state for both ways the queue empties: nothing
+                    // scheduled, and everything scheduled already done. A
+                    // separate "all done" would be a celebration.
+                    TaskListEmptyState(
+                        headline = stringResource(R.string.focus_empty_headline),
+                        supporting = stringResource(R.string.focus_empty_supporting)
                     )
                 } else {
-                    FocusReady(
-                        task = task,
+                    FocusTask(
+                        task = current,
+                        nextTask = nextTask,
+                        startedAt = startedAt,
+                        animate = animate,
                         onStart = onStart,
-                        onComplete = { onComplete(task.id) }
+                        onStop = onStop,
+                        onComplete = { onComplete(current.id) }
                     )
                 }
             }
@@ -246,150 +240,457 @@ private fun FocusContent(
 }
 
 /**
- * Focus before it has started: what is next, and the control to begin.
+ * One task, in whichever of the two states it is in.
  *
- * Complete stays available. A task can turn out to be already done, or take
- * ten seconds, and making the user enter a session to tick it off would be
- * ceremony for its own sake.
+ * Both states are one layout rather than two, because the movement between
+ * them is the design. Nothing is composed only in Ready or only in Session and
+ * cross-faded against its opposite number; the shape, the title and the action
+ * slot are each a single element that changes.
+ *
+ * What that buys is that the title never moves. The shape grows up from the
+ * button and around words that were already there, which is what makes the
+ * session feel like the same screen rather than a new one.
  */
 @Composable
-private fun FocusReady(
+private fun FocusTask(
     task: Task,
+    nextTask: Task?,
+    startedAt: Instant?,
+    animate: Boolean,
+    onStart: () -> Unit,
+    onStop: () -> Unit,
+    onComplete: () -> Unit
+) {
+    val isSessionActive = startedAt != null
+
+    if (isSessionActive) {
+        AskToNotifyOnce(hasEstimate = task.estimatedDurationMinutes != null)
+        TrackSessionVisibility()
+    }
+
+    // How far the button has become the shape. Spatial, because bounds are
+    // exactly what change, and the slow spec because this is the user settling
+    // into a task rather than passing through.
+    val target = if (isSessionActive) 1f else 0f
+    val animated by animateFloatAsState(
+        targetValue = target,
+        animationSpec = FocuslistMotion.focusSession(),
+        label = "focus expansion"
+    )
+    val expansion = if (animate) animated else target
+
+    // Where the session has got to. Not a transition, and so not governed by
+    // the reduced-motion setting: it is a value derived from the clock.
+    val shapeProgress = rememberShapeProgress(
+        startedAt = startedAt,
+        estimatedDurationMinutes = task.estimatedDurationMinutes,
+        animate = animate
+    )
+
+    // Read off the expansion rather than animated separately, which is the
+    // one case where a colour gets no spec of its own. Given one it would need
+    // an effects spec, and an effects spec settles at stiffness 1600 while the
+    // bounds are still travelling at 200: the container turned pale while it
+    // was visibly still the button, and read as two things rather than one.
+    //
+    // Making the colour a function of how far the shape has grown means there
+    // is only one animation here, so the two cannot come apart. The fraction
+    // is clamped where the rectangle is not, because a colour extrapolated
+    // past its endpoint by the spring's overshoot is not a colour anyone
+    // chose.
+    val shade = expansion.coerceIn(0f, 1f)
+    val containerColor = lerp(
+        MaterialTheme.colorScheme.primary,
+        MaterialTheme.colorScheme.surfaceContainerHigh,
+        shade
+    )
+    val titleColor = lerp(
+        MaterialTheme.colorScheme.onSurface,
+        MaterialTheme.colorScheme.primary,
+        shade
+    )
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        // The way out. An on-screen control and not only a gesture, because
+        // gesture navigation draws no visible back affordance and this state
+        // has hidden the one control the user knows about.
+        AnimatedVisibility(
+            visible = isSessionActive,
+            enter = if (animate) fadeIn(FocuslistMotion.stateColor()) else EnterTransition.None,
+            exit = if (animate) fadeOut(FocuslistMotion.stateColor()) else ExitTransition.None,
+            modifier = Modifier.align(Alignment.TopStart).padding(FocuslistSpacing.xs)
+        ) {
+            IconButton(onClick = onStop) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_close),
+                    contentDescription = stringResource(R.string.focus_stop)
+                )
+            }
+        }
+
+        FocusShape(
+            task = task,
+            expansion = { expansion },
+            progress = { shapeProgress.value },
+            containerColor = containerColor,
+            titleColor = titleColor,
+            isSessionActive = isSessionActive,
+            animate = animate,
+            onStart = onStart,
+            onComplete = onComplete,
+            modifier = Modifier
+                .align(Alignment.Center)
+                .padding(horizontal = focuslistContentGutter())
+                .padding(horizontal = FocuslistSpacing.lg)
+        )
+
+        // The bottom line belongs to whichever state is showing. In Ready it
+        // is the shortcut for a task that turns out to be already done; in
+        // Session it is the peek at what follows. They share a slot so that
+        // swapping one for the other moves nothing above them.
+        FocusFooter(
+            isSessionActive = isSessionActive,
+            nextTask = nextTask,
+            animate = animate,
+            onComplete = onComplete,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(horizontal = FocuslistSpacing.lg)
+                .padding(bottom = FocuslistSpacing.lg)
+        )
+    }
+}
+
+/**
+ * The container that is the button in one state and the session in the other,
+ * with the task inside it and the action slot beneath.
+ *
+ * The container is drawn rather than clipped to. A [androidx.compose.ui.graphics.Shape]
+ * would have to be a new object on every frame to change, which puts the work
+ * in layout; drawing reads the two animated values in the draw phase, where a
+ * changed value costs one redraw of one node and nothing is remeasured.
+ *
+ * That matters more for the session than for the transition. The transition is
+ * over in under a second, but the shape carries on advancing for as long as the
+ * task's estimate lasts, and a session left running is not paying to relayout
+ * a screen once a second.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun FocusShape(
+    task: Task,
+    expansion: () -> Float,
+    progress: () -> Float,
+    containerColor: Color,
+    titleColor: Color,
+    isSessionActive: Boolean,
+    animate: Boolean,
     onStart: () -> Unit,
     onComplete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = focuslistContentGutter())
-            .padding(horizontal = FocuslistSpacing.lg),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        FocusTaskTitle(task = task)
+    // Only one Morph, and it is the session's. The button growing into the
+    // circle is a rounded rectangle whose corners stay at half its height,
+    // which is a stadium the whole way up and a circle the moment the box is
+    // square. That is how every Material container transform is built, and it
+    // keeps the app's one shape morph the one that carries information.
+    //
+    // `MaterialShapes.Pill` is the wrong tool for it: the shapes are normalised
+    // into a unit box, so stretching one back out to a wide, short rectangle
+    // gives an ellipse rather than a stadium.
+    val sessionMorph = remember { Morph(MaterialShapes.Circle, MaterialShapes.Clover4Leaf) }
+    val path = remember { Path() }
 
-        Button(
-            onClick = onStart,
-            modifier = Modifier.padding(top = FocuslistSpacing.xl)
-        ) {
-            Text(stringResource(R.string.focus_start))
-        }
+    // Hoisted, because transitionSpec below is not a composable scope.
+    val fadeSpec = FocuslistMotion.stateColor<Float>()
 
-        TextButton(
-            onClick = onComplete,
-            modifier = Modifier.padding(top = FocuslistSpacing.xs)
+    BoxWithConstraints(modifier = modifier.wrapContentSize()) {
+        // Capped, so a tablet gets a shape and not a billboard, and bounded by
+        // the window so a narrow phone is not overflowed.
+        val side = min(maxWidth, SessionShapeMaxSize)
+
+        Box(
+            modifier = Modifier
+                .width(side)
+                .height(side + FocuslistSpacing.lg + ActionSlotHeight)
+                .drawBehind {
+                    val ready = Rect(
+                        left = (size.width - ActionSlotWidth.toPx()) / 2f,
+                        top = size.height - ActionSlotHeight.toPx(),
+                        right = (size.width + ActionSlotWidth.toPx()) / 2f,
+                        bottom = size.height
+                    )
+                    val session = Rect(0f, 0f, size.width, size.width)
+
+                    drawFocusContainer(
+                        expansion = expansion(),
+                        progress = progress(),
+                        sessionMorph = sessionMorph,
+                        path = path,
+                        color = containerColor,
+                        ready = ready,
+                        session = session
+                    )
+                }
         ) {
-            Text(stringResource(R.string.focus_complete))
+            Box(
+                modifier = Modifier.align(Alignment.TopCenter).size(side),
+                contentAlignment = Alignment.Center
+            ) {
+                FocusTaskTitle(
+                    task = task,
+                    color = titleColor,
+                    modifier = Modifier.padding(FocuslistSpacing.lg)
+                )
+            }
+
+            // Start becomes the shape, so what sits in this slot afterwards is
+            // the action the session is for. The slot itself never moves.
+            AnimatedContent(
+                targetState = isSessionActive,
+                transitionSpec = {
+                    if (!animate) {
+                        EnterTransition.None togetherWith ExitTransition.None
+                    } else {
+                        fadeIn(animationSpec = fadeSpec) togetherWith
+                            fadeOut(animationSpec = fadeSpec)
+                    }
+                },
+                modifier = Modifier.align(Alignment.BottomCenter),
+                label = "focus action"
+            ) { inSession ->
+                if (inSession) {
+                    FocusAction(
+                        label = stringResource(R.string.focus_complete),
+                        onClick = onComplete,
+                        // The session draws its own container here. The shape
+                        // has taken the drawn one up the screen with it.
+                        colors = ButtonDefaults.buttonColors()
+                    )
+                } else {
+                    FocusAction(
+                        label = stringResource(R.string.focus_start),
+                        onClick = onStart,
+                        // Transparent, because the fill under this button is
+                        // the drawn container: it is the thing that will grow
+                        // away, and a second container painted on top of it
+                        // would stay behind and give the trick away.
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.Transparent,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
+                    )
+                }
+            }
         }
     }
 }
 
 /**
- * Focus while it is running.
+ * The one control in the action slot, at Material's medium button size.
  *
- * The shape is the only thing on this screen that is not text, and in this
- * phase it does not move: it is the ground the task sits on. Phase two gives
- * it a job, morphing it across the estimate so that the passage of time is
- * visible without a number to check. A shape that merely animated would be
- * decoration, which `PRODUCT.md` rules out.
- *
- * Stop is an on-screen control and not only a gesture, because gesture
- * navigation leaves no visible back affordance and this screen has hidden the
- * navigation bar.
+ * A real [Button] rather than a drawn one with a click listener, so that the
+ * ripple, the state layers, the focus indication and the button role all come
+ * from Material rather than being approximated here.
  */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun FocusSession(
-    task: Task,
+private fun FocusAction(
+    label: String,
+    onClick: () -> Unit,
+    colors: androidx.compose.material3.ButtonColors
+) {
+    Button(
+        onClick = onClick,
+        colors = colors,
+        shape = CircleShape,
+        contentPadding = ButtonDefaults.contentPaddingFor(ActionSlotHeight),
+        modifier = Modifier.size(width = ActionSlotWidth, height = ActionSlotHeight)
+    ) {
+        Text(text = label, style = ButtonDefaults.textStyleFor(ActionSlotHeight))
+    }
+}
+
+/**
+ * The line at the foot of the screen, which each state uses for its own thing.
+ *
+ * Ready puts the shortcut here: a task can turn out to be already done, or to
+ * take ten seconds, and making the user enter a session to tick it off would
+ * be ceremony for its own sake. It is quiet, because starting is the
+ * constructive act and completing without starting is the exception.
+ *
+ * Session puts the peek at what follows here. It is a peek and not a picker:
+ * it cannot be tapped, scrolled or chosen from, because deciding belongs to
+ * Today and a control that let the user swap tasks here would import the
+ * deciding back into the mode.
+ */
+@Composable
+private fun FocusFooter(
+    isSessionActive: Boolean,
     nextTask: Task?,
-    startedAt: Instant,
-    onStop: () -> Unit,
+    animate: Boolean,
     onComplete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Sampled, not accumulated: each tick asks the clock what time it is and
-    // works the fraction out again, so a session that was frozen while the
-    // user was in another app comes back where it actually is.
-    val progress = rememberFocusProgress(startedAt, task.estimatedDurationMinutes)
+    // Hoisted, because transitionSpec below is not a composable scope.
+    val fadeSpec = FocuslistMotion.stateColor<Float>()
 
-    AskToNotifyOnce(hasEstimate = task.estimatedDurationMinutes != null)
-
-    TrackSessionVisibility()
-
-    Box(modifier = modifier.fillMaxSize()) {
-        IconButton(
-            onClick = onStop,
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(FocuslistSpacing.xs)
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_close),
-                contentDescription = stringResource(R.string.focus_stop)
-            )
-        }
-
-        Column(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .padding(horizontal = focuslistContentGutter())
-                .padding(horizontal = FocuslistSpacing.lg),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    // Capped, so a tablet gets a shape and not a billboard.
-                    .sizeIn(maxWidth = SessionShapeMaxSize, maxHeight = SessionShapeMaxSize)
-                    .fillMaxWidth()
-                    .aspectRatio(1f)
-                    .focusProgressShape(
-                        progress = progress,
-                        color = MaterialTheme.colorScheme.primaryContainer
-                    )
-                    .padding(FocuslistSpacing.lg)
-            ) {
-                FocusTaskTitle(
-                    task = task,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    // The shape is a fixed square, so the title inside it is
-                    // the one piece of text in the app with a hard ceiling. At
-                    // 200% font a long title otherwise runs past the shape and
-                    // is cut through the middle of a line, which reads as
-                    // broken rather than as truncated. Four lines is what the
-                    // square holds at the largest scale, and the full title is
-                    // one tap away in the details sheet.
-                    maxLines = SessionTitleMaxLines
-                )
+    AnimatedContent(
+        targetState = isSessionActive,
+        transitionSpec = {
+            if (!animate) {
+                EnterTransition.None togetherWith ExitTransition.None
+            } else {
+                fadeIn(animationSpec = fadeSpec) togetherWith
+                    fadeOut(animationSpec = fadeSpec)
             }
-
-            Button(
-                onClick = onComplete,
-                modifier = Modifier.padding(top = FocuslistSpacing.xl)
-            ) {
+        },
+        modifier = modifier,
+        contentAlignment = Alignment.Center,
+        label = "focus footer"
+    ) { inSession ->
+        if (inSession) {
+            if (nextTask != null) {
+                Text(
+                    text = stringResource(R.string.focus_next, nextTask.title),
+                    style = MaterialTheme.typography.bodyMedium,
+                    // Dimmed rather than blurred: Modifier.blur needs API 31
+                    // and the app supports 29, so the effect that works
+                    // everywhere is the one that carries the meaning.
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            } else {
+                // Nothing follows. The slot stays rather than collapsing, so
+                // the last task of a session does not move the screen.
+                Box(Modifier.fillMaxWidth())
+            }
+        } else {
+            TextButton(onClick = onComplete) {
                 Text(stringResource(R.string.focus_complete))
             }
         }
+    }
+}
 
-        if (nextTask != null) {
-            Text(
-                text = stringResource(R.string.focus_next, nextTask.title),
-                style = MaterialTheme.typography.bodyMedium,
-                // Dimmed rather than blurred: Modifier.blur needs API 31 and
-                // the app supports 29, so the effect that works everywhere is
-                // the one that carries the meaning.
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .padding(horizontal = FocuslistSpacing.lg)
-                    .padding(bottom = FocuslistSpacing.xl)
-            )
+/**
+ * Draws the container at wherever it currently is between the button and the
+ * session.
+ *
+ * The rectangle is interpolated without clamping, so the spring's overshoot
+ * carries into the size. That overshoot is the expressive part of the
+ * expressive motion scheme and there is no reason to throw it away here.
+ *
+ * Two ways of drawing one container, and they meet at a circle. On the way up
+ * it is a rounded rectangle cornered at half its own height, which is a
+ * stadium while the box is wide and a circle the instant the box is square.
+ * Once it is square the session's morph takes over, and its start is that same
+ * circle, so the handover is invisible.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+private fun DrawScope.drawFocusContainer(
+    expansion: Float,
+    progress: Float,
+    sessionMorph: Morph,
+    path: Path,
+    color: Color,
+    ready: Rect,
+    session: Rect
+) {
+    val rect = Rect(
+        left = lerp(ready.left, session.left, expansion),
+        top = lerp(ready.top, session.top, expansion),
+        right = lerp(ready.right, session.right, expansion),
+        bottom = lerp(ready.bottom, session.bottom, expansion)
+    )
+
+    if (expansion < 1f) {
+        drawRoundRect(
+            color = color,
+            topLeft = rect.topLeft,
+            size = rect.size,
+            cornerRadius = CornerRadius(rect.height / 2f)
+        )
+        return
+    }
+
+    sessionMorph.toPath(progress = progress, path = path)
+    // The polygons are normalised, so the path arrives in a unit box and has
+    // to be scaled to the rectangle and recentred on it, exactly as the
+    // Material shape helper does it.
+    path.transform(Matrix().apply { scale(x = rect.width, y = rect.height) })
+    path.translate(rect.center - path.getBounds().center)
+    drawPath(path, color)
+}
+
+/**
+ * Where the shape stands, as a value that can be sprung to rather than only
+ * jumped to.
+ *
+ * An [Animatable] rather than a plain state, because the shape has to move on
+ * its own in two places the clock does not account for. A session that ends
+ * unwinds to the circle instead of snapping, so what shrinks back into the
+ * button is the shape that grew out of it. And a session that moves on to the
+ * next task springs back to the circle, which is the reset the user sees when
+ * one task gives way to another: the clock has genuinely restarted, and this
+ * is the shape saying so.
+ *
+ * Reading `value` inside a draw block records the read in the draw phase, so a
+ * new value costs one redraw and nothing is recomposed or remeasured.
+ *
+ * Sampled, not accumulated: each tick asks the clock what time it is and works
+ * the value out again, so a session frozen while the user was in another app
+ * comes back where it actually is rather than where it was left.
+ */
+@Composable
+private fun rememberShapeProgress(
+    startedAt: Instant?,
+    estimatedDurationMinutes: Int?,
+    animate: Boolean
+): Animatable<Float, AnimationVector1D> {
+    val shapeProgress = remember { Animatable(0f) }
+    val spec = FocuslistMotion.focusSession<Float>()
+
+    LaunchedEffect(startedAt, estimatedDurationMinutes, animate) {
+        if (startedAt == null) {
+            if (animate) shapeProgress.animateTo(0f, spec) else shapeProgress.snapTo(0f)
+            return@LaunchedEffect
+        }
+
+        val first = shapeValue(startedAt, estimatedDurationMinutes)
+        if (animate) shapeProgress.animateTo(first, spec) else shapeProgress.snapTo(first)
+
+        while (true) {
+            delay(ProgressTickMillis)
+            val current = shapeValue(startedAt, estimatedDurationMinutes)
+            shapeProgress.snapTo(current)
+            // An estimate that is used up has nothing left to say, so the
+            // ticking stops. A session with no estimate never arrives
+            // anywhere, so it keeps going for as long as the session does.
+            if (estimatedDurationMinutes != null && current >= 1f) return@LaunchedEffect
         }
     }
+
+    return shapeProgress
+}
+
+/**
+ * What the shape should read, from whichever of the two clocks applies.
+ *
+ * With an estimate the value is a fraction of it, and arriving means the
+ * estimate is used up. Without one there is nothing to be a fraction of, and
+ * the value cycles instead: it says the session is running and nothing more.
+ * The two are separate functions in the domain because they mean different
+ * things, and the screen picking between them here is the whole of the
+ * difference.
+ */
+private fun shapeValue(startedAt: Instant, estimatedDurationMinutes: Int?): Float {
+    val now = Instant.now()
+    return focusProgress(startedAt, now, estimatedDurationMinutes)
+        ?: focusElapsedCycle(startedAt, now)
 }
 
 /**
@@ -468,88 +769,23 @@ private fun AskToNotifyOnce(hasEstimate: Boolean) {
 }
 
 /**
- * Progress through the estimate, resampled while the session runs.
- *
- * Returned as a lambda rather than a value so the caller can read it inside a
- * draw block. Read as state here, every tick would recompose the whole session;
- * read at draw time, a tick redraws one shape and nothing else is touched.
- *
- * Ticking stops when the task has no estimate, since there is no fraction to
- * follow, and once the estimate is used up, since the value cannot change
- * again. A session left running for hours is not paying for a coroutine that
- * has nothing left to say.
- */
-@Composable
-private fun rememberFocusProgress(
-    startedAt: Instant,
-    estimatedDurationMinutes: Int?
-): () -> Float? {
-    val progress = remember(startedAt, estimatedDurationMinutes) {
-        mutableStateOf(focusProgress(startedAt, Instant.now(), estimatedDurationMinutes))
-    }
-
-    LaunchedEffect(startedAt, estimatedDurationMinutes) {
-        if (estimatedDurationMinutes == null) return@LaunchedEffect
-
-        while (true) {
-            val current = focusProgress(startedAt, Instant.now(), estimatedDurationMinutes)
-            progress.value = current
-            if (current == null || current >= 1f) return@LaunchedEffect
-            delay(ProgressTickMillis)
-        }
-    }
-
-    return { progress.value }
-}
-
-/**
- * Fills the node with the shape the session has morphed into.
- *
- * Drawn rather than clipped to. A [androidx.compose.ui.graphics.Shape] would
- * have to be a new object on every tick to change, which puts the work in
- * layout; drawing reads [progress] in the draw phase, where a changed value
- * costs one redraw of one node.
- *
- * A task with no estimate gets the starting shape and no movement at all. The
- * alternative would be a shape drifting to a rhythm of its own, which would
- * look like information and be none.
- */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun Modifier.focusProgressShape(
-    progress: () -> Float?,
-    color: Color
-): Modifier {
-    // Nearly a circle to plainly a circle is not a journey anyone would
-    // notice across forty-five minutes, so the two ends are different enough
-    // to read at a glance and quiet enough not to ask for one.
-    val morph = remember { Morph(MaterialShapes.Circle, MaterialShapes.Clover4Leaf) }
-    val path = remember { Path() }
-
-    return drawBehind {
-        // The polygons are normalised, so the path arrives in a unit box and
-        // has to be scaled to the node and recentred, exactly as the Material
-        // shape helper does it.
-        morph.toPath(progress = progress() ?: 0f, path = path)
-        path.transform(Matrix().apply { scale(x = size.width, y = size.height) })
-        path.translate(center - path.getBounds().center)
-        drawPath(path, color)
-    }
-}
-
-/**
  * The task, and how long it was reckoned to take.
  *
  * The estimate is shown wherever the task is. Today already carries it, and a
  * screen about doing the work that dropped the one number describing its size
  * would be throwing away what the user already said.
+ *
+ * Capped at four lines in both states, which is what the shape's square holds
+ * at the largest system font scale. The cap applies in Ready too, even though
+ * there is no shape there yet: the square is reserved in both states, and a
+ * title that overran it in Ready would collide with the Start button and then
+ * be cut anyway the moment the session began.
  */
 @Composable
 private fun FocusTaskTitle(
     task: Task,
-    modifier: Modifier = Modifier,
-    color: Color = MaterialTheme.colorScheme.onSurface,
-    maxLines: Int = Int.MAX_VALUE
+    color: Color,
+    modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier.wrapContentSize(),
@@ -562,7 +798,7 @@ private fun FocusTaskTitle(
             style = MaterialTheme.typography.headlineMediumEmphasized,
             color = color,
             textAlign = TextAlign.Center,
-            maxLines = maxLines,
+            maxLines = TitleMaxLines,
             // Ellipsis rather than clipping: a title that ends in a marker
             // says it was shortened, where one that stops mid-word says the
             // screen is broken.
@@ -592,17 +828,27 @@ private fun FocusTaskTitle(
  */
 private const val ProgressTickMillis = 1_000L
 
-/** What the session's square holds at the largest system font scale. */
-private const val SessionTitleMaxLines = 4
+/** What the shape's square holds at the largest system font scale. */
+private const val TitleMaxLines = 4
 
 /** The shape stops growing here, so a wide window gets a shape, not a wall. */
 private val SessionShapeMaxSize = 320.dp
 
-/** Grown into, not popped into: the session starts a little under full size. */
-private const val SessionEnterScale = 0.85f
+/**
+ * Material's medium button, which is the size the action slot is.
+ *
+ * The design draws it at 84dp, which is not one of Material's five button
+ * heights. Medium is the one that survives 200% font scale with room to spare;
+ * large, at 96dp, is a fixed box that a label at that scale has to fit inside.
+ */
+private val ActionSlotHeight = ButtonDefaults.MediumContainerHeight
 
-/** And collapses back toward the task it came from. */
-private const val SessionExitScale = 0.92f
+/**
+ * Half the content row less the gutter between two of them, which is the width
+ * the design draws its buttons at. A layout measurement rather than a Material
+ * token, because Material has no opinion on how wide a button should be.
+ */
+private val ActionSlotWidth = 176.dp
 
 /**
  * A fixed timestamp for the sample fixture, so previews stay deterministic

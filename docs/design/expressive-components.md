@@ -508,32 +508,64 @@ something that is not urgent.
 [FD] A primary destination whose content is one task, not a list. Two states;
 the product behaviour is in `focus.md`.
 
+[FD] Both states are one layout, not two cross-faded against each other. The
+container, the title and the action slot are each a single element that
+changes. That is what lets the title stay still while the session forms around
+it; see "Becoming the session" in `focus.md`.
+
 ## Ready
 
 | Element | Treatment |
 | --- | --- |
 | Task title | `headlineMediumEmphasized`, `onSurface`, centred, heading semantics |
 | Estimate | `bodyLarge`, `onSurface`, centred, under the title, omitted when absent |
-| Start | one filled `Button` |
-| Complete | one `TextButton` under it |
+| Start | the action slot: `primary` container, `onPrimary` label |
+| Complete | `TextButton`, at the foot of the screen |
+| Top app bar | absent |
 | Everything else | absent |
 
 [FD] Two actions rather than one, and the weights say which is which. Starting
-is the constructive act and is filled; completing without a session is the
-shortcut and is text.
+is the constructive act and takes the slot in the middle of the screen;
+completing without a session is the shortcut and is text at the foot. An
+earlier version put both in the middle, where the second competed with the one
+the screen is for.
+
+[IMPL] Start's own container is transparent. The fill behind it is the drawn
+container, because that is the thing that grows away when the session begins,
+and a second container painted on top of it would stay behind and give the
+trick away. The label colour is named for the same reason.
 
 ## Session
 
 | Element | Treatment |
 | --- | --- |
-| Shape | `Morph(Circle, Clover4Leaf)`, `primaryContainer`, square, capped at 320dp |
-| Task title | `headlineMediumEmphasized`, `onPrimaryContainer`, centred, max 4 lines |
-| Estimate | `bodyLarge`, `onPrimaryContainer`, under the title |
-| Complete | one filled `Button` under the shape |
+| Shape | `Morph(Circle, Clover4Leaf)`, `surfaceContainerHigh`, square, capped at 320dp |
+| Task title | `headlineMediumEmphasized`, `primary`, centred, max 4 lines |
+| Estimate | `bodyLarge`, `primary`, under the title |
+| Complete | the action slot: one filled `Button` |
 | Stop | `IconButton` with `ic_close`, top start |
-| Next task | `bodyMedium`, `onSurfaceVariant`, bottom, one line of text |
+| Next task | `bodyMedium`, `onSurfaceVariant`, at the foot of the screen |
 | Top app bar | absent |
 | Navigation bar | absent |
+
+## The action slot
+
+[FD] One slot, in both states, at `ButtonDefaults.MediumContainerHeight`. Ready
+puts Start in it and Session puts Complete, so the control the session is for
+appears exactly where the control that began it was. The slot never moves.
+
+[FD] Medium rather than large. The design draws its buttons at 84dp, which is
+not one of Material's five button heights; medium is the one that survives 200%
+font scale, where large is a fixed 96dp box a label at that scale has to fit
+inside.
+
+## The foot of the screen
+
+[FD] One slot again, and each state uses it for its own thing: Ready for the
+Complete shortcut, Session for the peek at what follows. Sharing it means
+swapping one for the other moves nothing above them.
+
+## Both
 
 [FD] The shape is drawn, not clipped to. A `Shape` would have to be a new
 object every tick to change, which puts the work in layout; drawing reads the
@@ -541,12 +573,19 @@ progress in the draw phase, where a changed value costs one redraw of one node.
 
 [FD] Capped at 320dp so a wide window gets a shape, not a wall.
 
-[FD] The title is the one piece of text in the app with a hard line cap. A
-fixed square cannot grow to fit, and a title that overruns it is cut through
-the middle of a line, which reads as broken rather than as shortened. Four
-lines is what the square holds at 200% font scale.
+[FD] The title is the one piece of text in the app with a hard line cap, and it
+is capped in both states. A fixed square cannot grow to fit, and a title that
+overruns it is cut through the middle of a line, which reads as broken rather
+than as shortened. Four lines is what the square holds at 200% font scale. The
+cap applies in Ready too, where there is no shape yet, because the square is
+reserved in both states and a title that overran it would collide with Start
+and then be cut anyway the moment the session began.
 
-## Both
+[FD] The shape is `surfaceContainerHigh` with a `primary` title, not
+`primaryContainer` with `onPrimaryContainer`. It is the ground the task sits
+on, and a 320dp block of the brand colour is not ground. `primary` on a surface
+container is the pairing a text button already uses, so it holds up under
+dynamic colour.
 
 [FD] Absent on purpose in both states: metadata beyond the estimate, editing,
 Task Details, a countdown or elapsed clock, capture, a floating action button.

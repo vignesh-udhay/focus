@@ -105,6 +105,8 @@ licence to invent a fifth.
 | The focused task changing on Focus | `stateColor` | Restrained |
 | Entering or leaving the Focus session | `focusSession` | Deliberate |
 | The Focus session shape, against the estimate | none: derived from the clock | Ambient |
+| The Focus session shape, with no estimate | none: derived from the clock | Ambient |
+| The Focus shape resetting onto the next task | `focusSession` | Restrained |
 | Pressing a row or button | Material ripple and state layer | Material default |
 | Sheets opening and closing | Material default | Material default |
 | The undo snackbar | Material default | Material default |
@@ -152,15 +154,43 @@ different rules.
 sense: it says nothing the two states do not already say. It gets
 `focusSession`, and it is skipped entirely under reduced motion.
 
+[FD] It is a container transform: the Start button's container is the thing
+that grows into the session's shape. Material names this pattern and calls it
+the one that creates the strongest relationship between two states. It replaced
+a scale-and-fade, which was also a correction — M3 says Android avoids scale on
+enter and exit because it implies an elevation change the system does not have.
+
+[IMPL] The container's colour is read off how far it has grown rather than
+animated on a spec of its own. This is the one sanctioned exception to giving a
+colour an effects spec, and it exists because the two specs settle at very
+different rates: at stiffness 1600 against 200, the container finished changing
+colour while it was visibly still the button. A colour that is a function of a
+single spatial animation is not a second animation to keep in step; it is part
+of the first.
+
 **The shape** is not motion in this sense at all. It has no animation spec,
 because it is not animated: it is a value derived from the clock, resampled
 while the session runs and read in the draw phase. Do not "fix" it into a tween.
 
-[FD] The shape is the single exception to the no-shape-morphing rule below, and
-it is exceptional on one condition: **it advances against the task's estimate,
-or it does not move.** A task with no estimate gets a still shape. The rule the
-exception respects is the one that matters — motion has to communicate a state
-change — and here the motion *is* the state.
+[FD] The shape is the single exception to the no-shape-morphing rule below. It
+was once conditional on the task having an estimate, and a task without one got
+a shape that did not move at all. That has been reversed: a session showing a
+motionless shape does not read as "nothing to measure", it reads as broken.
+
+[FD] So the exception is now stated by what the shape is allowed to say rather
+than by whether there is an estimate. **It says the session is running, and
+with an estimate it also says how far along it is. It never says anything
+else.** A task with an estimate gets a value that advances and settles at the
+end. A task without one gets a cycle that goes out and comes back over twenty
+minutes and arrives nowhere, so it cannot be mistaken for the first: a shape
+that returns to where it began is plainly not counting toward anything, and a
+ramp that stopped at the far shape would draw the same picture a used-up
+estimate draws.
+
+[FD] Both are still derived from the clock rather than animated, and both are
+still unreadable as a gauge. What the reversal costs is that a session with no
+estimate never stops moving, and therefore never goes idle. That is a real
+cost, paid knowingly, and `focus.md` records what it means for testing.
 
 [FD] It is deliberately unreadable as a gauge. A silhouette cannot be read to a
 percentage, and a shape that could would invite clock-watching, which is what
@@ -196,12 +226,17 @@ easiest one to get wrong.
 **No decorative motion.** No pulsing, no attention-seeking idle animation,
 nothing that plays without the user having done something.
 
-**No shape morphing, with one exception.** The Focus session shape, and only
-while it is carrying progress against an estimate. Shape morphing for its own
-sake remains banned; `expressive-design-system.md` says Focuslist takes almost
-none of what Material 3 Expressive offers here, and that stands. If a second
-morph is ever proposed, it has to clear the same bar: what does it tell the
-user that nothing else on screen does?
+**No shape morphing, with one exception.** The Focus session shape, in either
+of the two things it can say. Shape morphing for its own sake remains banned;
+`expressive-design-system.md` says Focuslist takes almost none of what Material
+3 Expressive offers here, and that stands. If a second morph is ever proposed,
+it has to clear the same bar: what does it tell the user that nothing else on
+screen does?
+
+Growing the Start button into the session's circle is not a second morph. It is
+a rounded rectangle whose corners stay at half its height, which is what every
+Material container transform is, and it hands over to the session's morph at
+the circle they share.
 
 **One expressive moment.** Completion. Everything else is restrained, including
 the session transition, which is slow rather than lively.

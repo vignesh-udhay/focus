@@ -83,4 +83,40 @@ class FocusProgressTest {
         assertEquals(watched, unwatched)
         assertEquals(0.5f, unwatched)
     }
+
+    // The cycle, for a task with no estimate
+
+    private fun cycleAfterMinutes(minutes: Long): Float =
+        focusElapsedCycle(startedAt, startedAt.plusSeconds(minutes * 60))
+
+    @Test
+    fun `a session with no estimate begins at the near shape`() {
+        assertEquals(0f, cycleAfterMinutes(0))
+    }
+
+    @Test
+    fun `the cycle reaches the far shape half way out`() {
+        assertEquals(1f, cycleAfterMinutes(10))
+    }
+
+    @Test
+    fun `the cycle comes back rather than arriving`() {
+        // The property that keeps it from being read as progress. A ramp that
+        // stopped at the far shape would draw the same picture a used-up
+        // estimate draws, and mean something completely different.
+        assertEquals(0f, cycleAfterMinutes(20))
+        assertEquals(0.5f, cycleAfterMinutes(5))
+        assertEquals(0.5f, cycleAfterMinutes(15))
+    }
+
+    @Test
+    fun `the cycle repeats indefinitely because there is nothing to arrive at`() {
+        assertEquals(cycleAfterMinutes(3), cycleAfterMinutes(23))
+        assertEquals(cycleAfterMinutes(3), cycleAfterMinutes(203))
+    }
+
+    @Test
+    fun `a clock that has gone backwards reads as the start of the cycle too`() {
+        assertEquals(0f, focusElapsedCycle(startedAt, startedAt.minusSeconds(600)))
+    }
 }
