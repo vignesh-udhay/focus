@@ -588,9 +588,10 @@ had already gone.
 
 ## Both
 
-[FD] Which shapes, and which way round, depends on whether the task carries an
-estimate: two walked once from busy to circle when it does, a ring of six
-walked forever when it does not. `focus.md` has the reasoning under
+[FD] Which shapes depends on whether the task carries an estimate: two walked
+once from circle to clover when it does, a ring of six walked forever when it
+does not. Both begin at the circle, which is where the container transform
+leaves off. `focus.md` has the reasoning under
 "Determinate and indeterminate"; the short version is that this is the
 distinction Material's own loading indicator draws, and it is carried by the
 kind of motion rather than by what any one shape means.

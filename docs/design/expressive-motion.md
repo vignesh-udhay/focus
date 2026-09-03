@@ -188,8 +188,8 @@ else.**
 tells them apart. `LoadingIndicatorDefaults` ships two shape lists: a pair for
 the determinate indicator and a sequence of seven for the indeterminate one.
 Known duration walks between two shapes; unknown duration walks a ring. Focus
-takes the same distinction, so an estimate resolves from a busy shape to the
-circle across the estimate, and no estimate walks a ring of six forever.
+takes the same distinction, so an estimate walks from the circle to the clover
+across the estimate and settles, and no estimate walks a ring of six forever.
 
 [M3] The shape principles are explicit that shape is versatile and not
 semantic, and warn against assigning a meaning to a particular shape. Nothing
@@ -245,9 +245,8 @@ screen does?
 
 Growing the Start button into the session's circle is not a second morph. It is
 a rounded rectangle whose corners stay at half its height, which is what every
-Material container transform is. Where the session's ring does not begin at
-that circle, the tail of the same spring blooms from it into the ring's first
-shape; that is the one morph continuing, not a new one starting.
+Material container transform is, and it hands over to the session's ring at the
+circle they share.
 
 **One expressive moment.** Completion. Everything else is restrained, including
 the session transition, which is slow rather than lively.

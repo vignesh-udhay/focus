@@ -98,20 +98,17 @@ not have.
 
 The container is a rounded rectangle whose corners stay at half its own height,
 so it is a stadium the whole way up and a circle the moment the box is square.
-This matters for the rule in `expressive-motion.md`: the app still has exactly
-one shape morph, and it is still the one that carries progress. Growing a
-button into a circle is geometry, not a second morph.
+Only then does the session's ring take over, and every ring begins at that same
+circle, so the handover cannot be seen. This matters for the rule in
+`expressive-motion.md`: the app still has exactly one shape morph, and it is
+still the one that carries progress. Growing a button into a circle is
+geometry, not a second morph.
 
-A polygon cannot be drawn into a box that is not square without being stretched
-the same way an elongated shape would be, so the rectangle has to finish first.
-It does, at seven tenths of the way through the spring; the remaining three
-tenths bloom from that circle into whatever shape the session's ring begins at.
-For a task with no estimate the ring begins at the circle and there is nothing
-to bloom into, so the growth simply ends. For a task with one it puckers into
-the busy shape it will spend the estimate resolving out of. Two legs of one
-spring rather than two animations, so it reads as a single gesture, and the
-cost is that the rectangle no longer carries the spring's overshoot: that is
-spent on the bloom instead.
+That both rings begin at the circle is a constraint worth keeping rather than a
+coincidence. A polygon cannot be drawn into a box that is not yet square
+without being stretched the same way an elongated shape would be, so a ring
+starting anywhere else would need a further leg to get there, and the growth
+would stop being one gesture.
 
 The colour is not animated separately. Given a spec of its own it would need an
 effects spec, and an effects spec settles roughly eight times stiffer than the
@@ -186,9 +183,19 @@ The two cases are told apart the way Material tells them apart, which is by the
 kind of motion rather than by what any one shape means.
 
 **With an estimate**, two shapes and a single walk between them, driven by the
-fraction of the estimate used up. It starts busy and resolves to the circle:
-the task is at its most complicated when it begins and gets simpler as it goes,
-and running over settles on the plainest form there is rather than the busiest.
+fraction of the estimate used up. It starts at the circle and settles on the
+clover when the estimate is spent.
+
+A version of this ran the other way, from the busy shape to the circle, on the
+idea that a task should visibly simplify as it nears done. It was reverted, and
+the reasons are worth keeping. The benefit was invisible: nobody watches a
+forty-five minute morph end to end, so the only moment anyone reliably sees is
+the start, and running it backwards made every session open on the busiest
+shape in the set. The cost was not invisible at all. The container transform
+ends at a circle, so a session that began at the clover needed a third leg to
+bloom from one into the other, and that leg existed for no other reason. One
+direction gives the calmer opening and a simpler transform; the other gives a
+nice sentence.
 
 **Without one**, a ring of six shapes walked round and round, arriving nowhere.
 The ring begins at the circle and its last shape morphs back into its first, so
