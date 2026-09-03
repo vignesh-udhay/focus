@@ -154,7 +154,7 @@ naming what comes next.
 
 ## The shape
 
-A `Morph` between `MaterialShapes.Circle` and `MaterialShapes.Clover4Leaf`,
+A `Morph` between `MaterialShapes.Circle` and `MaterialShapes.Clover8Leaf`,
 drawn behind the title, advanced by how far the session has run against the
 task's estimate.
 

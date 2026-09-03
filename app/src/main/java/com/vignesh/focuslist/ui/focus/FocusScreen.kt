@@ -669,7 +669,7 @@ private fun FocusFooter(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 private fun sessionShapes(hasEstimate: Boolean): List<RoundedPolygon> =
     if (hasEstimate) {
-        listOf(MaterialShapes.Circle, MaterialShapes.Clover4Leaf)
+        listOf(MaterialShapes.Circle, MaterialShapes.Clover8Leaf)
     } else {
         listOf(
             MaterialShapes.Circle,
