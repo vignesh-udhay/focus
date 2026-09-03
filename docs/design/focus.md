@@ -202,6 +202,23 @@ The ring begins at the circle and its last shape morphs back into its first, so
 the seam cannot be seen and there is no final form to be mistaken for an
 arrival.
 
+The six are chosen for contrast rather than for what any of them is: circle,
+rounded square, four-lobed cookie, pentagon, soft burst, gem. Every step
+changes the *kind* of form — round to flat-edged, flat-edged to lobed, lobed to
+five-fold, five-fold to many-bumped — because a ring whose shapes differ only
+in how many bumps they have is a bump counter rather than a walk. The first
+version of this ring was exactly that: four of its six were the same roundish
+blob at different resolutions, and it read as one shape breathing rather than
+as a sequence.
+
+Ruled out, and why: the elongated shapes (`Pill`, `Oval`) stretch when drawn
+into a square; the asymmetric ones (`Arch`, `Fan`, `SemiCircle`, `ClamShell`)
+read as a container cut off around a centred title; the spiky ones (`Burst`,
+`Boom`) are the wrong register for a screen about calm; the deeply indented
+ones (`Flower`, `SoftBoom`) squeeze the four lines of title the shape has to
+hold; and the literal ones (`Heart`, `Ghostish`, the pixel shapes) carry
+meaning, which is the trap the shape principles warn about.
+
 This is Material's own encoding. Its loading indicator ships two shape lists, a
 pair for the determinate case and a sequence of seven for the indeterminate
 one, and the distinction it draws is exactly this one: known duration against

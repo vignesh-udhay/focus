@@ -315,12 +315,27 @@ confirming action out of reach.
 `extraLargeIncreased` 32, `extraExtraLarge` 48. The last three are the
 expressive additions.
 
-[M3] `MaterialShapes` provides twenty-eight morphable polygons (Burst, Flower,
+[M3] `MaterialShapes` provides thirty-five morphable polygons (Burst, Flower,
 Sunny, Puffy and so on) for shape morphing.
 
-[FD] Focuslist uses **none** of them. No expressive polygon, no shape morphing
-as an interaction pattern, no shape change for novelty. A task list has nothing
-to gain from a button that becomes a flower.
+[FD] Focuslist uses **seven**, and all seven are on one screen. The Focus
+session's shape is drawn from `Circle`, `Square`, `Cookie4Sided`, `Pentagon`,
+`SoftBurst` and `Gem` when the task carries no estimate, and from `Circle` and
+`Clover8Leaf` when it does. Nothing else in the app uses a polygon at all: no
+expressive shape as an interaction pattern, no shape change for novelty. A task
+list still has nothing to gain from a button that becomes a flower.
+
+[FD] An earlier version of this document said Focuslist used none of them, and
+that was true when it was written. It is worth being honest about the drift
+rather than quietly restating the number: Focus is meant to be the calmest
+screen in the app and it now holds the most expressive thing in it. Each step
+was individually defensible — the morph carries progress, the ring is
+Material's own way of saying "duration unknown" — but the accumulation is a
+real cost and the next proposal to add a shape should have to answer for it.
+
+[FD] The line that still holds, and the one to defend, is that every one of the
+seven is in service of a single question: how is this session going? None of
+them decorates anything, and `focus.md` records the reasoning per shape.
 
 [FD] The Focuslist scale is softer than Material's at the small end and stops
 where Material's does at the top:

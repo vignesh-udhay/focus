@@ -673,11 +673,11 @@ private fun sessionShapes(hasEstimate: Boolean): List<RoundedPolygon> =
     } else {
         listOf(
             MaterialShapes.Circle,
+            MaterialShapes.Square,
             MaterialShapes.Cookie4Sided,
-            MaterialShapes.Sunny,
-            MaterialShapes.Cookie9Sided,
+            MaterialShapes.Pentagon,
             MaterialShapes.SoftBurst,
-            MaterialShapes.Cookie12Sided
+            MaterialShapes.Gem
         )
     }
 
