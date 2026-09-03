@@ -2227,60 +2227,83 @@ class TaskListViewModelTest {
         assertEquals(emptyList<String>(), awaitSomedayIds(model, emptyList()))
     }
 
-    @Test
-    fun aScheduledAnytimeTaskStillAppearsInAnytime() {
-        store(task(id = "a", placement = TaskPlacement.ANYTIME, scheduledDate = today.plusDays(3)))
+    // Each of these keeps an undated control task alongside the dated one, and
+    // waits for the list to read as exactly that control. Asserting against
+    // the empty list would pass without proving anything: these flows start
+    // empty, so "still empty" is also what not-yet-loaded looks like, and the
+    // wait would return on the first emission before the query had run.
 
-        assertEquals(listOf("a"), anytime(viewModel(), 1).map { it.id })
+    @Test
+    fun aScheduledAnytimeTaskLeavesAnytime() {
+        store(
+            task(id = "dated", placement = TaskPlacement.ANYTIME, scheduledDate = today.plusDays(3)),
+            task(id = "undated", placement = TaskPlacement.ANYTIME)
+        )
+
+        assertEquals(listOf("undated"), anytime(viewModel(), 1).map { it.id })
     }
 
     @Test
-    fun aScheduledSomedayTaskStillAppearsInSomeday() {
-        store(task(id = "s", placement = TaskPlacement.SOMEDAY, scheduledDate = today.plusDays(3)))
+    fun aScheduledSomedayTaskLeavesSomeday() {
+        store(
+            task(id = "dated", placement = TaskPlacement.SOMEDAY, scheduledDate = today.plusDays(3)),
+            task(id = "undated", placement = TaskPlacement.SOMEDAY)
+        )
 
-        assertEquals(listOf("s"), someday(viewModel(), 1).map { it.id })
+        assertEquals(listOf("undated"), someday(viewModel(), 1).map { it.id })
     }
 
     @Test
-    fun anAnytimeTaskScheduledForTodayAppearsInBothListsAtOnce() {
-        store(task(id = "a", placement = TaskPlacement.ANYTIME, scheduledDate = today))
+    fun anAnytimeTaskScheduledForTodayIsOnlyInToday() {
+        store(
+            task(id = "dated", placement = TaskPlacement.ANYTIME, scheduledDate = today),
+            task(id = "undated", placement = TaskPlacement.ANYTIME)
+        )
         val model = viewModel()
 
-        // The deliberate overlap: placement and scheduling are independent.
-        assertEquals(listOf("a"), visible(model, 1).map { it.id })
-        assertEquals(listOf("a"), anytime(model, 1).map { it.id })
+        // These used to overlap deliberately, on the reasoning that placement
+        // and scheduling are independent axes. They are, in the data; in the
+        // lists it meant Anytime showed work already planned for today and a
+        // task had no single place to be found.
+        assertEquals(listOf("dated"), visible(model, 1).map { it.id })
+        assertEquals(listOf("undated"), anytime(model, 1).map { it.id })
     }
 
     @Test
-    fun aSomedayTaskScheduledAheadAppearsInBothUpcomingAndSomeday() {
-        store(task(id = "s", placement = TaskPlacement.SOMEDAY, scheduledDate = today.plusDays(5)))
+    fun aSomedayTaskScheduledAheadIsOnlyInUpcoming() {
+        store(
+            task(id = "dated", placement = TaskPlacement.SOMEDAY, scheduledDate = today.plusDays(5)),
+            task(id = "undated", placement = TaskPlacement.SOMEDAY)
+        )
         val model = viewModel()
 
-        assertEquals(listOf("s"), upcoming(model, 1).map { it.id })
-        assertEquals(listOf("s"), someday(model, 1).map { it.id })
+        // The sharper half: Someday means deliberately deferred, and a day on
+        // the task is the calendar calling it due.
+        assertEquals(listOf("dated"), upcoming(model, 1).map { it.id })
+        assertEquals(listOf("undated"), someday(model, 1).map { it.id })
     }
 
     @Test
-    fun placementListsOrderScheduledBeforeUnscheduled() {
+    fun placementListsOrderCapturesNewestFirst() {
         store(
             task(id = "capture", placement = TaskPlacement.ANYTIME, createdAt = createdAt),
-            task(id = "far", placement = TaskPlacement.ANYTIME, scheduledDate = today.plusDays(9)),
             task(
                 id = "olderCapture",
                 placement = TaskPlacement.ANYTIME,
                 createdAt = createdAt.minusSeconds(60)
-            ),
-            task(id = "near", placement = TaskPlacement.ANYTIME, scheduledDate = today.plusDays(1))
+            )
         )
 
+        // The two-group ordering that put dated tasks first went with the
+        // dated tasks; these lists hold undated work only.
         assertEquals(
-            listOf("near", "far", "capture", "olderCapture"),
-            anytime(viewModel(), 4).map { it.id }
+            listOf("capture", "olderCapture"),
+            anytime(viewModel(), 2).map { it.id }
         )
     }
 
     @Test
-    fun bothTabsAreBackedByTheSameStream() = runBlocking {
+    fun bothPlacementListsAreBackedByTheSameStream() = runBlocking {
         store(
             task(id = "a", placement = TaskPlacement.ANYTIME),
             task(id = "s", placement = TaskPlacement.SOMEDAY)
@@ -2332,7 +2355,7 @@ class TaskListViewModelTest {
     }
 
     @Test
-    fun schedulingDoesNotChangePlacementMembership() {
+    fun schedulingMovesATaskOutOfItsPlacementList() {
         store(task(id = "a", placement = TaskPlacement.ANYTIME))
         val model = viewModel()
         anytime(model, 1)
@@ -2340,20 +2363,26 @@ class TaskListViewModelTest {
         model.edit(id = "a", placement = TaskPlacement.ANYTIME, scheduledDate = today)
         awaitEdited("a")
 
-        // Still Anytime, and now Today as well.
-        assertEquals(listOf("a"), awaitAnytimeIds(model, listOf("a")))
+        // Giving a task a day is the decision Anytime is waiting for, so it
+        // leaves for Today rather than sitting in both. Waiting the list down
+        // from one task to none is a real transition, not the empty state it
+        // started in.
+        assertEquals(emptyList<String>(), awaitAnytimeIds(model, emptyList()))
         assertEquals(listOf("a"), awaitTodayIds(model, listOf("a")))
     }
 
     @Test
-    fun unschedulingDoesNotChangePlacementMembership() {
+    fun unschedulingReturnsATaskToItsPlacementList() {
         store(task(id = "a", placement = TaskPlacement.ANYTIME, scheduledDate = today))
         val model = viewModel()
-        anytime(model, 1)
+        // Deliberately not waiting on Anytime here: the task has a day, so
+        // Anytime is empty and a wait for one task would never return.
+        awaitTodayIds(model, listOf("a"))
 
         model.edit(id = "a", placement = TaskPlacement.ANYTIME, scheduledDate = null)
         awaitEdited("a")
 
+        // Taking the day away hands it back to the placement it kept all along.
         assertEquals(listOf("a"), awaitAnytimeIds(model, listOf("a")))
         assertEquals(emptyList<String>(), awaitTodayIds(model, emptyList()))
     }

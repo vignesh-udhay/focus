@@ -10,10 +10,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -45,35 +43,35 @@ import com.vignesh.focuslist.ui.theme.FocuslistTheme
 import java.time.Instant
 import java.time.LocalDate
 
-/** The two placements this screen shows, in tab order. */
-private val PlacementTabs = listOf(TaskPlacement.ANYTIME, TaskPlacement.SOMEDAY)
-
 /**
  * Anytime and Someday.
  *
- * One screen with a tab each, because they are the same list with one constant
- * changed, and because they are the pair a user flips between when deciding
- * whether something is worth doing soon.
+ * One screen serving two destinations, which is not the same as one screen with
+ * two tabs. It used to have a tab row, on the reasoning that these are the pair
+ * a user flips between. They are not: Anytime is the undated backlog you pick
+ * work from and Someday is a list you review occasionally, so they are visited
+ * at completely different rates, which is the opposite of what tabs are for.
  *
- * Both read placement alone. A task here may also be in Today or Upcoming if it
- * has a date, which is correct: placement says how far a task has been triaged,
- * scheduling says when it is meant to be worked on, and neither hides the other.
+ * The tab row also duplicated navigation that already existed, since More lists
+ * both as separate entries, and it renamed the screen when the tab changed. A
+ * tab that renames the page is not a tab; it is a second destination wearing
+ * one.
  *
- * There is no add-task button. Placement is chosen during triage, in Task
- * Details, not at capture time.
+ * Both hold undated work only. A task with a day belongs to Today or Upcoming,
+ * so these two and the Inbox partition everything else between them and a task
+ * is in exactly one of them.
+ *
+ * There is no add-task button. Placement is chosen during triage, not at
+ * capture time.
  */
 @Composable
 fun PlacementScreen(
     viewModel: TaskListViewModel,
     modifier: Modifier = Modifier,
-    initialPlacement: TaskPlacement = TaskPlacement.ANYTIME,
+    placement: TaskPlacement = TaskPlacement.ANYTIME,
     bottomBar: @Composable () -> Unit = {}
 ) {
-
-    // Keyed on the entry point, so opening Someday from More lands on Someday.
-    var placement by rememberSaveable(initialPlacement) { mutableStateOf(initialPlacement) }
-
-    // Only the visible tab is collected; the other flow stops on its own.
+    // The route decides which list this is, and nothing on screen changes it.
     val list = when (placement) {
         TaskPlacement.SOMEDAY -> viewModel.somedayTasks
         else -> viewModel.anytimeTasks
@@ -90,11 +88,11 @@ fun PlacementScreen(
         tasks = tasks,
         today = today,
         placement = placement,
-        onSelectPlacement = { selected -> placement = selected },
         onToggleComplete = viewModel::toggleComplete,
         onOpenTask = { id -> openTaskId = id },
         onDelete = viewModel::deleteTask,
         onReschedule = viewModel::rescheduleTask,
+        onMove = viewModel::moveTask,
         modifier = modifier,
         snackbarHostState = snackbarHostState,
         bottomBar = bottomBar
@@ -121,11 +119,11 @@ private fun PlacementContent(
     tasks: List<Task>,
     today: LocalDate,
     placement: TaskPlacement,
-    onSelectPlacement: (TaskPlacement) -> Unit,
     onToggleComplete: (String) -> Unit,
     onOpenTask: (String) -> Unit,
     onDelete: (String) -> Unit,
     onReschedule: (String, LocalDate?) -> Unit,
+    onMove: (String, TaskPlacement) -> Unit,
     modifier: Modifier = Modifier,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     bottomBar: @Composable () -> Unit = {}
@@ -149,22 +147,10 @@ private fun PlacementContent(
         snackbarHost = { UndoSnackbarHost(snackbarHostState) },
         bottomBar = bottomBar,
         topBar = {
-            Column {
-                FocuslistTopAppBar(
-                    title = stringResource(placement.labelRes),
-                    scrollBehavior = scrollBehavior
-                )
-
-                PrimaryTabRow(selectedTabIndex = PlacementTabs.indexOf(placement)) {
-                    PlacementTabs.forEach { tab ->
-                        Tab(
-                            selected = tab == placement,
-                            onClick = { onSelectPlacement(tab) },
-                            text = { Text(stringResource(tab.labelRes)) }
-                        )
-                    }
-                }
-            }
+            FocuslistTopAppBar(
+                title = stringResource(placement.labelRes),
+                scrollBehavior = scrollBehavior
+            )
         }
     ) { innerPadding ->
         if (tasks.isEmpty()) {
@@ -198,6 +184,7 @@ private fun PlacementContent(
                         onOpen = { onOpenTask(task.id) },
                         onDelete = { onDelete(task.id) },
                         onReschedule = { date -> onReschedule(task.id, date) },
+                        onMove = { target -> onMove(task.id, target) },
                         // A completed or retriaged task leaves by moving.
                         modifier = Modifier.animateItem(
                             placementSpec = FocuslistMotion.listChange()
@@ -281,11 +268,11 @@ private fun PlacementScreenPreview() {
             tasks = anytimeTasks(samplePlacementTasks()),
             today = LocalDate.now(),
             placement = TaskPlacement.ANYTIME,
-            onSelectPlacement = {},
             onToggleComplete = {},
             onOpenTask = {},
             onDelete = {},
             onReschedule = { _, _ -> },
+            onMove = { _, _ -> },
         )
     }
 }
@@ -299,11 +286,11 @@ private fun PlacementScreenEmptyPreview() {
             tasks = emptyList(),
             today = LocalDate.now(),
             placement = TaskPlacement.SOMEDAY,
-            onSelectPlacement = {},
             onToggleComplete = {},
             onOpenTask = {},
             onDelete = {},
             onReschedule = { _, _ -> },
+            onMove = { _, _ -> },
         )
     }
 }
@@ -316,11 +303,11 @@ private fun PlacementScreenLargeFontPreview() {
             tasks = anytimeTasks(samplePlacementTasks()),
             today = LocalDate.now(),
             placement = TaskPlacement.ANYTIME,
-            onSelectPlacement = {},
             onToggleComplete = {},
             onOpenTask = {},
             onDelete = {},
             onReschedule = { _, _ -> },
+            onMove = { _, _ -> },
         )
     }
 }

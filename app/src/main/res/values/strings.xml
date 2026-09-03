@@ -30,6 +30,9 @@
     <string name="task_completed">Task completed</string>
     <string name="task_deleted">Task deleted</string>
     <string name="task_rescheduled">Task moved</string>
+    <string name="task_triaged">Task moved</string>
+    <string name="task_move_anytime">Move to Anytime</string>
+    <string name="task_move_someday">Move to Someday</string>
     <string name="task_reschedule_today">Move to today</string>
     <string name="task_reschedule_tomorrow">Move to tomorrow</string>
     <string name="task_reschedule_pick">Move to a date…</string>

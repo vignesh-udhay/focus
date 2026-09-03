@@ -169,6 +169,26 @@ destructive, so the thumb does not land on Delete. Delete is labelled in
 so anywhere else the action would either do nothing or have to schedule the
 task for today, and neither is specified behaviour.
 
+[FD] The triage actions, Move to Anytime and Move to Someday, appear only on
+the three undated lists. Those two hold undated work, so filing a dated task
+there would put it somewhere it will not appear, and an action that visibly
+does nothing is worse than one that is not there.
+
+[FD] Each list offers the buckets a task is not already in, on the same
+reasoning that leaves off the day a task already sits on. Never a move back to
+Inbox: Inbox means untriaged, and deliberately untriaging something is not a
+thing anyone wants. Something that no longer belongs in Anytime gets a day, or
+Someday, or deleted.
+
+[FD] They were added because triage could not reach them. The row menu offered
+only scheduling and deletion, so the two buckets that exist purely for triage
+were the one triage outcome you could not choose from the triage screen: it
+took opening the task, changing Placement and saving, four interactions against
+two.
+
+[FD] The move offers undo, like rescheduling and for the same reason. It makes
+the task vanish from the list it was taken on, so it answers the same way.
+
 ---
 
 # Checkbox

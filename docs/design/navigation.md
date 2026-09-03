@@ -70,7 +70,16 @@ Routes are names rather than positions:
     today  inbox  focus  upcoming  anytime  someday  logbook
 
 Anytime and Someday are two routes over one screen. They are the same query
-with one constant changed, and each route opens the screen on its own tab.
+with one constant changed, and the route decides which; nothing on screen
+switches between them.
+
+They used to share a tab row, on the reasoning that they are the pair a user
+flips between. They are not. Anytime is the undated backlog you pick work from
+and Someday is a list reviewed occasionally, so they are visited at completely
+different rates, which is the opposite of what tabs are for. The row also
+duplicated navigation that already existed, since More lists both as separate
+entries, and it renamed the screen when the tab changed. A tab that renames the
+page is a second destination wearing one.
 
 ---
 

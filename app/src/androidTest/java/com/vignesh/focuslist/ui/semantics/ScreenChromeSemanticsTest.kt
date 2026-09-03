@@ -116,7 +116,7 @@ class ScreenChromeSemanticsTest {
         emptyHeadline = "Nothing to pick up",
         emptySupporting = "Tasks you can do whenever land here."
     ) { viewModel ->
-        PlacementScreen(viewModel = viewModel, initialPlacement = TaskPlacement.ANYTIME)
+        PlacementScreen(viewModel = viewModel, placement = TaskPlacement.ANYTIME)
     }
 
     @Test
@@ -131,7 +131,7 @@ class ScreenChromeSemanticsTest {
         emptyHeadline = "Nothing parked",
         emptySupporting = "Ideas you are deliberately not doing yet land here."
     ) { viewModel ->
-        PlacementScreen(viewModel = viewModel, initialPlacement = TaskPlacement.SOMEDAY)
+        PlacementScreen(viewModel = viewModel, placement = TaskPlacement.SOMEDAY)
     }
 
     @Test

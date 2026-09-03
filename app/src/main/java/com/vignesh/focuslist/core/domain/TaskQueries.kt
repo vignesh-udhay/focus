@@ -208,9 +208,8 @@ fun upcomingSections(tasks: List<Task>, today: LocalDate): List<UpcomingSection>
  * Completed tasks are excluded, as in Upcoming. Inbox is a queue, and finishing
  * something is one of the ways it leaves.
  *
- * That makes this narrower than [anytimeTasks] and [somedayTasks], which read
- * placement alone. Those are buckets a task sits in; this is a queue it passes
- * through.
+ * [anytimeTasks] and [somedayTasks] apply the same rule, so the three of them
+ * partition the undated work between them and a task is in exactly one.
  *
  * Newest first, because capture comes in bursts and what was just written down
  * is what the user is still thinking about.
@@ -254,27 +253,32 @@ fun completedTasks(tasks: List<Task>): List<Task> =
         .sortedByDescending { task -> task.completedAt }
 
 /**
- * Everything sitting in [placement] and still outstanding.
+ * Everything sitting in [placement], still outstanding, and without a day.
  *
- * Reads placement alone, never scheduling. A task can be both Anytime and
- * scheduled for today, and it belongs in both lists: the two axes are
- * independent, so neither one removes a task from the other's view.
+ * The date rule is the same one Inbox applies, and applying it here is a
+ * reversal. These lists used to read placement alone, on the reasoning that
+ * placement and scheduling are independent axes and neither should remove a
+ * task from the other's view. What that produced was a task appearing in Today
+ * and in Anytime at once, and a Someday task scheduled for this afternoon,
+ * which is the list calling something deliberately deferred while the calendar
+ * calls it due.
+ *
+ * Giving a task a day is the decision these lists are waiting for. Once it has
+ * one it belongs to Today or Upcoming, so the three undated lists partition the
+ * rest between them and a task is in exactly one place.
  *
  * Completed tasks are excluded, as in Inbox and Upcoming. These are lists of
  * what could be picked up, and something finished cannot be.
  *
- * Ordered in two groups. Tasks with a day come first, nearest first, because a
- * date is the stronger commitment. Everything else follows, newest first, on
- * the same reasoning as Inbox. Within each group the order the query was given
- * is preserved, so nothing shuffles for equal dates or equal capture times.
+ * Newest first, on the same reasoning as Inbox. The two-group ordering that
+ * used to put dated tasks ahead of the rest went with the dated tasks.
  */
-private fun placementTasks(tasks: List<Task>, placement: TaskPlacement): List<Task> {
-    val (scheduled, unscheduled) = tasks
+private fun placementTasks(tasks: List<Task>, placement: TaskPlacement): List<Task> =
+    tasks
         .filter { task ->
-            !task.isDeleted && !task.isCompleted && task.placement == placement
+            !task.isDeleted &&
+                !task.isCompleted &&
+                task.placement == placement &&
+                task.scheduledDate == null
         }
-        .partition { task -> task.scheduledDate != null }
-
-    return scheduled.sortedBy { task -> task.scheduledDate } +
-        unscheduled.sortedByDescending { task -> task.createdAt }
-}
+        .sortedByDescending { task -> task.createdAt }

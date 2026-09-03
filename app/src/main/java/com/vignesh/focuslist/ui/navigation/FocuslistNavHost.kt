@@ -114,7 +114,7 @@ fun FocuslistNavHost(
             composable(FocuslistRoutes.ANYTIME) {
                 PlacementScreen(
                     viewModel = viewModel,
-                    initialPlacement = TaskPlacement.ANYTIME,
+                    placement = TaskPlacement.ANYTIME,
                     bottomBar = navigationBar
                 )
             }
@@ -122,7 +122,7 @@ fun FocuslistNavHost(
             composable(FocuslistRoutes.SOMEDAY) {
                 PlacementScreen(
                     viewModel = viewModel,
-                    initialPlacement = TaskPlacement.SOMEDAY,
+                    placement = TaskPlacement.SOMEDAY,
                     bottomBar = navigationBar
                 )
             }

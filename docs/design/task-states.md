@@ -32,23 +32,29 @@ intentionally unreachable. The other 24 are below.
 | Inbox | today | Today |
 | Inbox | future | Upcoming |
 | Anytime | none | Anytime |
-| Anytime | past | Anytime, and Today's overdue band |
-| Anytime | today | Anytime, and Today |
-| Anytime | future | Anytime, and Upcoming |
+| Anytime | past | Today, overdue band |
+| Anytime | today | Today |
+| Anytime | future | Upcoming |
 | Someday | none | Someday |
-| Someday | past | Someday, and Today's overdue band |
-| Someday | today | Someday, and Today |
-| Someday | future | Someday, and Upcoming |
+| Someday | past | Today, overdue band |
+| Someday | today | Today |
+| Someday | future | Upcoming |
 
-Two things are worth reading off this table.
+One thing is worth reading off this table: **every outstanding task is in
+exactly one list.** A day decides it. Without one, placement decides between
+Inbox, Anytime and Someday; with one, the day sends it to Today or Upcoming and
+placement stops mattering until the day is taken away again.
 
-A scheduled task appears in two places at once, and that is correct rather
-than a leak. Placement says how far a task has been triaged; scheduling says
-which day it is meant to be worked on. Neither hides the other.
+This is a reversal. Anytime and Someday used to read placement alone, so a
+scheduled task appeared in two lists at once, and the table above had "Anytime,
+and Today" in it four times. The reasoning was that placement and scheduling
+are independent axes and neither should hide the other, which is true of the
+data and wrong for the lists: it meant Anytime showed work already planned for
+today, and it meant a Someday task could be scheduled for this afternoon, the
+list calling something deliberately deferred while the calendar called it due.
 
-Inbox is the only list that requires an unscheduled task, because scheduling a
-task is one of the ways it leaves Inbox. An Inbox task with a date is found
-under Today or Upcoming instead, never nowhere.
+Giving a task a day is the decision the three undated lists are waiting for.
+Inbox already worked this way; the other two now match it.
 
 ---
 

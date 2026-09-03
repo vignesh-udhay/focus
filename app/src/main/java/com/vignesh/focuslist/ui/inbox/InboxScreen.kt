@@ -80,6 +80,7 @@ fun InboxScreen(
         onOpenTask = { id -> openTaskId = id },
         onDelete = viewModel::deleteTask,
         onReschedule = viewModel::rescheduleTask,
+        onMove = viewModel::moveTask,
         onAddTask = { isQuickAddVisible = true },
         modifier = modifier,
         snackbarHostState = snackbarHostState,
@@ -128,6 +129,7 @@ private fun InboxContent(
     onOpenTask: (String) -> Unit,
     onDelete: (String) -> Unit,
     onReschedule: (String, LocalDate?) -> Unit,
+    onMove: (String, TaskPlacement) -> Unit,
     onAddTask: () -> Unit,
     modifier: Modifier = Modifier,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
@@ -208,6 +210,7 @@ private fun InboxContent(
                         onOpen = { onOpenTask(task.id) },
                         onDelete = { onDelete(task.id) },
                         onReschedule = { date -> onReschedule(task.id, date) },
+                        onMove = { target -> onMove(task.id, target) },
                         // A task leaving the list when it is triaged or
                         // completed travels out rather than vanishing.
                         modifier = Modifier.animateItem(
@@ -269,6 +272,7 @@ private fun InboxScreenPreview() {
             onOpenTask = {},
             onDelete = {},
             onReschedule = { _, _ -> },
+            onMove = { _, _ -> },
             onAddTask = {}
         )
     }
@@ -286,6 +290,7 @@ private fun InboxScreenEmptyPreview() {
             onOpenTask = {},
             onDelete = {},
             onReschedule = { _, _ -> },
+            onMove = { _, _ -> },
             onAddTask = {}
         )
     }
@@ -302,6 +307,7 @@ private fun InboxScreenLargeFontPreview() {
             onOpenTask = {},
             onDelete = {},
             onReschedule = { _, _ -> },
+            onMove = { _, _ -> },
             onAddTask = {}
         )
     }

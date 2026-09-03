@@ -547,33 +547,52 @@ class TaskQueriesTest {
     }
 
     @Test
-    fun `anytime and someday read placement, not scheduling`() {
+    fun `anytime and someday hold undated work only`() {
         val tasks = listOf(
             task(id = "scheduled", placement = TaskPlacement.ANYTIME, scheduledDate = tomorrow),
             task(id = "unscheduled", placement = TaskPlacement.ANYTIME)
         )
 
-        // A day does not remove a task from its placement: the axes are independent.
-        assertEquals(listOf("scheduled", "unscheduled"), ids(anytimeTasks(tasks)))
+        // Giving a task a day is the decision these lists are waiting for.
+        assertEquals(listOf("unscheduled"), ids(anytimeTasks(tasks)))
     }
 
     @Test
-    fun `a scheduled anytime task appears in both today and anytime`() {
+    fun `a dated anytime task is in today and not in anytime`() {
         val scheduled = task(id = "a", placement = TaskPlacement.ANYTIME, scheduledDate = today)
         val tasks = listOf(scheduled)
 
-        // The one deliberate overlap between the lists.
+        // These used to overlap. A task sitting in Today and in Anytime at
+        // once meant the lists were not a partition and the task had no single
+        // home to be found in.
         assertEquals(listOf("a"), ids(todayTasks(tasks, today)))
-        assertEquals(listOf("a"), ids(anytimeTasks(tasks)))
+        assertEquals(emptyList<String>(), ids(anytimeTasks(tasks)))
     }
 
     @Test
-    fun `a scheduled someday task appears in both upcoming and someday`() {
+    fun `a dated someday task is in upcoming and not in someday`() {
         val scheduled = task(id = "a", placement = TaskPlacement.SOMEDAY, scheduledDate = tomorrow)
         val tasks = listOf(scheduled)
 
+        // The sharper half of the same problem: Someday means deliberately
+        // deferred, and a day on the task is the calendar calling it due.
         assertEquals(listOf("a"), ids(upcomingTasks(tasks, today)))
-        assertEquals(listOf("a"), ids(somedayTasks(tasks)))
+        assertEquals(emptyList<String>(), ids(somedayTasks(tasks)))
+    }
+
+    @Test
+    fun `the three undated lists partition the undated work`() {
+        val tasks = listOf(
+            task(id = "inbox", placement = TaskPlacement.INBOX),
+            task(id = "anytime", placement = TaskPlacement.ANYTIME),
+            task(id = "someday", placement = TaskPlacement.SOMEDAY),
+            task(id = "dated", placement = TaskPlacement.ANYTIME, scheduledDate = tomorrow)
+        )
+
+        // Every undated task in exactly one list, and the dated one in none.
+        assertEquals(listOf("inbox"), ids(inboxTasks(tasks)))
+        assertEquals(listOf("anytime"), ids(anytimeTasks(tasks)))
+        assertEquals(listOf("someday"), ids(somedayTasks(tasks)))
     }
 
     @Test
@@ -585,28 +604,6 @@ class TaskQueriesTest {
 
         assertEquals(emptyList<String>(), ids(anytimeTasks(tasks)))
         assertEquals(emptyList<String>(), ids(somedayTasks(tasks)))
-    }
-
-    @Test
-    fun `placement views put scheduled tasks before unscheduled ones`() {
-        val tasks = listOf(
-            task(id = "unscheduled", placement = TaskPlacement.ANYTIME),
-            task(id = "scheduled", placement = TaskPlacement.ANYTIME, scheduledDate = tomorrow)
-        )
-
-        assertEquals(listOf("scheduled", "unscheduled"), ids(anytimeTasks(tasks)))
-    }
-
-    @Test
-    fun `placement views order scheduled tasks nearest first`() {
-        val tasks = listOf(
-            task(id = "far", placement = TaskPlacement.ANYTIME, scheduledDate = today.plusDays(20)),
-            task(id = "past", placement = TaskPlacement.ANYTIME, scheduledDate = yesterday),
-            task(id = "near", placement = TaskPlacement.ANYTIME, scheduledDate = tomorrow)
-        )
-
-        // Overdue counts as nearest: it is the most committed of all.
-        assertEquals(listOf("past", "near", "far"), ids(anytimeTasks(tasks)))
     }
 
     @Test
@@ -629,17 +626,6 @@ class TaskQueriesTest {
     }
 
     @Test
-    fun `placement views keep input order for equal scheduled dates`() {
-        val tasks = listOf(
-            task(id = "c", placement = TaskPlacement.ANYTIME, scheduledDate = tomorrow),
-            task(id = "a", placement = TaskPlacement.ANYTIME, scheduledDate = tomorrow),
-            task(id = "b", placement = TaskPlacement.ANYTIME, scheduledDate = tomorrow)
-        )
-
-        assertEquals(listOf("c", "a", "b"), ids(anytimeTasks(tasks)))
-    }
-
-    @Test
     fun `placement views keep input order for equal creation times`() {
         val tasks = listOf(
             task(id = "c", placement = TaskPlacement.SOMEDAY),
@@ -651,29 +637,10 @@ class TaskQueriesTest {
     }
 
     @Test
-    fun `placement view ordering mixes both groups correctly`() {
-        val tasks = listOf(
-            task(id = "newCapture", placement = TaskPlacement.ANYTIME, createdAt = timestamp),
-            task(id = "far", placement = TaskPlacement.ANYTIME, scheduledDate = today.plusDays(9)),
-            task(
-                id = "oldCapture",
-                placement = TaskPlacement.ANYTIME,
-                createdAt = timestamp.minusSeconds(60)
-            ),
-            task(id = "near", placement = TaskPlacement.ANYTIME, scheduledDate = tomorrow)
-        )
-
-        assertEquals(
-            listOf("near", "far", "newCapture", "oldCapture"),
-            ids(anytimeTasks(tasks))
-        )
-    }
-
-    @Test
     fun `placement view ordering is idempotent`() {
         val tasks = listOf(
             task(id = "capture", placement = TaskPlacement.ANYTIME),
-            task(id = "scheduled", placement = TaskPlacement.ANYTIME, scheduledDate = tomorrow)
+            task(id = "older", placement = TaskPlacement.ANYTIME, createdAt = timestamp.minusSeconds(60))
         )
 
         val once = anytimeTasks(tasks)

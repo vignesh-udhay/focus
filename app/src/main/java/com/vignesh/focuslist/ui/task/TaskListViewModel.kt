@@ -66,6 +66,18 @@ sealed interface PendingUndo {
     data class Deletion(override val taskId: String) : PendingUndo
 
     /**
+     * A task that was just triaged into another bucket, and can be put back.
+     *
+     * [previousPlacement] is carried for the same reason [Reschedule] carries
+     * the day it left: the write destroys it, and undo has to know where the
+     * task came from rather than guess.
+     */
+    data class Move(
+        override val taskId: String,
+        val previousPlacement: TaskPlacement
+    ) : PendingUndo
+
+    /**
      * A task that was just moved to another day, and can be moved back.
      *
      * [previousDate] is carried because it is not recoverable from the task
@@ -623,6 +635,40 @@ class TaskListViewModel(
      * edit made in the meantime survives, exactly as undoing a completion
      * leaves everything but the completion alone.
      */
+    /**
+     * Triages [id] into [placement], offering a way back.
+     *
+     * The same shape as [rescheduleTask], and for the same reason: this is the
+     * other decision that makes a task vanish from the list it was taken on. A
+     * task moved out of the Inbox is gone from it the moment it is chosen, so
+     * it answers with an undo rather than a confirmation.
+     *
+     * A move to the bucket the task is already in changes nothing and offers
+     * nothing, so it raises no snackbar about a move that did not happen.
+     */
+    fun moveTask(id: String, placement: TaskPlacement) {
+        viewModelScope.launch {
+            val task = repository.observeTasks().first().firstOrNull { it.id == id } ?: return@launch
+            if (task.placement == placement) return@launch
+
+            repository.update(task.copy(placement = placement))
+            _pendingUndo.value = PendingUndo.Move(task.id, previousPlacement = task.placement)
+        }
+    }
+
+    /** Puts a triaged task back where it was. */
+    fun undoMove(id: String) {
+        val offer = _pendingUndo.value as? PendingUndo.Move ?: return
+        if (offer.taskId != id) return
+        if (!_pendingUndo.compareAndSet(expect = offer, update = null)) return
+
+        viewModelScope.launch {
+            val task = repository.observeTasks().first().firstOrNull { it.id == id } ?: return@launch
+
+            repository.update(task.copy(placement = offer.previousPlacement))
+        }
+    }
+
     fun undoReschedule(id: String) {
         val offer = _pendingUndo.value as? PendingUndo.Reschedule ?: return
         if (offer.taskId != id) return

@@ -36,6 +36,11 @@ fun UndoSnackbarEffect(
     val completedMessage = stringResource(R.string.task_completed)
     val deletedMessage = stringResource(R.string.task_deleted)
     val rescheduledMessage = stringResource(R.string.task_rescheduled)
+    // A separate key from the reschedule above even though the two read the
+    // same today. They are different sentences about different moves, and a
+    // language that distinguishes moving a task to a day from moving it to a
+    // list should not be forced to pick one wording for both.
+    val triagedMessage = stringResource(R.string.task_triaged)
     val undoLabel = stringResource(R.string.undo)
 
     LaunchedEffect(pendingUndo) {
@@ -46,6 +51,7 @@ fun UndoSnackbarEffect(
                 is PendingUndo.Completion -> completedMessage
                 is PendingUndo.Deletion -> deletedMessage
                 is PendingUndo.Reschedule -> rescheduledMessage
+                is PendingUndo.Move -> triagedMessage
             },
             actionLabel = undoLabel,
             // Short, which is four seconds against the long form's ten.
@@ -69,6 +75,7 @@ fun UndoSnackbarEffect(
                 is PendingUndo.Completion -> viewModel.undoComplete(offer.taskId)
                 is PendingUndo.Deletion -> viewModel.undoDelete(offer.taskId)
                 is PendingUndo.Reschedule -> viewModel.undoReschedule(offer.taskId)
+                is PendingUndo.Move -> viewModel.undoMove(offer.taskId)
             }
             // Let it pass and the action simply stands.
             SnackbarResult.Dismissed -> viewModel.dismissUndo(offer.taskId)

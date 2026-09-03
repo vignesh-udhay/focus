@@ -23,6 +23,7 @@ import androidx.compose.ui.res.stringResource
 import com.vignesh.focuslist.R
 import com.vignesh.focuslist.core.domain.Recurrence
 import com.vignesh.focuslist.core.domain.Task
+import com.vignesh.focuslist.core.domain.TaskPlacement
 import java.time.LocalDate
 
 /**
@@ -58,6 +59,12 @@ import java.time.LocalDate
  * three move actions off the menu, which is what the Logbook wants: a
  * completed task is a record of when the work was done, and moving it would be
  * rewriting that rather than planning anything.
+ * @param onMove triages this task into another bucket. Null, the default,
+ * leaves the two triage actions off the menu, which is what every dated list
+ * wants: Anytime and Someday hold undated work, so moving a task there while
+ * it keeps its day would file it somewhere it will not appear. Only the three
+ * undated lists offer it, and each offers the two buckets the task is not
+ * already in.
  * @param showDate whether the metadata line names the scheduled day. False on a
  * list whose section headings already do, so the row does not repeat it.
  */
@@ -73,6 +80,7 @@ internal fun TaskListRow(
     modifier: Modifier = Modifier,
     onFocus: (() -> Unit)? = null,
     onReschedule: ((LocalDate?) -> Unit)? = null,
+    onMove: ((TaskPlacement) -> Unit)? = null,
     showDate: Boolean = true
 ) {
     var areActionsVisible by remember { mutableStateOf(false) }
@@ -139,6 +147,30 @@ internal fun TaskListRow(
                                 isPickerOpen = true
                             }
                         )
+                    }
+
+                    if (onMove != null) {
+                        // The bucket the task is already in is left off, on
+                        // the same reasoning as the day it already sits on.
+                        if (task.placement != TaskPlacement.ANYTIME) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.task_move_anytime)) },
+                                onClick = {
+                                    areActionsVisible = false
+                                    onMove(TaskPlacement.ANYTIME)
+                                }
+                            )
+                        }
+
+                        if (task.placement != TaskPlacement.SOMEDAY) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.task_move_someday)) },
+                                onClick = {
+                                    areActionsVisible = false
+                                    onMove(TaskPlacement.SOMEDAY)
+                                }
+                            )
+                        }
                     }
 
                     if (onFocus != null) {
