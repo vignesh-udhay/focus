@@ -465,6 +465,15 @@ what is wrong. The confirming action is disabled while any field is invalid.
 
 [IMPL] `OutlinedTextField` throughout.
 
+[FD] A field's own controls go in its trailing slot, not beside it. The
+component centres trailing content on the input line, so it stays aligned at
+every font scale and does not move when supporting text appears. A clear button
+in a Row next to the field had to be aligned against a height that changes with
+both, and sat about 10dp high at 100% with no correction that survived 200%.
+
+[FD] Clear is an icon there rather than the word. Its content description names
+the field it clears, which three buttons all reading "Clear" never did.
+
 [FD] Every field carries a label. A field with a constrained format carries a
 placeholder showing the format. Errors use the Material error treatment plus
 supporting text; never colour alone.

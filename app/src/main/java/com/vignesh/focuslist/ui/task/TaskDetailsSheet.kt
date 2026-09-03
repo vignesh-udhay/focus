@@ -385,32 +385,31 @@ private fun SchedulePage(
         }
     }
 
-    Row(verticalAlignment = Alignment.Top) {
-        OutlinedTextField(
-            value = duration,
-            onValueChange = onDurationChange,
-            label = { Text(stringResource(R.string.task_details_duration_label)) },
-            suffix = { Text(stringResource(R.string.task_details_duration_suffix)) },
-            singleLine = true,
-            isError = !isDurationValid,
-            supportingText = if (isDurationValid) {
-                null
-            } else {
-                { Text(stringResource(R.string.task_details_duration_error)) }
-            },
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Number,
-                imeAction = ImeAction.Done
-            ),
-            modifier = Modifier.weight(1f)
-        )
-
-        ClearButton(
-            enabled = duration.isNotEmpty(),
-            description = stringResource(R.string.task_details_clear_duration),
-            onClick = { onDurationChange("") }
-        )
-    }
+    OutlinedTextField(
+        value = duration,
+        onValueChange = onDurationChange,
+        label = { Text(stringResource(R.string.task_details_duration_label)) },
+        suffix = { Text(stringResource(R.string.task_details_duration_suffix)) },
+        singleLine = true,
+        isError = !isDurationValid,
+        supportingText = if (isDurationValid) {
+            null
+        } else {
+            { Text(stringResource(R.string.task_details_duration_error)) }
+        },
+        trailingIcon = {
+            ClearButton(
+                enabled = duration.isNotEmpty(),
+                description = stringResource(R.string.task_details_clear_duration),
+                onClick = { onDurationChange("") }
+            )
+        },
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Number,
+            imeAction = ImeAction.Done
+        ),
+        modifier = Modifier.fillMaxWidth()
+    )
 
     RecurrenceField(recurrence = recurrence, onChange = onRecurrenceChange)
 
@@ -653,51 +652,56 @@ private fun DateField(
     Column(modifier) {
         FieldLabel(label)
 
-        Row(verticalAlignment = Alignment.Top) {
-            OutlinedTextField(
-                value = text,
-                onValueChange = onTextChange,
-                placeholder = {
-                    // The field itself is one line, but a placeholder is not
-                    // held to that, and this hint wraps to three at large font
-                    // scales, making an empty field taller than a filled one.
-                    Text(
-                        text = stringResource(R.string.task_details_date_hint),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                },
-                singleLine = true,
-                isError = parsed is ParsedDate.Unrecognized,
-                supportingText = when {
-                    parsed is ParsedDate.Unrecognized -> {
-                        { Text(errorText) }
-                    }
-                    // Spelled out, with the weekday, so a relative phrase can
-                    // be checked before it is saved.
-                    recognised != null -> {
-                        { Text(recognised.format(ResolvedDateFormatter)) }
-                    }
-                    else -> null
-                },
-                trailingIcon = {
-                    IconButton(onClick = { isPickerOpen = true }) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_today),
-                            contentDescription = stringResource(R.string.task_details_pick_date)
-                        )
-                    }
-                },
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                modifier = Modifier.weight(1f)
-            )
+        OutlinedTextField(
+            value = text,
+            onValueChange = onTextChange,
+            placeholder = {
+                // The field itself is one line, but a placeholder is not
+                // held to that, and this hint wraps to three at large font
+                // scales, making an empty field taller than a filled one.
+                Text(
+                    text = stringResource(R.string.task_details_date_hint),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            },
+            singleLine = true,
+            isError = parsed is ParsedDate.Unrecognized,
+            supportingText = when {
+                parsed is ParsedDate.Unrecognized -> {
+                    { Text(errorText) }
+                }
+                // Spelled out, with the weekday, so a relative phrase can
+                // be checked before it is saved.
+                recognised != null -> {
+                    { Text(recognised.format(ResolvedDateFormatter)) }
+                }
+                else -> null
+            },
+            // Both controls sit in the field rather than beside it. The
+            // component centres its trailing content on the input line, so
+            // they stay put at any font scale and do not move when the
+            // supporting line appears; a button in a Row outside had to be
+            // aligned against a height that changes with both.
+            trailingIcon = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                ClearButton(
+                    enabled = text.isNotEmpty(),
+                    description = clearDescription,
+                    onClick = { onTextChange("") }
+                )
 
-            ClearButton(
-                enabled = text.isNotEmpty(),
-                description = clearDescription,
-                onClick = { onTextChange("") }
-            )
-        }
+                IconButton(onClick = { isPickerOpen = true }) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_today),
+                        contentDescription = stringResource(R.string.task_details_pick_date)
+                    )
+                }
+            }
+            },
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 
     if (isPickerOpen) {
@@ -716,12 +720,18 @@ private fun ClearButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    TextButton(
+    // An icon rather than the word, because it lives in the field's trailing
+    // slot now. The description carries the meaning a label used to, and says
+    // which field it clears, which "Clear" three times over never did.
+    IconButton(
         onClick = onClick,
         enabled = enabled,
-        modifier = modifier.semantics { contentDescription = description }
+        modifier = modifier
     ) {
-        Text(stringResource(R.string.task_details_clear))
+        Icon(
+            painter = painterResource(R.drawable.ic_close),
+            contentDescription = description
+        )
     }
 }
 
