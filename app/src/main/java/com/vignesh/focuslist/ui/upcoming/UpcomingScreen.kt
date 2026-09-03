@@ -31,10 +31,13 @@ import com.vignesh.focuslist.core.design.FocuslistSpacing
 import com.vignesh.focuslist.core.design.focuslistContentGutter
 import com.vignesh.focuslist.core.domain.Task
 import com.vignesh.focuslist.core.domain.TaskPlacement
+import com.vignesh.focuslist.core.domain.upcomingSections
 import com.vignesh.focuslist.core.domain.upcomingTasks
 import com.vignesh.focuslist.ui.component.FocuslistTopAppBar
 import com.vignesh.focuslist.ui.component.TaskListEmptyState
+import com.vignesh.focuslist.ui.component.SectionLabel
 import com.vignesh.focuslist.ui.component.TaskListRow
+import com.vignesh.focuslist.ui.component.sectionDateLabel
 import com.vignesh.focuslist.ui.component.UndoSnackbarHost
 import com.vignesh.focuslist.ui.task.TaskDetailsSheetHost
 import com.vignesh.focuslist.ui.task.TaskListViewModel
@@ -116,6 +119,10 @@ private fun UpcomingContent(
         containerColor = MaterialTheme.colorScheme.surfaceContainer
     )
 
+    // The days upcomingTasks already ordered the list into. Read here rather
+    // than re-derived, so the ordering stays owned by TaskQueries.
+    val sections = upcomingSections(tasks, today)
+
     val gutter = focuslistContentGutter()
 
     Scaffold(
@@ -163,24 +170,42 @@ private fun UpcomingContent(
                 ),
                 verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
             ) {
-                itemsIndexed(tasks, key = { _, task -> task.id }) { index, task ->
-                    TaskListRow(
-                        task = task,
-                        today = today,
-                        shapes = ListItemDefaults.segmentedShapes(
-                            index = index,
-                            count = tasks.size
-                        ),
-                        colors = taskColors,
-                        onToggleComplete = { onToggleComplete(task.id) },
-                        onOpen = { onOpenTask(task.id) },
-                        onDelete = { onDelete(task.id) },
-                        onReschedule = { date -> onReschedule(task.id, date) },
-                        // A task completed here leaves the list by travelling out of it.
-                        modifier = Modifier.animateItem(
-                            placementSpec = FocuslistMotion.listChange()
+                sections.forEach { section ->
+                    item(key = "label-" + section.date) {
+                        SectionLabel(
+                            text = sectionDateLabel(section.date, today),
+                            modifier = Modifier.animateItem(
+                                placementSpec = FocuslistMotion.listChange()
+                            )
                         )
-                    )
+                    }
+
+                    itemsIndexed(
+                        items = section.tasks,
+                        key = { _, task -> task.id }
+                    ) { index, task ->
+                        TaskListRow(
+                            task = task,
+                            today = today,
+                            // Each day rounds its own corners, so a section
+                            // reads as one collection rather than a slice of a
+                            // longer one.
+                            shapes = ListItemDefaults.segmentedShapes(
+                                index = index,
+                                count = section.tasks.size
+                            ),
+                            colors = taskColors,
+                            onToggleComplete = { onToggleComplete(task.id) },
+                            onOpen = { onOpenTask(task.id) },
+                            onDelete = { onDelete(task.id) },
+                            onReschedule = { date -> onReschedule(task.id, date) },
+                            // The heading above already names the day.
+                            showDate = false,
+                            modifier = Modifier.animateItem(
+                                placementSpec = FocuslistMotion.listChange()
+                            )
+                        )
+                    }
                 }
             }
         }

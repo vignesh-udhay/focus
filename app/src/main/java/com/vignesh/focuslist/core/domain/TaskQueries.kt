@@ -167,6 +167,36 @@ fun upcomingTasks(tasks: List<Task>, today: LocalDate): List<Task> =
         // Every task here has a scheduled date; the filter saw to that.
         .sortedBy { task -> task.scheduledDate }
 
+/** One scheduled day and the tasks on it, in the order [upcomingTasks] gave them. */
+data class UpcomingSection(val date: LocalDate, val tasks: List<Task>)
+
+/**
+ * [upcomingTasks], split where the scheduled day changes.
+ *
+ * A reading of the existing order rather than a second sort. [upcomingTasks]
+ * already sorts by date, so this walks the result once and cuts where the day
+ * changes; concatenating the sections returns exactly what it returned.
+ *
+ * The same shape as [todaySections], and for the same reason: the ordering is
+ * owned here, and a screen that re-derived it would be free to disagree.
+ */
+fun upcomingSections(tasks: List<Task>, today: LocalDate): List<UpcomingSection> =
+    upcomingTasks(tasks, today)
+        .fold(mutableListOf<Pair<LocalDate, MutableList<Task>>>()) { sections, task ->
+            // Every task here has a scheduled date; upcomingTasks saw to that.
+            val date = task.scheduledDate!!
+            val current = sections.lastOrNull()
+
+            if (current != null && current.first == date) {
+                current.second += task
+            } else {
+                sections += date to mutableListOf(task)
+            }
+
+            sections
+        }
+        .map { (date, tasks) -> UpcomingSection(date, tasks) }
+
 /**
  * Captured but not yet triaged: the queue to empty.
  *

@@ -51,6 +51,7 @@ import com.vignesh.focuslist.ui.component.AddTaskFab
 import com.vignesh.focuslist.ui.component.DurationLabel
 import com.vignesh.focuslist.ui.component.FocuslistTopAppBar
 import com.vignesh.focuslist.ui.component.TaskListEmptyState
+import com.vignesh.focuslist.ui.component.SectionLabel
 import com.vignesh.focuslist.ui.component.TaskListRow
 import com.vignesh.focuslist.ui.component.durationLabel
 import com.vignesh.focuslist.ui.component.UndoSnackbarHost
@@ -403,33 +404,6 @@ private fun rememberSubtitleDateFormat(): DateTimeFormatter {
 /** Weekday, month, day: the three fields the subtitle shows. */
 private const val SubtitleDateSkeleton = "EEEMMMd"
 
-
-/**
- * A band's name, above the tasks in it.
- *
- * Deliberately slight: a line of label text and nothing else. No divider, no
- * container, no count, not collapsible. It exists to explain an order the list
- * already had, not to turn Today into a dashboard.
- *
- * The first band carries no label. At the top of the Today screen, "today's
- * work" needs no announcement.
- */
-@Composable
-private fun SectionLabel(text: String, modifier: Modifier = Modifier) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        // No start inset. The label belongs to the collection beneath it, so it
-        // begins where those cards begin. An inset of its own put it 12dp
-        // inboard of the cards and ~66dp outboard of the row titles, which is
-        // to say aligned with nothing on the screen.
-        modifier = modifier.padding(
-            top = FocuslistSpacing.lg,
-            bottom = FocuslistSpacing.xs
-        )
-    )
-}
 
 /** What a band is called, or null for the band that begins the screen. */
 private val TodaySection.labelRes: Int?

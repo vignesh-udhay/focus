@@ -348,11 +348,23 @@ congratulates the user or decorates the absence.
 
 # Section labels
 
-[FD] New with the Today redesign. `labelLarge` in `onSurfaceVariant`, above the
-group it names, with `md` beneath it and `lg` above it.
+[IMPL] One `SectionLabel`, shared. `labelLarge` in `onSurfaceVariant`, above the
+group it names, with `md` beneath it and `lg` above it. Today names bands,
+Upcoming names days, and both are the same kind of heading over the same kind of
+collection, so they cannot be allowed to drift.
+
+[FD] Sentence case, everywhere. The design draws Today's bands in capitals and
+Upcoming's dates in sentence case; one of the two had to give, and shouting a
+word the user is not reading is the one worth losing.
 
 [FD] A label is a label and nothing more: no divider, no background, no
 container, no chevron, no count badge, not collapsible.
+
+[FD] Where a heading names a day, the rows beneath it do not. Upcoming groups by
+date, so its rows drop the date from their metadata and show the duration and
+the recurrence instead; repeating the day on every row would say the same thing
+twice and spend width the rest of the line needs. `TaskListRow` takes
+`showDate` for this, defaulting to true, because every other list wants it.
 
 ---
 
