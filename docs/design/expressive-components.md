@@ -520,15 +520,26 @@ it; see "Becoming the session" in `focus.md`.
 | Task title | `headlineMediumEmphasized`, `onSurface`, centred, heading semantics |
 | Estimate | `bodyLarge`, `onSurface`, centred, under the title, omitted when absent |
 | Start | the action slot: `primary` container, `onPrimary` label |
-| Complete | `TextButton`, at the foot of the screen |
+| Complete | `TextButton`, directly under the action slot |
 | Top app bar | absent |
 | Everything else | absent |
 
 [FD] Two actions rather than one, and the weights say which is which. Starting
-is the constructive act and takes the slot in the middle of the screen;
-completing without a session is the shortcut and is text at the foot. An
-earlier version put both in the middle, where the second competed with the one
-the screen is for.
+is the constructive act and takes the slot; completing without a session is the
+shortcut and is text beneath it. An earlier version put both in the slot, where
+the second competed with the one the screen is for; a later one put the
+shortcut at the foot of the screen, where it was orphaned against the
+navigation bar and a long way from the task it applied to.
+
+[IMPL] The shortcut is always composed and faded rather than swapped in and
+out, so the height it occupies is identical at every font scale and nothing
+above it shifts when the session takes it away. Its semantics are cleared while
+it is invisible, so a screen reader is not offered a control that is not there.
+
+[IMPL] It sits outside the box that draws the container, not inside it. Inside,
+it displaced the action slot upward while the container's rectangle went on
+being computed as the bottom of that box; the two came apart and every label
+ended up drawn on the wrong background.
 
 [IMPL] Start's own container is transparent. The fill behind it is the drawn
 container, because that is the thing that grows away when the session begins,
@@ -561,9 +572,19 @@ inside.
 
 ## The foot of the screen
 
-[FD] One slot again, and each state uses it for its own thing: Ready for the
-Complete shortcut, Session for the peek at what follows. Sharing it means
-swapping one for the other moves nothing above them.
+[FD] The peek at what follows, and nothing else. It is Session's alone; Ready
+leaves it empty. It keeps its space when nothing follows, so the last task of a
+session does not move the screen.
+
+## Appearing and disappearing
+
+[FD] Everything that comes and goes across the transform is driven off the
+container's travel rather than given an animation of its own, and the swap is a
+fade-through rather than a cross-fade: the outgoing label is gone before the
+incoming one appears. `focus.md` records why both, under "Becoming the
+session". The short version is that a cross-fade on an effects spec settles far
+faster than the container moves, which left labels drawn on backgrounds that
+had already gone.
 
 ## Both
 

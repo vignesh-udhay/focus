@@ -12,13 +12,14 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -49,6 +50,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Rect
@@ -58,13 +60,16 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import androidx.compose.ui.util.lerp
@@ -196,7 +201,27 @@ private fun FocusContent(
         // composable scope. An effects spec, because a fade changes no bounds.
         val fadeSpec = FocuslistMotion.stateColor<Float>()
 
-        Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
+        // The bottom inset is deliberately not applied here, and this is the
+        // whole of what keeps the task still. Session takes the navigation bar
+        // away, so the Scaffold hands back a content area that is suddenly a
+        // bar taller; anything centred in it drops by half a bar the instant
+        // Start is pressed. Measured on the emulator, the title fell 42dp.
+        //
+        // Centring against a region that ignores the bottom therefore gives
+        // both states the same middle. The footer is the only thing that
+        // actually needs the inset, and it is given it directly.
+        val layoutDirection = LocalLayoutDirection.current
+        val bottomInset = innerPadding.calculateBottomPadding()
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(
+                    start = innerPadding.calculateStartPadding(layoutDirection),
+                    end = innerPadding.calculateEndPadding(layoutDirection),
+                    top = innerPadding.calculateTopPadding()
+                )
+        ) {
             AnimatedContent(
                 targetState = task,
                 contentKey = { it == null },
@@ -229,6 +254,7 @@ private fun FocusContent(
                         nextTask = nextTask,
                         startedAt = startedAt,
                         animate = animate,
+                        bottomInset = bottomInset,
                         onStart = onStart,
                         onStop = onStop,
                         onComplete = { onComplete(current.id) }
@@ -257,6 +283,7 @@ private fun FocusTask(
     nextTask: Task?,
     startedAt: Instant?,
     animate: Boolean,
+    bottomInset: Dp,
     onStart: () -> Unit,
     onStop: () -> Unit,
     onComplete: () -> Unit
@@ -264,20 +291,36 @@ private fun FocusTask(
     val isSessionActive = startedAt != null
 
     if (isSessionActive) {
-        AskToNotifyOnce(hasEstimate = task.estimatedDurationMinutes != null)
         TrackSessionVisibility()
     }
 
     // How far the button has become the shape. Spatial, because bounds are
     // exactly what change, and the slow spec because this is the user settling
     // into a task rather than passing through.
-    val target = if (isSessionActive) 1f else 0f
-    val animated by animateFloatAsState(
-        targetValue = target,
-        animationSpec = FocuslistMotion.focusSession(),
-        label = "focus expansion"
+    //
+    // An `Animatable` rather than `animateFloatAsState`, because one thing on
+    // this screen needs to know not just where the transform is but whether it
+    // has finished: the permission prompt waits for it.
+    val expansionSpec = FocuslistMotion.focusSession<Float>()
+    val expansionAnim = remember { Animatable(if (isSessionActive) 1f else 0f) }
+
+    LaunchedEffect(isSessionActive, animate) {
+        val target = if (isSessionActive) 1f else 0f
+        if (animate) expansionAnim.animateTo(target, expansionSpec)
+        else expansionAnim.snapTo(target)
+    }
+
+    val expansion = expansionAnim.value
+
+    // Asked once the shape has arrived, never while it is still travelling.
+    // The permission dialog is a system window and it opens over whatever is
+    // on screen, so requesting it as the session composes meant the very first
+    // Start a user ever pressed had its transform covered by a prompt. Nobody
+    // saw the animation on the run that matters most.
+    AskToNotifyOnce(
+        hasEstimate = task.estimatedDurationMinutes != null,
+        enabled = isSessionActive && !expansionAnim.isRunning
     )
-    val expansion = if (animate) animated else target
 
     // Where the session has got to. Not a transition, and so not governed by
     // the reduced-motion setting: it is a value derived from the clock.
@@ -335,7 +378,6 @@ private fun FocusTask(
             containerColor = containerColor,
             titleColor = titleColor,
             isSessionActive = isSessionActive,
-            animate = animate,
             onStart = onStart,
             onComplete = onComplete,
             modifier = Modifier
@@ -344,20 +386,18 @@ private fun FocusTask(
                 .padding(horizontal = FocuslistSpacing.lg)
         )
 
-        // The bottom line belongs to whichever state is showing. In Ready it
-        // is the shortcut for a task that turns out to be already done; in
-        // Session it is the peek at what follows. They share a slot so that
-        // swapping one for the other moves nothing above them.
+        // The foot of the screen is only ever the peek at what follows. It
+        // used to double as Ready's Complete shortcut, which gave one position
+        // two grammars: an action in one state and unreadable information in
+        // the other, ninety density pixels from anything it related to.
         FocusFooter(
-            isSessionActive = isSessionActive,
             nextTask = nextTask,
-            animate = animate,
-            onComplete = onComplete,
+            expansion = expansion,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .padding(horizontal = FocuslistSpacing.lg)
-                .padding(bottom = FocuslistSpacing.lg)
+                .padding(bottom = bottomInset + FocuslistSpacing.lg)
         )
     }
 }
@@ -385,7 +425,6 @@ private fun FocusShape(
     containerColor: Color,
     titleColor: Color,
     isSessionActive: Boolean,
-    animate: Boolean,
     onStart: () -> Unit,
     onComplete: () -> Unit,
     modifier: Modifier = Modifier
@@ -402,90 +441,131 @@ private fun FocusShape(
     val sessionMorph = remember { Morph(MaterialShapes.Circle, MaterialShapes.Clover4Leaf) }
     val path = remember { Path() }
 
-    // Hoisted, because transitionSpec below is not a composable scope.
-    val fadeSpec = FocuslistMotion.stateColor<Float>()
+    // Everything that appears and disappears here is driven off the container's
+    // own travel rather than given an animation of its own. A cross-fade on an
+    // effects spec settles eight times stiffer than the container moves, so the
+    // labels finished swapping while the container was barely underway: "Start"
+    // was left drawn on the page it had been lifted off, in the `onPrimary` its
+    // vanished container called for, which in a light theme is white on white.
+    val shade = expansion().coerceIn(0f, 1f)
 
     BoxWithConstraints(modifier = modifier.wrapContentSize()) {
         // Capped, so a tablet gets a shape and not a billboard, and bounded by
         // the window so a narrow phone is not overflowed.
         val side = min(maxWidth, SessionShapeMaxSize)
 
-        Box(
-            modifier = Modifier
-                .width(side)
-                .height(side + FocuslistSpacing.lg + ActionSlotHeight)
-                .drawBehind {
-                    val ready = Rect(
-                        left = (size.width - ActionSlotWidth.toPx()) / 2f,
-                        top = size.height - ActionSlotHeight.toPx(),
-                        right = (size.width + ActionSlotWidth.toPx()) / 2f,
-                        bottom = size.height
-                    )
-                    val session = Rect(0f, 0f, size.width, size.width)
+        // The shortcut sits outside the drawn box on purpose. Inside it, it
+        // displaced the action slot upward while the container's own rectangle
+        // went on being computed as the bottom of the box, so the two came
+        // apart and every label was left drawn on the wrong background.
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(
+                modifier = Modifier
+                    .width(side)
+                    .height(side + FocuslistSpacing.lg + ActionSlotHeight)
+                    .drawBehind {
+                        val ready = Rect(
+                            left = (size.width - ActionSlotWidth.toPx()) / 2f,
+                            top = size.height - ActionSlotHeight.toPx(),
+                            right = (size.width + ActionSlotWidth.toPx()) / 2f,
+                            bottom = size.height
+                        )
+                        val session = Rect(0f, 0f, size.width, size.width)
 
-                    drawFocusContainer(
-                        expansion = expansion(),
-                        progress = progress(),
-                        sessionMorph = sessionMorph,
-                        path = path,
-                        color = containerColor,
-                        ready = ready,
-                        session = session
+                        drawFocusContainer(
+                            expansion = expansion(),
+                            progress = progress(),
+                            sessionMorph = sessionMorph,
+                            path = path,
+                            color = containerColor,
+                            ready = ready,
+                            session = session
+                        )
+                    }
+            ) {
+                Box(
+                    modifier = Modifier.align(Alignment.TopCenter).size(side),
+                    contentAlignment = Alignment.Center
+                ) {
+                    FocusTaskTitle(
+                        task = task,
+                        color = titleColor,
+                        modifier = Modifier.padding(FocuslistSpacing.lg)
                     )
                 }
-        ) {
-            Box(
-                modifier = Modifier.align(Alignment.TopCenter).size(side),
-                contentAlignment = Alignment.Center
-            ) {
-                FocusTaskTitle(
-                    task = task,
-                    color = titleColor,
-                    modifier = Modifier.padding(FocuslistSpacing.lg)
-                )
+
+                // Start becomes the shape, so what sits in this slot afterwards
+                // is the action the session is for. The slot itself never moves,
+                // and it is exactly the rectangle the container starts from.
+                Box(
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (leavingAlpha(shade) > 0f) {
+                        FocusAction(
+                            label = stringResource(R.string.focus_start),
+                            onClick = onStart,
+                            alpha = leavingAlpha(shade),
+                            // Transparent, because the fill under this button is
+                            // the drawn container: it is the thing that will grow
+                            // away, and a second container painted on top of it
+                            // would stay behind and give the trick away.
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.Transparent,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            )
+                        )
+                    }
+
+                    if (arrivingAlpha(shade) > 0f) {
+                        FocusAction(
+                            label = stringResource(R.string.focus_complete),
+                            onClick = onComplete,
+                            alpha = arrivingAlpha(shade),
+                            // The session draws its own container here. The shape
+                            // has taken the drawn one up the screen with it.
+                            colors = ButtonDefaults.buttonColors()
+                        )
+                    }
+                }
             }
 
-            // Start becomes the shape, so what sits in this slot afterwards is
-            // the action the session is for. The slot itself never moves.
-            AnimatedContent(
-                targetState = isSessionActive,
-                transitionSpec = {
-                    if (!animate) {
-                        EnterTransition.None togetherWith ExitTransition.None
-                    } else {
-                        fadeIn(animationSpec = fadeSpec) togetherWith
-                            fadeOut(animationSpec = fadeSpec)
-                    }
-                },
-                modifier = Modifier.align(Alignment.BottomCenter),
-                label = "focus action"
-            ) { inSession ->
-                if (inSession) {
-                    FocusAction(
-                        label = stringResource(R.string.focus_complete),
-                        onClick = onComplete,
-                        // The session draws its own container here. The shape
-                        // has taken the drawn one up the screen with it.
-                        colors = ButtonDefaults.buttonColors()
+            // Ready's shortcut, directly under the control it qualifies. Always
+            // composed rather than swapped in and out, so the height it occupies
+            // is the same at every font scale and nothing above it shifts when the
+            // session takes it away.
+            TextButton(
+                onClick = { if (!isSessionActive) onComplete() },
+                modifier = Modifier
+                    .padding(top = FocuslistSpacing.xs)
+                    .alpha(leavingAlpha(shade))
+                    .then(
+                        if (isSessionActive) Modifier.clearAndSetSemantics {} else Modifier
                     )
-                } else {
-                    FocusAction(
-                        label = stringResource(R.string.focus_start),
-                        onClick = onStart,
-                        // Transparent, because the fill under this button is
-                        // the drawn container: it is the thing that will grow
-                        // away, and a second container painted on top of it
-                        // would stay behind and give the trick away.
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.Transparent,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        )
-                    )
-                }
+            ) {
+                Text(stringResource(R.string.focus_complete))
             }
         }
     }
 }
+
+/**
+ * Material's fade-through, expressed against the container's travel.
+ *
+ * The outgoing label is gone before the incoming one appears, rather than the
+ * two of them sitting on top of each other at half opacity each, which is what
+ * a cross-fade does and which read as neither word. Material splits the two
+ * halves at thirty percent, and thirty percent of this particular transform is
+ * also about as far as the container can move while still covering the slot it
+ * started in, so the label never outlives its own background.
+ */
+private fun leavingAlpha(fraction: Float): Float =
+    (1f - fraction / FadeThroughSplit).coerceIn(0f, 1f)
+
+private fun arrivingAlpha(fraction: Float): Float =
+    ((fraction - FadeThroughSplit) / (1f - FadeThroughSplit)).coerceIn(0f, 1f)
+
+private const val FadeThroughSplit = 0.3f
 
 /**
  * The one control in the action slot, at Material's medium button size.
@@ -498,6 +578,7 @@ private fun FocusShape(
 private fun FocusAction(
     label: String,
     onClick: () -> Unit,
+    alpha: Float,
     colors: androidx.compose.material3.ButtonColors
 ) {
     Button(
@@ -505,73 +586,47 @@ private fun FocusAction(
         colors = colors,
         shape = CircleShape,
         contentPadding = ButtonDefaults.contentPaddingFor(ActionSlotHeight),
-        modifier = Modifier.size(width = ActionSlotWidth, height = ActionSlotHeight)
+        modifier = Modifier
+            .size(width = ActionSlotWidth, height = ActionSlotHeight)
+            .alpha(alpha)
     ) {
         Text(text = label, style = ButtonDefaults.textStyleFor(ActionSlotHeight))
     }
 }
 
 /**
- * The line at the foot of the screen, which each state uses for its own thing.
+ * The line at the foot of the screen: what follows the task being worked on.
  *
- * Ready puts the shortcut here: a task can turn out to be already done, or to
- * take ten seconds, and making the user enter a session to tick it off would
- * be ceremony for its own sake. It is quiet, because starting is the
- * constructive act and completing without starting is the exception.
+ * A peek and not a picker. It cannot be tapped, scrolled or chosen from,
+ * because deciding belongs to Today and a control that let the user swap tasks
+ * here would import the deciding back into the mode.
  *
- * Session puts the peek at what follows here. It is a peek and not a picker:
- * it cannot be tapped, scrolled or chosen from, because deciding belongs to
- * Today and a control that let the user swap tasks here would import the
- * deciding back into the mode.
+ * It appears on the container's travel rather than on a fade of its own, for
+ * the same reason the labels do, and it keeps its space when nothing follows so
+ * that the last task of a session does not move the screen.
  */
 @Composable
 private fun FocusFooter(
-    isSessionActive: Boolean,
     nextTask: Task?,
-    animate: Boolean,
-    onComplete: () -> Unit,
+    expansion: Float,
     modifier: Modifier = Modifier
 ) {
-    // Hoisted, because transitionSpec below is not a composable scope.
-    val fadeSpec = FocuslistMotion.stateColor<Float>()
-
-    AnimatedContent(
-        targetState = isSessionActive,
-        transitionSpec = {
-            if (!animate) {
-                EnterTransition.None togetherWith ExitTransition.None
-            } else {
-                fadeIn(animationSpec = fadeSpec) togetherWith
-                    fadeOut(animationSpec = fadeSpec)
-            }
-        },
-        modifier = modifier,
-        contentAlignment = Alignment.Center,
-        label = "focus footer"
-    ) { inSession ->
-        if (inSession) {
-            if (nextTask != null) {
-                Text(
-                    text = stringResource(R.string.focus_next, nextTask.title),
-                    style = MaterialTheme.typography.bodyMedium,
-                    // Dimmed rather than blurred: Modifier.blur needs API 31
-                    // and the app supports 29, so the effect that works
-                    // everywhere is the one that carries the meaning.
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            } else {
-                // Nothing follows. The slot stays rather than collapsing, so
-                // the last task of a session does not move the screen.
-                Box(Modifier.fillMaxWidth())
-            }
-        } else {
-            TextButton(onClick = onComplete) {
-                Text(stringResource(R.string.focus_complete))
-            }
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        if (nextTask != null) {
+            Text(
+                text = stringResource(R.string.focus_next, nextTask.title),
+                style = MaterialTheme.typography.bodyMedium,
+                // Dimmed rather than blurred: Modifier.blur needs API 31 and
+                // the app supports 29, so the effect that works everywhere is
+                // the one that carries the meaning.
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .alpha(arrivingAlpha(expansion.coerceIn(0f, 1f)))
+            )
         }
     }
 }
@@ -748,9 +803,16 @@ private fun TrackSessionVisibility() {
  *
  * Refusal costs nothing on screen. The shape still shows progress; the user
  * simply is not told when they are elsewhere, which is what they said.
+ *
+ * [enabled] is what holds it back until the session has actually arrived. The
+ * dialog is a system window drawn over everything, and asking as the session
+ * composed put it on top of the container transform every time: the first
+ * Start a user ever pressed was the one run of the animation they never got to
+ * see. Waiting costs nothing, because the moment being announced is minutes
+ * away.
  */
 @Composable
-private fun AskToNotifyOnce(hasEstimate: Boolean) {
+private fun AskToNotifyOnce(hasEstimate: Boolean, enabled: Boolean) {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
 
     val context = LocalContext.current
@@ -760,8 +822,8 @@ private fun AskToNotifyOnce(hasEstimate: Boolean) {
         ActivityResultContracts.RequestPermission()
     ) { asked = true }
 
-    LaunchedEffect(hasEstimate, asked) {
-        if (!asked && hasEstimate && !context.canPostNotifications()) {
+    LaunchedEffect(enabled, hasEstimate, asked) {
+        if (enabled && !asked && hasEstimate && !context.canPostNotifications()) {
             asked = true
             request.launch(Manifest.permission.POST_NOTIFICATIONS)
         }

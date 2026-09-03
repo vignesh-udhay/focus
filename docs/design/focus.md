@@ -52,12 +52,20 @@ from that; see "Becoming the session" below.
 
 Complete stays available without entering a session. A task can turn out to be
 already done, or to take ten seconds, and making the user start and stop a
-session to tick it off would be ceremony for its own sake. It sits at the foot
-of the screen and it is quiet, because starting is the constructive act and
+session to tick it off would be ceremony for its own sake. It sits directly
+under Start and it is quiet, because starting is the constructive act and
 completing without starting is the exception. That is a change of weight, not
 of availability: an earlier version of this document gave the two actions equal
 standing in the middle of the screen, and the second control competed with the
 one the screen is for.
+
+Directly under Start, and not at the foot of the screen, which is where it was
+first put so that nothing would move when the session took it away. That was
+the wrong thing to optimise for. It left the control orphaned against the
+navigation bar with a large void between it and the task it applied to, and it
+gave one position two grammars, since the foot of the screen is an action in
+Ready and unreadable information in Session. Reserving its height in both
+states keeps the layout still without either cost.
 
 There is no top app bar, in either state. Every other screen is a list and
 wears its name; this one shows a single task, the navigation bar already says
@@ -102,6 +110,30 @@ spatial spec the bounds are travelling on: the container turned pale while it
 was visibly still the button, and read as two things rather than one. Making
 the colour a function of how far the shape has grown means there is only one
 animation, and the two cannot come apart.
+
+The task holding still is not free, and the thing that threatened it was not
+the transform. Session takes the navigation bar away, so the Scaffold hands
+back a content area a whole bar taller, and anything centred in it drops by
+half a bar the instant Start is pressed. Measured on the emulator, the title
+fell 42dp: the shape grew around words that were themselves sliding down the
+screen. The centred region therefore ignores the bottom inset, so both states
+share a middle, and the footer is handed the inset directly since it is the
+only thing that needs it.
+
+Everything that appears and disappears during the transform is driven off the
+container's own travel rather than given an animation of its own. This is not
+tidiness: a cross-fade on an effects spec settles roughly eight times stiffer
+than the container moves, so the labels finished swapping while the container
+was barely underway, and "Start" was left drawn on the page it had just been
+lifted off, in the `onPrimary` its vanished container called for. In a light
+theme that is white on white.
+
+The swap is a fade-through rather than a cross-fade: the outgoing label is gone
+before the incoming one appears, instead of the two sitting on top of each
+other at half opacity, which read as neither word. Material splits the two
+halves at thirty percent, and thirty percent of this particular transform is
+also about as far as the container can travel while still covering the slot it
+started in, so a label never outlives its own background.
 
 Under reduced motion none of this plays. The two states swap, which is what a
 request for stillness asks for, and nothing is withheld: both states say
@@ -486,6 +518,12 @@ to leave.
 that has an estimate, and never at launch. That is the first moment the app has
 anything to notify about, which is the only context in which the question can
 be answered well.
+
+It waits for the shape to arrive before it asks. The dialog is a system window
+drawn over everything, so requesting it as the session composed put it on top
+of the container transform every single time: the first Start a user ever
+pressed was the one run of the animation they were guaranteed not to see.
+Waiting costs nothing, because the moment being announced is minutes away.
 
 Refusal costs nothing on screen. The shape still shows progress; the user is
 simply not told when they are elsewhere, which is what they said.
