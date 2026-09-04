@@ -103,8 +103,7 @@ fun TodayScreen(
         // deciding already done; asking the user to confirm it with a second
         // tap would be the friction Quick Add was just cleared of.
         onFocusTask = { id ->
-            viewModel.focusTask(id)
-            viewModel.startFocusSession()
+            viewModel.beginFocus(id)
             onOpenFocus()
         },
         onAddTask = { isQuickAddVisible = true },

@@ -69,7 +69,7 @@ class NavigationSemanticsTest {
 
         rule.onNode(hasText(INBOX) and isSelectable()).assertIsSelected()
         rule.onNode(hasText(TODAY) and isSelectable()).assertIsNotSelected()
-        rule.onNode(hasText(FOCUS) and isSelectable()).assertIsNotSelected()
+        rule.onNode(hasText(TODAY) and isSelectable()).assertIsNotSelected()
         rule.onNode(hasText(MORE) and isSelectable()).assertIsNotSelected()
     }
 
@@ -101,9 +101,9 @@ class NavigationSemanticsTest {
         val opened = mutableListOf<String>()
         setBar(fontScale, onOpenTopLevel = { route -> opened += route })
 
-        rule.onNode(hasText(FOCUS) and isSelectable()).performClick()
+        rule.onNode(hasText(INBOX) and isSelectable()).performClick()
 
-        assertEquals(listOf(FocuslistRoutes.FOCUS), opened)
+        assertEquals(listOf(FocuslistRoutes.INBOX), opened)
     }
 
     @Test
@@ -138,14 +138,17 @@ class NavigationSemanticsTest {
     private companion object {
         const val TODAY = "Today"
         const val INBOX = "Inbox"
-        const val FOCUS = "Focus"
         const val MORE = "More"
         const val UPCOMING = "Upcoming"
         const val ANYTIME = "Anytime"
         const val SOMEDAY = "Someday"
         const val LOGBOOK = "Logbook"
 
-        val DESTINATION_LABELS = listOf(TODAY, INBOX, FOCUS, MORE)
+        /**
+         * Three, not four. Focus left the bar when it became a sheet opened
+         * from the task it is for; `focus.md` records why.
+         */
+        val DESTINATION_LABELS = listOf(TODAY, INBOX, MORE)
         val SECONDARY_LABELS = listOf(UPCOMING, ANYTIME, SOMEDAY, LOGBOOK)
     }
 }

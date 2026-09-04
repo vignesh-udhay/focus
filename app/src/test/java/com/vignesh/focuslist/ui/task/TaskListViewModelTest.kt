@@ -1,8 +1,8 @@
 package com.vignesh.focuslist.ui.task
 
-import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.lifecycle.SavedStateHandle
-import com.vignesh.focuslist.ui.semantics.RecordingFocusAlarms
+import com.vignesh.focuslist.MainDispatcherRule
+import com.vignesh.focuslist.core.notification.FocusAlarms
 import com.vignesh.focuslist.core.domain.Recurrence
 import com.vignesh.focuslist.core.domain.Task
 import com.vignesh.focuslist.core.domain.TaskPlacement
@@ -24,8 +24,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.ClassRule
 import org.junit.Test
-import org.junit.runner.RunWith
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
@@ -119,13 +119,27 @@ private const val TIMEOUT_MILLIS = 2_000L
 private const val POLL_MILLIS = 10L
 
 /**
- * Instrumented because [TaskListViewModel] observes through `viewModelScope`,
- * which dispatches on `Dispatchers.Main`. A plain JVM unit test has no main
- * dispatcher, so the state never emits and the collector blocks. Supplying one
- * would require `kotlinx-coroutines-test`, which this project does not have.
+ * A JVM test, because nothing here needs a device.
+ *
+ * [TaskListViewModel] observes through `viewModelScope`, which dispatches on
+ * `Dispatchers.Main`, and the JVM has no main dispatcher: the state never
+ * emits and the collector blocks. That single gap, not anything Android in the
+ * code under test, is what used to run these through an emulator. The DAO, the
+ * clock and the alarms are all fakes, and `FocusAlarms` exists precisely so
+ * this decision stays testable without a device.
+ *
+ * [MainDispatcherRule] closes the gap, and the whole class comes off the
+ * device: the build no longer has to assemble two APKs, install them, and
+ * uninstall them again to answer a question about a Kotlin object.
  */
-@RunWith(AndroidJUnit4::class)
 class TaskListViewModelTest {
+
+    companion object {
+        // A class rule, not a per-test one: see MainDispatcherRule.
+        @get:ClassRule
+        @JvmStatic
+        val mainDispatcher = MainDispatcherRule()
+    }
 
     private val today: LocalDate = LocalDate.of(2026, 8, 31)
     private val tomorrow: LocalDate = today.plusDays(1)
@@ -3027,6 +3041,73 @@ class TaskListViewModelTest {
         assertEquals("b", awaitFocusedTaskId(model, "b"))
     }
 
+    // Focus is entered by choosing a task
+
+    /**
+     * Choosing and starting are one act now that Focus is a sheet opened from
+     * the task it is for. Two calls left a window in which a task was chosen
+     * and no session was running, which is exactly the Ready state that no
+     * longer exists.
+     */
+    @Test
+    fun beginFocusChoosesTheTaskAndStartsTheSession() {
+        store(
+            task(id = "a", scheduledDate = today),
+            task(id = "b", scheduledDate = today)
+        )
+        val model = viewModel()
+
+        model.beginFocus("b")
+
+        assertEquals("b", awaitFocusedTaskId(model, "b"))
+        assertTrue(model.isFocusSessionActive.value)
+        assertNotNull(model.focusSessionStartedAt.value)
+    }
+
+    /**
+     * The running flag is what puts the sheet on screen, so the chosen task has
+     * to go when the session does. Left behind, it would be a choice nobody
+     * made, waiting to reopen on a task the user had walked away from.
+     */
+    @Test
+    fun stoppingForgetsWhichTaskWasChosen() {
+        store(
+            task(id = "a", scheduledDate = today),
+            task(id = "b", scheduledDate = today)
+        )
+        val model = viewModel()
+        model.beginFocus("b")
+        awaitFocusedTaskId(model, "b")
+
+        model.stopFocusSession()
+
+        assertEquals(false, model.isFocusSessionActive.value)
+        assertNull(model.focusSessionStartedAt.value)
+        // Back to the head of the queue rather than still pointing at "b".
+        assertEquals("a", awaitFocusedTaskId(model, "a"))
+    }
+
+    /**
+     * The whole reason the sheet stays open when a task is finished. Completing
+     * inside Focus has to keep the session running, or the mode would end every
+     * time it succeeded.
+     */
+    @Test
+    fun completingInsideASessionKeepsItRunning() {
+        store(
+            task(id = "a", scheduledDate = today),
+            task(id = "b", scheduledDate = today)
+        )
+        val model = viewModel()
+        model.beginFocus("a")
+        awaitFocusedTaskId(model, "a")
+
+        model.toggleComplete("a")
+
+        assertEquals("b", awaitFocusedTaskId(model, "b"))
+        assertTrue(model.isFocusSessionActive.value)
+    }
+
     @Test
     fun completingTheFocusedTaskShowsTheNextOne() {
         store(
@@ -3539,5 +3620,27 @@ class TaskListViewModelTest {
         Thread.sleep(100)
         assertTrue(dao.updated.isEmpty())
         assertNull(model.pendingUndo.value)
+    }
+}
+
+/**
+ * Records what the view model asked the system to announce.
+ *
+ * A copy of the semantics suite's fake rather than a shared one: the two source
+ * sets do not see each other, and a fake this small is cheaper duplicated than
+ * hoisted into main just so tests can share it.
+ */
+private class RecordingFocusAlarms : FocusAlarms {
+
+    val scheduled = mutableListOf<Pair<String, Instant>>()
+    var cancellations = 0
+        private set
+
+    override fun scheduleEstimateReached(taskTitle: String, at: Instant) {
+        scheduled += taskTitle to at
+    }
+
+    override fun cancel() {
+        cancellations++
     }
 }

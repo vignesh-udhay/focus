@@ -267,6 +267,19 @@ class TaskListViewModel(
         _focusedTaskId.value = id
     }
 
+    /**
+     * Choose a task and start working on it, which are now one act.
+     *
+     * Focus is entered by picking the task it is for, so there is no moment
+     * between choosing and starting for anything to happen in. That is what
+     * removed the Ready state, and it is also what answers "why this task":
+     * because you said so.
+     */
+    fun beginFocus(id: String) {
+        focusTask(id)
+        restartFocusClock()
+    }
+
     private val _focusSessionStartedAt = MutableStateFlow(
         savedState.get<Long>(FocusSessionStartedAtKey)?.let(Instant::ofEpochMilli)
     )
@@ -347,6 +360,12 @@ class TaskListViewModel(
         _focusSessionStartedAt.value = null
         savedState.remove<Long>(FocusSessionStartedAtKey)
         alarms.cancel()
+        // The pointer goes too. It used to survive, harmlessly, because Focus
+        // was a destination the user had to navigate to and the stale choice
+        // was simply what they found there next time. Now the running flag is
+        // what puts the sheet on screen, so a pointer left behind would be a
+        // choice nobody made, waiting to be reopened.
+        _focusedTaskId.value = null
     }
 
     init {
@@ -387,7 +406,20 @@ class TaskListViewModel(
                 }
                 .collect { task ->
                     if (task == null) {
-                        stopFocusSession()
+                        // The queue running dry no longer ends the session. It
+                        // used to, because a session with nothing in it hid the
+                        // navigation behind an empty screen, and that was the
+                        // trap the mode existed to avoid. Focus is a sheet now:
+                        // the navigation is behind it, not gone, so there is no
+                        // trap and no reason to close on the user at the one
+                        // moment they have most earned being told they are
+                        // done. The sheet shows the empty state and waits to be
+                        // dismissed.
+                        //
+                        // The alarm still goes, because there is nothing left
+                        // whose estimate could be reached.
+                        alarms.cancel()
+                        workingOn = null
                         return@collect
                     }
 

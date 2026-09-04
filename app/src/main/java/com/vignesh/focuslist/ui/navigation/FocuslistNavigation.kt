@@ -32,7 +32,6 @@ object FocuslistRoutes {
 
     const val TODAY = "today"
     const val INBOX = "inbox"
-    const val FOCUS = "focus"
     const val UPCOMING = "upcoming"
     const val ANYTIME = "anytime"
     const val SOMEDAY = "someday"
@@ -105,23 +104,19 @@ private val TopLevelDestinations = listOf(
         R.string.inbox_title,
         R.drawable.ic_inbox,
         R.drawable.ic_inbox_filled
-    ),
-    TopLevelDestination(
-        FocuslistRoutes.FOCUS,
-        R.string.focus_title,
-        R.drawable.ic_focus,
-        R.drawable.ic_focus_filled
     )
 )
 
 /**
  * The bottom navigation bar, on every screen.
  *
- * `PRODUCT.md` describes compact navigation as Today, Inbox, Focus, and More,
- * and that is the order here.
+ * Today, Inbox, and More.
  *
- * Focus is a destination like the other two, but its content is one task
- * rather than a list. Nothing about the bar has to know that.
+ * `PRODUCT.md` describes compact navigation as Today, Inbox, Focus, and More,
+ * and Focus is deliberately no longer among them. It became a sheet opened from
+ * the task it is for, which cannot be a destination and does not want to be: a
+ * bar entry landed the user on whichever task happened to head the queue, with
+ * nothing to say why that one. `focus.md` records the reversal in full.
  *
  * More is not a destination of its own. `PRODUCT.md` names it in the bar but
  * does not define a screen for it, so it opens the secondary destinations as a

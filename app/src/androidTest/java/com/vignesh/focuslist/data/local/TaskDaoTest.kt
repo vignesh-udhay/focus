@@ -60,6 +60,7 @@ class TaskDaoTest {
         dueDate: LocalDate? = null,
         estimatedDurationMinutes: Int? = null,
         recurrence: Recurrence? = null,
+        spawnedFromId: String? = null,
         completedAt: Instant? = null,
         deletedAt: Instant? = null,
         createdAt: Instant = this@TaskDaoTest.createdAt
@@ -73,6 +74,7 @@ class TaskDaoTest {
         dueDate = dueDate,
         estimatedDurationMinutes = estimatedDurationMinutes,
         recurrence = recurrence,
+        spawnedFromId = spawnedFromId,
         completedAt = completedAt,
         deletedAt = deletedAt
     )
@@ -297,6 +299,34 @@ class TaskDaoTest {
 
         assertEquals(listOf("first", "second", "third"), ids)
     }
+
+    // The link between a recurring task and its successor
+
+    /**
+     * The column that lets undo find the occurrence a completion spawned.
+     *
+     * Every other test here leaves it null, so without this one the table
+     * could be storing the id and handing back nothing and the suite would
+     * still be green. That is how it was added in the first place: the column
+     * reached the entity and the mappers, and this file was never taught the
+     * field exists.
+     */
+    @Test
+    fun theSpawningTaskSurvivesTheDatabaseRoundTrip() = runBlocking {
+        dao.insert(entity(id = "next", spawnedFromId = "original"))
+
+        assertEquals("original", observed().single().spawnedFromId)
+    }
+
+    /** A task somebody typed was spawned by nothing, and says so. */
+    @Test
+    fun aTaskWithNoOriginStaysNull() = runBlocking {
+        dao.insert(entity(id = "a"))
+
+        assertNull(observed().single().spawnedFromId)
+    }
+
+    // The ordering contract, continued
 
     /** Two tasks captured in the same millisecond still have one settled order. */
     @Test

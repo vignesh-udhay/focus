@@ -21,7 +21,7 @@ import com.vignesh.focuslist.FocuslistApplication
 import com.vignesh.focuslist.core.design.LocalContentWidth
 import com.vignesh.focuslist.core.design.focuslistUsesNavigationRail
 import com.vignesh.focuslist.core.domain.TaskPlacement
-import com.vignesh.focuslist.ui.focus.FocusScreen
+import com.vignesh.focuslist.ui.focus.FocusSheet
 import com.vignesh.focuslist.ui.inbox.InboxScreen
 import com.vignesh.focuslist.ui.logbook.LogbookScreen
 import com.vignesh.focuslist.ui.placement.PlacementScreen
@@ -68,7 +68,7 @@ fun FocuslistNavHost(
     // Screens take their navigation as a bottom bar. With a rail beside them
     // there is no bottom bar to give, so they are handed nothing and the rail
     // sits outside them, full height, as Material specifies.
-    val navigationBar: @Composable () -> Unit = if (usesRail || isFocusSession) {
+    val navigationBar: @Composable () -> Unit = if (usesRail) {
         {}
     } else {
         {
@@ -90,19 +90,15 @@ fun FocuslistNavHost(
                 TodayScreen(
                     viewModel = viewModel,
                     bottomBar = navigationBar,
-                    // Only the move between destinations belongs here. Which task
-                    // Focus lands on is the screen's own call, through the view
-                    // model both of them already share.
-                    onOpenFocus = { navController.openTopLevel(FocuslistRoutes.FOCUS) }
+                    // Nothing to navigate to any more. Choosing a task is what
+                    // opens Focus, and the sheet appears over whatever screen
+                    // asked for it.
+                    onOpenFocus = {}
                 )
             }
 
             composable(FocuslistRoutes.INBOX) {
                 InboxScreen(viewModel = viewModel, bottomBar = navigationBar)
-            }
-
-            composable(FocuslistRoutes.FOCUS) {
-                FocusScreen(viewModel = viewModel, bottomBar = navigationBar)
             }
 
             composable(FocuslistRoutes.UPCOMING) {
@@ -135,14 +131,12 @@ fun FocuslistNavHost(
 
     if (usesRail) {
         Row(modifier = modifier.fillMaxSize()) {
-            if (!isFocusSession) {
-                FocuslistNavigationRail(
-                    currentRoute = currentRoute,
-                    onOpenTopLevel = navController::openTopLevel,
-                    onOpenSecondary = navController::openSecondary,
-                    modifier = Modifier.fillMaxHeight()
-                )
-            }
+            FocuslistNavigationRail(
+                currentRoute = currentRoute,
+                onOpenTopLevel = navController::openTopLevel,
+                onOpenSecondary = navController::openSecondary,
+                modifier = Modifier.fillMaxHeight()
+            )
 
             // The rail's width is chrome, not content. Measuring what is left
             // and publishing it means the content column centres inside the
@@ -156,6 +150,20 @@ fun FocuslistNavHost(
         }
     } else {
         graph(modifier)
+    }
+
+    // Focus sits beside the graph rather than in it, and owns no back stack
+    // entry. It is a mode over whatever the user was looking at, not a place
+    // they navigated to, and the running session is the whole of what decides
+    // whether it is on screen: start one anywhere and it appears; stop it, by
+    // dismissing or by finishing, and it goes.
+    //
+    // Neither the bar nor the rail is hidden for it any more. The scrim covers
+    // them, which is the honest version of what the old Ready state was
+    // arguing about: a mode that draws over the navigation has not taken it
+    // away.
+    if (isFocusSession) {
+        FocusSheet(viewModel = viewModel)
     }
 }
 

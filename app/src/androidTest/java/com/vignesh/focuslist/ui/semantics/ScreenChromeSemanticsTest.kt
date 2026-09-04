@@ -7,7 +7,6 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vignesh.focuslist.core.domain.TaskPlacement
-import com.vignesh.focuslist.ui.focus.FocusScreen
 import com.vignesh.focuslist.ui.inbox.InboxScreen
 import com.vignesh.focuslist.ui.logbook.LogbookScreen
 import com.vignesh.focuslist.ui.placement.PlacementScreen
@@ -153,17 +152,7 @@ class ScreenChromeSemanticsTest {
     @Test
     fun logbook_hasHeadingAndEmptyState_at200() = logbook(FontScale200)
 
-    private fun focus(fontScale: Float) = assertChrome(
-        fontScale,
-        // No app bar, and so no bar title. See the note on the class.
-        title = null,
-        emptyHeadline = "Nothing to focus on",
-        emptySupporting = "Tasks scheduled for today appear here."
-    ) { viewModel -> FocusScreen(viewModel = viewModel) }
-
-    @Test
-    fun focus_hasHeadingAndEmptyState_at100() = focus(FontScale100)
-
-    @Test
-    fun focus_hasHeadingAndEmptyState_at200() = focus(FontScale200)
+    // Focus is not a screen any more and so has no chrome to assert. It is a
+    // sheet opened from the task it is for, and its empty state is covered by
+    // FocusSessionSemanticsTest, where the queue can actually be emptied.
 }
