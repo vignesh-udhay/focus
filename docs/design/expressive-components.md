@@ -1,5 +1,11 @@
 # Components
 
+> **Superseded in part.** This document still describes the pre-Phase-3
+> information architecture, which included Anytime, Someday, or the Focus
+> queue. Those were removed on evidence: see `docs/decisions.md`, D-002 and
+> D-004. Where this document and `PRODUCT.md` disagree, `PRODUCT.md` is
+> right. This banner comes off in Phase 3, when the document is rewritten.
+
 How each Focuslist component looks and behaves. Read
 `expressive-design-system.md` for the tokens this file spends, and
 `expressive-motion.md` for anything that moves.
@@ -573,32 +579,49 @@ it; see "Becoming the session" in `focus.md`.
 | --- | --- |
 | Task title | `headlineMediumEmphasized`, `onSurface`, centred, heading semantics |
 | Estimate | `bodyLarge`, `onSurface`, centred, under the title, omitted when absent |
-| Start | the action slot: `primary` container, `onPrimary` label |
-| Complete | `TextButton`, directly under the action slot |
+| Complete | `Button` at the medium height, 20dp corner, `secondaryContainer` |
+| Play | square `IconButton` at the medium height, `onPrimary` icon, at the row's end |
 | Top app bar | absent |
 | Everything else | absent |
 
-[FD] Two actions rather than one, and the weights say which is which. Starting
-is the constructive act and takes the slot; completing without a session is the
-shortcut and is text beneath it. An earlier version put both in the slot, where
-the second competed with the one the screen is for; a later one put the
-shortcut at the foot of the screen, where it was orphaned against the
-navigation bar and a long way from the task it applied to.
+[FD] One row of two buttons, Complete then play. The weights are carried by
+tone, not by type: play sits on the drawn `primary` container and Complete takes
+the secondary one. An earlier version made Start a wide labelled button in the
+slot and Complete a `TextButton` beneath it. That is a recorded reversal, and
+the reason is in `focus.md`: two controls of different kinds cannot be the same
+control in both states, so Complete had to be built twice and swapped, and a
+swapped control cannot travel.
 
-[IMPL] The shortcut is always composed and faded rather than swapped in and
-out, so the height it occupies is identical at every font scale and nothing
-above it shifts when the session takes it away. Its semantics are cleared while
-it is invisible, so a screen reader is not offered a control that is not there.
+[FD] Play is square, and both of its reasons are load-bearing. The drawn
+container's corners sit at half its height, so a square container is already the
+circle the shape rings begin at and the old stadium-to-circle leg disappears.
+And an icon carries no text, so it does not grow with the font scale, which is
+what leaves Complete the width it needs at 200%.
 
-[IMPL] It sits outside the box that draws the container, not inside it. Inside,
-it displaced the action slot upward while the container's rectangle went on
-being computed as the bottom of that box; the two came apart and every label
-ended up drawn on the wrong background.
-
-[IMPL] Start's own container is transparent. The fill behind it is the drawn
+[IMPL] Play's own container is transparent. The fill behind it is the drawn
 container, because that is the thing that grows away when the session begins,
-and a second container painted on top of it would stay behind and give the
-trick away. The label colour is named for the same reason.
+and a second container painted on top of it would stay behind and give the trick
+away. The icon colour is named for the same reason.
+
+[IMPL] Which is also why play's pressed shape is not asked of Material. A
+`shapes` argument would square the ripple off over a fill that stayed round.
+Instead one press value feeds both: the drawn container's corners pull in to
+Material's own pressed corner, and the ripple follows the same number. Both run
+on Material's effects spec, which is what Material uses for this animation
+itself, to keep any bounce out of it.
+
+[IMPL] Play is left out of the tree entirely once it has faded, not held at zero
+alpha. An alpha of zero hides a node from the eye and from nothing else: it stays
+in the semantics tree, and a running session went on offering a Start button that
+could not be seen and did nothing. `FocusSessionSemanticsTest` caught it. The
+row's width does not depend on that child, so dropping it moves nothing.
+
+[IMPL] The row is a `Layout`, not a `Row`, because Complete leaves its own slot
+during the transform and a `Row` cannot place a child outside one. The width
+reported is always Ready's, never the stretched one, so the stretch cannot feed
+back into the size the container is measured against. It is also clamped to the
+column's width, or a long label at a large font scale would hang the row off the
+shape it is meant to be sitting on.
 
 ## Session
 
@@ -607,7 +630,7 @@ trick away. The label colour is named for the same reason.
 | Shape | a ring of `MaterialShapes`, `surfaceContainerHigh`, square, capped at 320dp |
 | Task title | `headlineMediumEmphasized`, `primary`, centred, max 4 lines |
 | Estimate | `bodyLarge`, `primary`, under the title |
-| Complete | the action slot: one filled `Button` |
+| Complete | the same `Button`, arrived at the centre and at `primary` |
 | Stop | `IconButton` with `ic_close`, top start |
 | Next task | `bodyMedium`, `onSurfaceVariant`, at the foot of the screen |
 | Top app bar | absent |
@@ -616,8 +639,14 @@ trick away. The label colour is named for the same reason.
 ## The action slot
 
 [FD] One slot, in both states, at `ButtonDefaults.MediumContainerHeight`. Ready
-puts Start in it and Session puts Complete, so the control the session is for
-appears exactly where the control that began it was.
+puts Complete and play in it, Session puts Complete alone, and Complete is the
+same button throughout: it travels from beside play to the middle rather than
+being swapped for another control that looks like it.
+
+[IMPL] The container no longer starts from the whole slot but from play's own
+square at the slot's end, which is what makes it a circle from the first frame.
+The slot is still measured, because the row's width is what Complete's journey
+is measured across.
 
 [FD] The slot travels between the two states, because Ready reserves only the
 title's height above it rather than the whole square. `focus.md` has the
@@ -627,12 +656,13 @@ reasoning under "Becoming the session".
 not one of Material's five button heights; large is a 96dp box a label has to
 fit inside at every scale.
 
-[IMPL] The medium height is a floor, not a fixed size. Pinned at exactly 56dp
-the label was cut through the middle of its letters at 200% font scale, so the
-button is allowed to grow to hold its own text, and the slot reports the size
-it actually took. The container has to start from the rectangle the button
-occupies rather than the one it was specified at, or the drawn pill and the
-real button come apart.
+[IMPL] The medium height is a floor for Complete, not a fixed size. Pinned at
+exactly 56dp the label was cut through the middle of its letters at 200% font
+scale, so the button is allowed to grow to hold its own text, and the slot
+reports the size it actually took. Play is fixed at that height in both
+directions, because it holds an icon and squareness is what makes the container
+a circle. Verified at 200%: the row still fits, still centres, and "Complete"
+is neither clipped nor ellipsised.
 
 ## The foot of the screen
 

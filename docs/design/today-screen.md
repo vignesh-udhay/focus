@@ -435,7 +435,9 @@ Still not part of this screen:
 - swipe gestures
 - natural-language date parsing in a task title, which Quick Add now does at
   the end of a title only; see `date-parsing.md`
-- subtasks, projects, areas, recurrence, reminders
+- subtasks and recurrence
+- projects and areas, which are cut; see `docs/decisions.md`, D-003
+- reminders, which Phase 1 adds
 - the Focus screen itself, which is its own destination and its own document
 - widgets and app shortcuts
 - notifications, which exist only for a running focus session reaching its
@@ -476,6 +478,8 @@ Tasks are stored in a Room database owned by `FocuslistApplication`, read
 through `TaskRepository`, and derived into Today by `TaskQueries.todayTasks`.
 The schema, its versions, and its migrations are described in `storage.md`.
 
-Not built: Areas, Projects, and Settings.
+Cut, not pending: Areas and Projects. See `docs/decisions.md`, D-003.
+
+Not built yet: Settings, which Phase 5 adds.
 
 `TaskRowPlayground` remains a temporary harness, separate from this screen.

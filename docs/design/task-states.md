@@ -1,5 +1,11 @@
 # Task states
 
+> **Superseded in part.** This document still describes the pre-Phase-3
+> information architecture, which included Anytime, Someday, or the Focus
+> queue. Those were removed on evidence: see `docs/decisions.md`, D-002 and
+> D-004. Where this document and `PRODUCT.md` disagree, `PRODUCT.md` is
+> right. This banner comes off in Phase 3, when the document is rewritten.
+
 Where a task can be found, for every combination of the four things a task
 records. This document exists to keep one promise checkable:
 

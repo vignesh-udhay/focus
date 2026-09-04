@@ -1,5 +1,11 @@
 # Focus
 
+> **Superseded in part.** This document still describes the pre-Phase-3
+> information architecture, which included Anytime, Someday, or the Focus
+> queue. Those were removed on evidence: see `docs/decisions.md`, D-002 and
+> D-004. Where this document and `PRODUCT.md` disagree, `PRODUCT.md` is
+> right. This banner comes off in Phase 3, when the document is rewritten.
+
 The execution mode. A primary navigation destination whose content is a single
 task, not a task list.
 
@@ -39,33 +45,41 @@ Only Session takes it.
 The visual treatment is specified in `expressive-components.md` under "Focus
 screen". What follows is the product behaviour it renders.
 
-The task title, the estimated duration if the task carries one, Start, and
-Complete.
+The task title, the estimated duration if the task carries one, and one row
+holding Complete and play.
 
 The estimate is shown because Today already shows it. A screen about doing the
 work should not be the one place the size of it is withheld, and the number is
 the user's own answer to how long this will take.
 
-Start is the only thing in the middle of the screen with the task, and it is
-the control that becomes the session. Everything about how it is drawn follows
-from that; see "Becoming the session" below.
+Play is the control that becomes the session, and it sits at the end of the row
+because that is where the container has to start from. It is a square icon
+button, which matters for more than looks: the container is a rounded rectangle
+whose corners sit at half its height, so a square one is already the circle both
+shape rings begin at, and the growth hands straight over. The wide pill that
+used to be here had to travel through stadium-to-circle first. It is an icon and
+not a word for a second reason: holding no text, it has no reason to grow with
+the font scale, which leaves Complete the width it needs at 200%.
 
-Complete stays available without entering a session. A task can turn out to be
-already done, or to take ten seconds, and making the user start and stop a
-session to tick it off would be ceremony for its own sake. It sits directly
-under Start and it is quiet, because starting is the constructive act and
-completing without starting is the exception. That is a change of weight, not
-of availability: an earlier version of this document gave the two actions equal
-standing in the middle of the screen, and the second control competed with the
-one the screen is for.
+**A recorded reversal.** Start used to be the only thing in the middle of the
+screen with the task, and Complete a quiet text action beneath it, on the
+grounds that starting is the constructive act and completing without starting is
+the exception. Two things were wrong with it. The weight was argued but the
+grammar was not: the two controls were different kinds of thing in Ready and the
+same kind of thing in Session, so Complete had to be built twice and swapped,
+and two controls cannot travel. And the ordering said nothing — a quiet action
+below a loud one reads as a footnote rather than as the other half of a pair.
 
-Directly under Start, and not at the foot of the screen, which is where it was
-first put so that nothing would move when the session took it away. That was
-the wrong thing to optimise for. It left the control orphaned against the
-navigation bar with a large void between it and the task it applied to, and it
-gave one position two grammars, since the foot of the screen is an action in
-Ready and unreadable information in Session. Reserving its height in both
-states keeps the layout still without either cost.
+Now they are one row and one Complete. Complete keeps its lower standing through
+tone rather than through type: beside play it takes the secondary container,
+because it is the second of two actions; alone in the session it arrives at the
+primary, because by then it is the only action there is. Both ends of that are
+read off the container's travel, so the tone cannot finish before the move does.
+
+Complete stays available without entering a session for the same reason it
+always did. A task can turn out to be already done, or to take ten seconds, and
+making the user start and stop a session to tick it off would be ceremony for
+its own sake.
 
 There is no top app bar, in either state. Every other screen is a list and
 wears its name; this one shows a single task, the navigation bar already says
@@ -81,13 +95,33 @@ floating action button.
 
 The control the user presses is the thing that becomes the session.
 
-Start is a stadium; the session is a circle with the task inside it. Pressing
-Start grows the one into the other: the container lifts off the button, travels
-up the screen and inflates around words that were already there, while its
-colour goes from the button's `primary` to the shape's quiet container role.
-The title does not move at any point. It is the fixed thing the session forms
-around, and that is what makes the session read as the same screen rather than
-a new one.
+Play is a circle; the session is a circle with the task inside it. Pressing play
+grows the one into the other: the container lifts off the button, travels up the
+screen and inflates around words that were already there, while its colour goes
+from the button's `primary` to the shape's quiet container role. The title does
+not move at any point. It is the fixed thing the session forms around, and that
+is what makes the session read as the same screen rather than a new one.
+
+Complete goes with it, from beside play to the middle of the slot, and it travels
+by stretching: its leading edge sets off first and its trailing edge follows, so
+it reaches for the centre and then gathers itself up behind. Both edges are read
+off the container's own travel rather than sprung separately. Two springs would
+settle at two rates and the button would arrive in two pieces; worse, on the way
+back the stiffer edge would lead in the wrong direction and the stretch would
+become a squash. As a function of one value, leaving is the exact mirror of
+arriving.
+
+[IMPL] Two things about that pass were found by watching it on a device, not by
+reasoning about it. The container starts as play's own square and grows out of
+the row, so it sweeps straight over Complete; and Complete's tone travels from
+the secondary container to the primary while the container behind it travels the
+other way. Two colours crossing in opposite directions meet in the middle, and
+for a few frames the button and the thing sweeping over it were the same grey
+and the pair read as one smear. Complete's tone is therefore held on the
+fade-through split until the crossing is done, and it lifts to Material's raised
+elevation for the duration of the pass and back to flat at both ends, because a
+shadow is what says which of two overlapping surfaces is in front. This is the
+only place on this screen where two surfaces overlap at all.
 
 What does move is the action slot, and it moves because the square is only
 reserved once there is a shape to put in it. Ready gives the region above the

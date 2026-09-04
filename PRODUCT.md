@@ -8,29 +8,51 @@ for Android.
 It should feel native to Android rather than like an iOS productivity app
 ported to Android.
 
+## What the app is for
+
+Focuslist tells you about your work at the moment it matters, and it does not
+miss.
+
+That is the job. Not filing, not organising, not planning. A task app earns
+trust by being the thing that reliably interrupts you, and loses it the first
+time a reminder does not arrive.
+
+Everything else in this document exists to support that.
+
 ## Core promise
 
-Always know what to do next.
+If you write it down here, you will be told.
 
 ## Core loop
 
-Capture → Decide → Focus → Complete
+Capture -> Say when -> Be told -> Complete
 
 The ideal experience is:
 
 Open app
-→ See today's tasks
-→ Choose the next task
-→ Start Focus
-→ Work
-→ Complete
-→ Continue to the next task
+-> Capture the task
+-> Say when it matters
+-> Close the app and forget it
+-> Be told at the right moment
+-> Complete it
+
+A user who never opens the app between capture and reminder is a user the
+product is working for, not a user who has churned.
 
 ---
 
 # Product Principles
 
-## 1. Today is the center
+## 1. Reliability is the feature
+
+A reminder that does not fire is a bug of the highest severity in this
+product. Higher than a crash: a crash is visible, a missed reminder is not.
+
+The app is responsible for reminders arriving, including when the operating
+system or the device manufacturer is working against it. "Android killed us"
+is an explanation, never an excuse.
+
+## 2. Today is the center
 
 The primary question when opening the app is:
 
@@ -38,21 +60,23 @@ The primary question when opening the app is:
 
 Today should make that answer obvious within seconds.
 
-## 2. Capture should be effortless
+## 3. Capture should be effortless
 
 Creating a task should require almost no decisions.
 
 Users should be able to capture first and organize later.
 
-## 3. Tasks are for action
+A task needs a title. Everything else is optional.
+
+## 4. Tasks are for action
 
 The task lifecycle is:
 
-Next → Focus → Done
+Next -> Focus -> Done
 
 The application should encourage execution rather than task administration.
 
-## 4. Android-native is a product requirement
+## 5. Android-native is a product requirement
 
 The application should embrace Android conventions for:
 
@@ -64,19 +88,23 @@ The application should embrace Android conventions for:
 - dynamic color
 - motion
 - notifications
+- alarms
 - widgets
 - adaptive layouts
 - accessibility
 
 Do not reproduce iOS interaction patterns on Android.
 
-## 5. Reduce cognitive load
+## 6. Reduce cognitive load
 
 The application should minimize unnecessary decisions.
 
 Avoid exposing every possible property at once.
 
-## 6. Calm over gamification
+Every destination in the app must be explainable in one short sentence to
+someone who has never read about productivity systems.
+
+## 7. Calm over gamification
 
 The application should not use:
 
@@ -90,6 +118,14 @@ The application should not use:
 
 The reward is getting the work done.
 
+## 8. Free, with nothing held back
+
+Focuslist has no subscription, no paid tier, no in-app purchases, no ads and
+no account.
+
+This is a product decision, not a temporary state. See `docs/decisions.md`,
+D-001.
+
 ---
 
 # Information Architecture
@@ -99,15 +135,14 @@ Primary destinations:
 - Today
 - Inbox
 - Upcoming
-- Anytime
-- Someday
 
-Secondary organization:
+Focus is an execution mode, not a destination and not a separate
+task-management system.
 
-- Areas
-- Projects
+Logbook is a record of completed work, reachable but not primary.
 
-Focus is an execution mode, not a separate task-management system.
+There are three lists. A user should never have to remember which one they
+put something in.
 
 ---
 
@@ -123,37 +158,39 @@ A task may have:
 - notes
 - scheduled date
 - due date
+- reminder
 - estimated duration
-- project
-- area
 - subtasks
 - recurrence
-- reminder
 
-## Project
+## Reminder
 
-A project is a desired outcome requiring multiple tasks.
+A reminder is a promise that the app will interrupt the user at a specific
+moment.
 
-Projects should remain simple.
+It is the product's central feature and is held to a higher standard than
+anything else in this document.
 
-They do not have:
+A reminder must:
 
-- statuses
-- sprints
-- owners
-- dependencies
-- kanban boards
+- fire at the time it was set for
+- fire when the app is closed
+- fire after the device restarts
+- fire when the screen is off
+- be dismissible and snoozable without opening the app
+- allow completing the task from the notification
 
-## Area
+A reminder is independent of a scheduled date and of a due date. A task can
+be scheduled for a day without being announced at a time.
 
-An area represents an ongoing responsibility.
+## Recurrence
 
-Examples:
+A recurring task is a task that comes back.
 
-- Work
-- Personal
-- Health
-- Finance
+Completing one occurrence must produce the next one. It must never make the
+task disappear.
+
+A recurring task is not a habit. Habits are out of scope.
 
 ## Focus
 
@@ -161,194 +198,79 @@ Focus is the execution mode for working on one task.
 
 Focus should remove distractions and make the current task obvious.
 
+Focus works on one task. There is no queue.
+
 ---
 
-# V1 Features
+# V1 Scope
+
+Shipped in 1.0, and nothing else:
 
 - Inbox
 - Today
 - Upcoming
-- Anytime
-- Someday
-- Areas
-- Projects
 - Tasks
-- Subtasks
+- Reminders, alarm-grade and reliable
+- Reminder health checking
 - Recurring tasks
-- Task duration
 - Natural-language date parsing
-- Focus mode
-- Focus queue
-- Local-first storage
-- Android widgets
-- Notifications
+- Task duration
+- Focus mode, single task
+- Logbook
+- One home screen widget
+- Local-first storage, no account
+- Backup and restore to a file
 - Dynamic color
 - Light theme
 - Dark theme
 - Adaptive layouts
 
+`ROADMAP.md` says which of these is being built now.
+
 ---
 
-# Explicitly Out of Scope
+# Not in this product
 
-Do not implement these unless explicitly requested:
+Do not implement these. Each was considered and rejected with a reason
+recorded in `docs/decisions.md`.
+
+Removed from earlier plans:
+
+- Anytime (D-002)
+- Someday (D-002)
+- Areas (D-003)
+- Projects (D-003)
+- Focus queue (D-004)
+- Manually curated Today (D-002)
+
+Never in scope:
 
 - habits
 - gamification
 - social features
 - team collaboration
 - Kanban
-- goals
-- second-brain functionality
-- full calendar replacement
-- AI chat
-- complex analytics
-- complex priority systems
-- plugin systems
-- unnecessary customization
+- AI features
+- analytics dashboards
+- backend infrastructure
+- accounts and cloud sync
+- subscriptions, paid tiers, in-app purchases, ads
 
-Feature requests must be evaluated against the core product promise before implementation.
+Post-1.0, and only once 1.0 has shipped and real users have asked:
 
----
+- subtasks
+- flat Lists
+- tablet and foldable layouts
+- Wear OS tile
 
-# Navigation
-
-## Compact layouts
-
-Primary navigation:
-
-- Today
-- Inbox
-- Focus
-- More
-
-More contains:
-
-- Upcoming
-- Anytime
-- Someday
-- Areas
-- Projects
-- Settings
-
-## Expanded layouts
-
-Use an Android-appropriate navigation rail or drawer.
-
-Do not simply stretch the phone layout across a tablet.
-
-Use adaptive layouts appropriate to the available window size.
+Adding anything from the first two groups requires updating
+`docs/decisions.md` first, with the reason the earlier decision was wrong.
+Writing the reversal down is the point. If the reason cannot be written, the
+change should not be made.
 
 ---
 
-# Design Philosophy
-
-Material 3 is the foundation.
-
-Material provides the system language.
-
-Focuslist provides the product personality.
-
-The UI should feel:
-
-- calm
-- responsive
-- precise
-- native
-- modern
-- restrained
-
-Avoid:
-
-- excessive cards
-- excessive pills
-- excessive rounded containers
-- unnecessary gradients
-- decorative dashboards
-- visual clutter
-
----
-
-# Interaction Philosophy
-
-The most common action should be obvious.
-
-Common operations should require minimal interaction.
-
-Examples:
-
-Complete a task:
-- tap checkbox
-- or use an equivalent accessible action
-
-Create a task:
-- open Quick Add
-- type
-- submit
-
-Start Focus:
-- choose task
-- tap Focus
-
-Finish:
-- complete task
-- show next task
-
-Avoid confirmation dialogs for low-risk reversible actions.
-
-Use undo where appropriate.
-
----
-
-# Android Requirements
-
-The application must support:
-
-- edge-to-edge layouts
-- system insets
-- predictive back where applicable
-- dynamic color
-- light and dark themes
-- system font scaling
-- accessibility services
-- compact and expanded window sizes
-- widgets
-- notifications
-- app shortcuts
-
-The UI must not depend exclusively on gestures.
-
----
-
-# Performance
-
-The application should feel immediate.
-
-Local user interactions must not wait for network operations.
-
-The eventual architecture should be local-first:
-
-User action
-→ local state update
-→ immediate UI update
-→ background synchronization
-
-Network availability must not determine whether basic task management works.
-
----
-
-# Agent Development Rules
-
-Before implementing a feature:
-
-1. Read this file.
-2. Read AGENTS.md.
-3. Inspect existing code.
-4. Reuse existing components.
-5. Follow the established design system.
-6. Make the smallest coherent change.
-7. Build the project.
-8. Test the affected behavior.
+# Constraints
 
 Do not invent product behavior.
 
@@ -357,6 +279,8 @@ Do not add features that were not requested.
 Do not introduce dependencies without a clear reason.
 
 Do not rewrite working code unnecessarily.
+
+Do not build ahead of the current phase in `ROADMAP.md`.
 
 ---
 
@@ -376,6 +300,13 @@ It should:
 - use appropriate motion
 - avoid unnecessary visual complexity
 
+Anything that schedules or delivers a reminder additionally has to survive:
+
+- the app being force stopped
+- the device restarting
+- Doze and app standby
+- manufacturer battery restrictions beyond stock Android
+
 The goal is not maximum functionality.
 
-The goal is an exceptionally good task-management experience.
+The goal is a task app that people trust.

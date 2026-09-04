@@ -292,8 +292,9 @@ Possible metadata includes:
 - scheduled date
 - due date
 - duration
-- project
 - reminder
+
+Not project. Projects are cut; see `docs/decisions.md`, D-003.
 
 Metadata should only be displayed when it provides useful information.
 

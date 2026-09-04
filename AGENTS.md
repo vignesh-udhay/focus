@@ -2,7 +2,15 @@
 
 ## Before making changes
 
+Read `ROADMAP.md` to find the current phase. Work outside it is out of scope.
+
 Read `PRODUCT.md` before implementing or modifying product functionality.
+
+Read `docs/decisions.md` before adding anything listed under "Not in this
+product" in `PRODUCT.md`.
+
+Read `ARCHITECTURE.md` before adding a new type, package, or subsystem. It
+says where things go and which patterns already exist.
 
 Understand the existing code before creating new abstractions.
 
@@ -29,6 +37,10 @@ dependencies already provide the required capability.
 ---
 
 # Architecture
+
+`ARCHITECTURE.md` is the map: what exists, where it lives, and which patterns
+to follow. This section is the rules. Where they overlap, `ARCHITECTURE.md`
+describes and this file constrains.
 
 Keep responsibilities separated.
 
@@ -199,7 +211,8 @@ Local interactions should not wait for network operations.
 
 # Product scope
 
-`PRODUCT.md` defines the current product scope.
+`PRODUCT.md` defines the current product scope. `ROADMAP.md` defines which
+part of it is being built now.
 
 Do not implement features merely because they seem useful.
 
@@ -212,8 +225,63 @@ Do not add:
 - collaboration
 - unnecessary customization
 - backend infrastructure
+- accounts, cloud sync, subscriptions, purchases, or ads
 
 unless explicitly requested.
+
+## Scope guard
+
+This project is built across many short sessions, so scope drifts by
+accumulation rather than by decision. Three rules hold it in place.
+
+**Do not rebuild what was cut.** Anytime, Someday, Areas, Projects and the
+Focus queue were removed on evidence recorded in `docs/decisions.md`. Each
+will look useful again in isolation. Read the decision first.
+
+**Do not build ahead of the current phase.** Later-phase work is later-phase
+work, even when it is small, adjacent, or convenient because the file is
+already open.
+
+**Do not reverse a decision silently.** Scope changes need a superseding entry
+in `docs/decisions.md`, written before the code, saying what new information
+changed the answer.
+
+When a request would do any of these three, say so before implementing, and
+name the decision it touches.
+
+---
+
+# Reminder delivery
+
+Reminders are the product. See `docs/decisions.md`, D-005.
+
+Anything that schedules or delivers a reminder is held to a higher standard
+than the rest of the app, and has to survive:
+
+- the app being closed or force stopped
+- the device restarting
+- Doze and app standby
+- manufacturer battery restrictions beyond stock Android
+
+Rules:
+
+- Schedule with `AlarmManager.setExactAndAllowWhileIdle`. Do not use
+  `WorkManager` for a user-visible reminder time. It is not exact and it is
+  not for this.
+- Every scheduled reminder must be recoverable after a restart. If it is not
+  in storage and rescheduled by the boot receiver, it does not exist.
+- Reminder notifications use their own alarm-grade channel, separate from the
+  focus session channel.
+- `isIgnoringBatteryOptimizations()` reports on stock Android only. It is not
+  evidence that a reminder will arrive on a Samsung, Xiaomi or OnePlus
+  device.
+- A missed reminder must be detectable after the fact. Record the time each
+  alarm was scheduled for alongside the time it actually fired.
+- Never silently swallow a scheduling failure. If the app cannot promise a
+  reminder, it has to say so.
+
+Test scheduling arithmetic, boot rescheduling, and snooze as JVM tests. They
+are domain logic and do not need a device.
 
 ---
 
@@ -265,21 +333,42 @@ Do not consider a feature complete merely because it compiles.
 
 For important user interactions, add appropriate tests.
 
+## Which source set
+
+Default to `src/test`. A test belongs in `src/androidTest` only when it needs a
+real Android runtime: Room against SQLite, or Compose UI and semantics.
+
+View models are JVM tests. Their only tie to a device was `viewModelScope`
+dispatching on `Dispatchers.Main`, and `MainDispatcherRule` supplies one. A
+misfiled test is not a small mistake: an instrumented run builds two APKs,
+installs them, and uninstalls them again afterwards, which wipes the app and its
+database off every attached device.
+
+Adding a column to `TaskEntity` means updating the fixtures in both source sets.
+Give the field no default, so the compiler names every site that has to think
+about it, and assert the new field somewhere. A round trip that never sets it
+passes whether the value is carried or dropped.
+
 ---
 
 # Agent workflow
 
 For every requested feature:
 
-1. Read `PRODUCT.md`.
-2. Read this file.
-3. Inspect the existing implementation.
-4. Identify reusable components and design tokens.
-5. Implement the smallest coherent change.
-6. Build the project.
-7. Run relevant tests.
-8. Review the implementation against the product and design requirements.
-9. Report what changed and any remaining issues.
+1. Read the "Current phase" section of `ROADMAP.md`.
+2. Read `PRODUCT.md`.
+3. Read this file.
+4. Confirm the feature belongs to the current phase, and is not something
+   `docs/decisions.md` removed. If it is either, say so before continuing.
+5. Inspect the existing implementation.
+6. Identify reusable components and design tokens.
+7. Implement the smallest coherent change.
+8. Build the project.
+9. Run relevant tests.
+10. Review the implementation against the product and design requirements.
+11. Report what changed and any remaining issues.
+12. If the work moved the project forward, update "Current phase" in
+    `ROADMAP.md`.
 
 Do not modify unrelated code.
 
