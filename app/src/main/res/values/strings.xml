@@ -156,6 +156,9 @@
     <string name="reminder_health_last_checked">Last checked just now</string>
     <string name="reminder_health_test">Test reminder in 30 seconds</string>
     <string name="reminder_health_open_battery">Open battery settings</string>
+    <!-- The button now opens the manufacturer's own screen where there is one,
+         so it is named after that screen rather than after Android's. -->
+    <string name="reminder_health_open_restriction">Open %1$s settings</string>
     <string name="reminder_health_open_notifications">Open notification settings</string>
     <string name="reminder_health_open_alarms">Open Android settings</string>
     <!-- Named for the feature the user will look for in their own settings. -->

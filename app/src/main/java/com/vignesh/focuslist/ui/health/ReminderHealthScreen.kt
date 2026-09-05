@@ -53,6 +53,8 @@ import com.vignesh.focuslist.core.domain.ReminderDelivery
 import com.vignesh.focuslist.core.domain.ReminderHealth
 import com.vignesh.focuslist.core.domain.ReminderHealthState
 import com.vignesh.focuslist.core.notification.TestReminder
+import com.vignesh.focuslist.core.notification.openAppSettings
+import com.vignesh.focuslist.core.notification.openBackgroundWorkSettings
 import com.vignesh.focuslist.ui.component.durationLabel
 import java.time.Duration
 import java.time.Instant
@@ -313,15 +315,25 @@ private fun PrimaryAction(health: ReminderHealth?, onTest: () -> Unit) {
     // sentence and the button can never point at different problems.
     val (label, action) = when (checks.firstFailing) {
         HealthCheck.Notifications ->
-            R.string.reminder_health_open_notifications to { context.openNotificationSettings() }
+            stringResource(R.string.reminder_health_open_notifications) to
+                { context.openNotificationSettings() }
 
         HealthCheck.ExactAlarms ->
-            R.string.reminder_health_open_alarms to { context.openExactAlarmSettings() }
+            stringResource(R.string.reminder_health_open_alarms) to
+                { context.openExactAlarmSettings() }
 
+        // The one button whose destination depends on the phone. On a
+        // manufacturer that ships a sleep feature this opens that feature's own
+        // screen, and is named after it, because "battery settings" is not what
+        // Autostart is called on the phone the user is holding. Everywhere else,
+        // and on any device where the guess does not resolve, it is the app's
+        // Android settings page under Android's own name for it.
         HealthCheck.BackgroundWork ->
-            R.string.reminder_health_open_battery to { context.openBatterySettings() }
+            checks.restriction.openLabel() to {
+                context.openBackgroundWorkSettings(checks.restriction)
+            }
 
-        null -> R.string.reminder_health_test to onTest
+        null -> stringResource(R.string.reminder_health_test) to onTest
     }
 
     Button(
@@ -330,9 +342,18 @@ private fun PrimaryAction(health: ReminderHealth?, onTest: () -> Unit) {
             .fillMaxWidth()
             .padding(top = FocuslistSpacing.sm)
     ) {
-        Text(stringResource(label))
+        Text(label)
     }
 }
+
+/** "Open Autostart settings" on a Xiaomi, "Open battery settings" elsewhere. */
+@Composable
+private fun DeviceRestriction?.openLabel(): String =
+    if (this == null) {
+        stringResource(R.string.reminder_health_open_battery)
+    } else {
+        stringResource(R.string.reminder_health_open_restriction, stringResource(label))
+    }
 
 // --- what each state says --------------------------------------------------
 
@@ -464,26 +485,15 @@ private fun Context.openNotificationSettings() {
 }
 
 private fun Context.openExactAlarmSettings() {
-    val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:$packageName"))
-    } else {
-        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+        // Below 12 there is no such screen, because there was no such
+        // permission. The app's own page is the nearest honest destination.
+        openAppSettings()
+        return
     }
 
-    startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-}
-
-/**
- * The app's own battery screen.
- *
- * Not the manufacturer's, because every manufacturer buries theirs somewhere
- * different and an intent that resolves on one skin crashes on another. This
- * one exists everywhere, and it is where the OEM controls usually sit. Sending
- * a user to a screen that exists beats guessing at one that might not.
- */
-private fun Context.openBatterySettings() {
     startActivity(
-        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
+        Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:$packageName"))
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     )
 }

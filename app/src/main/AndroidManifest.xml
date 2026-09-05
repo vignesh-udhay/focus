@@ -20,6 +20,23 @@
          app cannot know a reminder was ever set. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!-- The manufacturer battery and autostart screens the reminder health
+         screen routes to. From Android 11 a package this app has not named is
+         invisible to it, so without these the deep link silently degrades to
+         the generic settings page on every device that needs it. The list is
+         mirrored in core/notification/DeviceSettingsRoute.kt, and a test
+         checks the two agree. -->
+    <queries>
+        <package android:name="com.miui.securitycenter" />
+        <package android:name="com.coloros.safecenter" />
+        <package android:name="com.coloros.oppoguardelf" />
+        <package android:name="com.oppo.safe" />
+        <package android:name="com.oneplus.security" />
+        <package android:name="com.samsung.android.lool" />
+        <package android:name="com.samsung.android.sm" />
+        <package android:name="com.huawei.systemmanager" />
+    </queries>
+
     <application
         android:name=".FocuslistApplication"
         android:allowBackup="true"

@@ -9,7 +9,9 @@ scope it delivers is in `PRODUCT.md`.
 
 ## Current phase
 
-**Phase 2: Make it trustworthy.** Started. Phase 1 is complete.
+**Phase 2: Make it trustworthy.** All four slices built, exit criteria met.
+One verification outstanding, named at the end of this section. Phase 1 is
+complete.
 
 **Read the design from `Focuslist — M3 Expressive Clean Slate` (node
 `161:3405`) and nothing else.** An earlier page, `Focuslist — M3 Expressive
@@ -84,10 +86,29 @@ futurity is under `EvidenceHorizon` by design, so it can raise a warning and
 never clear one. Measured on the emulator at four milliseconds late, against
 the roughly fifty seconds D-009 measured on the OnePlus.
 
-Remaining in Phase 2: routing to the manufacturer's own battery screen. The
-button currently opens the app's Android settings page, which exists on every
-device, rather than guessing at an OEM intent that resolves on one skin and
-crashes on another. `reminder/Health Action` implies the deeper link.
+Fourth slice: **routing to the manufacturer's own screen**,
+`core/notification/DeviceSettingsRoute.kt`. Thirteen activity names across the
+four vendors, none of them documented and all of them renamed between releases,
+so every candidate is resolved against the package manager before it is
+launched and the launch itself is guarded. Whatever happens the user lands on
+the app's Android settings page, which exists everywhere. The button is named
+after the screen it opens, because "battery settings" is not what Autostart is
+called on the phone the user is holding.
+
+The packages appear twice, in that file and in `<queries>` in the manifest,
+because from Android 11 an undeclared package is invisible and resolves to
+nothing. That failure is silent: the deep link would degrade to the generic
+page on exactly the phones that need it, and look like the feature was never
+built. A unit test checks the two lists agree.
+
+`aRestrictedDeviceHasAtLeastOneScreenToOffer` in the instrumented suite is the
+only test that needs particular hardware. It passes vacuously on a Pixel and
+answers the real question on a OnePlus, a Xiaomi or a Samsung: whether the
+guessed names are still the names that vendor ships. **Not yet run on the
+OnePlus 8T**, because instrumented tests wipe app data.
+
+**Phase 2's exit criteria are met**, with that one caveat: the deep link is
+proven to fall back safely, not yet proven to land.
 
 **Phase 3 and the design pass are the same job.** The Clean Slate board
 mentions Anytime and Someday nowhere, and every screen on it carries the same
