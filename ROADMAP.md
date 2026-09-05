@@ -43,6 +43,24 @@ window, and D-009's evidence came from `dumpsys`. So "Exact alarms: Allowed"
 will read Allowed on the OnePlus while reminders still drift. The headline
 state has to be driven by the delivery record, not by the permission checks.
 
+Second slice: **the health state**, `core/domain/ReminderHealth.kt`. It holds
+the three checks and the recent delivery record together, and where they
+disagree the record wins. That rule is the point: a screen built on the checks
+alone reports Ready on the OnePlus in D-009.
+
+`core/notification/ReminderHealthChecks.kt` answers the two real questions,
+and guesses the third from `Build.MANUFACTURER`, because no API exposes these
+features and the one that is exposed,
+`isIgnoringBatteryOptimizations()`, was measured in D-009 to change an alarm's
+flags and leave its window untouched. OnePlus, OPPO and realme map to sleep
+standby; Xiaomi, Redmi and POCO to autostart; Samsung to sleeping apps; Huawei
+and Honor to protected apps. Every other device is left alone, because a false
+warning on a Pixel costs the app the attention the real warning needs.
+
+A restrictive device that then delivers `EvidenceOfHealth` reminders on the
+trot stops being warned about, and one late delivery brings the warning back.
+The app cannot read the setting, so behaviour is the only evidence there is.
+
 Remaining in Phase 2, and all of it is drawn: the three status checks
 (`reminder/Health Ready`), OEM restriction detection and routing
 (`reminder/Health Action`, which names OnePlus sleep standby directly), the
