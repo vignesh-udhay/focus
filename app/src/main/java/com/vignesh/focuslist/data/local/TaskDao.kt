@@ -10,9 +10,8 @@ import kotlinx.coroutines.flow.Flow
 /**
  * Storage access for tasks.
  *
- * The DAO reads and writes rows. It holds no view logic: Today, Upcoming,
- * Inbox, Anytime, and Someday are derived by `TaskQueries` over the domain
- * model, not by SQL here.
+ * The DAO reads and writes rows. It holds no view logic: Today, Upcoming and
+ * Inbox are derived by `TaskQueries` over the domain model, not by SQL here.
  */
 @Dao
 interface TaskDao {

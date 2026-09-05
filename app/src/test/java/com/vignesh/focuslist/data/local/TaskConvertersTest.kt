@@ -1,6 +1,5 @@
 package com.vignesh.focuslist.data.local
 
-import com.vignesh.focuslist.core.domain.TaskPlacement
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
@@ -86,52 +85,6 @@ class TaskConvertersTest {
     @Test
     fun `a null epoch millis decodes to null`() {
         assertNull(TaskConverters.epochMillisToInstant(null))
-    }
-
-    // TaskPlacement
-
-    @Test
-    fun `every placement encodes to its name`() {
-        assertEquals("INBOX", TaskConverters.placementToName(TaskPlacement.INBOX))
-        assertEquals("ANYTIME", TaskConverters.placementToName(TaskPlacement.ANYTIME))
-        assertEquals("SOMEDAY", TaskConverters.placementToName(TaskPlacement.SOMEDAY))
-    }
-
-    @Test
-    fun `every placement name decodes to its value`() {
-        assertEquals(TaskPlacement.INBOX, TaskConverters.nameToPlacement("INBOX"))
-        assertEquals(TaskPlacement.ANYTIME, TaskConverters.nameToPlacement("ANYTIME"))
-        assertEquals(TaskPlacement.SOMEDAY, TaskConverters.nameToPlacement("SOMEDAY"))
-    }
-
-    @Test
-    fun `every placement round trips`() {
-        TaskPlacement.entries.forEach { placement ->
-            val encoded = TaskConverters.placementToName(placement)
-
-            assertEquals(placement, TaskConverters.nameToPlacement(encoded))
-        }
-    }
-
-    @Test
-    fun `placement is stored by name and not by ordinal`() {
-        // Ordinals silently reassign if the enum is reordered, so the encoded
-        // form must never be a number.
-        TaskPlacement.entries.forEach { placement ->
-            assertNotEquals(
-                placement.ordinal.toString(),
-                TaskConverters.placementToName(placement)
-            )
-        }
-    }
-
-    @Test
-    fun `an unknown placement name falls back to INBOX`() {
-        // Documented behaviour: a task surfacing in the wrong list is
-        // recoverable, throwing while reading the database is not.
-        assertEquals(TaskPlacement.INBOX, TaskConverters.nameToPlacement("PROJECT"))
-        assertEquals(TaskPlacement.INBOX, TaskConverters.nameToPlacement(""))
-        assertEquals(TaskPlacement.INBOX, TaskConverters.nameToPlacement("inbox"))
     }
 
     // Round trips

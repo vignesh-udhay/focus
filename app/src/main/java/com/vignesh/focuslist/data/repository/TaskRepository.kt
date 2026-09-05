@@ -14,9 +14,9 @@ import java.time.LocalDateTime
  * Storage of tasks, in domain terms.
  *
  * The repository translates and delegates, nothing more. It applies no
- * filtering, holds no rules, and never reads the clock: Today, Upcoming,
- * Inbox, Anytime, and Someday are derived by `TaskQueries`, and timestamps are
- * supplied by the caller.
+ * filtering, holds no rules, and never reads the clock: Today, Upcoming and
+ * Inbox are derived by `TaskQueries`, and timestamps are supplied by the
+ * caller.
  *
  * `TaskEntity` never escapes this class.
  */

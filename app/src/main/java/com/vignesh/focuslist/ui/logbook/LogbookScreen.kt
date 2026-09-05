@@ -29,7 +29,6 @@ import com.vignesh.focuslist.core.design.FocuslistMotion
 import com.vignesh.focuslist.core.design.FocuslistSpacing
 import com.vignesh.focuslist.core.design.focuslistContentGutter
 import com.vignesh.focuslist.core.domain.Task
-import com.vignesh.focuslist.core.domain.TaskPlacement
 import com.vignesh.focuslist.core.domain.completedTasks
 import com.vignesh.focuslist.ui.component.FocuslistTopAppBar
 import com.vignesh.focuslist.ui.component.TaskListEmptyState
@@ -47,8 +46,8 @@ import java.time.LocalDate
  *
  * The counterpart to the active lists, and the reason completing a task is
  * never destructive. Every other list drops a task once it is done; this one
- * keeps it, whatever its placement or scheduled date, so nothing a user
- * finishes can fall out of reach once the undo offer has passed.
+ * keeps it whatever its scheduled date, so nothing a user finishes can fall
+ * out of reach once the undo offer has passed.
  *
  * Unchecking a row here reopens the task through the ordinary completion path.
  * It leaves the Logbook and returns to whichever active lists it belongs to.
@@ -180,7 +179,6 @@ private fun sampleCompletedTasks(): List<Task> = listOf(
         id = "1",
         title = "Send the sprint summary",
         createdAt = SampleTimestamp,
-        placement = TaskPlacement.ANYTIME,
         scheduledDate = LocalDate.now(),
         completedAt = SampleTimestamp.plusSeconds(3_600)
     ),
@@ -196,7 +194,6 @@ private fun sampleCompletedTasks(): List<Task> = listOf(
         id = "3",
         title = "Cancel the old subscription",
         createdAt = SampleTimestamp,
-        placement = TaskPlacement.SOMEDAY,
         completedAt = SampleTimestamp
     ),
     // Excluded: still outstanding.

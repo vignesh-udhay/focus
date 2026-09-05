@@ -5,7 +5,6 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vignesh.focuslist.core.domain.Task
-import com.vignesh.focuslist.core.domain.TaskPlacement
 import com.vignesh.focuslist.data.local.FocuslistDatabase
 import com.vignesh.focuslist.data.repository.TaskRepository
 import kotlinx.coroutines.flow.first
@@ -82,7 +81,6 @@ class FocuslistApplicationTest {
             id = "persisted",
             title = "Survive a restart",
             createdAt = createdAt,
-            placement = TaskPlacement.ANYTIME,
             scheduledDate = scheduled,
             estimatedDurationMinutes = 45
         )

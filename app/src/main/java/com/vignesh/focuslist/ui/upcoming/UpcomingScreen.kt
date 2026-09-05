@@ -29,7 +29,6 @@ import com.vignesh.focuslist.core.design.FocuslistMotion
 import com.vignesh.focuslist.core.design.FocuslistSpacing
 import com.vignesh.focuslist.core.design.focuslistContentGutter
 import com.vignesh.focuslist.core.domain.Task
-import com.vignesh.focuslist.core.domain.TaskPlacement
 import com.vignesh.focuslist.core.domain.upcomingSections
 import com.vignesh.focuslist.core.domain.upcomingTasks
 import com.vignesh.focuslist.ui.component.FocuslistTopAppBar
@@ -211,7 +210,6 @@ private fun sampleUpcomingTasks(): List<Task> {
             id = "1",
             title = "Book the dentist",
             createdAt = SampleTimestamp,
-            placement = TaskPlacement.ANYTIME,
             scheduledDate = today.plusDays(1)
         ),
         Task(
@@ -219,7 +217,6 @@ private fun sampleUpcomingTasks(): List<Task> {
             title = "Draft the quarterly review, including the parts nobody wants " +
                 "to write down",
             createdAt = SampleTimestamp,
-            placement = TaskPlacement.ANYTIME,
             scheduledDate = today.plusDays(3),
             estimatedDurationMinutes = 90
         ),
@@ -227,7 +224,6 @@ private fun sampleUpcomingTasks(): List<Task> {
             id = "3",
             title = "Renew the domain",
             createdAt = SampleTimestamp,
-            placement = TaskPlacement.ANYTIME,
             scheduledDate = today.plusDays(12),
             estimatedDurationMinutes = 10
         ),
@@ -236,7 +232,6 @@ private fun sampleUpcomingTasks(): List<Task> {
             id = "4",
             title = "Chase the missing invoice",
             createdAt = SampleTimestamp,
-            placement = TaskPlacement.ANYTIME,
             scheduledDate = today
         )
     )

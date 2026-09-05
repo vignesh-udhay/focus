@@ -8,7 +8,6 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.vignesh.focuslist.core.domain.Task
-import com.vignesh.focuslist.core.domain.TaskPlacement
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -148,12 +147,12 @@ class MigrationTest {
     }
 
     @Test
-    fun migrationKeepsEveryColumnUnchanged() {
+    fun migrationKeepsEverySurvivingColumnUnchanged() {
         seedVersion1()
 
         migrate().use { database ->
             database.query(
-                "SELECT title, placement, createdAt, scheduledDate, dueDate, " +
+                "SELECT title, createdAt, scheduledDate, dueDate, " +
                     "estimatedDurationMinutes, completedAt, deletedAt " +
                     "FROM tasks WHERE id = ?",
                 arrayOf<Any?>("scheduled")
@@ -161,13 +160,12 @@ class MigrationTest {
                 assertTrue(cursor.moveToFirst())
 
                 assertEquals("Finish the landing page", cursor.getString(0))
-                assertEquals("ANYTIME", cursor.getString(1))
-                assertEquals(createdAt.toEpochMilli(), cursor.getLong(2))
-                assertEquals(scheduled.toEpochDay(), cursor.getLong(3))
-                assertEquals(due.toEpochDay(), cursor.getLong(4))
-                assertEquals(45, cursor.getInt(5))
+                assertEquals(createdAt.toEpochMilli(), cursor.getLong(1))
+                assertEquals(scheduled.toEpochDay(), cursor.getLong(2))
+                assertEquals(due.toEpochDay(), cursor.getLong(3))
+                assertEquals(45, cursor.getInt(4))
+                assertTrue(cursor.isNull(5))
                 assertTrue(cursor.isNull(6))
-                assertTrue(cursor.isNull(7))
             }
         }
     }
@@ -249,7 +247,8 @@ class MigrationTest {
             MIGRATION_4_5,
             MIGRATION_5_6,
             MIGRATION_6_7,
-            MIGRATION_7_8
+            MIGRATION_7_8,
+            MIGRATION_8_9
         ).use { database ->
             database.query(
                 "SELECT notes, recurrence, spawnedFromId, reminderAt FROM tasks WHERE id = ?",
@@ -445,6 +444,101 @@ class MigrationTest {
     }
 
     /**
+     * The destructive-looking step itself: a fully populated version-8 task
+     * crosses the recreated table with every surviving value unchanged, and
+     * only the placement column is gone.
+     */
+    @Test
+    fun versionEightDropsOnlyPlacement() {
+        helper.createDatabase(TEST_DB, 8).use { database ->
+            database.execSQL(
+                """
+                INSERT INTO tasks (
+                    id, title, notes, placement, createdAt, scheduledDate,
+                    dueDate, reminderAt, reminderDeliveredAt,
+                    estimatedDurationMinutes, recurrence, spawnedFromId,
+                    completedAt, deletedAt
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """.trimIndent(),
+                arrayOf<Any?>(
+                    "full-v8",
+                    "Preserve every field",
+                    "Including notes",
+                    "SOMEDAY",
+                    createdAt.toEpochMilli(),
+                    scheduled.toEpochDay(),
+                    due.toEpochDay(),
+                    "2026-08-31T09:30",
+                    completedAt.toEpochMilli(),
+                    45,
+                    "WEEKLY",
+                    "previous-occurrence",
+                    completedAt.toEpochMilli(),
+                    createdAt.plusSeconds(300).toEpochMilli()
+                )
+            )
+        }
+
+        helper.runMigrationsAndValidate(
+            TEST_DB,
+            LatestVersion,
+            true,
+            MIGRATION_8_9
+        ).use { database ->
+            database.query(
+                """
+                SELECT id, title, notes, createdAt, scheduledDate, dueDate,
+                       reminderAt, reminderDeliveredAt,
+                       estimatedDurationMinutes, recurrence, spawnedFromId,
+                       completedAt, deletedAt
+                FROM tasks WHERE id = ?
+                """.trimIndent(),
+                arrayOf<Any?>("full-v8")
+            ).use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("full-v8", cursor.getString(0))
+                assertEquals("Preserve every field", cursor.getString(1))
+                assertEquals("Including notes", cursor.getString(2))
+                assertEquals(createdAt.toEpochMilli(), cursor.getLong(3))
+                assertEquals(scheduled.toEpochDay(), cursor.getLong(4))
+                assertEquals(due.toEpochDay(), cursor.getLong(5))
+                assertEquals("2026-08-31T09:30", cursor.getString(6))
+                assertEquals(completedAt.toEpochMilli(), cursor.getLong(7))
+                assertEquals(45, cursor.getInt(8))
+                assertEquals("WEEKLY", cursor.getString(9))
+                assertEquals("previous-occurrence", cursor.getString(10))
+                assertEquals(completedAt.toEpochMilli(), cursor.getLong(11))
+                assertEquals(createdAt.plusSeconds(300).toEpochMilli(), cursor.getLong(12))
+            }
+
+            database.query("PRAGMA table_info(tasks)").use { cursor ->
+                val columns = buildList {
+                    while (cursor.moveToNext()) add(cursor.getString(1))
+                }
+                assertEquals(
+                    listOf(
+                        "id",
+                        "title",
+                        "notes",
+                        "createdAt",
+                        "scheduledDate",
+                        "dueDate",
+                        "reminderAt",
+                        "reminderDeliveredAt",
+                        "estimatedDurationMinutes",
+                        "recurrence",
+                        "spawnedFromId",
+                        "completedAt",
+                        "deletedAt"
+                    ),
+                    columns
+                )
+            }
+        }
+    }
+
+    /**
      * The migrated file opens through the production database class and reads
      * back as domain tasks.
      *
@@ -474,7 +568,6 @@ class MigrationTest {
 
         val scheduledTask = tasks.single { it.id == "scheduled" }
         assertEquals("Finish the landing page", scheduledTask.title)
-        assertEquals(TaskPlacement.ANYTIME, scheduledTask.placement)
         assertEquals(scheduled, scheduledTask.scheduledDate)
         assertEquals(due, scheduledTask.dueDate)
         assertEquals(45, scheduledTask.estimatedDurationMinutes)
@@ -494,6 +587,6 @@ class MigrationTest {
         const val TEST_DB = "migration-test.db"
 
         /** The schema every migration in this test is aimed at. */
-        const val LatestVersion = 8
+        const val LatestVersion = 9
     }
 }

@@ -2,7 +2,6 @@ package com.vignesh.focuslist.data.local
 
 import com.vignesh.focuslist.core.domain.Task
 import com.vignesh.focuslist.core.domain.Recurrence
-import com.vignesh.focuslist.core.domain.TaskPlacement
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -25,7 +24,6 @@ class TaskMappersTest {
         title = "Finish the landing page",
         createdAt = createdAt,
         notes = "Ask Priya which logo to use",
-        placement = TaskPlacement.ANYTIME,
         scheduledDate = scheduledDate,
         dueDate = dueDate,
         reminderAt = reminderAt,
@@ -41,7 +39,6 @@ class TaskMappersTest {
         id = "task-1",
         title = "Finish the landing page",
         notes = "Ask Priya which logo to use",
-        placement = TaskPlacement.ANYTIME,
         createdAt = createdAt,
         scheduledDate = scheduledDate,
         dueDate = dueDate,
@@ -63,7 +60,6 @@ class TaskMappersTest {
         assertEquals("task-1", entity.id)
         assertEquals("Finish the landing page", entity.title)
         assertEquals("Ask Priya which logo to use", entity.notes)
-        assertEquals(TaskPlacement.ANYTIME, entity.placement)
         assertEquals(createdAt, entity.createdAt)
         assertEquals(scheduledDate, entity.scheduledDate)
         assertEquals(dueDate, entity.dueDate)
@@ -92,7 +88,6 @@ class TaskMappersTest {
 
         assertEquals("task-1", task.id)
         assertEquals("Finish the landing page", task.title)
-        assertEquals(TaskPlacement.ANYTIME, task.placement)
         assertEquals(createdAt, task.createdAt)
         assertEquals(scheduledDate, task.scheduledDate)
         assertEquals(dueDate, task.dueDate)
@@ -179,28 +174,7 @@ class TaskMappersTest {
         assertEquals(minimal, minimal.toEntity().toDomain())
     }
 
-    // 7. Every placement value
-
-    @Test
-    fun `every placement value survives both directions`() {
-        TaskPlacement.entries.forEach { placement ->
-            val task = fullTask().copy(placement = placement)
-
-            assertEquals(placement, task.toEntity().placement)
-            assertEquals(placement, fullEntity().copy(placement = placement).toDomain().placement)
-        }
-    }
-
-    @Test
-    fun `every placement value round trips`() {
-        TaskPlacement.entries.forEach { placement ->
-            val task = fullTask().copy(placement = placement)
-
-            assertEquals(task, task.toEntity().toDomain())
-        }
-    }
-
-    // 8. Round trips
+    // Round trips
 
     @Test
     fun `task round trips through entity preserving equality`() {

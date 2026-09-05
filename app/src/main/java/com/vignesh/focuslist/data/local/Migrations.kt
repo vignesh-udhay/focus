@@ -17,6 +17,9 @@ import androidx.room.migration.Migration
  * Version 4: adds `spawnedFromId`.
  * Version 5: adds `reminderAt`.
  * Version 6: adds `reminderDeliveredAt`.
+ * Version 7: adds `reminder_deliveries`.
+ * Version 8: adds `scheduledAheadMs` to reminder deliveries.
+ * Version 9: removes the obsolete task `placement` column.
  */
 
 /**
@@ -145,6 +148,53 @@ val MIGRATION_7_8 = Migration(7, 8) { database ->
     )
 }
 
+/**
+ * Version 9 removes the task placement axis without changing any task.
+ *
+ * SQLite on the oldest supported Android versions cannot drop a column, so
+ * the table is recreated. Both sides of the copy name every surviving column
+ * explicitly: relying on column order here could put one task property into
+ * another column while still producing a database that opens.
+ */
+val MIGRATION_8_9 = Migration(8, 9) { database ->
+    database.execSQL(
+        """
+        CREATE TABLE IF NOT EXISTS tasks_new (
+            id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            notes TEXT,
+            createdAt INTEGER NOT NULL,
+            scheduledDate INTEGER,
+            dueDate INTEGER,
+            reminderAt TEXT,
+            reminderDeliveredAt INTEGER,
+            estimatedDurationMinutes INTEGER,
+            recurrence TEXT,
+            spawnedFromId TEXT,
+            completedAt INTEGER,
+            deletedAt INTEGER,
+            PRIMARY KEY(id)
+        )
+        """.trimIndent()
+    )
+    database.execSQL(
+        """
+        INSERT INTO tasks_new (
+            id, title, notes, createdAt, scheduledDate, dueDate, reminderAt,
+            reminderDeliveredAt, estimatedDurationMinutes, recurrence,
+            spawnedFromId, completedAt, deletedAt
+        )
+        SELECT
+            id, title, notes, createdAt, scheduledDate, dueDate, reminderAt,
+            reminderDeliveredAt, estimatedDurationMinutes, recurrence,
+            spawnedFromId, completedAt, deletedAt
+        FROM tasks
+        """.trimIndent()
+    )
+    database.execSQL("DROP TABLE tasks")
+    database.execSQL("ALTER TABLE tasks_new RENAME TO tasks")
+}
+
 /** Every migration, in order, for the builder and the migration test. */
 val FocuslistMigrations = arrayOf(
     MIGRATION_1_2,
@@ -153,5 +203,6 @@ val FocuslistMigrations = arrayOf(
     MIGRATION_4_5,
     MIGRATION_5_6,
     MIGRATION_6_7,
-    MIGRATION_7_8
+    MIGRATION_7_8,
+    MIGRATION_8_9
 )

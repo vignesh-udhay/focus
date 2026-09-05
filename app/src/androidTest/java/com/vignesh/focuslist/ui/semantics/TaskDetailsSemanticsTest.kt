@@ -20,7 +20,6 @@ import androidx.compose.ui.test.waitUntilExactlyOneExists
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vignesh.focuslist.core.domain.Recurrence
 import com.vignesh.focuslist.core.domain.Task
-import com.vignesh.focuslist.core.domain.TaskPlacement
 import com.vignesh.focuslist.ui.task.TaskDetailsSheet
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -315,7 +314,6 @@ class TaskDetailsSemanticsTest {
         rule.onNodeWithText(SAVE).performClick()
 
         assertEquals(1, saved.size)
-        assertEquals(TaskPlacement.ANYTIME, saved.single().placement)
         // Everything untouched travels through unchanged.
         assertEquals(TITLE, saved.single().title)
         assertEquals(NOTES, saved.single().notes)
@@ -354,7 +352,6 @@ class TaskDetailsSemanticsTest {
         id = "1",
         title = TITLE,
         notes = NOTES,
-        placement = TaskPlacement.ANYTIME,
         scheduledDate = TestToday,
         dueDate = TestToday.plusDays(3),
         estimatedDurationMinutes = DURATION

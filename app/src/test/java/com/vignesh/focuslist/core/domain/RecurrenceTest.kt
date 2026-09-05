@@ -138,7 +138,6 @@ class RecurrenceTest {
         title = "Water the plants",
         createdAt = createdAt,
         notes = "The ones on the balcony",
-        placement = TaskPlacement.ANYTIME,
         scheduledDate = date("2026-09-02"),
         estimatedDurationMinutes = 5,
         recurrence = Recurrence.DAILY,
@@ -217,7 +216,6 @@ class RecurrenceTest {
 
         assertEquals("Water the plants", next.title)
         assertEquals("The ones on the balcony", next.notes)
-        assertEquals(TaskPlacement.ANYTIME, next.placement)
         assertEquals(5, next.estimatedDurationMinutes)
         // The rule above all, or the series would stop after one repeat.
         assertEquals(Recurrence.DAILY, next.recurrence)

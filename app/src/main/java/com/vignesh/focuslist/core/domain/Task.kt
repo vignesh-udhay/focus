@@ -11,10 +11,9 @@ import java.time.LocalDateTime
  * presented: no formatted strings, no display metadata, and nothing that
  * depends on the UI layer.
  *
- * The properties are orthogonal. [placement] says how far the task has been
- * triaged, [scheduledDate] says which day it is meant to be worked on, and
- * [dueDate] says when it is actually due. Today and Upcoming are views derived
- * from [scheduledDate], not states stored here.
+ * [scheduledDate] says which day the task is meant to be worked on, and
+ * [dueDate] says when it is actually due. Today, Inbox and Upcoming are views
+ * derived from [scheduledDate], not states stored here.
  *
  * @param id stable identity, assigned at creation and suitable for use as a
  * list key. A UUID string in production; the value is opaque to this model.
@@ -25,7 +24,6 @@ import java.time.LocalDateTime
  * when there is nothing. It belongs with [title], and sits here only because
  * every parameter with a default has to follow the ones without. Free text:
  * nothing reads it, parses it, or filters on it.
- * @param placement the task's organizational state.
  * @param scheduledDate the day the task is meant to be worked on, or null when
  * it is not scheduled. Drives the Today and Upcoming views.
  * @param dueDate the day the task is actually due, or null when it has no
@@ -65,7 +63,6 @@ data class Task(
     val title: String,
     val createdAt: Instant,
     val notes: String? = null,
-    val placement: TaskPlacement = TaskPlacement.INBOX,
     val scheduledDate: LocalDate? = null,
     val dueDate: LocalDate? = null,
     val reminderAt: LocalDateTime? = null,

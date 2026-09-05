@@ -16,7 +16,6 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.vignesh.focuslist.core.notification.FocusAlarms
 import com.vignesh.focuslist.core.domain.Recurrence
 import com.vignesh.focuslist.core.domain.Task
-import com.vignesh.focuslist.core.domain.TaskPlacement
 import com.vignesh.focuslist.core.time.CurrentDay
 import com.vignesh.focuslist.data.local.TaskDao
 import com.vignesh.focuslist.data.local.TaskConverters
@@ -210,7 +209,6 @@ internal val TestCreatedAt: Instant = Instant.parse("2026-01-01T09:00:00Z")
 internal fun testTask(
     id: String,
     title: String,
-    placement: TaskPlacement = TaskPlacement.INBOX,
     scheduledDate: LocalDate? = null,
     dueDate: LocalDate? = null,
     estimatedDurationMinutes: Int? = null,
@@ -223,7 +221,6 @@ internal fun testTask(
     title = title,
     createdAt = createdAt,
     notes = notes,
-    placement = placement,
     scheduledDate = scheduledDate,
     dueDate = dueDate,
     estimatedDurationMinutes = estimatedDurationMinutes,

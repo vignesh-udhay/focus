@@ -9,8 +9,8 @@ scope it delivers is in `PRODUCT.md`.
 
 ## Current phase
 
-**Phase 2: Make it trustworthy.** All four slices built, exit criteria met,
-verified on a Pixel 10 emulator and on a OnePlus 8T. Phase 1 is complete.
+**Phase 3: Subtract.** Started. The subtraction itself is done. Phases 1 and
+2 are complete.
 
 **Read the design from `Focuslist — M3 Expressive Clean Slate` (node
 `161:3405`) and nothing else.** An earlier page, `Focuslist — M3 Expressive
@@ -122,15 +122,39 @@ skins, and only the second one matters. Trust the log line over the test:
 **Phase 3 and the design pass are the same job.** The Clean Slate board
 mentions Anytime and Someday nowhere, and every screen on it carries the same
 three-item bar: Today, Inbox, Upcoming, with Logbook, Reminder health and
-Settings behind an app-bar overflow. `PRODUCT.md` already describes that
-information architecture. Only the code disagrees, in 17 files under
-`app/src/main`. Do not restyle a screen the board does not contain.
+Settings behind an app-bar overflow. `PRODUCT.md` already described that
+information architecture. Only the code disagreed. It no longer does.
 
-Three things the board shows are new build rather than reconciliation, and
-each needs a decision before it is started: the UP NEXT hero card on Today,
+The subtraction went in three commits, in an order that mattered:
+
+1. **Inbox stopped reading placement.** It is now every task that is
+   outstanding and undated. This came first because Inbox previously required
+   `placement == INBOX`, so an undated Anytime or Someday task appeared in no
+   primary list at all. Deleting the screens before this would have left real
+   work in the database with nothing able to reach it.
+2. **The interface went.** Two routes, two More entries, `PlacementScreen`,
+   the triage action on every row, a picker in Task Details, and the undo
+   machinery behind the move.
+3. **The axis went**, `schema version 9`. `TaskPlacement`, the column, the
+   converter, and the `anytimeTasks` and `somedayTasks` helpers.
+
+**`MIGRATION_8_9` is the first migration here that is not an `ADD COLUMN`.**
+`minSdk` is 29 and `ALTER TABLE ... DROP COLUMN` needs SQLite 3.35, which
+arrives with Android 14, so it would work on a modern test device and break
+the upgrade for everyone else. The table is recreated instead: create, copy
+naming all thirteen surviving columns on both sides, drop, rename. Never
+`SELECT *` in that copy. It passes every test and shuffles people's data.
+
+Verified on the Pixel 10 emulator: 145 instrumented tests including a
+version-1 database walked to 9, a version-2 one, and a fully populated
+version-8 row crossing the recreated table with only `placement` missing.
+524 unit tests.
+
+What is left in Phase 3 is new build rather than reconciliation, and each
+piece needs a decision before it is started: the UP NEXT hero card on Today,
 Task Details as a full screen with a read-only Plan card, and Focus gaining a
 timer with pause and resume. The last contradicts D-004 and needs a
-superseding entry first.
+superseding entry first. Do not restyle a screen the board does not contain.
 
 Update this line when a phase begins and when it ends. It is the first thing
 a new coding session should read, and the only place that says where the work

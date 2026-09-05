@@ -10,7 +10,6 @@ import com.vignesh.focuslist.core.domain.Recurrence
 import com.vignesh.focuslist.core.domain.nextRecurringInstance
 import com.vignesh.focuslist.core.domain.Task
 import com.vignesh.focuslist.core.domain.TaskCompletion
-import com.vignesh.focuslist.core.domain.TaskPlacement
 import com.vignesh.focuslist.core.time.CurrentDay
 import com.vignesh.focuslist.core.time.SystemCurrentDay
 import com.vignesh.focuslist.core.domain.completedTasks as queryCompletedTasks
@@ -439,10 +438,9 @@ class TaskListViewModel(
     /**
      * Captures a new task, and reports whether anything was captured.
      *
-     * Always carries [TaskPlacement.INBOX] while that legacy persistence field
-     * remains. The caller supplies [scheduledDate]: Today captures for today,
-     * Inbox captures without a day, and deciding when is the decision Inbox
-     * exists to defer.
+     * The caller supplies [scheduledDate]: Today captures for today, Inbox
+     * captures without a day, and deciding when is the decision Inbox exists
+     * to defer.
      *
      * A blank title creates nothing and returns false, since the title is the
      * one thing a task cannot do without. The screen keeps its sheet open on a
@@ -459,7 +457,6 @@ class TaskListViewModel(
                     id = UUID.randomUUID().toString(),
                     title = trimmed,
                     createdAt = Instant.now(),
-                    placement = TaskPlacement.INBOX,
                     scheduledDate = scheduledDate
                 )
             )
@@ -598,7 +595,6 @@ class TaskListViewModel(
         id: String,
         title: String,
         notes: String?,
-        placement: TaskPlacement,
         scheduledDate: LocalDate?,
         dueDate: LocalDate?,
         estimatedDurationMinutes: Int?,
@@ -618,7 +614,6 @@ class TaskListViewModel(
                 task.copy(
                     title = trimmed,
                     notes = trimmedNotes,
-                    placement = placement,
                     scheduledDate = scheduledDate,
                     dueDate = dueDate,
                     estimatedDurationMinutes = estimatedDurationMinutes,

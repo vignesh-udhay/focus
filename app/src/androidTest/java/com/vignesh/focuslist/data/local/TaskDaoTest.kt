@@ -5,7 +5,6 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vignesh.focuslist.core.domain.Recurrence
-import com.vignesh.focuslist.core.domain.TaskPlacement
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -56,7 +55,6 @@ class TaskDaoTest {
         id: String,
         title: String = "Task $id",
         notes: String? = null,
-        placement: TaskPlacement = TaskPlacement.ANYTIME,
         scheduledDate: LocalDate? = null,
         dueDate: LocalDate? = null,
         reminderAt: LocalDateTime? = null,
@@ -71,7 +69,6 @@ class TaskDaoTest {
         id = id,
         title = title,
         notes = notes,
-        placement = placement,
         createdAt = createdAt,
         scheduledDate = scheduledDate,
         dueDate = dueDate,
@@ -250,18 +247,6 @@ class TaskDaoTest {
         dao.insert(full)
 
         assertEquals(full, observed().single())
-    }
-
-    // 10
-
-    @Test
-    fun everyPlacementSurvivesTheDatabaseRoundTrip() = runBlocking {
-        TaskPlacement.entries.forEachIndexed { index, placement ->
-            dao.insert(entity(id = "task-$index", placement = placement))
-        }
-
-        val stored = observed().map { it.placement }
-        assertEquals(TaskPlacement.entries.toList(), stored)
     }
 
     @Test

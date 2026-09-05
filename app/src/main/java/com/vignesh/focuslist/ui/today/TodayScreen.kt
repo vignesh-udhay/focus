@@ -41,7 +41,6 @@ import com.vignesh.focuslist.core.design.FocuslistMotion
 import com.vignesh.focuslist.core.design.FocuslistSpacing
 import com.vignesh.focuslist.core.design.focuslistContentGutter
 import com.vignesh.focuslist.core.domain.Task
-import com.vignesh.focuslist.core.domain.TaskPlacement
 import com.vignesh.focuslist.core.domain.TodayBand
 import com.vignesh.focuslist.core.domain.TodaySection
 import com.vignesh.focuslist.core.domain.todaySections
@@ -426,7 +425,6 @@ private fun sampleTodayTasks(): List<Task> {
             id = "1",
             title = "Finish the landing page",
             createdAt = SampleTimestamp,
-            placement = TaskPlacement.ANYTIME,
             scheduledDate = today,
             estimatedDurationMinutes = 45
         ),
@@ -440,7 +438,6 @@ private fun sampleTodayTasks(): List<Task> {
             title = "Draft the accessibility checklist for the task list, covering " +
                 "TalkBack, font scaling and touch targets",
             createdAt = SampleTimestamp,
-            placement = TaskPlacement.ANYTIME,
             scheduledDate = today,
             estimatedDurationMinutes = 30
         ),
@@ -448,14 +445,12 @@ private fun sampleTodayTasks(): List<Task> {
             id = "4",
             title = "Book the dentist",
             createdAt = SampleTimestamp,
-            placement = TaskPlacement.ANYTIME,
             scheduledDate = today.plusDays(1)
         ),
         Task(
             id = "5",
             title = "Send the sprint summary",
             createdAt = SampleTimestamp,
-            placement = TaskPlacement.ANYTIME,
             scheduledDate = today,
             completedAt = SampleTimestamp
         ),
@@ -470,7 +465,6 @@ private fun sampleTodayTasks(): List<Task> {
             id = "7",
             title = "Chase the missing invoice",
             createdAt = SampleTimestamp,
-            placement = TaskPlacement.ANYTIME,
             scheduledDate = today.minusDays(2),
             estimatedDurationMinutes = 15
         )

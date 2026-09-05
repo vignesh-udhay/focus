@@ -2,7 +2,6 @@ package com.vignesh.focuslist.data.repository
 
 import com.vignesh.focuslist.core.domain.Task
 import com.vignesh.focuslist.core.domain.Recurrence
-import com.vignesh.focuslist.core.domain.TaskPlacement
 import com.vignesh.focuslist.data.local.TaskDao
 import com.vignesh.focuslist.data.local.TaskEntity
 import kotlinx.coroutines.flow.Flow
@@ -82,7 +81,6 @@ class TaskRepositoryTest {
         id: String,
         title: String = "Task $id",
         notes: String? = null,
-        placement: TaskPlacement = TaskPlacement.ANYTIME,
         scheduledDate: LocalDate? = null,
         dueDate: LocalDate? = null,
         reminderAt: LocalDateTime? = null,
@@ -95,7 +93,6 @@ class TaskRepositoryTest {
         id = id,
         title = title,
         notes = notes,
-        placement = placement,
         createdAt = createdAt,
         scheduledDate = scheduledDate,
         dueDate = dueDate,
@@ -112,7 +109,6 @@ class TaskRepositoryTest {
         id: String,
         title: String = "Task $id",
         notes: String? = null,
-        placement: TaskPlacement = TaskPlacement.ANYTIME,
         scheduledDate: LocalDate? = null,
         dueDate: LocalDate? = null,
         reminderAt: LocalDateTime? = null,
@@ -126,7 +122,6 @@ class TaskRepositoryTest {
         title = title,
         createdAt = createdAt,
         notes = notes,
-        placement = placement,
         scheduledDate = scheduledDate,
         dueDate = dueDate,
         reminderAt = reminderAt,
@@ -334,30 +329,6 @@ class TaskRepositoryTest {
         assertEquals(createdAt, dao.inserted.single().createdAt)
     }
 
-    // 8
-
-    @Test
-    fun `every placement survives the mapping unchanged`() = runBlocking {
-        dao.emissions.value = TaskPlacement.entries.mapIndexed { index, placement ->
-            entity(id = "task-$index", placement = placement)
-        }
-
-        val mapped = repository.observeTasks().first().map { it.placement }
-
-        assertEquals(TaskPlacement.entries.toList(), mapped)
-    }
-
-    @Test
-    fun `every placement survives a write unchanged`() = runBlocking {
-        TaskPlacement.entries.forEach { placement ->
-            repository.insert(task(id = placement.name, placement = placement))
-        }
-
-        assertEquals(TaskPlacement.entries.toList(), dao.inserted.map { it.placement })
-    }
-
-    // 9
-
     @Test
     fun `observeTasks preserves the dao's order`() = runBlocking {
         dao.emissions.value = listOf(
@@ -373,16 +344,14 @@ class TaskRepositoryTest {
 
     @Test
     fun `the repository filters nothing it is given`() = runBlocking {
-        // Completed, deleted, unscheduled, future-dated and every placement.
-        // Deciding which of these belong in a view is TaskQueries' job.
+        // Completed, deleted, unscheduled and future-dated. Deciding which of
+        // these belong in a view is TaskQueries' job.
         val everything = listOf(
             entity(id = "completed", completedAt = completedAt),
             entity(id = "deleted", deletedAt = deletedAt),
             entity(id = "today", scheduledDate = scheduled),
             entity(id = "future", scheduledDate = scheduled.plusDays(30)),
-            entity(id = "unscheduled"),
-            entity(id = "inbox", placement = TaskPlacement.INBOX),
-            entity(id = "someday", placement = TaskPlacement.SOMEDAY)
+            entity(id = "unscheduled")
         )
         dao.emissions.value = everything
 

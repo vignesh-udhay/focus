@@ -6,8 +6,7 @@ import java.time.LocalDate
  * The derived task views.
  *
  * Today, Inbox, and Upcoming are queries over [Task.scheduledDate], not states
- * stored on a task. The legacy Anytime and Someday query helpers remain until
- * [TaskPlacement] is removed from persistence in a separately reviewed step.
+ * stored on a task.
  *
  * Every query takes the current date explicitly rather than reading the clock,
  * so results are deterministic and testable.
@@ -201,10 +200,8 @@ fun upcomingSections(tasks: List<Task>, today: LocalDate): List<UpcomingSection>
 /**
  * Everything outstanding without a scheduled day.
  *
- * List membership derives from [Task.scheduledDate], not [Task.placement].
- * Giving a task a day moves it to Today or Upcoming; removing that day returns
- * it here. Ignoring placement also keeps legacy Anytime and Someday tasks
- * reachable after those destinations are removed.
+ * List membership derives from [Task.scheduledDate]. Giving a task a day moves
+ * it to Today or Upcoming; removing that day returns it here.
  *
  * Completed tasks are excluded, as in Upcoming. Inbox is a queue, and finishing
  * something is one of the ways it leaves.
@@ -221,21 +218,13 @@ fun inboxTasks(tasks: List<Task>): List<Task> =
         }
         .sortedByDescending { task -> task.createdAt }
 
-/** Triaged and actionable. */
-fun anytimeTasks(tasks: List<Task>): List<Task> =
-    placementTasks(tasks, TaskPlacement.ANYTIME)
-
-/** Triaged and deliberately deferred. */
-fun somedayTasks(tasks: List<Task>): List<Task> =
-    placementTasks(tasks, TaskPlacement.SOMEDAY)
-
 /**
  * Everything finished, and still recoverable.
  *
  * The counterpart to every other list: they show what is outstanding, this
- * shows what is done. Placement and scheduling are ignored entirely, so a
- * completed task is reachable here whatever its other fields say, and
- * completing something can never put it beyond reach.
+ * shows what is done. Scheduling is ignored entirely, so a completed task is
+ * reachable here whatever its other fields say, and completing something can
+ * never put it beyond reach.
  *
  * Deleted tasks stay out, as everywhere else. Deletion has its own undo, and a
  * task that was completed and then deleted is deleted.
@@ -248,34 +237,3 @@ fun completedTasks(tasks: List<Task>): List<Task> =
         .filter { task -> !task.isDeleted && task.isCompleted }
         // Every task here has a completion time; the filter saw to that.
         .sortedByDescending { task -> task.completedAt }
-
-/**
- * Everything sitting in [placement], still outstanding, and without a day.
- *
- * The date rule is the same one Inbox applies, and applying it here is a
- * reversal. These lists used to read placement alone, on the reasoning that
- * placement and scheduling are independent axes and neither should remove a
- * task from the other's view. What that produced was a task appearing in Today
- * and in Anytime at once, and a Someday task scheduled for this afternoon,
- * which is the list calling something deliberately deferred while the calendar
- * calls it due.
- *
- * Giving a task a day is the decision these queries are waiting for. Once it
- * has one it belongs to Today or Upcoming. Their undated tasks also appear in
- * Inbox so legacy placement values cannot make work unreachable.
- *
- * Completed tasks are excluded, as in Inbox and Upcoming. These are lists of
- * what could be picked up, and something finished cannot be.
- *
- * Newest first, on the same reasoning as Inbox. The two-group ordering that
- * used to put dated tasks ahead of the rest went with the dated tasks.
- */
-private fun placementTasks(tasks: List<Task>, placement: TaskPlacement): List<Task> =
-    tasks
-        .filter { task ->
-            !task.isDeleted &&
-                !task.isCompleted &&
-                task.placement == placement &&
-                task.scheduledDate == null
-        }
-        .sortedByDescending { task -> task.createdAt }

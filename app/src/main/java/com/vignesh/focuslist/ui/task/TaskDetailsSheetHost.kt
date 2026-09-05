@@ -41,7 +41,6 @@ fun TaskDetailsSheetHost(
                 // The sheet edits a copy of the real task, so a field it does
                 // not change arrives here as whatever the task already held.
                 notes = edited.notes,
-                placement = edited.placement,
                 scheduledDate = edited.scheduledDate,
                 dueDate = edited.dueDate,
                 estimatedDurationMinutes = edited.estimatedDurationMinutes,

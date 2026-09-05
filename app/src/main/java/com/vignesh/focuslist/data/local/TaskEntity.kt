@@ -4,7 +4,6 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import androidx.room.TypeConverters
 import com.vignesh.focuslist.core.domain.Recurrence
-import com.vignesh.focuslist.core.domain.TaskPlacement
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -34,7 +33,6 @@ data class TaskEntity(
     @PrimaryKey val id: String,
     val title: String,
     val notes: String?,
-    val placement: TaskPlacement,
     val createdAt: Instant,
     val scheduledDate: LocalDate?,
     val dueDate: LocalDate?,

@@ -77,7 +77,6 @@ import com.vignesh.focuslist.core.design.FocuslistSpacing
 import com.vignesh.focuslist.core.design.focuslistContentGutter
 import com.vignesh.focuslist.core.design.focuslistMotionEnabled
 import com.vignesh.focuslist.core.domain.Task
-import com.vignesh.focuslist.core.domain.TaskPlacement
 import com.vignesh.focuslist.core.domain.focusElapsedPhase
 import com.vignesh.focuslist.core.domain.focusProgress
 import com.vignesh.focuslist.core.notification.FocusSessionVisibility
@@ -753,7 +752,6 @@ private val SampleTask = Task(
     id = "sample-focus",
     title = "Review the quarterly budget",
     createdAt = SampleTimestamp,
-    placement = TaskPlacement.INBOX,
     scheduledDate = LocalDate.of(2026, 1, 1),
     estimatedDurationMinutes = 45
 )
@@ -765,7 +763,6 @@ private val SampleNextTask = Task(
     id = "sample-focus-next",
     title = "Call the plumber about the leak",
     createdAt = SampleTimestamp,
-    placement = TaskPlacement.INBOX,
     scheduledDate = LocalDate.of(2026, 1, 1),
     estimatedDurationMinutes = 15
 )

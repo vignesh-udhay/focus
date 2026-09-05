@@ -31,7 +31,6 @@ import com.vignesh.focuslist.core.design.FocuslistMotion
 import com.vignesh.focuslist.core.design.FocuslistSpacing
 import com.vignesh.focuslist.core.design.focuslistContentGutter
 import com.vignesh.focuslist.core.domain.Task
-import com.vignesh.focuslist.core.domain.TaskPlacement
 import com.vignesh.focuslist.core.domain.inboxTasks
 import com.vignesh.focuslist.ui.component.AddTaskFab
 import com.vignesh.focuslist.ui.component.FocuslistTopAppBar
@@ -49,9 +48,7 @@ import java.time.LocalDate
 /**
  * Inbox: everything outstanding without a scheduled date.
  *
- * A task leaves by being scheduled, completed, or deleted. Its legacy placement
- * does not affect membership, so tasks with legacy Anytime and Someday values
- * remain reachable here after those destinations are removed.
+ * A task leaves by being scheduled, completed, or deleted.
  *
  * Quick Add here captures without a date, which is the difference from Today.
  * Deciding when to do it is exactly the decision Inbox exists to defer.
@@ -248,12 +245,11 @@ private fun sampleInboxTasks(): List<Task> = listOf(
         createdAt = SampleTimestamp.plusSeconds(180),
         scheduledDate = LocalDate.now()
     ),
-    // Included: placement is ignored while the task has no scheduled date.
+    // Included: it has no scheduled date.
     Task(
         id = "5",
         title = "Read the Compose performance guide",
-        createdAt = SampleTimestamp.plusSeconds(240),
-        placement = TaskPlacement.ANYTIME
+        createdAt = SampleTimestamp.plusSeconds(240)
     )
 )
 

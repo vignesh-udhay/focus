@@ -5,7 +5,6 @@ import com.vignesh.focuslist.MainDispatcherRule
 import com.vignesh.focuslist.core.notification.FocusAlarms
 import com.vignesh.focuslist.core.domain.Recurrence
 import com.vignesh.focuslist.core.domain.Task
-import com.vignesh.focuslist.core.domain.TaskPlacement
 import com.vignesh.focuslist.core.domain.upcomingTasks
 import com.vignesh.focuslist.core.time.CurrentDay
 import com.vignesh.focuslist.data.local.TaskDao
@@ -188,7 +187,6 @@ class TaskListViewModelTest {
         id: String,
         title: String = "Task $id",
         notes: String? = null,
-        placement: TaskPlacement = TaskPlacement.ANYTIME,
         scheduledDate: LocalDate? = null,
         dueDate: LocalDate? = null,
         estimatedDurationMinutes: Int? = null,
@@ -203,7 +201,6 @@ class TaskListViewModelTest {
         title = title,
         createdAt = createdAt,
         notes = notes,
-        placement = placement,
         scheduledDate = scheduledDate,
         dueDate = dueDate,
         estimatedDurationMinutes = estimatedDurationMinutes,
@@ -259,7 +256,7 @@ class TaskListViewModelTest {
     fun unscheduledTasksAreExcluded() {
         store(
             task(id = "today", scheduledDate = today),
-            task(id = "unscheduled", placement = TaskPlacement.INBOX)
+            task(id = "unscheduled")
         )
 
         assertEquals(listOf("today"), visible(viewModel(), 1).map { it.id })
@@ -389,7 +386,6 @@ class TaskListViewModelTest {
         val written = awaitUpdate()
         assertEquals(original.id, written.id)
         assertEquals(original.title, written.title)
-        assertEquals(original.placement, written.placement)
         assertEquals(original.createdAt, written.createdAt)
         assertEquals(original.scheduledDate, written.scheduledDate)
         assertEquals(original.dueDate, written.dueDate)
@@ -423,7 +419,6 @@ class TaskListViewModelTest {
 
         val stored = awaitInsert()
         assertEquals("Buy milk", stored.title)
-        assertEquals(TaskPlacement.INBOX, stored.placement)
         assertEquals(today, stored.scheduledDate)
         assertNull(stored.dueDate)
         assertNull(stored.estimatedDurationMinutes)
@@ -790,7 +785,6 @@ class TaskListViewModelTest {
         val original = task(
             id = "a",
             title = "Chase the missing invoice",
-            placement = TaskPlacement.INBOX,
             scheduledDate = today.minusDays(2),
             dueDate = today.plusDays(3),
             estimatedDurationMinutes = 15
@@ -1023,7 +1017,6 @@ class TaskListViewModelTest {
         val original = task(
             id = "a",
             title = "Chase the missing invoice",
-            placement = TaskPlacement.INBOX,
             scheduledDate = today.minusDays(2),
             dueDate = today.plusDays(3),
             estimatedDurationMinutes = 15
@@ -1274,7 +1267,6 @@ class TaskListViewModelTest {
         id: String,
         title: String = "Task $id",
         notes: String? = storedNotes(id),
-        placement: TaskPlacement = TaskPlacement.ANYTIME,
         scheduledDate: LocalDate? = this@TaskListViewModelTest.today,
         dueDate: LocalDate? = null,
         estimatedDurationMinutes: Int? = null,
@@ -1284,7 +1276,6 @@ class TaskListViewModelTest {
         id = id,
         title = title,
         notes = notes,
-        placement = placement,
         scheduledDate = scheduledDate,
         dueDate = dueDate,
         estimatedDurationMinutes = estimatedDurationMinutes,
@@ -1377,22 +1368,6 @@ class TaskListViewModelTest {
     }
 
     @Test
-    fun everyPlacementValuePersists() {
-        for (placement in TaskPlacement.entries) {
-            val dao = FakeTaskDao()
-            val repository = TaskRepository(dao)
-            val model = TaskListViewModel(repository, FakeCurrentDay(today), SavedStateHandle(), RecordingFocusAlarms())
-            dao.emissions.value = listOf(task(id = "a", scheduledDate = today).toEntity())
-            runBlocking { model.todayTasks.first { it.size == 1 } }
-
-            model.edit(id = "a", placement = placement)
-
-            repeat(200) { if (dao.updated.isEmpty()) Thread.sleep(10) }
-            assertEquals(placement, dao.updated.single().placement)
-        }
-    }
-
-    @Test
     fun theScheduledDateCanBeSetChangedAndCleared() {
         store(task(id = "a", scheduledDate = today))
         val model = viewModel()
@@ -1468,7 +1443,6 @@ class TaskListViewModelTest {
         val original = task(
             id = "a",
             title = "Chase the missing invoice",
-            placement = TaskPlacement.SOMEDAY,
             scheduledDate = today.minusDays(2),
             dueDate = today.plusDays(3),
             estimatedDurationMinutes = 15,
@@ -1481,7 +1455,6 @@ class TaskListViewModelTest {
         model.edit(
             id = "a",
             title = "Chase the invoice",
-            placement = original.placement,
             scheduledDate = original.scheduledDate,
             dueDate = original.dueDate,
             estimatedDurationMinutes = original.estimatedDurationMinutes
@@ -1703,7 +1676,7 @@ class TaskListViewModelTest {
     fun upcomingExcludesUnscheduledTasks() {
         store(
             task(id = "future", scheduledDate = today.plusDays(2)),
-            task(id = "unscheduled", placement = TaskPlacement.INBOX)
+            task(id = "unscheduled")
         )
 
         assertEquals(listOf("future"), upcoming(viewModel(), 1).map { it.id })
@@ -1829,7 +1802,6 @@ class TaskListViewModelTest {
         val original = task(
             id = "a",
             title = "Renew the domain",
-            placement = TaskPlacement.SOMEDAY,
             scheduledDate = today.plusDays(12),
             dueDate = today.plusDays(14),
             estimatedDurationMinutes = 10
@@ -1841,7 +1813,6 @@ class TaskListViewModelTest {
         model.edit(
             id = "a",
             title = "Renew the domain and the certificate",
-            placement = original.placement,
             scheduledDate = original.scheduledDate,
             dueDate = original.dueDate,
             estimatedDurationMinutes = original.estimatedDurationMinutes
@@ -1943,8 +1914,8 @@ class TaskListViewModelTest {
         }.map { it.id }
 
     @Test
-    fun inboxShowsUntriagedUnscheduledTasks() {
-        store(task(id = "a", placement = TaskPlacement.INBOX))
+    fun inboxShowsUnscheduledTasks() {
+        store(task(id = "a"))
 
         assertEquals(listOf("a"), inbox(viewModel(), 1).map { it.id })
     }
@@ -1952,34 +1923,20 @@ class TaskListViewModelTest {
     @Test
     fun inboxExcludesScheduledTasks() {
         store(
-            task(id = "captured", placement = TaskPlacement.INBOX),
-            task(id = "today", placement = TaskPlacement.INBOX, scheduledDate = today),
-            task(id = "future", placement = TaskPlacement.INBOX, scheduledDate = today.plusDays(2))
+            task(id = "captured"),
+            task(id = "today", scheduledDate = today),
+            task(id = "future", scheduledDate = today.plusDays(2))
         )
 
         assertEquals(listOf("captured"), inbox(viewModel(), 1).map { it.id })
     }
 
     @Test
-    fun inboxIncludesTriagedTasks() {
-        store(
-            task(id = "captured", placement = TaskPlacement.INBOX),
-            task(id = "anytime", placement = TaskPlacement.ANYTIME),
-            task(id = "someday", placement = TaskPlacement.SOMEDAY)
-        )
-
-        assertEquals(
-            listOf("captured", "anytime", "someday"),
-            inbox(viewModel(), 3).map { it.id }
-        )
-    }
-
-    @Test
     fun inboxExcludesCompletedAndDeletedTasks() {
         store(
-            task(id = "live", placement = TaskPlacement.INBOX),
-            task(id = "done", placement = TaskPlacement.INBOX, completedAt = completedAt),
-            task(id = "gone", placement = TaskPlacement.INBOX, deletedAt = deletedAt)
+            task(id = "live"),
+            task(id = "done", completedAt = completedAt),
+            task(id = "gone", deletedAt = deletedAt)
         )
 
         assertEquals(listOf("live"), inbox(viewModel(), 1).map { it.id })
@@ -1988,15 +1945,13 @@ class TaskListViewModelTest {
     @Test
     fun inboxKeepsTheQueryOrderingNewestFirst() {
         store(
-            task(id = "middle", placement = TaskPlacement.INBOX, createdAt = createdAt),
+            task(id = "middle", createdAt = createdAt),
             task(
                 id = "oldest",
-                placement = TaskPlacement.INBOX,
                 createdAt = createdAt.minusSeconds(600)
             ),
             task(
                 id = "newest",
-                placement = TaskPlacement.INBOX,
                 createdAt = createdAt.plusSeconds(600)
             )
         )
@@ -2007,9 +1962,9 @@ class TaskListViewModelTest {
     @Test
     fun theThreeListsAreDisjointOverTheSameStream() {
         store(
-            task(id = "captured", placement = TaskPlacement.INBOX),
-            task(id = "today", placement = TaskPlacement.INBOX, scheduledDate = today),
-            task(id = "future", placement = TaskPlacement.INBOX, scheduledDate = today.plusDays(2))
+            task(id = "captured"),
+            task(id = "today", scheduledDate = today),
+            task(id = "future", scheduledDate = today.plusDays(2))
         )
         val model = viewModel()
 
@@ -2028,7 +1983,6 @@ class TaskListViewModelTest {
 
         val stored = awaitInsert()
         assertEquals("Replace the kitchen bulb", stored.title)
-        assertEquals(TaskPlacement.INBOX, stored.placement)
         assertNull(stored.scheduledDate)
         assertNull(stored.dueDate)
         assertNull(stored.estimatedDurationMinutes)
@@ -2043,7 +1997,6 @@ class TaskListViewModelTest {
         model.createTask(title = "Chase the missing invoice", scheduledDate = today)
 
         val stored = awaitInsert()
-        assertEquals(TaskPlacement.INBOX, stored.placement)
         assertEquals(today, stored.scheduledDate)
     }
 
@@ -2080,54 +2033,28 @@ class TaskListViewModelTest {
         assertTrue(dao.inserted.isEmpty())
     }
 
-    // Scheduling moves a task out of Inbox; legacy placement changes do not.
+    // Scheduling moves a task out of Inbox.
 
     @Test
     fun schedulingAnInboxTaskMovesItToToday() {
-        store(task(id = "a", placement = TaskPlacement.INBOX))
+        store(task(id = "a"))
         val model = viewModel()
         inbox(model, 1)
 
-        model.edit(id = "a", placement = TaskPlacement.INBOX, scheduledDate = today)
+        model.edit(id = "a", scheduledDate = today)
 
         assertEquals(emptyList<String>(), awaitInboxIds(model, emptyList()))
         assertEquals(listOf("a"), awaitTodayIds(model, listOf("a")))
     }
 
     @Test
-    fun movingAnInboxTaskToAnytimeKeepsItInInbox() {
-        store(task(id = "a", placement = TaskPlacement.INBOX))
-        val model = viewModel()
-        inbox(model, 1)
-
-        model.edit(id = "a", placement = TaskPlacement.ANYTIME, scheduledDate = null)
-
-        assertEquals(listOf("a"), awaitInboxIds(model, listOf("a")))
-        assertEquals(TaskPlacement.ANYTIME, storedRow("a").placement)
-        // Still stored and still in Inbox because it remains unscheduled.
-        assertNull(storedRow("a").deletedAt)
-    }
-
-    @Test
-    fun movingAnInboxTaskToSomedayKeepsItInInbox() {
-        store(task(id = "a", placement = TaskPlacement.INBOX))
-        val model = viewModel()
-        inbox(model, 1)
-
-        model.edit(id = "a", placement = TaskPlacement.SOMEDAY, scheduledDate = null)
-
-        assertEquals(listOf("a"), awaitInboxIds(model, listOf("a")))
-        assertEquals(TaskPlacement.SOMEDAY, storedRow("a").placement)
-    }
-
-    @Test
-    fun unschedulingAnInboxPlacedTaskReturnsItToInbox() {
-        store(task(id = "a", placement = TaskPlacement.INBOX, scheduledDate = today))
+    fun unschedulingATaskReturnsItToInbox() {
+        store(task(id = "a", scheduledDate = today))
         val model = viewModel()
         visible(model, 1)
         assertEquals(emptyList<String>(), model.inboxTasks.value.map { it.id })
 
-        model.edit(id = "a", placement = TaskPlacement.INBOX, scheduledDate = null)
+        model.edit(id = "a", scheduledDate = null)
 
         assertEquals(listOf("a"), awaitInboxIds(model, listOf("a")))
         assertEquals(emptyList<String>(), awaitTodayIds(model, emptyList()))
@@ -2135,11 +2062,11 @@ class TaskListViewModelTest {
 
     @Test
     fun editingAnInboxTaskPreservesIdAndCreatedAt() {
-        store(task(id = "a", placement = TaskPlacement.INBOX))
+        store(task(id = "a"))
         val model = viewModel()
         inbox(model, 1)
 
-        model.edit(id = "a", title = "Renamed", placement = TaskPlacement.INBOX, scheduledDate = null)
+        model.edit(id = "a", title = "Renamed", scheduledDate = null)
 
         val edited = awaitEdited("a")
         assertEquals("a", edited.id)
@@ -2150,7 +2077,7 @@ class TaskListViewModelTest {
 
     @Test
     fun editingAnUnknownIdChangesNoList() {
-        store(task(id = "a", placement = TaskPlacement.INBOX))
+        store(task(id = "a"))
         val model = viewModel()
         inbox(model, 1)
 
@@ -2165,7 +2092,7 @@ class TaskListViewModelTest {
 
     @Test
     fun completingAnInboxTaskRemovesItAndOffersAnUndo() {
-        store(task(id = "a", placement = TaskPlacement.INBOX))
+        store(task(id = "a"))
         val model = viewModel()
         inbox(model, 1)
 
@@ -2177,7 +2104,7 @@ class TaskListViewModelTest {
 
     @Test
     fun undoingThatCompletionReturnsTheTaskToInbox() {
-        store(task(id = "a", placement = TaskPlacement.INBOX))
+        store(task(id = "a"))
         val model = viewModel()
         inbox(model, 1)
         model.toggleComplete("a")
@@ -2191,7 +2118,7 @@ class TaskListViewModelTest {
 
     @Test
     fun deletingAnInboxTaskRemovesItAndCanBeUndone() {
-        store(task(id = "a", placement = TaskPlacement.INBOX))
+        store(task(id = "a"))
         val model = viewModel()
         inbox(model, 1)
 
@@ -2209,7 +2136,7 @@ class TaskListViewModelTest {
         val model = viewModel()
         assertEquals(emptyList<Task>(), model.inboxTasks.value)
 
-        store(task(id = "a", placement = TaskPlacement.INBOX))
+        store(task(id = "a"))
 
         val shown = model.inboxTasks.first { it.size == 1 }.single()
         assertEquals(repository.observeTasks().first().single { it.id == "a" }, shown)
@@ -2231,16 +2158,16 @@ class TaskListViewModelTest {
         }.map { it.id }
 
     @Test
-    fun theLogbookShowsCompletedTasksWhateverTheirPlacementOrDate() {
+    fun theLogbookShowsCompletedTasksWhateverTheirDate() {
         store(
-            task(id = "inbox", placement = TaskPlacement.INBOX, completedAt = completedAt),
+            task(id = "unscheduled", completedAt = completedAt),
             task(id = "future", scheduledDate = today.plusDays(5), completedAt = completedAt),
-            task(id = "anytime", placement = TaskPlacement.ANYTIME, completedAt = completedAt),
+            task(id = "another", completedAt = completedAt),
             task(id = "outstanding", scheduledDate = today)
         )
 
         assertEquals(
-            listOf("inbox", "future", "anytime"),
+            listOf("unscheduled", "future", "another"),
             logbook(viewModel(), 3).map { it.id }
         )
     }
@@ -2274,7 +2201,7 @@ class TaskListViewModelTest {
 
     @Test
     fun completingAnInboxTaskLeavesItReachableInTheLogbook() {
-        store(task(id = "a", placement = TaskPlacement.INBOX))
+        store(task(id = "a"))
         val model = viewModel()
         inbox(model, 1)
 
@@ -2301,7 +2228,7 @@ class TaskListViewModelTest {
 
     @Test
     fun unCompletingAnUndatedTaskFromTheLogbookReturnsItToInbox() {
-        store(task(id = "a", placement = TaskPlacement.ANYTIME, completedAt = completedAt))
+        store(task(id = "a", completedAt = completedAt))
         val model = viewModel()
         logbook(model, 1)
 
@@ -2328,7 +2255,7 @@ class TaskListViewModelTest {
 
     @Test
     fun aCompletionUndoneFromItsSnackbarAlsoLeavesTheLogbook() {
-        store(task(id = "a", placement = TaskPlacement.INBOX))
+        store(task(id = "a"))
         val model = viewModel()
         inbox(model, 1)
         model.toggleComplete("a")
@@ -2348,7 +2275,6 @@ class TaskListViewModelTest {
         val original = task(
             id = "a",
             title = "Send the sprint summary",
-            placement = TaskPlacement.ANYTIME,
             scheduledDate = today,
             dueDate = today.plusDays(2),
             estimatedDurationMinutes = 30,
@@ -2361,7 +2287,6 @@ class TaskListViewModelTest {
         model.edit(
             id = "a",
             title = "Send the sprint summary to the team",
-            placement = original.placement,
             scheduledDate = original.scheduledDate,
             dueDate = original.dueDate,
             estimatedDurationMinutes = original.estimatedDurationMinutes
@@ -2502,7 +2427,6 @@ class TaskListViewModelTest {
 
         val stored = awaitInsert()
         assertNull(stored.scheduledDate)
-        assertEquals(TaskPlacement.INBOX, stored.placement)
     }
 
     @Test
@@ -2510,7 +2434,6 @@ class TaskListViewModelTest {
         val original = task(
             id = "a",
             title = "Chase the missing invoice",
-            placement = TaskPlacement.ANYTIME,
             scheduledDate = today,
             dueDate = today.plusDays(3),
             estimatedDurationMinutes = 15
@@ -2531,9 +2454,9 @@ class TaskListViewModelTest {
     @Test
     fun inboxAndLogbookAreUnaffectedByRollover() {
         store(
-            task(id = "inbox", placement = TaskPlacement.INBOX),
-            task(id = "anytime", placement = TaskPlacement.ANYTIME),
-            task(id = "someday", placement = TaskPlacement.SOMEDAY),
+            task(id = "first"),
+            task(id = "second"),
+            task(id = "third"),
             task(id = "done", completedAt = completedAt)
         )
         val model = viewModel()
@@ -2542,8 +2465,8 @@ class TaskListViewModelTest {
         currentDay.advanceTo(tomorrow)
 
         assertEquals(
-            listOf("inbox", "anytime", "someday"),
-            awaitInboxIds(model, listOf("inbox", "anytime", "someday"))
+            listOf("first", "second", "third"),
+            awaitInboxIds(model, listOf("first", "second", "third"))
         )
         assertEquals(listOf("done"), awaitLogbookIds(model, listOf("done")))
     }
@@ -2786,7 +2709,6 @@ class TaskListViewModelTest {
             id = stored.id,
             title = stored.title,
             notes = "Ask Priya which logo to use",
-            placement = stored.placement,
             scheduledDate = stored.scheduledDate,
             dueDate = stored.dueDate,
             estimatedDurationMinutes = stored.estimatedDurationMinutes,
@@ -2815,7 +2737,6 @@ class TaskListViewModelTest {
             id = stored.id,
             title = "Finish the landing page",
             notes = stored.notes,
-            placement = stored.placement,
             scheduledDate = stored.scheduledDate,
             dueDate = stored.dueDate,
             estimatedDurationMinutes = stored.estimatedDurationMinutes,
@@ -2839,7 +2760,6 @@ class TaskListViewModelTest {
         model.edit(
             id = "a",
             title = "Renamed",
-            placement = TaskPlacement.SOMEDAY,
             scheduledDate = tomorrow,
             dueDate = tomorrow,
             estimatedDurationMinutes = 30
@@ -2847,7 +2767,6 @@ class TaskListViewModelTest {
 
         val edited = awaitEdited("a")
         assertEquals("Renamed", edited.title)
-        assertEquals(TaskPlacement.SOMEDAY, edited.placement)
         assertEquals(tomorrow, edited.scheduledDate)
         assertEquals(30, edited.estimatedDurationMinutes)
         assertEquals("Bring the receipts", edited.notes)
@@ -3036,7 +2955,6 @@ class TaskListViewModelTest {
             id = "a",
             title = "Task a",
             notes = null,
-            placement = TaskPlacement.ANYTIME,
             scheduledDate = tomorrow,
             dueDate = null,
             estimatedDurationMinutes = null,
@@ -3413,7 +3331,6 @@ class TaskListViewModelTest {
             id = "chore",
             title = "Task chore",
             notes = null,
-            placement = TaskPlacement.ANYTIME,
             scheduledDate = today,
             dueDate = null,
             estimatedDurationMinutes = null,
@@ -3439,7 +3356,7 @@ class TaskListViewModelTest {
 
     @Test
     fun reschedulingATaskWithNoDayGivesItOne() {
-        store(task("undated", placement = TaskPlacement.INBOX))
+        store(task("undated"))
         val model = viewModel()
         runBlocking { model.inboxTasks.first { it.size == 1 } }
 
@@ -3497,7 +3414,7 @@ class TaskListViewModelTest {
 
     @Test
     fun undoingARescheduleReturnsATaskThatHadNoDayToHavingNone() {
-        store(task("undated", placement = TaskPlacement.INBOX))
+        store(task("undated"))
         val model = viewModel()
         runBlocking { model.inboxTasks.first { it.size == 1 } }
 

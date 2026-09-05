@@ -3,7 +3,6 @@ package com.vignesh.focuslist.data.local
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.vignesh.focuslist.core.domain.Recurrence
-import com.vignesh.focuslist.core.domain.TaskPlacement
 import java.time.Instant
 import java.time.LocalDate
 
@@ -50,7 +49,6 @@ internal fun debugSeedCallback(isDebuggable: Boolean): RoomDatabase.Callback =
  */
 private data class SeedTask(
     val title: String,
-    val placement: TaskPlacement,
     val scheduledDate: LocalDate? = null,
     val estimatedDurationMinutes: Int? = null,
     val recurrence: Recurrence? = null,
@@ -59,43 +57,32 @@ private data class SeedTask(
 
 /**
  * Enough to exercise every band the lists sort into: today with and without an
- * estimate, overdue, upcoming, undated inbox, the two triage placements, and
- * something already finished for the Logbook.
+ * estimate, overdue, upcoming, undated inbox, and something already finished
+ * for the Logbook.
  *
- * Two of them repeat, on a daily and a monthly rule, so that completing a task
- * and watching the next one appear is something the seed can show without
- * anyone having to set a rule up by hand first. The monthly one is dated the
- * 28th so it is never a month-end date the next month does not have, which is
- * the case `Recurrence.nextOccurrence` handles and the seed should not be
- * quietly relying on.
+ * The monthly task repeats so that completing a task and watching the next one
+ * appear is something the seed can show without anyone having to set a rule up
+ * by hand first. It is dated the 28th so it is never a month-end date the next
+ * month does not have, which is the case `Recurrence.nextOccurrence` handles
+ * and the seed should not be quietly relying on.
  */
 private fun seedTasks(today: LocalDate): List<SeedTask> = listOf(
-    SeedTask("Review the quarterly budget", TaskPlacement.INBOX, today, 45),
-    SeedTask("Call the plumber about the leak", TaskPlacement.INBOX, today, 15),
-    SeedTask("Reply to Priya about the contract", TaskPlacement.INBOX, today, 20),
-    SeedTask("Book the dentist", TaskPlacement.INBOX, today),
-    SeedTask("Renew the car insurance", TaskPlacement.INBOX, today.minusDays(5), 30),
-    SeedTask("Send the invoice to Meridian", TaskPlacement.INBOX, today.minusDays(3), 10),
-    SeedTask("Quarterly review with the team", TaskPlacement.INBOX, today.plusDays(3), 60),
-    SeedTask("Flight to Berlin", TaskPlacement.INBOX, today.plusDays(7)),
-    SeedTask("Read the Compose performance notes", TaskPlacement.INBOX),
-    SeedTask(
-        title = "Water the plants",
-        placement = TaskPlacement.ANYTIME,
-        scheduledDate = today,
-        estimatedDurationMinutes = 5,
-        recurrence = Recurrence.DAILY
-    ),
+    SeedTask("Review the quarterly budget", today, 45),
+    SeedTask("Call the plumber about the leak", today, 15),
+    SeedTask("Reply to Priya about the contract", today, 20),
+    SeedTask("Book the dentist", today),
+    SeedTask("Renew the car insurance", today.minusDays(5), 30),
+    SeedTask("Send the invoice to Meridian", today.minusDays(3), 10),
+    SeedTask("Quarterly review with the team", today.plusDays(3), 60),
+    SeedTask("Flight to Berlin", today.plusDays(7)),
+    SeedTask("Read the Compose performance notes"),
     SeedTask(
         title = "Pay the rent",
-        placement = TaskPlacement.INBOX,
         scheduledDate = today.withDayOfMonth(28),
         recurrence = Recurrence.MONTHLY
     ),
-    SeedTask("Learn to make sourdough", TaskPlacement.SOMEDAY),
     SeedTask(
         title = "Submit the expense report",
-        placement = TaskPlacement.INBOX,
         scheduledDate = today.minusDays(4),
         estimatedDurationMinutes = 25,
         completedAt = Instant.now()
@@ -106,7 +93,6 @@ private fun SeedTask.asRow(index: Int, createdAt: Long): Array<Any?> = arrayOf(
     "seed-$index",
     title,
     null,
-    placement.name,
     // Spaced so the stored order is stable and the lists have something to
     // sort by other than the order rows happened to be written in.
     createdAt - (seedTaskCount - index) * MillisPerMinute,
@@ -119,9 +105,9 @@ private fun SeedTask.asRow(index: Int, createdAt: Long): Array<Any?> = arrayOf(
 )
 
 private const val InsertTask =
-    "INSERT INTO tasks (id, title, notes, placement, createdAt, scheduledDate, " +
+    "INSERT INTO tasks (id, title, notes, createdAt, scheduledDate, " +
         "dueDate, estimatedDurationMinutes, recurrence, completedAt, deletedAt) " +
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
 private const val MillisPerMinute = 60_000L
 
