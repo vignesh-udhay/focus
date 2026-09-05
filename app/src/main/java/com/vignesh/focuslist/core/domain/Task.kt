@@ -39,6 +39,15 @@ import java.time.LocalDateTime
  * `ACTION_TIMEZONE_CHANGED`. Independent of [scheduledDate] and [dueDate]: a
  * task can be scheduled for a day and say nothing, or be unscheduled and still
  * ring.
+ * @param reminderDeliveredAt when the reminder was actually announced, or null
+ * while it is still owed. This is what stops a reminder being delivered twice.
+ * A reminder whose moment has passed stays owed until something records that
+ * it was told, and without this the scheduler re-announces it on every pass:
+ * one per task edit, restart and clock change.
+ *
+ * Its invariant belongs to whoever writes [reminderAt]. Giving a task a new
+ * reminder time, including a snooze, must clear this, or the new time is born
+ * already delivered and never fires.
  * @param estimatedDurationMinutes how long the task is expected to take, or
  * null when it has no estimate.
  * @param recurrence how often the task comes back, or null when it happens
@@ -60,6 +69,7 @@ data class Task(
     val scheduledDate: LocalDate? = null,
     val dueDate: LocalDate? = null,
     val reminderAt: LocalDateTime? = null,
+    val reminderDeliveredAt: Instant? = null,
     val estimatedDurationMinutes: Int? = null,
     val recurrence: Recurrence? = null,
     /**

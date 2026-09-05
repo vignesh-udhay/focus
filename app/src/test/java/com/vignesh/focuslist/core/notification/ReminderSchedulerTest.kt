@@ -44,6 +44,7 @@ class ReminderSchedulerTest {
     private fun task(
         id: String,
         reminderAt: LocalDateTime? = null,
+        reminderDeliveredAt: Instant? = null,
         completedAt: Instant? = null,
         deletedAt: Instant? = null
     ) = Task(
@@ -51,6 +52,7 @@ class ReminderSchedulerTest {
         title = "Task $id",
         createdAt = createdAt,
         reminderAt = reminderAt,
+        reminderDeliveredAt = reminderDeliveredAt,
         completedAt = completedAt,
         deletedAt = deletedAt
     )
@@ -157,6 +159,33 @@ class ReminderSchedulerTest {
             tasks.map { it.id }.toSet(),
             alarms.scheduled.keys + alarms.cancelled.toSet()
         )
+    }
+
+    @Test
+    fun `an announced reminder is cancelled, not announced again`() {
+        val alarms = RecordingAlarms()
+        val tasks = listOf(
+            task("a", LocalDateTime.of(2026, 9, 5, 9, 0), reminderDeliveredAt = createdAt)
+        )
+
+        scheduler(alarms).reconcile(tasks)
+
+        assertTrue(alarms.scheduled.isEmpty())
+        assertEquals(listOf("a"), alarms.cancelled)
+    }
+
+    @Test
+    fun `reconciling repeatedly after delivery never re-announces`() {
+        val alarms = RecordingAlarms()
+        // What every task edit, restart and clock change would do.
+        val tasks = listOf(
+            task("a", LocalDateTime.of(2026, 9, 5, 9, 0), reminderDeliveredAt = createdAt)
+        )
+        val scheduler = scheduler(alarms)
+
+        repeat(5) { scheduler.reconcile(tasks) }
+
+        assertTrue(alarms.scheduled.isEmpty())
     }
 
     // 3. Running it again

@@ -68,6 +68,16 @@ private class FakeTaskDao : TaskDao {
     }
 
     /** Marks the row rather than removing it, as the real UPDATE does. */
+    override suspend fun markReminderDelivered(id: String, deliveredAt: Long) {
+        emissions.value = emissions.value.map { stored ->
+            if (stored.id == id) {
+                stored.copy(reminderDeliveredAt = Instant.ofEpochMilli(deliveredAt))
+            } else {
+                stored
+            }
+        }
+    }
+
     override suspend fun softDelete(id: String, deletedAt: Long) {
         softDeleted += id to deletedAt
         emissions.value = emissions.value.map { stored ->

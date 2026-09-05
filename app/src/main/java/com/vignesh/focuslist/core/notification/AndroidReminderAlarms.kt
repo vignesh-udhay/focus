@@ -126,10 +126,21 @@ class ReminderReceiver : BroadcastReceiver() {
                 // Completed, deleted, or its reminder cleared since the alarm
                 // was set. All three mean the user is owed nothing.
                 if (task == null || !task.hasLiveReminder()) return@launch
-                if (!context.canPostNotifications()) return@launch
+
+                if (!context.canPostNotifications()) {
+                    // Deliberately left undelivered. Saying nothing is not
+                    // delivering, and if the user grants notifications later
+                    // the reminder is still owed and will be announced then.
+                    Log.w(LogTag, "Cannot post. Reminder for $taskId fired and said nothing.")
+                    return@launch
+                }
 
                 context.ensureReminderChannel()
                 context.postReminder(taskId, task.title)
+
+                // Only after it was actually said. This is what stops the
+                // reminder being announced again on every later pass.
+                application.taskRepository.markReminderDelivered(taskId, Instant.now())
             } finally {
                 finish.finish()
             }

@@ -31,9 +31,16 @@ import java.time.ZoneId
  *
  * Says nothing about when. [pendingReminders] and [missedReminders] split the
  * tasks this accepts between them, and every task it rejects is in neither.
+ *
+ * Already delivered counts as not owed, and that clause is doing real work. A
+ * reminder whose moment has passed stays overdue for ever, so without it the
+ * scheduler re-announces it on every pass: once per task edit, restart, and
+ * clock change. That is worse than a missed reminder, because it teaches the
+ * user to dismiss this app's notifications without reading them, which is the
+ * habit that makes a real one fail later.
  */
 fun Task.hasLiveReminder(): Boolean =
-    reminderAt != null && !isCompleted && !isDeleted
+    reminderAt != null && reminderDeliveredAt == null && !isCompleted && !isDeleted
 
 /**
  * Reminders still ahead of [now]: exactly the set that should be sitting in

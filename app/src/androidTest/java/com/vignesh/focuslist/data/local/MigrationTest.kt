@@ -246,7 +246,8 @@ class MigrationTest {
             true,
             MIGRATION_2_3,
             MIGRATION_3_4,
-            MIGRATION_4_5
+            MIGRATION_4_5,
+            MIGRATION_5_6
         ).use { database ->
             database.query(
                 "SELECT notes, recurrence, spawnedFromId, reminderAt FROM tasks WHERE id = ?",
@@ -270,6 +271,26 @@ class MigrationTest {
      * reminder, and the first the user would know of it is the phone going
      * off.
      */
+    @Test
+    fun migratedRowsHaveNoDeliveredReminder() {
+        seedVersion1()
+
+        migrate().use { database ->
+            database.query("SELECT id, reminderDeliveredAt FROM tasks").use { cursor ->
+                var rows = 0
+                while (cursor.moveToNext()) {
+                    rows++
+                    // Not merely tidy. A row backfilled as delivered would
+                    // have its reminder retired before it was ever set, and
+                    // the task would go quiet for good.
+                    assertTrue(cursor.getString(0) + " was delivered", cursor.isNull(1))
+                }
+
+                assertEquals(3, rows)
+            }
+        }
+    }
+
     @Test
     fun migratedRowsHaveNoReminder() {
         seedVersion1()
@@ -363,6 +384,7 @@ class MigrationTest {
 
         assertNull(scheduledTask.recurrence)
         assertNull(scheduledTask.reminderAt)
+        assertNull(scheduledTask.reminderDeliveredAt)
 
         assertTrue(tasks.single { it.id == "done" }.isCompleted)
         assertTrue(tasks.all { it.notes == null })
@@ -374,6 +396,6 @@ class MigrationTest {
         const val TEST_DB = "migration-test.db"
 
         /** The schema every migration in this test is aimed at. */
-        const val LatestVersion = 5
+        const val LatestVersion = 6
     }
 }

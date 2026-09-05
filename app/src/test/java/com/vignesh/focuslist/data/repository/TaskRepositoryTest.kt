@@ -31,6 +31,7 @@ private class FakeTaskDao : TaskDao {
     val inserted = mutableListOf<TaskEntity>()
     val updated = mutableListOf<TaskEntity>()
     val softDeleted = mutableListOf<Pair<String, Long>>()
+    val remindersDelivered = mutableListOf<Pair<String, Long>>()
     val restored = mutableListOf<String>()
     val deleted = mutableListOf<String>()
 
@@ -46,6 +47,10 @@ private class FakeTaskDao : TaskDao {
 
     override suspend fun softDelete(id: String, deletedAt: Long) {
         softDeleted += id to deletedAt
+    }
+
+    override suspend fun markReminderDelivered(id: String, deliveredAt: Long) {
+        remindersDelivered += id to deliveredAt
     }
 
     override suspend fun restore(id: String) {
@@ -76,6 +81,7 @@ class TaskRepositoryTest {
         scheduledDate: LocalDate? = null,
         dueDate: LocalDate? = null,
         reminderAt: LocalDateTime? = null,
+        reminderDeliveredAt: Instant? = null,
         estimatedDurationMinutes: Int? = null,
         recurrence: Recurrence? = null,
         completedAt: Instant? = null,
@@ -89,6 +95,7 @@ class TaskRepositoryTest {
         scheduledDate = scheduledDate,
         dueDate = dueDate,
         reminderAt = reminderAt,
+        reminderDeliveredAt = reminderDeliveredAt,
         estimatedDurationMinutes = estimatedDurationMinutes,
         recurrence = recurrence,
         spawnedFromId = null,
@@ -104,6 +111,7 @@ class TaskRepositoryTest {
         scheduledDate: LocalDate? = null,
         dueDate: LocalDate? = null,
         reminderAt: LocalDateTime? = null,
+        reminderDeliveredAt: Instant? = null,
         estimatedDurationMinutes: Int? = null,
         recurrence: Recurrence? = null,
         completedAt: Instant? = null,
@@ -117,6 +125,7 @@ class TaskRepositoryTest {
         scheduledDate = scheduledDate,
         dueDate = dueDate,
         reminderAt = reminderAt,
+        reminderDeliveredAt = reminderDeliveredAt,
         estimatedDurationMinutes = estimatedDurationMinutes,
         recurrence = recurrence,
         completedAt = completedAt,
@@ -210,6 +219,26 @@ class TaskRepositoryTest {
         repository.softDelete(id = "a", deletedAt = precise)
 
         assertEquals(1_767_255_300_987L, dao.softDeleted.single().second)
+    }
+
+    @Test
+    fun `markReminderDelivered passes the exact instant as epoch millis`() = runBlocking {
+        val precise = Instant.ofEpochMilli(1_767_255_300_987L)
+
+        repository.markReminderDelivered(id = "a", deliveredAt = precise)
+
+        assertEquals(listOf("a" to 1_767_255_300_987L), dao.remindersDelivered)
+    }
+
+    @Test
+    fun `markReminderDelivered touches only the task it names`() = runBlocking {
+        repository.markReminderDelivered(id = "a", deliveredAt = deletedAt)
+
+        // A targeted write, not a whole-row update. It runs in a broadcast
+        // receiver moments before the process is likely to be frozen, and it
+        // must not overwrite an edit the user is making on screen.
+        assertEquals(1, dao.remindersDelivered.size)
+        assertEquals(emptyList<TaskEntity>(), dao.updated)
     }
 
     // 5

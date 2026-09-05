@@ -25,6 +25,7 @@ class RemindersTest {
     private fun task(
         id: String,
         reminderAt: LocalDateTime? = null,
+        reminderDeliveredAt: Instant? = null,
         completedAt: Instant? = null,
         deletedAt: Instant? = null
     ) = Task(
@@ -32,6 +33,7 @@ class RemindersTest {
         title = "Task $id",
         createdAt = createdAt,
         reminderAt = reminderAt,
+        reminderDeliveredAt = reminderDeliveredAt,
         completedAt = completedAt,
         deletedAt = deletedAt
     )
@@ -46,6 +48,26 @@ class RemindersTest {
     @Test
     fun `a task with a reminder is owed one`() {
         assertTrue(task("a", reminderAt = now).hasLiveReminder())
+    }
+
+    @Test
+    fun `announcing a reminder retires it`() {
+        val delivered = task("a", reminderAt = now, reminderDeliveredAt = createdAt)
+
+        assertFalse(delivered.hasLiveReminder())
+    }
+
+    @Test
+    fun `an overdue reminder that was announced is not owed again`() {
+        // The bug this field exists for. An overdue reminder stays overdue
+        // for ever, so without a delivery record the scheduler re-announced
+        // it on every pass: one per task edit, restart and clock change.
+        val tasks = listOf(
+            task("told", reminderAt = now.minusHours(3), reminderDeliveredAt = createdAt),
+            task("untold", reminderAt = now.minusHours(3))
+        )
+
+        assertEquals(listOf("untold"), missedReminders(tasks, now).map { it.id })
     }
 
     @Test

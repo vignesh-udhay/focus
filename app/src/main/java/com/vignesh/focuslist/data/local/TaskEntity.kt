@@ -23,7 +23,7 @@ import java.time.LocalDateTime
  * database exists yet. Moving them to `@Database` later is equivalent.
  *
  * [notes] arrived in schema version 2, [recurrence] in version 3, and
- * [reminderAt] in version 5. Where a
+ * [reminderAt] in version 5, and [reminderDeliveredAt] in version 6. Where a
  * field sits in this declaration has no bearing on the stored column order,
  * and Room validates columns by name, so each migration appends its column
  * while it is declared here beside the field it belongs with.
@@ -39,6 +39,7 @@ data class TaskEntity(
     val scheduledDate: LocalDate?,
     val dueDate: LocalDate?,
     val reminderAt: LocalDateTime?,
+    val reminderDeliveredAt: Instant?,
     val estimatedDurationMinutes: Int?,
     val recurrence: Recurrence?,
     val spawnedFromId: String?,

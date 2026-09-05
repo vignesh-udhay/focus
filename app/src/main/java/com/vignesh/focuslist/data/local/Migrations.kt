@@ -16,6 +16,7 @@ import androidx.room.migration.Migration
  * Version 3: adds `recurrence`.
  * Version 4: adds `spawnedFromId`.
  * Version 5: adds `reminderAt`.
+ * Version 6: adds `reminderDeliveredAt`.
  */
 
 /**
@@ -72,6 +73,22 @@ val MIGRATION_4_5 = Migration(4, 5) { database ->
     database.execSQL("ALTER TABLE tasks ADD COLUMN reminderAt TEXT")
 }
 
+/**
+ * Version 6 records when a reminder was actually announced.
+ *
+ * Nullable and undefaulted like the rest. Null reads as "not yet delivered",
+ * which is the right answer for every row already in the database: none of
+ * them can have been announced, because the column did not exist.
+ *
+ * `INTEGER` rather than the `TEXT` of `reminderAt` beside it, and the
+ * difference is the point. A reminder time is a wall-clock time the user
+ * chose. A delivery time is a moment that happened, so it is an `Instant` and
+ * persists as epoch milliseconds like `completedAt` and `deletedAt`.
+ */
+val MIGRATION_5_6 = Migration(5, 6) { database ->
+    database.execSQL("ALTER TABLE tasks ADD COLUMN reminderDeliveredAt INTEGER")
+}
+
 /** Every migration, in order, for the builder and the migration test. */
 val FocuslistMigrations =
-    arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+    arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)

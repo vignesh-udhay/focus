@@ -10,14 +10,15 @@ import androidx.room.RoomDatabase
  * needs to read or write here.
  *
  * Version 2 adds `notes`, version 3 adds `recurrence`, version 4 adds
- * `spawnedFromId`, and version 5 adds `reminderAt`. Schemas are exported to
+ * `spawnedFromId`, version 5 adds `reminderAt`, and version 6 adds
+ * `reminderDeliveredAt`. Schemas are exported to
  * `app/schemas` and the migrations live in `Migrations.kt`; both are what let
  * an existing install carry its tasks across a version bump. See
  * `docs/design/storage.md`.
  */
 @Database(
     entities = [TaskEntity::class],
-    version = 5,
+    version = 6,
     exportSchema = true
 )
 abstract class FocuslistDatabase : RoomDatabase() {

@@ -148,6 +148,16 @@ internal class FakeTaskDao(initial: List<Task> = emptyList()) : TaskDao {
         rows.value = rows.value.map { stored -> if (stored.id == task.id) task else stored }
     }
 
+    override suspend fun markReminderDelivered(id: String, deliveredAt: Long) {
+        rows.value = rows.value.map { stored ->
+            if (stored.id == id) {
+                stored.copy(reminderDeliveredAt = Instant.ofEpochMilli(deliveredAt))
+            } else {
+                stored
+            }
+        }
+    }
+
     override suspend fun softDelete(id: String, deletedAt: Long) {
         rows.value = rows.value.map { stored ->
             if (stored.id == id) stored.copy(deletedAt = Instant.ofEpochMilli(deletedAt)) else stored

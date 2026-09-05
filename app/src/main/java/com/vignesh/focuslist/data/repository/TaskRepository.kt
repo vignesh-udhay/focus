@@ -47,6 +47,16 @@ class TaskRepository(private val dao: TaskDao) {
         dao.softDelete(id = id, deletedAt = deletedAt.toEpochMilli())
     }
 
+    /**
+     * Records that [id]'s reminder was announced at [deliveredAt].
+     *
+     * What retires a reminder. Until this is written the task is still owed
+     * one, and the scheduler will announce it again on its next pass.
+     */
+    suspend fun markReminderDelivered(id: String, deliveredAt: Instant) {
+        dao.markReminderDelivered(id = id, deliveredAt = deliveredAt.toEpochMilli())
+    }
+
     suspend fun restore(id: String) {
         dao.restore(id)
     }

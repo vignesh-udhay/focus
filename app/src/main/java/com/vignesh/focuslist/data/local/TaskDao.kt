@@ -50,6 +50,18 @@ interface TaskDao {
     suspend fun softDelete(id: String, deletedAt: Long)
 
     /**
+     * Records that a task's reminder has been announced.
+     *
+     * A targeted write rather than a whole-row update, because it happens in a
+     * broadcast receiver moments before the process is likely to be frozen,
+     * and because it must not race with an edit the user is making on screen.
+     *
+     * @param deliveredAt epoch milliseconds, matching the column's encoding.
+     */
+    @Query("UPDATE tasks SET reminderDeliveredAt = :deliveredAt WHERE id = :id")
+    suspend fun markReminderDelivered(id: String, deliveredAt: Long)
+
+    /**
      * Undoes a soft delete, returning the task to [observeTasks].
      *
      * Clearing the timestamp is the whole operation: nothing else about the

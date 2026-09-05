@@ -18,6 +18,7 @@ class TaskMappersTest {
     private val scheduledDate: LocalDate = LocalDate.of(2026, 8, 31)
     private val dueDate: LocalDate = LocalDate.of(2026, 9, 4)
     private val reminderAt: LocalDateTime = LocalDateTime.of(2026, 8, 31, 9, 30)
+    private val deliveredAt: Instant = Instant.parse("2026-08-31T04:00:12Z")
 
     private fun fullTask() = Task(
         id = "task-1",
@@ -28,6 +29,7 @@ class TaskMappersTest {
         scheduledDate = scheduledDate,
         dueDate = dueDate,
         reminderAt = reminderAt,
+        reminderDeliveredAt = deliveredAt,
         estimatedDurationMinutes = 45,
         recurrence = Recurrence.WEEKLY,
         spawnedFromId = "task-0",
@@ -44,6 +46,7 @@ class TaskMappersTest {
         scheduledDate = scheduledDate,
         dueDate = dueDate,
         reminderAt = reminderAt,
+        reminderDeliveredAt = deliveredAt,
         estimatedDurationMinutes = 45,
         recurrence = Recurrence.WEEKLY,
         spawnedFromId = "task-0",
@@ -65,6 +68,7 @@ class TaskMappersTest {
         assertEquals(scheduledDate, entity.scheduledDate)
         assertEquals(dueDate, entity.dueDate)
         assertEquals(reminderAt, entity.reminderAt)
+        assertEquals(deliveredAt, entity.reminderDeliveredAt)
         assertEquals(45, entity.estimatedDurationMinutes)
         // Neither of these was checked here before, which is how a column can
         // be added to one side of the mapping and quietly dropped on the way
@@ -93,6 +97,7 @@ class TaskMappersTest {
         assertEquals(scheduledDate, task.scheduledDate)
         assertEquals(dueDate, task.dueDate)
         assertEquals(reminderAt, task.reminderAt)
+        assertEquals(deliveredAt, task.reminderDeliveredAt)
         assertEquals(45, task.estimatedDurationMinutes)
         assertEquals(Recurrence.WEEKLY, task.recurrence)
         assertEquals("task-0", task.spawnedFromId)
@@ -129,6 +134,14 @@ class TaskMappersTest {
 
         assertNull(task.toEntity().reminderAt)
         assertNull(fullEntity().copy(reminderAt = null).toDomain().reminderAt)
+    }
+
+    @Test
+    fun `null reminderDeliveredAt survives both directions`() {
+        val task = fullTask().copy(reminderDeliveredAt = null)
+
+        assertNull(task.toEntity().reminderDeliveredAt)
+        assertNull(fullEntity().copy(reminderDeliveredAt = null).toDomain().reminderDeliveredAt)
     }
 
     @Test
