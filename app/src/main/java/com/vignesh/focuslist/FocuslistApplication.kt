@@ -7,9 +7,17 @@ import com.vignesh.focuslist.data.local.FocuslistDatabase
 import com.vignesh.focuslist.data.local.FocuslistMigrations
 import com.vignesh.focuslist.data.local.debugSeedCallback
 import com.vignesh.focuslist.core.notification.AndroidFocusAlarms
+import com.vignesh.focuslist.core.notification.AndroidReminderAlarms
 import com.vignesh.focuslist.core.notification.FocusAlarms
+import com.vignesh.focuslist.core.notification.ReminderAlarms
+import com.vignesh.focuslist.core.notification.ReminderScheduler
 import com.vignesh.focuslist.core.time.SystemCurrentDay
 import com.vignesh.focuslist.data.repository.TaskRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 /**
  * The application-level composition root.
@@ -23,7 +31,7 @@ import com.vignesh.focuslist.data.repository.TaskRepository
  * whole process, alive across configuration changes, and updating while the
  * app runs rather than being fixed when a screen was built.
  *
- * Deliberately not a service locator: it holds these three objects and nothing
+ * Deliberately not a service locator: it holds these few objects and nothing
  * else.
  */
 class FocuslistApplication : Application() {
@@ -66,6 +74,52 @@ class FocuslistApplication : Application() {
      * screen state, and one owner means one outstanding alarm.
      */
     val focusAlarms: FocusAlarms by lazy { AndroidFocusAlarms(this) }
+
+    /** How a task reminder reaches the user. Exact, unlike [focusAlarms]. */
+    val reminderAlarms: ReminderAlarms by lazy { AndroidReminderAlarms(this) }
+
+    /**
+     * Keeps the system's alarms agreeing with what storage says is owed.
+     *
+     * Public because the recovery receiver runs it too, after a restart or a
+     * clock change, when this process may have only just been created.
+     */
+    val reminderScheduler: ReminderScheduler by lazy { ReminderScheduler(reminderAlarms) }
+
+    /**
+     * Lives as long as the process, because what it watches does.
+     *
+     * Never cancelled: there is no later moment at which reminders stop
+     * mattering while the process is alive.
+     */
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    override fun onCreate() {
+        super.onCreate()
+        keepRemindersInStepWithStorage()
+    }
+
+    /**
+     * Every write to a task re-runs the reconciliation, so setting, changing,
+     * completing or deleting a reminder all reach `AlarmManager` without any
+     * of those call sites knowing that alarms exist.
+     *
+     * This does mean the database opens at process start rather than when a
+     * screen first asks for a task, which the laziness above was written to
+     * avoid. That trade is deliberate. A reminder the app forgot to schedule
+     * because nothing happened to open the database is exactly the failure
+     * `docs/decisions.md` D-005 is about, and it would be invisible.
+     *
+     * `collectLatest`, so a burst of edits does not queue a reconciliation per
+     * emission. Each pass reads the whole list, so only the newest matters.
+     */
+    private fun keepRemindersInStepWithStorage() {
+        applicationScope.launch {
+            taskRepository.observeTasks().collectLatest { tasks ->
+                reminderScheduler.reconcile(tasks)
+            }
+        }
+    }
 
     companion object {
         const val DATABASE_NAME = "focuslist.db"

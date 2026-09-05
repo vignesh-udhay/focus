@@ -108,4 +108,6 @@
         <item quantity="one">%1$d hour</item>
         <item quantity="other">%1$d hours</item>
     </plurals>
+    <string name="reminder_channel_name">Reminders</string>
+    <string name="reminder_channel_description">Tasks you asked to be reminded about, at the time you chose.</string>
 </resources>

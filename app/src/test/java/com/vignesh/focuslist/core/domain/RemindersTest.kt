@@ -6,6 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Instant
 import java.time.LocalDateTime
+import java.time.ZoneId
 
 /**
  * The reminder queries, and the awkward cases they exist for.
@@ -203,5 +204,52 @@ class RemindersTest {
     fun `an empty list produces no reminders of either kind`() {
         assertEquals(emptyList<Task>(), pendingReminders(emptyList(), now))
         assertEquals(emptyList<Task>(), missedReminders(emptyList(), now))
+    }
+
+    // 6. reminderTrigger, the moment actually handed to the system
+
+    @Test
+    fun `a future reminder triggers at its own local moment`() {
+        val instant = Instant.parse("2026-09-05T06:30:00Z")
+
+        assertEquals(
+            Instant.parse("2026-09-05T08:30:00Z"),
+            reminderTrigger(
+                LocalDateTime.of(2026, 9, 5, 14, 0),
+                ZoneId.of("Asia/Kolkata"),
+                instant
+            )
+        )
+    }
+
+    @Test
+    fun `a missed reminder triggers now rather than in the past`() {
+        val instant = Instant.parse("2026-09-05T06:30:00Z")
+
+        assertEquals(
+            instant,
+            reminderTrigger(
+                LocalDateTime.of(2026, 9, 5, 9, 0),
+                ZoneId.of("Asia/Kolkata"),
+                instant
+            )
+        )
+    }
+
+    @Test
+    fun `lateness does not decide whether a missed reminder is delivered`() {
+        val instant = Instant.parse("2026-09-05T06:30:00Z")
+
+        // Deliberate: there is no cut-off. A reminder from a fortnight ago is
+        // still owed, and the health screen is the honest place to say it is
+        // old rather than this function quietly dropping it.
+        assertEquals(
+            instant,
+            reminderTrigger(
+                LocalDateTime.of(2026, 8, 22, 9, 0),
+                ZoneId.of("Asia/Kolkata"),
+                instant
+            )
+        )
     }
 }

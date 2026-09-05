@@ -1,6 +1,8 @@
 package com.vignesh.focuslist.core.domain
 
+import java.time.Instant
 import java.time.LocalDateTime
+import java.time.ZoneId
 
 /**
  * Which reminders are still owed to the user.
@@ -77,3 +79,23 @@ fun missedReminders(tasks: List<Task>, now: LocalDateTime): List<Task> =
         .filter { task -> task.hasLiveReminder() && !task.reminderAt!!.isAfter(now) }
         // Every task here has a reminder; the filter saw to that.
         .sortedBy { task -> task.reminderAt }
+
+/**
+ * The moment to actually ask the system to fire, for a reminder that is owed.
+ *
+ * Two jobs. It resolves the wall-clock [reminderAt] against [zone], which is
+ * the only place the timezone enters and the reason a zone change has to
+ * re-run this. And it clamps a reminder whose moment has already gone to
+ * [now], so a missed one is delivered promptly rather than scheduled into the
+ * past where it would never arrive.
+ *
+ * Delivering a missed reminder late is a deliberate choice, and the smallest
+ * one that honours `PRODUCT.md`: a reminder that does not fire is the most
+ * severe class of bug here, so the phone being off at 9am should not mean the
+ * user is never told. It is not conditioned on how late it is. A cut-off would
+ * need a number nothing in the product justifies yet, and the honest place to
+ * decide what to do about a very old reminder is the health screen in Phase 2,
+ * which can see the gap.
+ */
+fun reminderTrigger(reminderAt: LocalDateTime, zone: ZoneId, now: Instant): Instant =
+    maxOf(reminderAt.atZone(zone).toInstant(), now)

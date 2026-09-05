@@ -7,6 +7,19 @@
          at launch. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Reminders are this app's core function, which is the category Google
+         Play grants USE_EXACT_ALARM for. Auto-granted, with no prompt: the
+         exact-alarm spike confirmed it on Android 14. SCHEDULE_EXACT_ALARM is
+         declared alongside for devices below 33, where USE_EXACT_ALARM does
+         not exist. -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"
+        android:maxSdkVersion="32" />
+
+    <!-- Every alarm the system held is gone after a restart. Without this the
+         app cannot know a reminder was ever set. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <application
         android:name=".FocuslistApplication"
         android:allowBackup="true"
@@ -35,6 +48,30 @@
         <receiver
             android:name=".core.notification.FocusEstimateReceiver"
             android:exported="false" />
+
+        <!-- Not exported: only AlarmManager delivers to it, on our own
+             PendingIntent. -->
+        <receiver
+            android:name=".core.notification.ReminderReceiver"
+            android:exported="false" />
+
+        <!-- Exported, because the system sends all four of these from outside
+             the app. A restart loses every alarm, and a clock or timezone
+             change moves what the surviving ones mean, so all of them lead to
+             the same reconciliation. TIME_SET and TIMEZONE_CHANGED are on
+             Android's implicit-broadcast exception list, so a manifest
+             receiver still gets them with the app closed. -->
+        <receiver
+            android:name=".core.notification.ReminderRecoveryReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>
