@@ -123,7 +123,8 @@ skins, and only the second one matters. Trust the log line over the test:
 mentions Anytime and Someday nowhere, and every screen on it carries the same
 three-item bar: Today, Inbox, Upcoming, with Logbook, Reminder health and
 Settings behind an app-bar overflow. `PRODUCT.md` already described that
-information architecture. Only the code disagreed. It no longer does.
+information architecture. The code disagreed in two ways. The first is now
+fixed. The second was missed, and is described below.
 
 The subtraction went in three commits, in an order that mattered:
 
@@ -150,8 +151,19 @@ version-1 database walked to 9, a version-2 one, and a fully populated
 version-8 row crossing the recreated table with only `placement` missing.
 524 unit tests.
 
-What is left in Phase 3 is new build rather than reconciliation, and each
-piece needs a decision before it is started: the UP NEXT hero card on Today,
+**The navigation bar still does not match.** `TopLevelDestinations` holds
+Today and Inbox only; Upcoming is a `SecondaryDestination` behind More
+alongside Logbook and Reminder health. `PRODUCT.md` names three primary
+destinations and the board puts Logbook, Reminder health and Settings in an
+app-bar overflow instead of a More tab. This is reconciliation, not new build,
+so it needs no decision and is the next thing to do.
+
+It was missed because removing Anytime and Someday from More left a plausible
+looking menu, and every test asserted the arrangement rather than the
+requirement. Nothing failed.
+
+After that, what is left in Phase 3 is new build, and each piece needs a
+decision before it is started: the UP NEXT hero card on Today,
 Task Details as a full screen with a read-only Plan card, and Focus gaining a
 timer with pause and resume. The last contradicts D-004 and needs a
 superseding entry first. Do not restyle a screen the board does not contain.

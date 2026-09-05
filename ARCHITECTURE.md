@@ -113,10 +113,22 @@ rather than positional, so a route survives screens being reordered.
 Destinations are split into primary, which appear in the navigation bar, and
 secondary, reachable through More.
 
-Note: an uncommitted change converts Focus from a destination into a sheet,
-which matches `PRODUCT.md` treating Focus as a mode rather than a place. The
-route list still reflects the older arrangement, and Phase 3 removes the
-Anytime and Someday routes entirely.
+Focus is a sheet rather than a destination, which matches `PRODUCT.md`
+treating it as a mode rather than a place. `FocuslistNavHost` opens
+`FocusSheet` over whatever list the user was on.
+
+The Anytime and Someday routes were removed at Phase 3 along with the
+placement axis they read. `docs/decisions.md` D-002 has the reason and
+`docs/design/storage.md` has the migration.
+
+**The bar and `PRODUCT.md` do not yet agree.** `TopLevelDestinations` holds
+Today and Inbox; Upcoming is still a `SecondaryDestination` behind More,
+alongside Logbook and Reminder health. `PRODUCT.md` and the Clean Slate board
+both put Upcoming in the bar and everything else in an app-bar overflow. That
+is remaining Phase 3 work, not a decision to revisit.
+
+`SecondaryRoutes` is derived from the `SecondaryDestinations` list rather than
+written out again, so adding or removing a More entry is one edit.
 
 ## Testing
 
