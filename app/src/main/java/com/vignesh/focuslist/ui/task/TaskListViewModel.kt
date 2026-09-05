@@ -506,6 +506,28 @@ class TaskListViewModel(
         return true
     }
 
+    private val _reminderJustSet = MutableStateFlow(false)
+
+    /**
+     * Whether a reminder has just been set that the app has not yet checked it
+     * can actually deliver.
+     *
+     * A promise has been made and stored, and nothing here knows whether the
+     * app is allowed to keep it: permissions are an Android question and this
+     * class holds none of that. It raises the flag, the UI decides whether
+     * there is anything to ask, and [acknowledgeReminder] lowers it.
+     *
+     * Set only when the time moves. Re-saving a task whose reminder did not
+     * change is not a new promise, and asking again would be the app finding
+     * an excuse rather than a reason.
+     */
+    val reminderJustSet: StateFlow<Boolean> = _reminderJustSet.asStateFlow()
+
+    /** Called once the reminder has been dealt with, whatever the answer. */
+    fun acknowledgeReminder() {
+        _reminderJustSet.value = false
+    }
+
     private val _pendingUndo = MutableStateFlow<PendingUndo?>(null)
 
     /**
@@ -653,6 +675,13 @@ class TaskListViewModel(
                     }
                 )
             )
+
+            // After the write, so the promise is stored whatever the user
+            // says next. Refusing to be notified must not also lose the
+            // reminder that prompted the question.
+            if (reminderAt != null && reminderAt != task.reminderAt) {
+                _reminderJustSet.value = true
+            }
         }
     }
 

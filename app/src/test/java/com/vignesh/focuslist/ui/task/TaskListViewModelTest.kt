@@ -3027,6 +3027,88 @@ class TaskListViewModelTest {
         assertNull(awaitEdited("a").reminderDeliveredAt)
     }
 
+    // The prompt a new reminder raises
+    //
+    // The view model does not know what a permission is. It says a promise was
+    // just made; the UI decides whether the app is currently able to keep it.
+
+    @Test
+    fun settingAReminderAsksToBeAllowedToDeliverIt() {
+        store(task(id = "a", scheduledDate = today))
+        val model = viewModel()
+        visible(model, 1)
+
+        model.edit(id = "a", reminderAt = reminder)
+        awaitEdited("a")
+
+        assertEquals(true, model.reminderJustSet.value)
+    }
+
+    @Test
+    fun theAskIsLoweredOnceItHasBeenAnswered() {
+        store(task(id = "a", scheduledDate = today))
+        val model = viewModel()
+        visible(model, 1)
+
+        model.edit(id = "a", reminderAt = reminder)
+        awaitEdited("a")
+        model.acknowledgeReminder()
+
+        assertEquals(false, model.reminderJustSet.value)
+    }
+
+    @Test
+    fun movingAReminderAsksAgain() {
+        store(task(id = "a", scheduledDate = today, reminderAt = reminder))
+        val model = viewModel()
+        visible(model, 1)
+
+        model.edit(id = "a", reminderAt = reminder.plusHours(1))
+        awaitEdited("a")
+
+        assertEquals(true, model.reminderJustSet.value)
+    }
+
+    @Test
+    fun editingATaskWithAnUnchangedReminderDoesNotAskAgain() {
+        // The regression worth naming. Every save carries the reminder back
+        // through, so a signal keyed on "a reminder is present" rather than
+        // "a reminder moved" would put the screen up on every edit.
+        store(task(id = "a", scheduledDate = today, reminderAt = reminder))
+        val model = viewModel()
+        visible(model, 1)
+
+        model.edit(id = "a", title = "Chase the missing invoice")
+        awaitEdited("a")
+
+        assertEquals(false, model.reminderJustSet.value)
+    }
+
+    @Test
+    fun clearingAReminderDoesNotAsk() {
+        // Nothing has been promised, so there is nothing to be allowed to do.
+        store(task(id = "a", scheduledDate = today, reminderAt = reminder))
+        val model = viewModel()
+        visible(model, 1)
+
+        model.edit(id = "a", reminderAt = null)
+        awaitEdited("a")
+
+        assertEquals(false, model.reminderJustSet.value)
+    }
+
+    @Test
+    fun editingATaskThatNeverHadAReminderDoesNotAsk() {
+        store(task(id = "a", scheduledDate = today))
+        val model = viewModel()
+        visible(model, 1)
+
+        model.edit(id = "a", title = "Chase the missing invoice")
+        awaitEdited("a")
+
+        assertEquals(false, model.reminderJustSet.value)
+    }
+
     // Notes
 
     @Test

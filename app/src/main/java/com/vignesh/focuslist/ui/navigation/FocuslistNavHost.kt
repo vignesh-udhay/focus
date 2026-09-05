@@ -25,6 +25,7 @@ import com.vignesh.focuslist.ui.focus.FocusSheet
 import com.vignesh.focuslist.ui.inbox.InboxScreen
 import com.vignesh.focuslist.ui.logbook.LogbookScreen
 import com.vignesh.focuslist.ui.placement.PlacementScreen
+import com.vignesh.focuslist.ui.reminder.ReminderPermissionGate
 import com.vignesh.focuslist.ui.task.TaskListViewModel
 import com.vignesh.focuslist.ui.today.TodayScreen
 import com.vignesh.focuslist.ui.upcoming.UpcomingScreen
@@ -165,6 +166,26 @@ fun FocuslistNavHost(
     if (isFocusSession) {
         FocusSheet(viewModel = viewModel)
     }
+
+    // Beside the graph for the same reason Focus is: it is something that
+    // happens to the user rather than a place they went, and it has to be able
+    // to appear over any screen, since a reminder can be set from any of them.
+    //
+    // After Focus, and so drawn over it. A session running while a reminder is
+    // set is not a reason to hide the question, and the question is the one
+    // thing on screen that cannot simply be asked again later.
+    val reminderJustSet by viewModel.reminderJustSet.collectAsStateWithLifecycle()
+
+    val application = LocalContext.current.applicationContext as FocuslistApplication
+
+    ReminderPermissionGate(
+        isRequested = reminderJustSet,
+        // A function, not a value: the answer changes while the screen is up,
+        // because the way to change it is to leave for settings and come back.
+        canScheduleExact = application.reminderAlarms::canScheduleExact,
+        onPermissionGranted = application::refreshReminders,
+        onDone = viewModel::acknowledgeReminder
+    )
 }
 
 /**

@@ -115,6 +115,19 @@
         <item quantity="one">%1$d hour</item>
         <item quantity="other">%1$d hours</item>
     </plurals>
+    <!-- The permission screen, drawn from reminder/Precise Permission — Clean
+         Slate. Android shows no dialog for exact alarms, so the screen walks
+         the user to the settings page instead, and says so. -->
+    <string name="reminder_permission_title">Allow precise reminders</string>
+    <string name="reminder_permission_body">Focuslist needs permission to deliver reminders at the exact time you choose.</string>
+    <string name="reminder_permission_why">Why this matters</string>
+    <string name="reminder_permission_bullet">• %1$s</string>
+    <string name="reminder_permission_reason_closed">Reminders can fire while the app is closed</string>
+    <string name="reminder_permission_reason_idle">Idle time should not make them late</string>
+    <string name="reminder_permission_reason_forget">You should be able to set it and forget it</string>
+    <string name="reminder_permission_open_settings">Open Android settings</string>
+    <string name="reminder_permission_not_now">Not now</string>
+    <string name="reminder_permission_note">This opens Alarms &amp; reminders in Android settings. Android does not ask for this one with a popup.</string>
     <string name="reminder_channel_name">Reminders</string>
     <string name="reminder_channel_description">Tasks you asked to be reminded about, at the time you chose.</string>
     <string name="reminder_action_done">Done</string>

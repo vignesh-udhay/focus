@@ -57,14 +57,24 @@ frame shows are deliberately not built:
   whole task-details surface, not a reminder change, and it is not Phase 1
   work.
 
-Next, and the last of Phase 1: the permission screen. The frame is
-`reminder/Precise Reminder Permission`, and it is being retargeted at
-`POST_NOTIFICATIONS` rather than exact alarms. Its closing line promises a
-system prompt, and `USE_EXACT_ALARM` never shows one, whereas notification
-permission is refusable on every device the app supports and refusing it
-produces a reminder that fires and is never seen. Routing users to
-manufacturer settings for exact alarms belongs to Phase 2, which already lists
-it.
+Also done: the permission flow, from
+`reminder/Precise Permission — Clean Slate`. Two permissions are checked when
+a reminder is first set. Notifications get Android's own dialog, because
+refusing that one drops the notification entirely and nothing appears. Exact
+alarms get the screen, because Android raises no dialog for that one: it is a
+settings page the user has to be walked to, which is what the frame says.
+
+**Read the design from `Focuslist — M3 Expressive Clean Slate` (node
+`161:3405`) and nothing else.** An earlier page, `Focuslist — M3 Expressive
+V1`, is still in the file and disagrees with it. Work in this phase was
+started against the old page twice before that was noticed.
+
+On Android 13 and up the exact-alarm screen never appears, because the app
+holds `USE_EXACT_ALARM` and `canScheduleExactAlarms()` is then always true. It
+is reachable on API 31 and 32 only. That is correct, and it is also not the
+problem: D-009 is a demotion no permission screen fixes.
+
+Phase 1 is complete.
 
 **Exact alarms are being demoted on that device, and Phase 2 has to deal with
 it.** `setExactAndAllowWhileIdle` produces an alarm with no `FLAG_STANDALONE`

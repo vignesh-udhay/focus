@@ -17,6 +17,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -118,6 +119,25 @@ class FocuslistApplication : Application() {
             taskRepository.observeTasks().collectLatest { tasks ->
                 reminderScheduler.reconcile(tasks)
             }
+        }
+    }
+
+    /**
+     * Re-runs the reconciliation now, without anything having been written.
+     *
+     * Everything else that changes what is owed also writes to storage, and
+     * the stream above carries it. Being granted permission to post does not:
+     * no task changed, only whether the app is allowed to speak about them.
+     *
+     * A reminder whose alarm fired while the app could not post is still owed.
+     * `ReminderReceiver` deliberately leaves it undelivered so that stays
+     * true, but nothing was going to act on it until the next process start.
+     * This is what makes the receiver's promise good at the moment the user
+     * says yes, rather than the next time they happen to open the app.
+     */
+    fun refreshReminders() {
+        applicationScope.launch {
+            reminderScheduler.reconcile(taskRepository.observeTasks().first())
         }
     }
 
