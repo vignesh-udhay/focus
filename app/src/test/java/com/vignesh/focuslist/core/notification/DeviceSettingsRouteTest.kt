@@ -17,6 +17,8 @@ import java.io.File
  */
 class DeviceSettingsRouteTest {
 
+    private val allCandidates = DeviceRestriction.entries.flatMap { candidatesFor(it) }
+
     @Test
     fun `every restriction has somewhere to send the user`() {
         DeviceRestriction.entries.forEach { restriction ->
@@ -36,7 +38,7 @@ class DeviceSettingsRouteTest {
 
     @Test
     fun `every candidate belongs to a package the app declares`() {
-        DeviceRestriction.entries.flatMap { candidatesFor(it) }.forEach { screen ->
+        allCandidates.forEach { screen ->
             assertTrue(
                 "${screen.packageName} is not in QueriedSettingsPackages",
                 screen.packageName in QueriedSettingsPackages
@@ -57,24 +59,44 @@ class DeviceSettingsRouteTest {
     }
 
     @Test
-    fun `the same screen is not tried twice`() {
-        // A duplicate is harmless at runtime and a sign the table was edited
-        // by copying, which is how the wrong activity name gets in.
-        val all = DeviceRestriction.entries.flatMap { candidatesFor(it) }
+    fun `nothing is declared that nothing routes to`() {
+        // The other direction. A package left behind by an edit costs the app
+        // a visibility declaration it does not use, which is the kind of thing
+        // a Play Store review asks about.
+        val used = allCandidates.map { it.packageName }.toSet()
 
-        assertEquals(all.size, all.distinct().size)
+        assertEquals(emptySet<String>(), QueriedSettingsPackages.toSet() - used)
     }
 
     @Test
-    fun `activity names are fully qualified`() {
+    fun `the same screen is not tried twice`() {
+        // A duplicate is harmless at runtime and a sign the table was edited by
+        // copying, which is how the wrong name gets in.
+        assertEquals(allCandidates.size, allCandidates.distinct().size)
+    }
+
+    @Test
+    fun `component names are fully qualified`() {
         // ComponentName does not expand a leading dot against the target
         // package, only against the caller's. A ".Foo" here would resolve
         // against Focuslist and find nothing.
-        DeviceRestriction.entries.flatMap { candidatesFor(it) }.forEach { screen ->
+        allCandidates.forEach { screen ->
             assertTrue(
                 "${screen.activity} is not a fully qualified class name",
                 !screen.activity.startsWith('.') && screen.activity.contains('.')
             )
         }
+    }
+
+    @Test
+    fun `nothing routes into ColorOS or OxygenOS 12 and later`() {
+        // Those screens exist and are guarded by a signature-level permission,
+        // so they resolve and then refuse to start. Offering one costs a
+        // guaranteed failure and buys nothing. D-010 has the measurement, and
+        // this is here so the com.oplus names are not helpfully added back.
+        assertTrue(
+            "A com.oplus screen was added back. It cannot be started by this app.",
+            allCandidates.none { it.packageName.startsWith("com.oplus") }
+        )
     }
 }

@@ -31,6 +31,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -55,6 +56,7 @@ import com.vignesh.focuslist.core.domain.ReminderHealthState
 import com.vignesh.focuslist.core.notification.TestReminder
 import com.vignesh.focuslist.core.notification.openAppSettings
 import com.vignesh.focuslist.core.notification.openBackgroundWorkSettings
+import com.vignesh.focuslist.core.notification.resolvableScreens
 import com.vignesh.focuslist.ui.component.durationLabel
 import java.time.Duration
 import java.time.Instant
@@ -322,14 +324,15 @@ private fun PrimaryAction(health: ReminderHealth?, onTest: () -> Unit) {
             stringResource(R.string.reminder_health_open_alarms) to
                 { context.openExactAlarmSettings() }
 
-        // The one button whose destination depends on the phone. On a
-        // manufacturer that ships a sleep feature this opens that feature's own
-        // screen, and is named after it, because "battery settings" is not what
-        // Autostart is called on the phone the user is holding. Everywhere else,
-        // and on any device where the guess does not resolve, it is the app's
-        // Android settings page under Android's own name for it.
+        // The one button whose destination depends on the phone, so it is
+        // named after where it will actually arrive. On a skin that both ships
+        // a sleep feature and lets an app open it, that is the feature's own
+        // screen, under the name the user will look for. Everywhere else it is
+        // the app's Android settings page, under Android's name for it. The
+        // button asks first rather than promising Autostart and opening App
+        // info, which is what OxygenOS would have it do.
         HealthCheck.BackgroundWork ->
-            checks.restriction.openLabel() to {
+            checks.restriction.openLabel(context.hasVendorScreen(checks.restriction)) to {
                 context.openBackgroundWorkSettings(checks.restriction)
             }
 
@@ -348,12 +351,22 @@ private fun PrimaryAction(health: ReminderHealth?, onTest: () -> Unit) {
 
 /** "Open Autostart settings" on a Xiaomi, "Open battery settings" elsewhere. */
 @Composable
-private fun DeviceRestriction?.openLabel(): String =
-    if (this == null) {
+private fun DeviceRestriction?.openLabel(hasVendorScreen: Boolean): String =
+    if (this == null || !hasVendorScreen) {
         stringResource(R.string.reminder_health_open_battery)
     } else {
         stringResource(R.string.reminder_health_open_restriction, stringResource(label))
     }
+
+/**
+ * Whether this phone has a manufacturer screen the app is allowed to open.
+ *
+ * Remembered because it asks the package manager, and the answer cannot change
+ * while the screen is open: it would take installing or removing a system app.
+ */
+@Composable
+private fun Context.hasVendorScreen(restriction: DeviceRestriction?): Boolean =
+    remember(restriction) { resolvableScreens(restriction).isNotEmpty() }
 
 // --- what each state says --------------------------------------------------
 

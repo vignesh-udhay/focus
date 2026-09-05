@@ -9,9 +9,8 @@ scope it delivers is in `PRODUCT.md`.
 
 ## Current phase
 
-**Phase 2: Make it trustworthy.** All four slices built, exit criteria met.
-One verification outstanding, named at the end of this section. Phase 1 is
-complete.
+**Phase 2: Make it trustworthy.** All four slices built, exit criteria met,
+verified on a Pixel 10 emulator and on a OnePlus 8T. Phase 1 is complete.
 
 **Read the design from `Focuslist — M3 Expressive Clean Slate` (node
 `161:3405`) and nothing else.** An earlier page, `Focuslist — M3 Expressive
@@ -87,13 +86,11 @@ never clear one. Measured on the emulator at four milliseconds late, against
 the roughly fifty seconds D-009 measured on the OnePlus.
 
 Fourth slice: **routing to the manufacturer's own screen**,
-`core/notification/DeviceSettingsRoute.kt`. Thirteen activity names across the
-four vendors, none of them documented and all of them renamed between releases,
-so every candidate is resolved against the package manager before it is
-launched and the launch itself is guarded. Whatever happens the user lands on
-the app's Android settings page, which exists everywhere. The button is named
-after the screen it opens, because "battery settings" is not what Autostart is
-called on the phone the user is holding.
+`core/notification/DeviceSettingsRoute.kt`. Best effort, and known to be best
+effort. Every candidate is resolved against the package manager before it is
+launched and the launch itself is guarded, so the user always lands somewhere:
+the vendor's screen where the phone permits it, the app's Android settings page
+otherwise. The button is named after wherever it will actually arrive.
 
 The packages appear twice, in that file and in `<queries>` in the manifest,
 because from Android 11 an undeclared package is invisible and resolves to
@@ -101,14 +98,26 @@ nothing. That failure is silent: the deep link would degrade to the generic
 page on exactly the phones that need it, and look like the feature was never
 built. A unit test checks the two lists agree.
 
-`aRestrictedDeviceHasAtLeastOneScreenToOffer` in the instrumented suite is the
-only test that needs particular hardware. It passes vacuously on a Pixel and
-answers the real question on a OnePlus, a Xiaomi or a Samsung: whether the
-guessed names are still the names that vendor ships. **Not yet run on the
-OnePlus 8T**, because instrumented tests wipe app data.
+**Two things were learned from the OnePlus 8T, and D-010 records them.** The
+activity names every published list gives for this vendor are stale, because
+ColorOS and OxygenOS merged at ColorOS 12 and renamed everything to
+`com.oplus`. And the replacements are guarded by a signature-level permission,
+so they resolve and then throw. There is no ColorOS or OxygenOS entry in the
+table as a result, and a test exists to stop one being helpfully added back.
 
-**Phase 2's exit criteria are met**, with that one caveat: the deep link is
-proven to fall back safely, not yet proven to land.
+The MIUI, One UI and EMUI entries are still guesses, from the same kind of list
+that proved stale here, and none has been tried on that hardware.
+`aRestrictedDeviceHasAtLeastOneScreenToOffer` in the instrumented suite is what
+will report the next one to go stale. It passes vacuously on a Pixel and means
+something on a Xiaomi, a Samsung or a Huawei.
+
+**One caution about that test.** It passed on the OnePlus while the app itself
+failed, because it only asks whether a screen resolves, and resolving is not
+permission to start it. Resolution and launch are separate questions on these
+skins, and only the second one matters. Trust the log line over the test:
+`FocuslistReminder` records which screen was opened, or that none was.
+
+**Phase 2's exit criteria are met.**
 
 **Phase 3 and the design pass are the same job.** The Clean Slate board
 mentions Anytime and Someday nowhere, and every screen on it carries the same

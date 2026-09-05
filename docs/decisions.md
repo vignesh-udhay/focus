@@ -354,3 +354,61 @@ cannot be assumed.
 causes and can stop, on more than one device. One phone is one phone, and the
 honest next step is measuring a second manufacturer before building detection
 around a single observation.
+
+---
+
+## D-010. The deep link into manufacturer battery settings is best effort, and OxygenOS 12 and later is not part of it
+
+**Date.** 5 September 2026.
+
+**Decision.** The reminder health screen's third button opens the
+manufacturer's own battery or autostart screen where the phone permits it, and
+the app's ordinary Android settings page everywhere else. The routing table
+holds no entry for ColorOS or OxygenOS 12 and later, because on those skins no
+third-party app can open those screens at all. The button is named after
+wherever it will actually arrive, so it never promises Autostart and delivers
+App info.
+
+**Why.** Two measurements on a OnePlus 8T, OxygenOS 14, Android 14.
+
+First, the names in circulation are stale. `com.coloros.safecenter`,
+`com.oppo.safe` and `com.oneplus.security` are the packages every published
+list names for this vendor, and not one of them exists on the device. ColorOS
+and OxygenOS merged at ColorOS 12 and renamed everything to `com.oplus`. A
+table built from those lists would have fallen through to the generic page on
+every modern OnePlus, silently, which is indistinguishable from never having
+built the feature.
+
+Second, the replacements cannot be opened. `com.oplus.battery` ships
+`PowerAppsBgSetting`, a startup manager and a battery page. All three are
+`exported=true`, all three resolve from inside the app, and all three throw on
+launch:
+
+    SecurityException: Permission Denial: starting Intent
+    { act=com.oplus.powermanager.fuelgaue.PowerAppsBgSetting
+      pkg=com.oplus.battery ... }
+    requires oplus.permission.OPLUS_COMPONENT_SAFE
+
+That permission is `protectionLevel:signature`, held only by apps signed with
+the vendor's platform key. This is not a gap to route around. It is the answer.
+
+So the entries were removed rather than kept behind the guard. Keeping them
+would mean three certain failures on every press, and a button that reads
+"Open Sleep standby settings" and lands somewhere else.
+
+**What this costs.** On a modern OnePlus the button opens App info, which
+carries a Battery usage entry one tap from the setting that matters. Worse
+than a deep link, better than nothing, and honest about which it is.
+
+**What this does not mean.** Not that the remaining entries are verified. The
+MIUI, One UI and EMUI names are still guesses, from the same kind of list that
+proved stale here, and none has been tried on that hardware. They are kept
+because they cost nothing when wrong: resolution is checked before launch, the
+launch is guarded, and the fallback is the same page. The instrumented test
+`aRestrictedDeviceHasAtLeastOneScreenToOffer` is what will report the next one
+to go stale, on the day someone runs it on such a phone.
+
+**What would reverse this.** A vendor exposing a documented intent for these
+settings, or Android adding one. `ACTION_REQUEST_SCHEDULE_EXACT_ALARM` is
+precedent that the platform will sometimes standardise a setting once enough
+apps need it.

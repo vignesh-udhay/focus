@@ -24,6 +24,9 @@ import com.vignesh.focuslist.core.domain.DeviceRestriction
  * the user lands on the app's own settings page, which exists on every device.
  * Crashing a person's phone while telling them their reminders are at risk
  * would be a poor joke.
+ *
+ * That guard is not theoretical. It is the whole story on modern OxygenOS, and
+ * `docs/decisions.md` D-010 records what was measured there.
  */
 
 /**
@@ -55,42 +58,85 @@ internal val QueriedSettingsPackages = listOf(
  * security app before the merge, and Samsung moved its battery screen one
  * package deeper. A phone matches at most one of them, and old handsets are
  * the ones most likely to need this screen at all.
+ *
+ * **There is no entry for ColorOS or OxygenOS 12 and later.** Those skins
+ * renamed everything to `com.oplus`, and every replacement screen is guarded
+ * by `oplus.permission.OPLUS_COMPONENT_SAFE`, which is `signature` level. The
+ * screens resolve, and starting one throws. No third-party app can open them,
+ * so there is nothing here to try. D-010 has the measurement.
  */
 internal fun candidatesFor(restriction: DeviceRestriction?): List<SettingsScreen> =
     when (restriction) {
         // MIUI and HyperOS. Autostart is the one that matters: without it the
         // app is not merely delayed, it is not started.
         DeviceRestriction.Autostart -> listOf(
-            "com.miui.securitycenter" to "com.miui.permcenter.autostart.AutoStartManagementActivity",
-            "com.miui.securitycenter" to "com.miui.powercenter.PowerSettings"
+            SettingsScreen(
+                "com.miui.securitycenter",
+                "com.miui.permcenter.autostart.AutoStartManagementActivity"
+            ),
+            SettingsScreen("com.miui.securitycenter", "com.miui.powercenter.PowerSettings")
         )
 
-        // ColorOS and OxygenOS, in the order the packages appeared.
+        // ColorOS and OxygenOS before the merge, for handsets that never took
+        // the update. They are also the handsets most likely to need it.
         DeviceRestriction.SleepStandby -> listOf(
-            "com.coloros.safecenter" to "com.coloros.safecenter.permission.startup.StartupAppListActivity",
-            "com.coloros.safecenter" to "com.coloros.safecenter.startupapp.StartupAppListActivity",
-            "com.coloros.oppoguardelf" to "com.coloros.powermanager.fuelgaue.PowerUsageModelActivity",
-            "com.oppo.safe" to "com.oppo.safe.permission.startup.StartupAppListActivity",
-            "com.oneplus.security" to "com.oneplus.security.chainlaunch.view.ChainLaunchAppListActivity"
+            SettingsScreen(
+                "com.coloros.safecenter",
+                "com.coloros.safecenter.permission.startup.StartupAppListActivity"
+            ),
+            SettingsScreen(
+                "com.coloros.safecenter",
+                "com.coloros.safecenter.startupapp.StartupAppListActivity"
+            ),
+            SettingsScreen(
+                "com.coloros.oppoguardelf",
+                "com.coloros.powermanager.fuelgaue.PowerUsageModelActivity"
+            ),
+            SettingsScreen(
+                "com.oppo.safe",
+                "com.oppo.safe.permission.startup.StartupAppListActivity"
+            ),
+            SettingsScreen(
+                "com.oneplus.security",
+                "com.oneplus.security.chainlaunch.view.ChainLaunchAppListActivity"
+            )
         )
 
         // One UI. Sleeping apps live inside Device care's battery page.
         DeviceRestriction.SleepingApps -> listOf(
-            "com.samsung.android.lool" to "com.samsung.android.sm.battery.ui.BatteryActivity",
-            "com.samsung.android.lool" to "com.samsung.android.sm.ui.battery.BatteryActivity",
-            "com.samsung.android.sm" to "com.samsung.android.sm.ui.battery.BatteryActivity"
+            SettingsScreen(
+                "com.samsung.android.lool",
+                "com.samsung.android.sm.battery.ui.BatteryActivity"
+            ),
+            SettingsScreen(
+                "com.samsung.android.lool",
+                "com.samsung.android.sm.ui.battery.BatteryActivity"
+            ),
+            SettingsScreen(
+                "com.samsung.android.sm",
+                "com.samsung.android.sm.ui.battery.BatteryActivity"
+            )
         )
 
         // EMUI and MagicOS.
         DeviceRestriction.ProtectedApps -> listOf(
-            "com.huawei.systemmanager" to "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity",
-            "com.huawei.systemmanager" to "com.huawei.systemmanager.appcontrol.activity.StartupAppControlActivity",
-            "com.huawei.systemmanager" to "com.huawei.systemmanager.optimize.process.ProtectActivity"
+            SettingsScreen(
+                "com.huawei.systemmanager",
+                "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity"
+            ),
+            SettingsScreen(
+                "com.huawei.systemmanager",
+                "com.huawei.systemmanager.appcontrol.activity.StartupAppControlActivity"
+            ),
+            SettingsScreen(
+                "com.huawei.systemmanager",
+                "com.huawei.systemmanager.optimize.process.ProtectActivity"
+            )
         )
 
         // A device with no known restriction has no screen worth guessing at.
         null -> emptyList()
-    }.map { (packageName, activity) -> SettingsScreen(packageName, activity) }
+    }
 
 /**
  * One manufacturer settings screen, as two strings.
@@ -103,28 +149,28 @@ internal fun candidatesFor(restriction: DeviceRestriction?): List<SettingsScreen
 internal data class SettingsScreen(val packageName: String, val activity: String)
 
 /**
- * Opens the manufacturer's own screen if one is there, and the app's Android
- * settings page if not.
+ * Opens the manufacturer's own screen if the phone will allow it, and the
+ * app's Android settings page if not.
  *
- * The fallback is not a failure case, it is the common case: most phones ship
- * no such screen, and on those the generic page is the right answer anyway,
- * since that is where Android keeps its own battery controls.
- *
- * [SecurityException] is caught alongside the expected miss because a settings
- * activity can be visible to the package manager and still not exported to
- * this app. That combination is only reachable on hardware nobody has to hand,
- * so it is caught rather than reasoned about.
+ * The fallback is not a failure case, it is the common case. Most phones ship
+ * no such screen; the newest OPPO and OnePlus ship one and refuse to open it;
+ * and on all of them the generic page is a fair destination, because it is
+ * where Android keeps its own battery controls and it carries a Battery usage
+ * entry one tap away.
  */
 fun Context.openBackgroundWorkSettings(restriction: DeviceRestriction?) {
-    for (component in resolvableScreens(restriction)) {
+    for (screen in resolvableScreens(restriction)) {
         try {
-            startActivity(intentFor(component))
-            Log.d(LogTag, "Background work settings: ${component.flattenToShortString()}")
+            startActivity(screen.intent())
+            Log.d(LogTag, "Background work settings: $screen")
             return
         } catch (e: ActivityNotFoundException) {
-            Log.d(LogTag, "Resolved but would not start: ${component.flattenToShortString()}", e)
+            Log.d(LogTag, "Resolved but would not start: $screen", e)
         } catch (e: SecurityException) {
-            Log.d(LogTag, "Resolved but not exported: ${component.flattenToShortString()}", e)
+            // The OxygenOS case, and probably not only that one. Logged rather
+            // than counted, because the user is about to land somewhere useful
+            // either way.
+            Log.d(LogTag, "Resolved but this app may not start it: $screen", e)
         }
     }
 
@@ -134,18 +180,18 @@ fun Context.openBackgroundWorkSettings(restriction: DeviceRestriction?) {
 /**
  * The candidates this device actually has, in the table's order.
  *
- * Split out from the launch so a test on real hardware can ask what the app
- * would do without opening anything. On a device with none of these screens
- * the answer is an empty list, which is the whole point: nothing is launched
- * on a guess.
+ * Split out from the launch for two callers. A test on real hardware can ask
+ * what the app would do without opening anything, and the health screen asks
+ * whether there is a manufacturer screen to name before it promises one on a
+ * button.
  */
-internal fun Context.resolvableScreens(restriction: DeviceRestriction?): List<ComponentName> =
-    candidatesFor(restriction)
-        .map { ComponentName(it.packageName, it.activity) }
-        .filter { packageManager.resolveActivity(intentFor(it), 0) != null }
+internal fun Context.resolvableScreens(restriction: DeviceRestriction?): List<SettingsScreen> =
+    candidatesFor(restriction).filter { packageManager.resolveActivity(it.intent(), 0) != null }
 
-private fun intentFor(component: ComponentName): Intent =
-    Intent().setComponent(component).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+private fun SettingsScreen.intent(): Intent =
+    Intent()
+        .setComponent(ComponentName(packageName, activity))
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
 /** The app's own page in Android settings. Present on every device. */
 fun Context.openAppSettings() {
