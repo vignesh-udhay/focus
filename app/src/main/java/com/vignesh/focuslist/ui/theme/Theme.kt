@@ -19,9 +19,16 @@ import com.vignesh.focuslist.core.design.FocuslistLightColorScheme
  * falls back to its own identity rather than to Material's baseline purple.
  * Both fallbacks come from one seed, so light and dark are the same product.
  *
- * The motion scheme is deliberately not passed. `MaterialExpressiveTheme`
- * defaults it to the expressive scheme, which is the one the design wants, and
- * naming it here would only be a second place for it to be wrong.
+ * Colour is the only thing this theme supplies. The type ramp, the corner
+ * scale and the motion scheme are all left to `MaterialExpressiveTheme`,
+ * which already defaults them to the expressive values the design is drawn
+ * against. Restating any of them here would only be a second place for them
+ * to be wrong, and an app that redraws the system's corners and weights
+ * stops reading as an Android app and starts reading as a skin. See D-008.
+ *
+ * Emphasis is a type role, not a weight override: reach for
+ * `titleLargeEmphasized` rather than copying `titleLarge` with a heavier
+ * weight. That is what the emphasized roles are for.
  */
 @Composable
 fun FocuslistTheme(
@@ -41,8 +48,6 @@ fun FocuslistTheme(
 
     MaterialExpressiveTheme(
         colorScheme = colorScheme,
-        typography = FocuslistTypography,
-        shapes = FocuslistShapes,
         content = content
     )
 }

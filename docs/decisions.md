@@ -228,3 +228,53 @@ this app. It is not the problem the app solves.
 
 **What would reverse this.** Nothing. This is a sequencing rule, and it
 expires naturally once reliability is done.
+
+---
+
+## D-008. Follow Material 3 Expressive as given, and stop restating it
+
+**Decision.** The theme supplies one thing: colour. The type ramp, the corner
+scale and the motion scheme come from `MaterialExpressiveTheme` untouched.
+`ui/theme/Type.kt` and `ui/theme/Shape.kt` are deleted, and the rules written
+in their KDoc are superseded by this entry.
+
+Emphasis is a type role. Reach for `titleLargeEmphasized`; never copy a plain
+role with a heavier weight.
+
+`MaterialShapes` polygons and shape morphing are allowed, on a budget: one
+polygon, in Focus.
+
+**Why.** Principle 5 in `PRODUCT.md` asks for an app that feels Android-native.
+A corner ladder is the most legible fingerprint of an app that is not. Nobody
+names it, but every card drawn at 16dp where the system draws 12dp is what
+makes software read as a skin over Android rather than a part of it.
+
+The deleted scale shifted every step up by one: 4 to 8, 8 to 12, 12 to 16, 16
+to 24, 20 to 28. Its stated reason was that this felt softer. Expressive had
+already increased rounding over Material 3, so the app was softening a scale
+that had been softened for it, on taste alone.
+
+The type overrides were worse, because they fought the spec rather than
+merely diverging from it. They put SemiBold on the plain display, headline and
+title roles. Expressive's answer to "this should read heavier" is the
+emphasized role, and Material derives each emphasized style one step above its
+own baseline, Regular to Medium. Setting the plain role to SemiBold therefore
+left the emphasized variant a step *lighter* than the plain one. The design
+uses emphasized for every heading and the plain roles nowhere, so the app's own
+weight decision was being bypassed on every screen while inverting the scale it
+was trying to protect.
+
+The polygon ban contradicted the direction outright. `MaterialShapes` and shape
+morphing are headline Expressive features; forbidding them while claiming to
+follow Expressive is incoherent. The Focus orb is the strongest Expressive
+moment in the design, and it was drawn against a rule that forbade it.
+
+**What survives.** Shape does not carry hierarchy. It says what a thing is, not
+how important it is, so two components at different levels of prominence do not
+get different radii to make the point. Rounded rectangles for list and card
+chrome. The polygon is reserved for Focus, where the shape is the content
+rather than decoration on content.
+
+**What would reverse this.** Evidence that a specific Material default harms
+legibility or reliability on real devices. Taste is not enough. Taste is what
+produced the overrides in the first place.
