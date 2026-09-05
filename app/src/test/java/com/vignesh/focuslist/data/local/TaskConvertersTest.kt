@@ -232,4 +232,15 @@ class TaskConvertersTest {
         assertNull(TaskConverters.localDateTimeToText(null))
         assertNull(TaskConverters.textToLocalDateTime(null))
     }
+
+    @Test
+    fun `malformed reminder text reads as no reminder rather than throwing`() {
+        // Found on a device: one empty string in this column crashed the app
+        // on every read of the task list. Losing one reminder is bad; an app
+        // that cannot open, with every other reminder unreachable, is worse.
+        assertNull(TaskConverters.textToLocalDateTime(""))
+        assertNull(TaskConverters.textToLocalDateTime("not a date"))
+        assertNull(TaskConverters.textToLocalDateTime("2026-08-31"))
+        assertNull(TaskConverters.textToLocalDateTime("2026-13-45T99:99"))
+    }
 }

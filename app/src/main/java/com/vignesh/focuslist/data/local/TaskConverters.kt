@@ -36,9 +36,24 @@ object TaskConverters {
     @TypeConverter
     fun localDateTimeToText(value: LocalDateTime?): String? = value?.toString()
 
+    /**
+     * Unparseable text reads as no reminder.
+     *
+     * The same bargain the placement and recurrence converters strike, and for
+     * the reason their KDoc gives: a task quietly losing a field is
+     * recoverable, and throwing while reading the database is not. This one
+     * was written to throw, and a single malformed row crashed the app on
+     * every read of the task list, which is every screen.
+     *
+     * Losing a reminder is a serious outcome, so this is not a shrug. It is a
+     * choice between one reminder lost and an app that cannot open at all,
+     * with every other reminder in it unreachable.
+     */
     @TypeConverter
     fun textToLocalDateTime(value: String?): LocalDateTime? =
-        value?.let(LocalDateTime::parse)
+        value?.let {
+            runCatching { LocalDateTime.parse(it) }.getOrNull()
+        }
 
     /**
      * A timestamp persists as epoch milliseconds.

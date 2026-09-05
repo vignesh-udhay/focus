@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.getSystemService
@@ -42,12 +43,19 @@ class AndroidReminderAlarms(private val context: Context) : ReminderAlarms {
     private val alarms = context.getSystemService<AlarmManager>()
 
     override fun schedule(taskId: String, at: Instant) {
-        val alarms = alarms ?: return
+        val alarms = alarms ?: run {
+            Log.e(LogTag, "No AlarmManager. Reminder for $taskId cannot be scheduled at all.")
+            return
+        }
         val intent = pendingIntent(taskId)
 
         if (canScheduleExact()) {
             alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at.toEpochMilli(), intent)
         } else {
+            // `AGENTS.md`: never silently swallow a scheduling failure. This is
+            // a degraded promise, not a working one, and the Phase 2 health
+            // screen is where it eventually has to reach the user.
+            Log.w(LogTag, "Exact alarms unavailable. Reminder for $taskId scheduled inexactly.")
             alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at.toEpochMilli(), intent)
         }
     }
@@ -217,3 +225,5 @@ private fun Context.postReminder(taskId: String, title: String) {
 }
 
 internal const val ReminderChannelId = "focuslist.reminder"
+
+private const val LogTag = "FocuslistReminder"
