@@ -67,7 +67,6 @@ import com.vignesh.focuslist.core.domain.MorningHour
 import com.vignesh.focuslist.core.domain.ParsedDate
 import com.vignesh.focuslist.core.domain.Recurrence
 import com.vignesh.focuslist.core.domain.Task
-import com.vignesh.focuslist.core.domain.TaskPlacement
 import com.vignesh.focuslist.core.domain.parseDate
 import com.vignesh.focuslist.ui.component.TaskDatePickerDialog
 import com.vignesh.focuslist.ui.component.scheduledDateLabel
@@ -85,10 +84,9 @@ import java.util.Locale
 /**
  * Task details.
  *
- * Edits the seven fields a task carries about itself: what it is, anything
- * more that needs saying about it, how far it has been triaged, when it is
- * meant to be worked on, when it is due, how long it should take, and how
- * often it comes back.
+ * Edits what the user can change about a task: its title and notes, when it is
+ * meant to be worked on, when it is due, how long it should take, how often it
+ * comes back, and when it should issue a reminder.
  *
  * Completion and deletion are deliberately absent. They have their own
  * interactions, and editing a task must not quietly finish or remove it.
@@ -113,7 +111,6 @@ internal fun TaskDetailsSheet(
     // Null and blank both mean no notes, so the draft holds the blank and the
     // view model maps it back on save.
     var notes by rememberSaveable(task.id) { mutableStateOf(task.notes.orEmpty()) }
-    var placement by rememberSaveable(task.id) { mutableStateOf(task.placement) }
     // The scheduled day is picked rather than typed, so it is held as a date
     // and needs no parsing. The due date is still typed, and is held as the
     // text of its field for the reason it always was: the field is where the
@@ -218,8 +215,6 @@ internal fun TaskDetailsSheet(
                     onTitleChange = { title = it },
                     notes = notes,
                     onNotesChange = { notes = it },
-                    placement = placement,
-                    onPlacementChange = { placement = it },
                     scheduleSummary = scheduleSummary(
                         scheduled = scheduled,
                         today = today,
@@ -236,7 +231,6 @@ internal fun TaskDetailsSheet(
                             task.copy(
                                 title = title.trim(),
                                 notes = notes.trim().takeIf { it.isNotEmpty() },
-                                placement = placement,
                                 scheduledDate = scheduled,
                                 dueDate = (due as? ParsedDate.Recognized)?.date,
                                 estimatedDurationMinutes =
@@ -253,8 +247,7 @@ internal fun TaskDetailsSheet(
 }
 
 /**
- * What the task is: its name, anything more that needs saying, and how far it
- * has been triaged.
+ * What the task is: its name and anything more that needs saying.
  *
  * When the work happens is not here. It is one row, summarising what has been
  * set, that opens the page which sets it. `PRODUCT.md` asks the app to avoid
@@ -272,8 +265,6 @@ private fun DetailsPage(
     onTitleChange: (String) -> Unit,
     notes: String,
     onNotesChange: (String) -> Unit,
-    placement: TaskPlacement,
-    onPlacementChange: (TaskPlacement) -> Unit,
     scheduleSummary: String,
     onOpenSchedule: () -> Unit,
     reminderSummary: String,
@@ -315,8 +306,6 @@ private fun DetailsPage(
         ),
         modifier = Modifier.fillMaxWidth()
     )
-
-    PlacementField(placement = placement, onChange = onPlacementChange)
 
     Row(
         horizontalArrangement = Arrangement.spacedBy(FocuslistSpacing.xs),
@@ -703,25 +692,6 @@ private fun Long.toLocalDate(): LocalDate =
     Instant.ofEpochMilli(this).atZone(ZoneOffset.UTC).toLocalDate()
 
 /**
- * How far the task has been triaged. Three mutually exclusive states.
- */
-@Composable
-private fun PlacementField(
-    placement: TaskPlacement,
-    onChange: (TaskPlacement) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    ConnectedChoiceGroup(
-        label = stringResource(R.string.task_details_placement_label),
-        options = TaskPlacement.entries,
-        selectedOption = placement,
-        labelOf = { stringResource(it.labelRes) },
-        onSelect = onChange,
-        modifier = modifier
-    )
-}
-
-/**
  * How often the task comes back. Never, and the four periods a rule can be.
  *
  * Never is an option in the group rather than a separate switch, because it is
@@ -953,13 +923,6 @@ private val Recurrence?.labelRes: Int
         Recurrence.WEEKLY -> R.string.task_recurrence_weekly
         Recurrence.MONTHLY -> R.string.task_recurrence_monthly
         Recurrence.YEARLY -> R.string.task_recurrence_yearly
-    }
-
-private val TaskPlacement.labelRes: Int
-    get() = when (this) {
-        TaskPlacement.INBOX -> R.string.task_placement_inbox
-        TaskPlacement.ANYTIME -> R.string.task_placement_anytime
-        TaskPlacement.SOMEDAY -> R.string.task_placement_someday
     }
 
 /**

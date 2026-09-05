@@ -33,8 +33,6 @@ object FocuslistRoutes {
     const val TODAY = "today"
     const val INBOX = "inbox"
     const val UPCOMING = "upcoming"
-    const val ANYTIME = "anytime"
-    const val SOMEDAY = "someday"
     const val LOGBOOK = "logbook"
     const val REMINDER_HEALTH = "reminder-health"
 }
@@ -56,16 +54,6 @@ private val SecondaryDestinations = listOf(
         FocuslistRoutes.UPCOMING,
         R.string.upcoming_title,
         R.drawable.ic_upcoming
-    ),
-    SecondaryDestination(
-        FocuslistRoutes.ANYTIME,
-        R.string.task_placement_anytime,
-        R.drawable.ic_anytime
-    ),
-    SecondaryDestination(
-        FocuslistRoutes.SOMEDAY,
-        R.string.task_placement_someday,
-        R.drawable.ic_someday
     ),
     SecondaryDestination(
         FocuslistRoutes.LOGBOOK,

@@ -6,10 +6,8 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.vignesh.focuslist.core.domain.TaskPlacement
 import com.vignesh.focuslist.ui.inbox.InboxScreen
 import com.vignesh.focuslist.ui.logbook.LogbookScreen
-import com.vignesh.focuslist.ui.placement.PlacementScreen
 import com.vignesh.focuslist.ui.task.TaskListViewModel
 import com.vignesh.focuslist.ui.today.TodayScreen
 import com.vignesh.focuslist.ui.upcoming.UpcomingScreen
@@ -108,36 +106,6 @@ class ScreenChromeSemanticsTest {
 
     @Test
     fun upcoming_hasHeadingAndEmptyState_at200() = upcoming(FontScale200)
-
-    private fun anytime(fontScale: Float) = assertChrome(
-        fontScale,
-        title = "Anytime",
-        emptyHeadline = "Nothing to pick up",
-        emptySupporting = "Tasks you can do whenever land here."
-    ) { viewModel ->
-        PlacementScreen(viewModel = viewModel, placement = TaskPlacement.ANYTIME)
-    }
-
-    @Test
-    fun anytime_hasHeadingAndEmptyState_at100() = anytime(FontScale100)
-
-    @Test
-    fun anytime_hasHeadingAndEmptyState_at200() = anytime(FontScale200)
-
-    private fun someday(fontScale: Float) = assertChrome(
-        fontScale,
-        title = "Someday",
-        emptyHeadline = "Nothing parked",
-        emptySupporting = "Ideas you are deliberately not doing yet land here."
-    ) { viewModel ->
-        PlacementScreen(viewModel = viewModel, placement = TaskPlacement.SOMEDAY)
-    }
-
-    @Test
-    fun someday_hasHeadingAndEmptyState_at100() = someday(FontScale100)
-
-    @Test
-    fun someday_hasHeadingAndEmptyState_at200() = someday(FontScale200)
 
     private fun logbook(fontScale: Float) = assertChrome(
         fontScale,

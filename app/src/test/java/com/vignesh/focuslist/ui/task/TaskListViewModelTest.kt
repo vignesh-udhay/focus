@@ -2215,322 +2215,6 @@ class TaskListViewModelTest {
         assertEquals(repository.observeTasks().first().single { it.id == "a" }, shown)
     }
 
-    // Anytime and Someday
-
-    /** The placement states start empty, so wait for the derived emission. */
-    private fun anytime(model: TaskListViewModel, size: Int): List<Task> = runBlocking {
-        model.anytimeTasks.first { it.size == size }
-    }
-
-    private fun someday(model: TaskListViewModel, size: Int): List<Task> = runBlocking {
-        model.somedayTasks.first { it.size == size }
-    }
-
-    /** Waits for Anytime to read as [ids], then returns what it actually holds. */
-    private fun awaitAnytimeIds(model: TaskListViewModel, ids: List<String>): List<String> =
-        runBlocking {
-            withTimeoutOrNull(TIMEOUT_MILLIS) {
-                model.anytimeTasks.first { tasks -> tasks.map { it.id } == ids }
-            } ?: model.anytimeTasks.value
-        }.map { it.id }
-
-    /** Waits for Someday to read as [ids], then returns what it actually holds. */
-    private fun awaitSomedayIds(model: TaskListViewModel, ids: List<String>): List<String> =
-        runBlocking {
-            withTimeoutOrNull(TIMEOUT_MILLIS) {
-                model.somedayTasks.first { tasks -> tasks.map { it.id } == ids }
-            } ?: model.somedayTasks.value
-        }.map { it.id }
-
-    @Test
-    fun anytimeShowsOnlyAnytimeTasks() {
-        store(
-            task(id = "anytime", placement = TaskPlacement.ANYTIME),
-            task(id = "someday", placement = TaskPlacement.SOMEDAY),
-            task(id = "inbox", placement = TaskPlacement.INBOX)
-        )
-
-        assertEquals(listOf("anytime"), anytime(viewModel(), 1).map { it.id })
-    }
-
-    @Test
-    fun somedayShowsOnlySomedayTasks() {
-        store(
-            task(id = "anytime", placement = TaskPlacement.ANYTIME),
-            task(id = "someday", placement = TaskPlacement.SOMEDAY),
-            task(id = "inbox", placement = TaskPlacement.INBOX)
-        )
-
-        assertEquals(listOf("someday"), someday(viewModel(), 1).map { it.id })
-    }
-
-    @Test
-    fun bothPlacementListsExcludeCompletedTasks() {
-        store(
-            task(id = "a", placement = TaskPlacement.ANYTIME, completedAt = completedAt),
-            task(id = "s", placement = TaskPlacement.SOMEDAY, completedAt = completedAt)
-        )
-        val model = viewModel()
-
-        assertEquals(emptyList<String>(), awaitAnytimeIds(model, emptyList()))
-        assertEquals(emptyList<String>(), awaitSomedayIds(model, emptyList()))
-    }
-
-    @Test
-    fun bothPlacementListsExcludeDeletedTasks() {
-        store(
-            task(id = "a", placement = TaskPlacement.ANYTIME, deletedAt = deletedAt),
-            task(id = "s", placement = TaskPlacement.SOMEDAY, deletedAt = deletedAt)
-        )
-        val model = viewModel()
-
-        assertEquals(emptyList<String>(), awaitAnytimeIds(model, emptyList()))
-        assertEquals(emptyList<String>(), awaitSomedayIds(model, emptyList()))
-    }
-
-    // Each of these keeps an undated control task alongside the dated one, and
-    // waits for the list to read as exactly that control. Asserting against
-    // the empty list would pass without proving anything: these flows start
-    // empty, so "still empty" is also what not-yet-loaded looks like, and the
-    // wait would return on the first emission before the query had run.
-
-    @Test
-    fun aScheduledAnytimeTaskLeavesAnytime() {
-        store(
-            task(id = "dated", placement = TaskPlacement.ANYTIME, scheduledDate = today.plusDays(3)),
-            task(id = "undated", placement = TaskPlacement.ANYTIME)
-        )
-
-        assertEquals(listOf("undated"), anytime(viewModel(), 1).map { it.id })
-    }
-
-    @Test
-    fun aScheduledSomedayTaskLeavesSomeday() {
-        store(
-            task(id = "dated", placement = TaskPlacement.SOMEDAY, scheduledDate = today.plusDays(3)),
-            task(id = "undated", placement = TaskPlacement.SOMEDAY)
-        )
-
-        assertEquals(listOf("undated"), someday(viewModel(), 1).map { it.id })
-    }
-
-    @Test
-    fun anAnytimeTaskScheduledForTodayIsOnlyInToday() {
-        store(
-            task(id = "dated", placement = TaskPlacement.ANYTIME, scheduledDate = today),
-            task(id = "undated", placement = TaskPlacement.ANYTIME)
-        )
-        val model = viewModel()
-
-        // These used to overlap deliberately, on the reasoning that placement
-        // and scheduling are independent axes. They are, in the data; in the
-        // lists it meant Anytime showed work already planned for today and a
-        // task had no single place to be found.
-        assertEquals(listOf("dated"), visible(model, 1).map { it.id })
-        assertEquals(listOf("undated"), anytime(model, 1).map { it.id })
-    }
-
-    @Test
-    fun aSomedayTaskScheduledAheadIsOnlyInUpcoming() {
-        store(
-            task(id = "dated", placement = TaskPlacement.SOMEDAY, scheduledDate = today.plusDays(5)),
-            task(id = "undated", placement = TaskPlacement.SOMEDAY)
-        )
-        val model = viewModel()
-
-        // The sharper half: Someday means deliberately deferred, and a day on
-        // the task is the calendar calling it due.
-        assertEquals(listOf("dated"), upcoming(model, 1).map { it.id })
-        assertEquals(listOf("undated"), someday(model, 1).map { it.id })
-    }
-
-    @Test
-    fun placementListsOrderCapturesNewestFirst() {
-        store(
-            task(id = "capture", placement = TaskPlacement.ANYTIME, createdAt = createdAt),
-            task(
-                id = "olderCapture",
-                placement = TaskPlacement.ANYTIME,
-                createdAt = createdAt.minusSeconds(60)
-            )
-        )
-
-        // The two-group ordering that put dated tasks first went with the
-        // dated tasks; these lists hold undated work only.
-        assertEquals(
-            listOf("capture", "olderCapture"),
-            anytime(viewModel(), 2).map { it.id }
-        )
-    }
-
-    @Test
-    fun bothPlacementListsAreBackedByTheSameStream() = runBlocking {
-        store(
-            task(id = "a", placement = TaskPlacement.ANYTIME),
-            task(id = "s", placement = TaskPlacement.SOMEDAY)
-        )
-        val model = viewModel()
-
-        val stored = repository.observeTasks().first()
-        assertEquals(stored.single { it.id == "a" }, anytime(model, 1).single())
-        assertEquals(stored.single { it.id == "s" }, someday(model, 1).single())
-    }
-
-    // Moving between placements
-
-    @Test
-    fun movingAnytimeToSomedayUpdatesBothLists() {
-        store(task(id = "a", placement = TaskPlacement.ANYTIME))
-        val model = viewModel()
-        anytime(model, 1)
-
-        model.edit(id = "a", placement = TaskPlacement.SOMEDAY, scheduledDate = null)
-
-        assertEquals(emptyList<String>(), awaitAnytimeIds(model, emptyList()))
-        assertEquals(listOf("a"), awaitSomedayIds(model, listOf("a")))
-        assertEquals(TaskPlacement.SOMEDAY, storedRow("a").placement)
-    }
-
-    @Test
-    fun movingSomedayToAnytimeUpdatesBothLists() {
-        store(task(id = "s", placement = TaskPlacement.SOMEDAY))
-        val model = viewModel()
-        someday(model, 1)
-
-        model.edit(id = "s", placement = TaskPlacement.ANYTIME, scheduledDate = null)
-
-        assertEquals(emptyList<String>(), awaitSomedayIds(model, emptyList()))
-        assertEquals(listOf("s"), awaitAnytimeIds(model, listOf("s")))
-    }
-
-    @Test
-    fun movingAPlacementTaskToInboxRemovesItFromThePlacementList() {
-        store(task(id = "a", placement = TaskPlacement.ANYTIME))
-        val model = viewModel()
-        anytime(model, 1)
-
-        model.edit(id = "a", placement = TaskPlacement.INBOX, scheduledDate = null)
-
-        assertEquals(emptyList<String>(), awaitAnytimeIds(model, emptyList()))
-        assertEquals(listOf("a"), awaitInboxIds(model, listOf("a")))
-    }
-
-    @Test
-    fun schedulingMovesATaskOutOfItsPlacementList() {
-        store(task(id = "a", placement = TaskPlacement.ANYTIME))
-        val model = viewModel()
-        anytime(model, 1)
-
-        model.edit(id = "a", placement = TaskPlacement.ANYTIME, scheduledDate = today)
-        awaitEdited("a")
-
-        // Giving a task a day is the decision Anytime is waiting for, so it
-        // leaves for Today rather than sitting in both. Waiting the list down
-        // from one task to none is a real transition, not the empty state it
-        // started in.
-        assertEquals(emptyList<String>(), awaitAnytimeIds(model, emptyList()))
-        assertEquals(listOf("a"), awaitTodayIds(model, listOf("a")))
-    }
-
-    @Test
-    fun unschedulingReturnsATaskToItsPlacementList() {
-        store(task(id = "a", placement = TaskPlacement.ANYTIME, scheduledDate = today))
-        val model = viewModel()
-        // Deliberately not waiting on Anytime here: the task has a day, so
-        // Anytime is empty and a wait for one task would never return.
-        awaitTodayIds(model, listOf("a"))
-
-        model.edit(id = "a", placement = TaskPlacement.ANYTIME, scheduledDate = null)
-        awaitEdited("a")
-
-        // Taking the day away hands it back to the placement it kept all along.
-        assertEquals(listOf("a"), awaitAnytimeIds(model, listOf("a")))
-        assertEquals(emptyList<String>(), awaitTodayIds(model, emptyList()))
-    }
-
-    @Test
-    fun editingAPlacementTaskPreservesItsIdentityAndState() {
-        store(task(id = "a", placement = TaskPlacement.ANYTIME, completedAt = null))
-        val model = viewModel()
-        anytime(model, 1)
-
-        model.edit(
-            id = "a",
-            title = "Renamed",
-            placement = TaskPlacement.ANYTIME,
-            scheduledDate = null
-        )
-
-        val edited = awaitEdited("a")
-        assertEquals("a", edited.id)
-        assertEquals(createdAt, edited.createdAt)
-        assertNull(edited.completedAt)
-        assertNull(edited.deletedAt)
-    }
-
-    @Test
-    fun editingAnUnknownIdLeavesBothPlacementListsAlone() {
-        store(
-            task(id = "a", placement = TaskPlacement.ANYTIME),
-            task(id = "s", placement = TaskPlacement.SOMEDAY)
-        )
-        val model = viewModel()
-        // Both flows are WhileSubscribed, so subscribe before reading either.
-        anytime(model, 1)
-        someday(model, 1)
-
-        model.edit(id = "missing", title = "Ghost")
-
-        repeat(20) { if (dao.updated.isEmpty()) Thread.sleep(10) }
-        assertTrue(dao.updated.isEmpty())
-        assertEquals(listOf("a"), model.anytimeTasks.value.map { it.id })
-        assertEquals(listOf("s"), model.somedayTasks.value.map { it.id })
-    }
-
-    // Completion and deletion behave the same way here
-
-    @Test
-    fun completingAnAnytimeTaskRemovesItAndUndoRestoresIt() {
-        store(task(id = "a", placement = TaskPlacement.ANYTIME))
-        val model = viewModel()
-        anytime(model, 1)
-
-        model.toggleComplete("a")
-        assertEquals(PendingUndo.Completion("a"), awaitUndoOffer(model))
-        assertEquals(emptyList<String>(), awaitAnytimeIds(model, emptyList()))
-
-        model.undoComplete("a")
-
-        assertEquals(listOf("a"), awaitAnytimeIds(model, listOf("a")))
-    }
-
-    @Test
-    fun deletingASomedayTaskRemovesItAndUndoRestoresIt() {
-        store(task(id = "s", placement = TaskPlacement.SOMEDAY))
-        val model = viewModel()
-        someday(model, 1)
-
-        model.deleteTask("s")
-        assertEquals(PendingUndo.Deletion("s"), awaitUndoOffer(model))
-        assertEquals(emptyList<String>(), awaitSomedayIds(model, emptyList()))
-
-        model.undoDelete("s")
-
-        assertEquals(listOf("s"), awaitSomedayIds(model, listOf("s")))
-    }
-
-    @Test
-    fun theRepositoryFlowDrivesThePlacementLists() = runBlocking {
-        val model = viewModel()
-        assertEquals(emptyList<Task>(), model.anytimeTasks.value)
-        assertEquals(emptyList<Task>(), model.somedayTasks.value)
-
-        store(task(id = "a", placement = TaskPlacement.ANYTIME))
-
-        val shown = model.anytimeTasks.first { it.size == 1 }.single()
-        assertEquals(repository.observeTasks().first().single { it.id == "a" }, shown)
-    }
-
     // Logbook
 
     /** The Logbook state starts empty, so wait for the derived emission. */
@@ -2613,43 +2297,18 @@ class TaskListViewModelTest {
         assertEquals(listOf("a"), awaitLogbookIds(model, listOf("a")))
     }
 
-    @Test
-    fun completingAnAnytimeTaskLeavesItReachableInTheLogbook() {
-        store(task(id = "a", placement = TaskPlacement.ANYTIME))
-        val model = viewModel()
-        anytime(model, 1)
-
-        model.toggleComplete("a")
-
-        assertEquals(emptyList<String>(), awaitAnytimeIds(model, emptyList()))
-        assertEquals(listOf("a"), awaitLogbookIds(model, listOf("a")))
-    }
-
-    @Test
-    fun completingASomedayTaskLeavesItReachableInTheLogbook() {
-        store(task(id = "a", placement = TaskPlacement.SOMEDAY))
-        val model = viewModel()
-        someday(model, 1)
-
-        model.toggleComplete("a")
-
-        assertEquals(emptyList<String>(), awaitSomedayIds(model, emptyList()))
-        assertEquals(listOf("a"), awaitLogbookIds(model, listOf("a")))
-    }
-
     // Reopening from the Logbook
 
     @Test
-    fun unCompletingFromTheLogbookReturnsTheTaskToItsActiveLists() {
+    fun unCompletingAnUndatedTaskFromTheLogbookReturnsItToInbox() {
         store(task(id = "a", placement = TaskPlacement.ANYTIME, completedAt = completedAt))
         val model = viewModel()
         logbook(model, 1)
-        assertEquals(emptyList<String>(), model.anytimeTasks.value.map { it.id })
 
         model.toggleComplete("a")
 
         assertEquals(emptyList<String>(), awaitLogbookIds(model, emptyList()))
-        assertEquals(listOf("a"), awaitAnytimeIds(model, listOf("a")))
+        assertEquals(listOf("a"), awaitInboxIds(model, listOf("a")))
         assertNull(storedRow("a").completedAt)
     }
 
@@ -2870,7 +2529,7 @@ class TaskListViewModelTest {
     }
 
     @Test
-    fun theUndatedListsAreUnaffectedByRollover() {
+    fun inboxAndLogbookAreUnaffectedByRollover() {
         store(
             task(id = "inbox", placement = TaskPlacement.INBOX),
             task(id = "anytime", placement = TaskPlacement.ANYTIME),
@@ -2886,8 +2545,6 @@ class TaskListViewModelTest {
             listOf("inbox", "anytime", "someday"),
             awaitInboxIds(model, listOf("inbox", "anytime", "someday"))
         )
-        assertEquals(listOf("anytime"), awaitAnytimeIds(model, listOf("anytime")))
-        assertEquals(listOf("someday"), awaitSomedayIds(model, listOf("someday")))
         assertEquals(listOf("done"), awaitLogbookIds(model, listOf("done")))
     }
 

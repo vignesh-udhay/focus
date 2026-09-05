@@ -20,13 +20,11 @@ import androidx.navigation.compose.rememberNavController
 import com.vignesh.focuslist.FocuslistApplication
 import com.vignesh.focuslist.core.design.LocalContentWidth
 import com.vignesh.focuslist.core.design.focuslistUsesNavigationRail
-import com.vignesh.focuslist.core.domain.TaskPlacement
 import com.vignesh.focuslist.ui.focus.FocusSheet
 import com.vignesh.focuslist.ui.inbox.InboxScreen
 import com.vignesh.focuslist.ui.logbook.LogbookScreen
 import com.vignesh.focuslist.ui.health.ReminderHealthScreen
 import com.vignesh.focuslist.ui.health.ReminderHealthViewModel
-import com.vignesh.focuslist.ui.placement.PlacementScreen
 import com.vignesh.focuslist.ui.reminder.ReminderPermissionGate
 import com.vignesh.focuslist.ui.task.TaskListViewModel
 import com.vignesh.focuslist.ui.today.TodayScreen
@@ -108,24 +106,6 @@ fun FocuslistNavHost(
 
             composable(FocuslistRoutes.UPCOMING) {
                 UpcomingScreen(viewModel = viewModel, bottomBar = navigationBar)
-            }
-
-            // Two routes over one screen: Anytime and Someday are the same list
-            // with one constant changed, and each opens on its own tab.
-            composable(FocuslistRoutes.ANYTIME) {
-                PlacementScreen(
-                    viewModel = viewModel,
-                    placement = TaskPlacement.ANYTIME,
-                    bottomBar = navigationBar
-                )
-            }
-
-            composable(FocuslistRoutes.SOMEDAY) {
-                PlacementScreen(
-                    viewModel = viewModel,
-                    placement = TaskPlacement.SOMEDAY,
-                    bottomBar = navigationBar
-                )
             }
 
             composable(FocuslistRoutes.LOGBOOK) {

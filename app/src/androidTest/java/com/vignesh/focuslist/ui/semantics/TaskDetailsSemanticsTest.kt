@@ -28,20 +28,17 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * The Task Details accessibility contract, including its two choice groups.
+ * The Task Details accessibility contract, including its recurrence choices.
  *
- * This is the densest surface in the app: seven fields, three of them with
- * their own clear button, and two connected button groups. The contracts that
- * matter are that every field says what it is, that the three identical
- * "Clear" buttons are told apart by description rather than by position, that
- * each choice group publishes which option is current, and that invalid input
- * is refused visibly instead of being dropped on save.
+ * This is the densest surface in the app. The contracts that matter are that
+ * every field says what it is, that identical "Clear" buttons are told apart
+ * by description rather than by position, that recurrence publishes which
+ * option is current, and that invalid input is refused visibly instead of
+ * being dropped on save.
  *
- * Both groups are run at 200%, which is the scale that broke the segmented
- * button row they replaced: three labels no longer fit across a phone, and the
- * last one was pushed outside its own segment and off the field. A group that
- * wraps keeps every option on screen, and `performScrollTo` reaching it is
- * what proves it.
+ * The recurrence group is run at 200%, where its labels cannot fit across a
+ * phone. A group that wraps keeps every option on screen, and
+ * `performScrollTo` reaching it is what proves it.
  *
  * Save is reached with an explicit scroll. That is the point of the sheet's
  * `verticalScroll`: at 200% the button is below the fold, and a test that only
@@ -143,37 +140,6 @@ class TaskDetailsSemanticsTest {
     fun clearButtons_areDistinguishable_at200() =
         assertClearButtonsAreDistinguishable(FontScale200)
 
-    private fun assertPlacementPublishesCurrentOption(fontScale: Float) {
-        setSheet(fontScale)
-
-        rule.onNode(hasText(ANYTIME) and isSelectable()).performScrollTo().assertIsSelected()
-        rule.onNode(hasText(INBOX) and isSelectable()).assertIsNotSelected()
-        rule.onNode(hasText(SOMEDAY) and isSelectable()).assertIsNotSelected()
-    }
-
-    @Test
-    fun placement_publishesCurrentOption_at100() =
-        assertPlacementPublishesCurrentOption(FontScale100)
-
-    @Test
-    fun placement_publishesCurrentOption_at200() =
-        assertPlacementPublishesCurrentOption(FontScale200)
-
-    private fun assertPlacementSelectionMoves(fontScale: Float) {
-        setSheet(fontScale)
-
-        rule.onNode(hasText(SOMEDAY) and isSelectable()).performScrollTo().performClick()
-
-        rule.onNode(hasText(SOMEDAY) and isSelectable()).assertIsSelected()
-        rule.onNode(hasText(ANYTIME) and isSelectable()).assertIsNotSelected()
-    }
-
-    @Test
-    fun placementSelection_moves_at100() = assertPlacementSelectionMoves(FontScale100)
-
-    @Test
-    fun placementSelection_moves_at200() = assertPlacementSelectionMoves(FontScale200)
-
     private fun assertRecurrencePublishesCurrentOption(fontScale: Float) {
         setSheet(fontScale)
         openSchedule()
@@ -211,25 +177,6 @@ class TaskDetailsSemanticsTest {
     @Test
     fun everyRecurrenceOption_isReachable_at200() =
         assertEveryRecurrenceOptionIsReachable(FontScale200)
-
-    private fun assertEveryPlacementOptionIsReachable(fontScale: Float) {
-        // Composed once, outside the loop. `setContent` may be called only
-        // once per activity, so setting it per option threw before the second
-        // assertion ever ran. The recurrence test above is the correct shape.
-        setSheet(fontScale)
-
-        listOf(INBOX, ANYTIME, SOMEDAY).forEach { option ->
-            rule.onNode(hasText(option) and isSelectable()).performScrollTo().assertIsDisplayed()
-        }
-    }
-
-    @Test
-    fun everyPlacementOption_isReachable_at100() =
-        assertEveryPlacementOptionIsReachable(FontScale100)
-
-    @Test
-    fun everyPlacementOption_isReachable_at200() =
-        assertEveryPlacementOptionIsReachable(FontScale200)
 
     private fun assertRecurrenceSelectionMovesAndSaves(fontScale: Float) {
         val saved = mutableListOf<Task>()
@@ -281,24 +228,6 @@ class TaskDetailsSemanticsTest {
 
     @Test
     fun recurrence_canBeTakenAway_at200() = assertRecurrenceCanBeTakenAway(FontScale200)
-
-    private fun assertReselectingAnOptionDoesNotClearIt(fontScale: Float) {
-        setSheet(fontScale)
-
-        // A toggle button would uncheck. In a group where one option is always
-        // the answer, tapping the current one has to leave it standing.
-        rule.onNode(hasText(ANYTIME) and isSelectable()).performScrollTo().performClick()
-
-        rule.onNode(hasText(ANYTIME) and isSelectable()).assertIsSelected()
-    }
-
-    @Test
-    fun reselectingAnOption_doesNotClearIt_at100() =
-        assertReselectingAnOptionDoesNotClearIt(FontScale100)
-
-    @Test
-    fun reselectingAnOption_doesNotClearIt_at200() =
-        assertReselectingAnOptionDoesNotClearIt(FontScale200)
 
     private fun assertBlankTitleRefusesSave(fontScale: Float) {
         setSheet(fontScale)
@@ -382,13 +311,11 @@ class TaskDetailsSemanticsTest {
         val saved = mutableListOf<Task>()
         setSheet(fontScale, onSave = { task -> saved += task })
 
-        rule.onNode(hasText(SOMEDAY) and isSelectable()).performScrollTo().performClick()
-
         rule.onNodeWithText(SAVE).performScrollTo().assertIsEnabled()
         rule.onNodeWithText(SAVE).performClick()
 
         assertEquals(1, saved.size)
-        assertEquals(TaskPlacement.SOMEDAY, saved.single().placement)
+        assertEquals(TaskPlacement.ANYTIME, saved.single().placement)
         // Everything untouched travels through unchanged.
         assertEquals(TITLE, saved.single().title)
         assertEquals(NOTES, saved.single().notes)
@@ -442,9 +369,6 @@ class TaskDetailsSemanticsTest {
         const val TITLE_LABEL = "Title"
         const val SAVE = "Save"
         const val CANCEL = "Cancel"
-        const val INBOX = "Inbox"
-        const val ANYTIME = "Anytime"
-        const val SOMEDAY = "Someday"
         const val DATE_ERROR = "Not a date Focuslist understands"
 
         const val NEVER = "Never"
@@ -472,8 +396,7 @@ class TaskDetailsSemanticsTest {
 
         val DETAILS_FIELD_LABELS = listOf(
             "Title",
-            "Notes",
-            "Placement"
+            "Notes"
         )
 
         val SCHEDULE_FIELD_LABELS = listOf(

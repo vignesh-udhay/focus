@@ -13,11 +13,9 @@ import com.vignesh.focuslist.core.domain.TaskCompletion
 import com.vignesh.focuslist.core.domain.TaskPlacement
 import com.vignesh.focuslist.core.time.CurrentDay
 import com.vignesh.focuslist.core.time.SystemCurrentDay
-import com.vignesh.focuslist.core.domain.anytimeTasks as queryAnytimeTasks
 import com.vignesh.focuslist.core.domain.completedTasks as queryCompletedTasks
 import com.vignesh.focuslist.core.domain.focusQueue as queryFocusQueue
 import com.vignesh.focuslist.core.domain.inboxTasks as queryInboxTasks
-import com.vignesh.focuslist.core.domain.somedayTasks as querySomedayTasks
 import com.vignesh.focuslist.core.domain.todayTasks as queryTodayTasks
 import com.vignesh.focuslist.core.domain.upcomingTasks as queryUpcomingTasks
 import com.vignesh.focuslist.data.repository.TaskRepository
@@ -66,18 +64,6 @@ sealed interface PendingUndo {
 
     /** A task that was just deleted, and can be restored. */
     data class Deletion(override val taskId: String) : PendingUndo
-
-    /**
-     * A task that was just triaged into another bucket, and can be put back.
-     *
-     * [previousPlacement] is carried for the same reason [Reschedule] carries
-     * the day it left: the write destroys it, and undo has to know where the
-     * task came from rather than guess.
-     */
-    data class Move(
-        override val taskId: String,
-        val previousPlacement: TaskPlacement
-    ) : PendingUndo
 
     /**
      * A task that was just moved to another day, and can be moved back.
@@ -166,37 +152,12 @@ class TaskListViewModel(
             )
 
     /**
-     * Tasks captured but not yet decided about, derived from the same stored
-     * stream. The query owns the filtering and the ordering.
+     * Every outstanding task without a scheduled date, derived from the same
+     * stored stream. The query owns the filtering and the ordering.
      */
     val inboxTasks: StateFlow<List<Task>> =
         repository.observeTasks()
             .map { tasks -> queryInboxTasks(tasks) }
-            .stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
-                initialValue = emptyList()
-            )
-
-    /**
-     * Triaged and actionable, derived from the same stored stream.
-     *
-     * Overlaps Today and Upcoming on purpose: a task can be both actionable and
-     * scheduled, and neither view hides it from the other.
-     */
-    val anytimeTasks: StateFlow<List<Task>> =
-        repository.observeTasks()
-            .map { tasks -> queryAnytimeTasks(tasks) }
-            .stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
-                initialValue = emptyList()
-            )
-
-    /** Triaged and deliberately deferred, on the same terms as [anytimeTasks]. */
-    val somedayTasks: StateFlow<List<Task>> =
-        repository.observeTasks()
-            .map { tasks -> querySomedayTasks(tasks) }
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
@@ -478,9 +439,10 @@ class TaskListViewModel(
     /**
      * Captures a new task, and reports whether anything was captured.
      *
-     * Always lands in [TaskPlacement.INBOX], because capture is not triage. The
-     * caller supplies [scheduledDate]: Today captures for today, Inbox captures
-     * without a day, and deciding when is the decision Inbox exists to defer.
+     * Always carries [TaskPlacement.INBOX] while that legacy persistence field
+     * remains. The caller supplies [scheduledDate]: Today captures for today,
+     * Inbox captures without a day, and deciding when is the decision Inbox
+     * exists to defer.
      *
      * A blank title creates nothing and returns false, since the title is the
      * one thing a task cannot do without. The screen keeps its sheet open on a
@@ -719,40 +681,6 @@ class TaskListViewModel(
      * edit made in the meantime survives, exactly as undoing a completion
      * leaves everything but the completion alone.
      */
-    /**
-     * Triages [id] into [placement], offering a way back.
-     *
-     * The same shape as [rescheduleTask], and for the same reason: this is the
-     * other decision that makes a task vanish from the list it was taken on. A
-     * task moved out of the Inbox is gone from it the moment it is chosen, so
-     * it answers with an undo rather than a confirmation.
-     *
-     * A move to the bucket the task is already in changes nothing and offers
-     * nothing, so it raises no snackbar about a move that did not happen.
-     */
-    fun moveTask(id: String, placement: TaskPlacement) {
-        viewModelScope.launch {
-            val task = repository.observeTasks().first().firstOrNull { it.id == id } ?: return@launch
-            if (task.placement == placement) return@launch
-
-            repository.update(task.copy(placement = placement))
-            _pendingUndo.value = PendingUndo.Move(task.id, previousPlacement = task.placement)
-        }
-    }
-
-    /** Puts a triaged task back where it was. */
-    fun undoMove(id: String) {
-        val offer = _pendingUndo.value as? PendingUndo.Move ?: return
-        if (offer.taskId != id) return
-        if (!_pendingUndo.compareAndSet(expect = offer, update = null)) return
-
-        viewModelScope.launch {
-            val task = repository.observeTasks().first().firstOrNull { it.id == id } ?: return@launch
-
-            repository.update(task.copy(placement = offer.previousPlacement))
-        }
-    }
-
     fun undoReschedule(id: String) {
         val offer = _pendingUndo.value as? PendingUndo.Reschedule ?: return
         if (offer.taskId != id) return

@@ -50,8 +50,8 @@ import java.time.LocalDate
  * Inbox: everything outstanding without a scheduled date.
  *
  * A task leaves by being scheduled, completed, or deleted. Its legacy placement
- * does not affect membership, so undated Anytime and Someday tasks remain
- * reachable here while those destinations are removed.
+ * does not affect membership, so tasks with legacy Anytime and Someday values
+ * remain reachable here after those destinations are removed.
  *
  * Quick Add here captures without a date, which is the difference from Today.
  * Deciding when to do it is exactly the decision Inbox exists to defer.
@@ -80,7 +80,6 @@ fun InboxScreen(
         onOpenTask = { id -> openTaskId = id },
         onDelete = viewModel::deleteTask,
         onReschedule = viewModel::rescheduleTask,
-        onMove = viewModel::moveTask,
         onAddTask = { isQuickAddVisible = true },
         modifier = modifier,
         snackbarHostState = snackbarHostState,
@@ -129,7 +128,6 @@ private fun InboxContent(
     onOpenTask: (String) -> Unit,
     onDelete: (String) -> Unit,
     onReschedule: (String, LocalDate?) -> Unit,
-    onMove: (String, TaskPlacement) -> Unit,
     onAddTask: () -> Unit,
     modifier: Modifier = Modifier,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
@@ -210,8 +208,7 @@ private fun InboxContent(
                         onOpen = { onOpenTask(task.id) },
                         onDelete = { onDelete(task.id) },
                         onReschedule = { date -> onReschedule(task.id, date) },
-                        onMove = { target -> onMove(task.id, target) },
-                        // A task leaving the list when it is triaged or
+                        // A task leaving the list when it is scheduled or
                         // completed travels out rather than vanishing.
                         modifier = Modifier.animateItem(
                             placementSpec = FocuslistMotion.listChange()
@@ -244,7 +241,7 @@ private fun sampleInboxTasks(): List<Task> = listOf(
         createdAt = SampleTimestamp.plusSeconds(120),
         estimatedDurationMinutes = 5
     ),
-    // Excluded: scheduled, so no longer untriaged.
+    // Excluded: scheduled, so it belongs in a dated list.
     Task(
         id = "4",
         title = "Chase the missing invoice",
@@ -272,7 +269,6 @@ private fun InboxScreenPreview() {
             onOpenTask = {},
             onDelete = {},
             onReschedule = { _, _ -> },
-            onMove = { _, _ -> },
             onAddTask = {}
         )
     }
@@ -290,7 +286,6 @@ private fun InboxScreenEmptyPreview() {
             onOpenTask = {},
             onDelete = {},
             onReschedule = { _, _ -> },
-            onMove = { _, _ -> },
             onAddTask = {}
         )
     }
@@ -307,7 +302,6 @@ private fun InboxScreenLargeFontPreview() {
             onOpenTask = {},
             onDelete = {},
             onReschedule = { _, _ -> },
-            onMove = { _, _ -> },
             onAddTask = {}
         )
     }

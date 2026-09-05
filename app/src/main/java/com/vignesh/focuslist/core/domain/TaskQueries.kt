@@ -6,8 +6,8 @@ import java.time.LocalDate
  * The derived task views.
  *
  * Today, Inbox, and Upcoming are queries over [Task.scheduledDate], not states
- * stored on a task. The legacy Anytime and Someday views still read the
- * [TaskPlacement] axis until Phase 3 removes them.
+ * stored on a task. The legacy Anytime and Someday query helpers remain until
+ * [TaskPlacement] is removed from persistence in a separately reviewed step.
  *
  * Every query takes the current date explicitly rather than reading the clock,
  * so results are deterministic and testable.
@@ -204,7 +204,7 @@ fun upcomingSections(tasks: List<Task>, today: LocalDate): List<UpcomingSection>
  * List membership derives from [Task.scheduledDate], not [Task.placement].
  * Giving a task a day moves it to Today or Upcoming; removing that day returns
  * it here. Ignoring placement also keeps legacy Anytime and Someday tasks
- * reachable while those destinations are removed in Phase 3.
+ * reachable after those destinations are removed.
  *
  * Completed tasks are excluded, as in Upcoming. Inbox is a queue, and finishing
  * something is one of the ways it leaves.
@@ -260,10 +260,9 @@ fun completedTasks(tasks: List<Task>): List<Task> =
  * which is the list calling something deliberately deferred while the calendar
  * calls it due.
  *
- * Giving a task a day is the decision these lists are waiting for. Once it has
- * one it belongs to Today or Upcoming. While the legacy views remain, their
- * undated tasks also appear in Inbox so they stay reachable through a primary
- * destination.
+ * Giving a task a day is the decision these queries are waiting for. Once it
+ * has one it belongs to Today or Upcoming. Their undated tasks also appear in
+ * Inbox so legacy placement values cannot make work unreachable.
  *
  * Completed tasks are excluded, as in Inbox and Upcoming. These are lists of
  * what could be picked up, and something finished cannot be.

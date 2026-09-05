@@ -140,8 +140,6 @@ class NavigationSemanticsTest {
         const val INBOX = "Inbox"
         const val MORE = "More"
         const val UPCOMING = "Upcoming"
-        const val ANYTIME = "Anytime"
-        const val SOMEDAY = "Someday"
         const val LOGBOOK = "Logbook"
 
         /**
@@ -149,6 +147,6 @@ class NavigationSemanticsTest {
          * from the task it is for; `focus.md` records why.
          */
         val DESTINATION_LABELS = listOf(TODAY, INBOX, MORE)
-        val SECONDARY_LABELS = listOf(UPCOMING, ANYTIME, SOMEDAY, LOGBOOK)
+        val SECONDARY_LABELS = listOf(UPCOMING, LOGBOOK)
     }
 }
