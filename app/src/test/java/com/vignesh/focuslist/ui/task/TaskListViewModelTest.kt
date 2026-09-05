@@ -29,6 +29,7 @@ import org.junit.ClassRule
 import org.junit.Test
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.util.UUID
 
 /**
@@ -168,6 +169,9 @@ class TaskListViewModelTest {
     private val today: LocalDate = LocalDate.of(2026, 8, 31)
     private val tomorrow: LocalDate = today.plusDays(1)
     private val createdAt: Instant = Instant.parse("2026-01-01T09:00:00Z")
+
+    /** A reminder on the fixture day, at an hour nothing else in here uses. */
+    private val reminder: LocalDateTime = today.atTime(9, 0)
     private val completedAt: Instant = Instant.parse("2026-01-02T17:30:00Z")
     private val deletedAt: Instant = Instant.parse("2026-01-03T08:15:00Z")
 
@@ -191,6 +195,8 @@ class TaskListViewModelTest {
         recurrence: Recurrence? = null,
         completedAt: Instant? = null,
         deletedAt: Instant? = null,
+        reminderAt: LocalDateTime? = null,
+        reminderDeliveredAt: Instant? = null,
         createdAt: Instant = this@TaskListViewModelTest.createdAt
     ) = Task(
         id = id,
@@ -203,7 +209,9 @@ class TaskListViewModelTest {
         estimatedDurationMinutes = estimatedDurationMinutes,
         recurrence = recurrence,
         completedAt = completedAt,
-        deletedAt = deletedAt
+        deletedAt = deletedAt,
+        reminderAt = reminderAt,
+        reminderDeliveredAt = reminderDeliveredAt
     )
 
     private fun store(vararg tasks: Task) {
@@ -1270,7 +1278,8 @@ class TaskListViewModelTest {
         scheduledDate: LocalDate? = this@TaskListViewModelTest.today,
         dueDate: LocalDate? = null,
         estimatedDurationMinutes: Int? = null,
-        recurrence: Recurrence? = storedRecurrence(id)
+        recurrence: Recurrence? = storedRecurrence(id),
+        reminderAt: LocalDateTime? = storedReminder(id)
     ) = editTask(
         id = id,
         title = title,
@@ -1279,12 +1288,21 @@ class TaskListViewModelTest {
         scheduledDate = scheduledDate,
         dueDate = dueDate,
         estimatedDurationMinutes = estimatedDurationMinutes,
-        recurrence = recurrence
+        recurrence = recurrence,
+        reminderAt = reminderAt
     )
 
     /** The note the row currently holds, as the open sheet would be holding it. */
     private fun storedNotes(id: String): String? =
         dao.emissions.value.firstOrNull { it.id == id }?.notes
+
+    /**
+     * The reminder the row currently holds, for the same reason as the note,
+     * and a sharper one: an edit that dropped it would silently unset a
+     * promise the user made.
+     */
+    private fun storedReminder(id: String): LocalDateTime? =
+        dao.emissions.value.firstOrNull { it.id == id }?.reminderAt
 
     /** The rule the row currently holds, for the same reason as the note. */
     private fun storedRecurrence(id: String): Recurrence? =
@@ -2899,6 +2917,116 @@ class TaskListViewModelTest {
         assertEquals(listOf("a"), awaitUpcomingIds(model, listOf("a")))
     }
 
+    // Reminders
+    //
+    // The sheet is the only way a user can set one, so these cover the seam
+    // between what they picked and what the scheduler will later read back.
+
+    @Test
+    fun savingAReminderStoresIt() {
+        store(task(id = "a", scheduledDate = today))
+        val model = viewModel()
+        visible(model, 1)
+
+        model.edit(id = "a", reminderAt = reminder)
+
+        assertEquals(reminder, awaitEdited("a").reminderAt)
+    }
+
+    @Test
+    fun clearingAReminderStoresNothing() {
+        store(task(id = "a", scheduledDate = today, reminderAt = reminder))
+        val model = viewModel()
+        visible(model, 1)
+
+        model.edit(id = "a", reminderAt = null)
+
+        assertNull(awaitEdited("a").reminderAt)
+    }
+
+    /**
+     * The same regression the notes tests exist for, on the field where it
+     * matters most. The sheet passes back every value it is holding, so an
+     * edit to the title must arrive here carrying the reminder untouched.
+     */
+    @Test
+    fun editingAnotherFieldDoesNotClearAnExistingReminder() {
+        store(task(id = "a", scheduledDate = today, reminderAt = reminder))
+        val model = viewModel()
+        visible(model, 1)
+
+        model.edit(id = "a", title = "Chase the missing invoice")
+
+        val edited = awaitEdited("a")
+        assertEquals("Chase the missing invoice", edited.title)
+        assertEquals(reminder, edited.reminderAt)
+    }
+
+    @Test
+    fun movingAReminderMakesItOwedAgain() {
+        // Already announced once. Choosing a new time is the user asking to be
+        // told again, so the record of the first delivery has to go.
+        store(
+            task(
+                id = "a",
+                scheduledDate = today,
+                reminderAt = reminder,
+                reminderDeliveredAt = createdAt
+            )
+        )
+        val model = viewModel()
+        visible(model, 1)
+
+        model.edit(id = "a", reminderAt = reminder.plusHours(1))
+
+        val edited = awaitEdited("a")
+        assertEquals(reminder.plusHours(1), edited.reminderAt)
+        assertNull(edited.reminderDeliveredAt)
+    }
+
+    @Test
+    fun editingATaskAfterItsReminderArrivedDoesNotAnnounceItTwice() {
+        // The other half of the rule above, and the one a naive implementation
+        // gets wrong: saving the sheet with the time untouched must not put a
+        // reminder that has already been delivered back on the schedule.
+        store(
+            task(
+                id = "a",
+                scheduledDate = today,
+                reminderAt = reminder,
+                reminderDeliveredAt = createdAt
+            )
+        )
+        val model = viewModel()
+        visible(model, 1)
+
+        model.edit(id = "a", title = "Chase the missing invoice")
+
+        val edited = awaitEdited("a")
+        assertEquals(reminder, edited.reminderAt)
+        assertEquals(createdAt, edited.reminderDeliveredAt)
+    }
+
+    @Test
+    fun clearingAReminderAlsoClearsTheRecordOfItArriving() {
+        // Otherwise a task that had a reminder, lost it, and was given a new
+        // one at the same time as the old would arrive already delivered.
+        store(
+            task(
+                id = "a",
+                scheduledDate = today,
+                reminderAt = reminder,
+                reminderDeliveredAt = createdAt
+            )
+        )
+        val model = viewModel()
+        visible(model, 1)
+
+        model.edit(id = "a", reminderAt = null)
+
+        assertNull(awaitEdited("a").reminderDeliveredAt)
+    }
+
     // Notes
 
     @Test
@@ -2915,7 +3043,8 @@ class TaskListViewModelTest {
             scheduledDate = stored.scheduledDate,
             dueDate = stored.dueDate,
             estimatedDurationMinutes = stored.estimatedDurationMinutes,
-            recurrence = null
+            recurrence = null,
+            reminderAt = stored.reminderAt
         )
 
         assertEquals("Ask Priya which logo to use", awaitEdited("a").notes)
@@ -2943,7 +3072,8 @@ class TaskListViewModelTest {
             scheduledDate = stored.scheduledDate,
             dueDate = stored.dueDate,
             estimatedDurationMinutes = stored.estimatedDurationMinutes,
-            recurrence = null
+            recurrence = null,
+            reminderAt = stored.reminderAt
         )
 
         val edited = awaitEdited("a")
@@ -3163,7 +3293,8 @@ class TaskListViewModelTest {
             scheduledDate = tomorrow,
             dueDate = null,
             estimatedDurationMinutes = null,
-            recurrence = null
+            recurrence = null,
+            reminderAt = null
         )
 
         assertEquals("b", awaitFocusedTaskId(model, "b"))
@@ -3539,7 +3670,8 @@ class TaskListViewModelTest {
             scheduledDate = today,
             dueDate = null,
             estimatedDurationMinutes = null,
-            recurrence = Recurrence.WEEKLY
+            recurrence = Recurrence.WEEKLY,
+            reminderAt = null
         )
 
         assertEquals(Recurrence.WEEKLY, awaitUpdate().recurrence)

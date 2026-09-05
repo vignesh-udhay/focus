@@ -45,7 +45,8 @@ fun TaskDetailsSheetHost(
                 scheduledDate = edited.scheduledDate,
                 dueDate = edited.dueDate,
                 estimatedDurationMinutes = edited.estimatedDurationMinutes,
-                recurrence = edited.recurrence
+                recurrence = edited.recurrence,
+                reminderAt = edited.reminderAt
             )
             onDismiss()
         }

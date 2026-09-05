@@ -1,5 +1,6 @@
 package com.vignesh.focuslist.ui.task
 
+import android.text.format.DateFormat
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.DatePicker
@@ -26,19 +28,23 @@ import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -53,6 +59,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import com.vignesh.focuslist.R
 import com.vignesh.focuslist.core.design.FocuslistSpacing
+import com.vignesh.focuslist.core.domain.MorningHour
 import com.vignesh.focuslist.core.domain.ParsedDate
 import com.vignesh.focuslist.core.domain.Recurrence
 import com.vignesh.focuslist.core.domain.Task
@@ -62,9 +69,13 @@ import com.vignesh.focuslist.ui.component.TaskDatePickerDialog
 import com.vignesh.focuslist.ui.component.scheduledDateLabel
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+import java.util.Date
 import java.util.Locale
 
 /**
@@ -109,15 +120,21 @@ internal fun TaskDetailsSheet(
         mutableStateOf(task.estimatedDurationMinutes?.toString().orEmpty())
     }
     var recurrence by rememberSaveable(task.id) { mutableStateOf(task.recurrence) }
+    // Held as a value rather than as the picker's state, because the picker
+    // cannot say "no reminder" and that is the value most tasks have.
+    var reminderAt by rememberSaveable(task.id, stateSaver = ReminderSaver) {
+        mutableStateOf(task.reminderAt)
+    }
 
-    // Which of the sheet's two pages is showing.
+    // Which of the sheet's three pages is showing.
     //
-    // One sheet rather than two stacked. A ModalBottomSheet is a dialog with
-    // its own Window, so stacking means two of them: the scrim darkens twice
-    // and back has to be dispatched across the pair. The page is also nearly
-    // the height of the screen, so a stacked sheet would cover the one beneath
-    // it anyway and the context it was meant to preserve would not be visible.
-    var isScheduleOpen by rememberSaveable(task.id) { mutableStateOf(false) }
+    // One sheet rather than several stacked. A ModalBottomSheet is a dialog
+    // with its own Window, so stacking means one of them per page: the scrim
+    // darkens twice and back has to be dispatched across the pair. A page is
+    // also nearly the height of the screen, so a stacked sheet would cover the
+    // one beneath it anyway and the context it was meant to preserve would not
+    // be visible.
+    var page by rememberSaveable(task.id) { mutableStateOf(SheetPage.Details) }
 
     // Blank means no estimate. Anything else has to be a real number of minutes.
     val minutes = duration.trim().toIntOrNull()
@@ -137,9 +154,9 @@ internal fun TaskDetailsSheet(
         modifier = modifier
     ) {
         // Back belongs to the page, not the sheet. Without this the system
-        // would close the whole sheet from the Schedule page, throwing away
-        // the draft rather than returning to the details it came from.
-        BackHandler(enabled = isScheduleOpen) { isScheduleOpen = false }
+        // would close the whole sheet from an inner page, throwing away the
+        // draft rather than returning to the details it came from.
+        BackHandler(enabled = page != SheetPage.Details) { page = SheetPage.Details }
 
         Column(
             modifier = Modifier
@@ -154,8 +171,24 @@ internal fun TaskDetailsSheet(
                 .padding(bottom = FocuslistSpacing.lg),
             verticalArrangement = Arrangement.spacedBy(FocuslistSpacing.md)
         ) {
-            if (isScheduleOpen) {
-                SchedulePage(
+            when (page) {
+                SheetPage.Reminder -> ReminderPage(
+                    title = title,
+                    scheduled = scheduled,
+                    today = today,
+                    reminderAt = reminderAt,
+                    onSet = {
+                        reminderAt = it
+                        page = SheetPage.Details
+                    },
+                    onClear = {
+                        reminderAt = null
+                        page = SheetPage.Details
+                    },
+                    onBack = { page = SheetPage.Details }
+                )
+
+                SheetPage.Schedule -> SchedulePage(
                     scheduled = scheduled,
                     onScheduledChange = { scheduled = it },
                     dueText = dueText,
@@ -167,10 +200,10 @@ internal fun TaskDetailsSheet(
                     recurrence = recurrence,
                     onRecurrenceChange = { recurrence = it },
                     isValid = isDurationValid && isDueValid,
-                    onBack = { isScheduleOpen = false }
+                    onBack = { page = SheetPage.Details }
                 )
-            } else {
-                DetailsPage(
+
+                SheetPage.Details -> DetailsPage(
                     title = title,
                     onTitleChange = { title = it },
                     notes = notes,
@@ -183,7 +216,9 @@ internal fun TaskDetailsSheet(
                         minutes = if (duration.isBlank()) null else minutes,
                         recurrence = recurrence
                     ),
-                    onOpenSchedule = { isScheduleOpen = true },
+                    onOpenSchedule = { page = SheetPage.Schedule },
+                    reminderSummary = reminderSummary(reminderAt, today),
+                    onOpenReminder = { page = SheetPage.Reminder },
                     isValid = title.isNotBlank() && isDurationValid && isDueValid,
                     onDismiss = onDismiss,
                     onSave = {
@@ -196,7 +231,8 @@ internal fun TaskDetailsSheet(
                                 dueDate = (due as? ParsedDate.Recognized)?.date,
                                 estimatedDurationMinutes =
                                     if (duration.isBlank()) null else minutes,
-                                recurrence = recurrence
+                                recurrence = recurrence,
+                                reminderAt = reminderAt
                             )
                         )
                     }
@@ -214,6 +250,11 @@ internal fun TaskDetailsSheet(
  * set, that opens the page which sets it. `PRODUCT.md` asks the app to avoid
  * exposing every property at once, and seven controls in one sheet is what
  * that rule exists to prevent.
+ *
+ * The reminder is a second such row rather than a field on the Schedule page,
+ * for two reasons. `PRODUCT.md` says a reminder is independent of a scheduled
+ * date and of a due date, so filing it under Schedule would state the opposite.
+ * And it is the feature the app is named for: one level down is far enough.
  */
 @Composable
 private fun DetailsPage(
@@ -225,6 +266,8 @@ private fun DetailsPage(
     onPlacementChange: (TaskPlacement) -> Unit,
     scheduleSummary: String,
     onOpenSchedule: () -> Unit,
+    reminderSummary: String,
+    onOpenReminder: () -> Unit,
     isValid: Boolean,
     onDismiss: () -> Unit,
     onSave: () -> Unit
@@ -238,6 +281,8 @@ private fun DetailsPage(
     )
 
     ScheduleSummaryRow(summary = scheduleSummary, onClick = onOpenSchedule)
+
+    ScheduleSummaryRow(summary = reminderSummary, onClick = onOpenReminder)
 
     OutlinedTextField(
         value = title,
@@ -295,9 +340,9 @@ private fun DetailsPage(
  * The due date is still typed, because a deadline is more often described than
  * located: "next friday" is a useful thing to be able to write.
  *
- * There is no Time and no Reminder row. The design draws both; a task carries
- * no time of day, and reminders are named in `PRODUCT.md` but not built, so
- * either would be new functionality rather than a redesign.
+ * There is no Time row. The design draws one, and a task still carries no time
+ * of day: a scheduled date says which day the work belongs to, not when it
+ * starts. The reminder is the thing that has a time, and it has its own page.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -427,6 +472,211 @@ private fun SchedulePage(
         }
     }
 }
+
+/**
+ * When the app should speak up, as `reminder/Set Reminder` draws it.
+ *
+ * A day and a time, in that order, over a card restating which task is about
+ * to start interrupting. The card is not decoration: this page is two levels
+ * down from a list, and setting a reminder on the wrong task is the kind of
+ * mistake that is only discovered when it goes off.
+ *
+ * The day is a chip rather than a calendar on the page, because a reminder is
+ * nearly always today or tomorrow and a month grid for that is a lot of screen
+ * spent on a decision already made. The calendar is one tap away for the rest.
+ *
+ * The day defaults to the task's scheduled day, or to today when it has none.
+ * A default, not a constraint: `PRODUCT.md` says a reminder is independent of
+ * the scheduled date, so the chip moves freely.
+ *
+ * Unlike the Schedule page, this one does not write into the draft as it goes.
+ * The picker has no empty position, so a page that updated live would set a
+ * reminder on every task whose details anyone happened to open. Set and Clear
+ * say what they do; Cancel leaves the task exactly as it was found.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ReminderPage(
+    title: String,
+    scheduled: LocalDate?,
+    today: LocalDate,
+    reminderAt: LocalDateTime?,
+    onSet: (LocalDateTime) -> Unit,
+    onClear: () -> Unit,
+    onBack: () -> Unit
+) {
+    var day by rememberSaveable {
+        mutableStateOf(reminderAt?.toLocalDate() ?: scheduled ?: today)
+    }
+    var isCalendarOpen by rememberSaveable { mutableStateOf(false) }
+
+    val time = reminderAt?.toLocalTime() ?: DefaultReminderTime
+    val state = rememberTimePickerState(
+        initialHour = time.hour,
+        initialMinute = time.minute,
+        is24Hour = DateFormat.is24HourFormat(LocalContext.current)
+    )
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(top = FocuslistSpacing.xs)
+    ) {
+        IconButton(onClick = onBack) {
+            Icon(
+                painter = painterResource(R.drawable.ic_arrow_back),
+                contentDescription = stringResource(R.string.task_reminder_back)
+            )
+        }
+
+        Text(
+            text = stringResource(R.string.task_reminder_heading),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.semantics { heading() }
+        )
+    }
+
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        shape = MaterialTheme.shapes.extraLarge,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(
+                horizontal = FocuslistSpacing.md,
+                vertical = FocuslistSpacing.xs
+            )
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = SummaryTitleMaxLines,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Text(
+                text = listOf(
+                    scheduled?.let { scheduledDateLabel(it, today) }
+                        ?: stringResource(R.string.task_schedule_no_date),
+                    reminderSummary(reminderAt, today)
+                ).joinToString(SummarySeparator),
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+    }
+
+    AssistChip(
+        onClick = { isCalendarOpen = true },
+        label = { Text(scheduledDateLabel(day, today)) }
+    )
+
+    if (isCalendarOpen) {
+        TaskDatePickerDialog(
+            initialDate = day,
+            onDismiss = { isCalendarOpen = false },
+            onPicked = { day = it }
+        )
+    }
+
+    // The label belongs to the picker rather than beside it, which is how the
+    // frame draws it and which keeps the page's one primary action in reach
+    // without scrolling. The dial has a fixed height, so the room for that has
+    // to come from the gaps around it.
+    Column(verticalArrangement = Arrangement.spacedBy(FocuslistSpacing.xs)) {
+        Text(
+            text = stringResource(R.string.task_reminder_at),
+            style = MaterialTheme.typography.labelLarge
+        )
+
+        TimePicker(state = state)
+    }
+
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(FocuslistSpacing.xs),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        // Only offered where there is something to clear, so the page does not
+        // present undoing a thing that has not been done.
+        if (reminderAt != null) {
+            TextButton(onClick = onClear) {
+                Text(stringResource(R.string.task_reminder_clear))
+            }
+        }
+
+        Spacer(Modifier.weight(1f))
+
+        TextButton(onClick = onBack) {
+            Text(stringResource(R.string.task_details_cancel))
+        }
+
+        Button(
+            onClick = { onSet(day.atTime(state.hour, state.minute)) }
+        ) {
+            Text(stringResource(R.string.task_reminder_set))
+        }
+    }
+}
+
+/**
+ * What the reminder row says, on the details page and on the card above the
+ * picker.
+ *
+ * The day is always named, even when it is the same day the task is scheduled
+ * for, because the two are allowed to differ and a bare time would not say
+ * which of them it belonged to.
+ */
+@Composable
+private fun reminderSummary(reminderAt: LocalDateTime?, today: LocalDate): String {
+    if (reminderAt == null) return stringResource(R.string.task_reminder_none)
+
+    val moment = stringResource(
+        R.string.task_reminder_when,
+        scheduledDateLabel(reminderAt.toLocalDate(), today),
+        timeLabel(reminderAt.toLocalTime())
+    )
+
+    return stringResource(R.string.task_reminder_summary, moment)
+}
+
+/**
+ * A time of day, in whichever of 12 and 24 hours the device is set to.
+ *
+ * The device's own preference rather than a pattern of ours, for the same
+ * reason the notification uses it: an app that says 3:30 PM to someone whose
+ * phone says 15:30 everywhere else reads as somebody else's app.
+ */
+@Composable
+private fun timeLabel(time: LocalTime): String {
+    val context = LocalContext.current
+    val moment = LocalDate.now().atTime(time).atZone(ZoneId.systemDefault()).toInstant()
+    return DateFormat.getTimeFormat(context).format(Date.from(moment))
+}
+
+/** The three things the sheet can be showing. */
+private enum class SheetPage { Details, Schedule, Reminder }
+
+/**
+ * The reminder draft, across a process death.
+ *
+ * ISO-8601 text, which is the same shape the column holds, and the empty
+ * string for no reminder. A [Saver] that returned null for the absent case
+ * could not be told apart from one that failed to restore.
+ */
+private val ReminderSaver: Saver<LocalDateTime?, String> = Saver(
+    save = { it?.toString().orEmpty() },
+    restore = { text -> text.takeIf { it.isNotEmpty() }?.let(LocalDateTime::parse) }
+)
+
+/**
+ * Where the time picker opens on a task that has no reminder yet.
+ *
+ * Nine in the morning, the same hour a snooze means by "tomorrow morning". An
+ * arbitrary hour either way, but two arbitrary hours would be worse.
+ */
+private val DefaultReminderTime: LocalTime = MorningHour
+
+private const val SummaryTitleMaxLines = 2
 
 /**
  * The row that stands in for everything on the Schedule page.

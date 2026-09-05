@@ -325,6 +325,13 @@ arriving within 0.1 seconds of each other across four scenarios. That looked
 like a measurement problem. It was the finding: they were the same kind of
 alarm.
 
+The cost is no longer hypothetical. On the same device that evening, a
+reminder set through the app's own Set Reminder page for 18:25:00 was
+scheduled with `exactAllowReason=policy_permission` and `window=+2m19s`, and
+the notification arrived at about 18:25:50. Roughly a minute late, with the
+screen on, the phone unlocked and in the user's hand, and no Doze involved.
+This is the ordinary case, not a stress test.
+
 **What this does not mean.** Not that exact scheduling should be abandoned. It
 is free, it is correct on devices that honour it, and asking for it is what
 makes the difference visible. See `AGENTS.md`, which keeps

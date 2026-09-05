@@ -33,8 +33,20 @@ notification with the app closed, a reminder on a completed task is never
 scheduled, and a package replacement rebuilds the alarms without the app
 being opened.
 
-Next: notification content with Done and Snooze, the permission flow, and
-setting a reminder from the task details sheet.
+Also done, and verified on the same device: Done and Snooze on the
+notification, the snooze arithmetic behind them, and a Set Reminder page in
+the task details sheet, drawn from the `reminder/Set Reminder` frame. A
+reminder set by hand through the app reached the notification, and Done and
+Snooze both did what they say.
+
+Next, and the last of Phase 1: the permission screen. The frame is
+`reminder/Precise Reminder Permission`, and it is being retargeted at
+`POST_NOTIFICATIONS` rather than exact alarms. Its closing line promises a
+system prompt, and `USE_EXACT_ALARM` never shows one, whereas notification
+permission is refusable on every device the app supports and refusing it
+produces a reminder that fires and is never seen. Routing users to
+manufacturer settings for exact alarms belongs to Phase 2, which already lists
+it.
 
 **Exact alarms are being demoted on that device, and Phase 2 has to deal with
 it.** `setExactAndAllowWhileIdle` produces an alarm with no `FLAG_STANDALONE`

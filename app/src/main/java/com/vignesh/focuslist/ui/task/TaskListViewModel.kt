@@ -37,6 +37,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.util.UUID
 
 /**
@@ -595,6 +596,10 @@ class TaskListViewModel(
      * and the one caller there is passes the note it is already holding, so an
      * edit to any other field carries the existing note through.
      *
+     * [reminderAt] has no default for the same reason, and a stronger one. A
+     * note erased by an unrelated edit is an annoyance; a reminder erased that
+     * way is the app quietly breaking the promise it exists to keep.
+     *
      * It is one write rather than a separate notes operation for the same
      * reason it reads the task fresh: two writes launched from one save would
      * each read before the other had written, and one of the two edits would
@@ -613,7 +618,8 @@ class TaskListViewModel(
         scheduledDate: LocalDate?,
         dueDate: LocalDate?,
         estimatedDurationMinutes: Int?,
-        recurrence: Recurrence?
+        recurrence: Recurrence?,
+        reminderAt: LocalDateTime?
     ) {
         val trimmed = title.trim()
         if (trimmed.isEmpty()) return
@@ -632,7 +638,19 @@ class TaskListViewModel(
                     scheduledDate = scheduledDate,
                     dueDate = dueDate,
                     estimatedDurationMinutes = estimatedDurationMinutes,
-                    recurrence = recurrence
+                    recurrence = recurrence,
+                    reminderAt = reminderAt,
+                    // Moving a reminder makes it owed again. Leaving it alone
+                    // does not: saving the sheet an hour after a reminder
+                    // arrived must not announce it a second time. The rule
+                    // belongs here because this is a place that writes
+                    // reminderAt, and Task's own documentation says whoever
+                    // writes it owns the record of it having been delivered.
+                    reminderDeliveredAt = if (reminderAt == task.reminderAt) {
+                        task.reminderDeliveredAt
+                    } else {
+                        null
+                    }
                 )
             )
         }
