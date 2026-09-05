@@ -114,6 +114,18 @@ competing app uses and every user already knows.
 flat level called Lists. A second level of nesting needs its own decision
 entry and a real reason.
 
+**Note, 5 September 2026.** The Clean Slate board labels task rows "Work ·
+Deep work", "Health · Evening", "Personal · 15m". Read as a grouping, that is
+this decision reversed. It is not being read that way. `PRODUCT.md` lists
+every property a task may have and none of them is a category, and it parks
+flat Lists post-1.0 behind real users asking. The labels are mockup texture,
+of the same kind as the invented task titles beside them.
+
+When these screens are built, the row's second line carries what the app
+actually holds: the date, the duration, and how often it repeats, which is
+what it carries today. Anyone who wants the category to be real should reach
+this entry first and write the superseding one.
+
 ---
 
 ## D-004. Focus stays as it is, and loses the queue
