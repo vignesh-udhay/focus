@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -21,6 +23,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -58,7 +61,10 @@ import java.time.LocalDate
 fun LogbookScreen(
     viewModel: TaskListViewModel,
     modifier: Modifier = Modifier,
-    bottomBar: @Composable () -> Unit = {}
+    // No bottom bar. Logbook is reached from the app-bar overflow and left by
+    // the back arrow, so a bar with none of its three items selected would
+    // only tell the user they are nowhere.
+    onBack: () -> Unit = {}
 ) {
     val tasks by viewModel.completedTasks.collectAsStateWithLifecycle()
     val today by viewModel.today.collectAsStateWithLifecycle()
@@ -76,7 +82,7 @@ fun LogbookScreen(
         onDelete = viewModel::deleteTask,
         modifier = modifier,
         snackbarHostState = snackbarHostState,
-        bottomBar = bottomBar
+        onBack = onBack
     )
 
     TaskDetailsSheetHost(
@@ -104,7 +110,7 @@ private fun LogbookContent(
     onDelete: (String) -> Unit,
     modifier: Modifier = Modifier,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
-    bottomBar: @Composable () -> Unit = {}
+    onBack: () -> Unit = {}
 ) {
     // Collapses as the list moves under it, as the other lists do. No
     // subtitle: the Logbook is not in the design, and a count of everything
@@ -121,9 +127,16 @@ private fun LogbookContent(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.surface,
         snackbarHost = { UndoSnackbarHost(snackbarHostState) },
-        bottomBar = bottomBar,
         topBar = {
             FocuslistTopAppBar(
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_arrow_back),
+                            contentDescription = stringResource(R.string.logbook_back)
+                        )
+                    }
+                },
                 title = stringResource(R.string.logbook_title),
                 scrollBehavior = scrollBehavior
             )

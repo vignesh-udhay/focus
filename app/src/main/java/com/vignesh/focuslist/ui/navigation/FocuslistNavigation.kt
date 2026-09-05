@@ -2,10 +2,12 @@ package com.vignesh.focuslist.ui.navigation
 
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -38,40 +40,30 @@ object FocuslistRoutes {
 }
 
 /**
- * A destination behind More.
+ * A destination behind the app-bar overflow.
  *
- * `PRODUCT.md` also places Areas, Projects, and Settings here. They join this
- * list when they exist; nothing else about More has to change.
+ * These are not places among the lists. They are rooms you go into and come
+ * back from, which is why each draws a back arrow rather than the navigation
+ * bar. Settings joins this list when it exists; nothing else has to change.
  */
-private data class SecondaryDestination(
+private data class OverflowDestination(
     val route: String,
     @param:StringRes val labelRes: Int,
     @param:DrawableRes val iconRes: Int
 )
 
-private val SecondaryDestinations = listOf(
-    SecondaryDestination(
-        FocuslistRoutes.UPCOMING,
-        R.string.upcoming_title,
-        R.drawable.ic_upcoming
-    ),
-    SecondaryDestination(
+private val OverflowDestinations = listOf(
+    OverflowDestination(
         FocuslistRoutes.LOGBOOK,
         R.string.logbook_title,
         R.drawable.ic_logbook
     ),
-    // Behind More for now. The Clean Slate board puts it in an app-bar
-    // overflow beside Logbook and Settings, which arrives with Phase 3's
-    // navigation change rather than here.
-    SecondaryDestination(
+    OverflowDestination(
         FocuslistRoutes.REMINDER_HEALTH,
         R.string.reminder_health_title,
         R.drawable.ic_notifications
     )
 )
-
-/** The routes More can reach, for deciding whether More is the current place. */
-private val SecondaryRoutes = SecondaryDestinations.map { it.route }.toSet()
 
 /**
  * One of the destinations navigation switches between directly.
@@ -86,7 +78,16 @@ private data class TopLevelDestination(
     val route: String,
     @param:StringRes val labelRes: Int,
     @param:DrawableRes val iconRes: Int,
-    @param:DrawableRes val selectedIconRes: Int
+    /**
+     * The filled counterpart, or null where the design system has no pair yet.
+     *
+     * Null is not a gap to route around. The selection indicator behind the
+     * icon already says which item is current, and the filled glyph is a second
+     * signal rather than the only one. Drawing a filled variant to fill the
+     * hole would be inventing a symbol instead of using a pair Material
+     * defines, which is what the three-dot More item used to justify.
+     */
+    @param:DrawableRes val selectedIconRes: Int? = null
 )
 
 private val TopLevelDestinations = listOf(
@@ -101,13 +102,24 @@ private val TopLevelDestinations = listOf(
         R.string.inbox_title,
         R.drawable.ic_inbox,
         R.drawable.ic_inbox_filled
+    ),
+    // The board names this icon `schedule`, which is Material's clock. The
+    // clock is already the reminder health icon, and two of them in one piece
+    // of chrome would say less than one of each, so the calendar this app
+    // already had keeps the slot. Same destination, same position, different
+    // glyph, and worth a look during the design pass.
+    TopLevelDestination(
+        FocuslistRoutes.UPCOMING,
+        R.string.upcoming_title,
+        R.drawable.ic_upcoming
     )
 )
 
 /**
- * The bottom navigation bar, on every screen.
+ * The bottom navigation bar, on the three primary destinations.
  *
- * Today, Inbox, and More.
+ * Today, Inbox, and Upcoming, which is what `PRODUCT.md` names and what every
+ * screen on the Clean Slate board shows.
  *
  * `PRODUCT.md` describes compact navigation as Today, Inbox, Focus, and More,
  * and Focus is deliberately no longer among them. It became a sheet opened from
@@ -115,15 +127,15 @@ private val TopLevelDestinations = listOf(
  * bar entry landed the user on whichever task happened to head the queue, with
  * nothing to say why that one. `focus.md` records the reversal in full.
  *
- * More is not a destination of its own. `PRODUCT.md` names it in the bar but
- * does not define a screen for it, so it opens the secondary destinations as a
- * menu and is shown as current while the user is on one of them.
+ * More is gone from the bar. It was a fourth item standing in for a screen
+ * that does not exist, and the places behind it are not places among the
+ * lists: Logbook and Reminder health are rooms you go into and come back from.
+ * They moved to the app-bar overflow, where the board puts them.
  */
 @Composable
 fun FocuslistNavigationBar(
     currentRoute: String?,
     onOpenTopLevel: (String) -> Unit,
-    onOpenSecondary: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     // One step above the task collection, which is what this role is for.
@@ -153,15 +165,13 @@ fun FocuslistNavigationBar(
                 onOpen = onOpenTopLevel
             )
         }
-
-        MoreItem(currentRoute = currentRoute, onOpenSecondary = onOpenSecondary)
     }
 }
 
 /**
  * The navigation rail, on every screen once the window is wide enough.
  *
- * The same four destinations in the same order as the bar, because this is one
+ * The same three destinations in the same order as the bar, because this is one
  * navigation model with two presentations. Nothing becomes reachable or
  * unreachable by resizing the window; only where the control sits changes.
  *
@@ -180,7 +190,6 @@ fun FocuslistNavigationBar(
 fun FocuslistNavigationRail(
     currentRoute: String?,
     onOpenTopLevel: (String) -> Unit,
-    onOpenSecondary: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     NavigationRail(
@@ -196,7 +205,7 @@ fun FocuslistNavigationRail(
                 icon = {
                     Icon(
                         painter = painterResource(
-                            if (selected) destination.selectedIconRes else destination.iconRes
+                            destination.iconFor(selected)
                         ),
                         // The label names it; the icon would only repeat that.
                         contentDescription = null
@@ -205,36 +214,7 @@ fun FocuslistNavigationRail(
                 label = { Text(stringResource(destination.labelRes)) }
             )
         }
-
-        MoreRailItem(currentRoute = currentRoute, onOpenSecondary = onOpenSecondary)
     }
-}
-
-/** More, in the rail. The same menu, opened from a rail item instead. */
-@Composable
-private fun MoreRailItem(
-    currentRoute: String?,
-    onOpenSecondary: (String) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-
-    NavigationRailItem(
-        selected = currentRoute in SecondaryRoutes,
-        onClick = { expanded = true },
-        icon = {
-            Icon(
-                painter = painterResource(R.drawable.ic_more),
-                contentDescription = null
-            )
-
-            MoreMenu(
-                expanded = expanded,
-                onDismiss = { expanded = false },
-                onOpenSecondary = onOpenSecondary
-            )
-        },
-        label = { Text(stringResource(R.string.nav_more)) }
-    )
 }
 
 /**
@@ -257,9 +237,7 @@ private fun RowScope.TopLevelItem(
         onClick = { onOpen(destination.route) },
         icon = {
             Icon(
-                painter = painterResource(
-                    if (selected) destination.selectedIconRes else destination.iconRes
-                ),
+                painter = painterResource(destination.iconFor(selected)),
                 // The label names it; the icon would only repeat that.
                 contentDescription = null
             )
@@ -268,60 +246,64 @@ private fun RowScope.TopLevelItem(
     )
 }
 
+/** Which glyph the item wears, given whether it is the current place. */
+@DrawableRes
+private fun TopLevelDestination.iconFor(selected: Boolean): Int =
+    if (selected) selectedIconRes ?: iconRes else iconRes
+
 /**
- * More: a menu rather than a screen.
+ * The app-bar overflow: three dots, top right, on the three primary screens.
  *
- * The menu is anchored inside the item so it opens over the bar without
- * disturbing how the bar lays its items out.
+ * Everything the navigation bar does not hold. The board draws it at the end
+ * of the header row on Today, Inbox and Upcoming, and nowhere else, because
+ * the screens behind it already have a back arrow and offering a way in from
+ * inside would be a loop.
  *
- * Alone among the four it keeps one icon in both states. Three dots have no
- * filled counterpart to switch to, and drawing one would be inventing a symbol
- * rather than using a pair Material already defines.
+ * One icon in both states, as the More item was. Three dots have no filled
+ * counterpart, and this one is never a destination anyway.
  */
 @Composable
-private fun RowScope.MoreItem(
-    currentRoute: String?,
-    onOpenSecondary: (String) -> Unit
+fun FocuslistOverflowMenu(
+    onOpen: (String) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
 
-    NavigationBarItem(
-        selected = currentRoute in SecondaryRoutes,
-        onClick = { expanded = true },
-        icon = {
+    Box(modifier = modifier) {
+        IconButton(onClick = { expanded = true }) {
             Icon(
-                painter = painterResource(R.drawable.ic_more),
-                contentDescription = null
+                painter = painterResource(R.drawable.ic_more_vert),
+                contentDescription = stringResource(R.string.nav_more)
             )
+        }
 
-            MoreMenu(
-                expanded = expanded,
-                onDismiss = { expanded = false },
-                onOpenSecondary = onOpenSecondary
-            )
-        },
-        label = { Text(stringResource(R.string.nav_more)) }
-    )
+        OverflowItems(
+            expanded = expanded,
+            onDismiss = { expanded = false },
+            onOpen = onOpen
+        )
+    }
 }
 
 /**
- * What More opens, wherever it is opened from.
+ * What the overflow opens.
  *
- * Shared so the bar and the rail cannot drift into offering different places.
+ * Separate from the button so the list has one definition, whatever ends up
+ * anchoring it.
  */
 @Composable
-private fun MoreMenu(
+private fun OverflowItems(
     expanded: Boolean,
     onDismiss: () -> Unit,
-    onOpenSecondary: (String) -> Unit
+    onOpen: (String) -> Unit
 ) {
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
-        SecondaryDestinations.forEach { destination ->
+        OverflowDestinations.forEach { destination ->
             DropdownMenuItem(
                 text = { Text(stringResource(destination.labelRes)) },
                 onClick = {
                     onDismiss()
-                    onOpenSecondary(destination.route)
+                    onOpen(destination.route)
                 },
                 leadingIcon = {
                     Icon(

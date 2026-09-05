@@ -1,6 +1,7 @@
 package com.vignesh.focuslist.ui.upcoming
 
 import android.content.res.Configuration
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -58,7 +59,11 @@ import java.time.LocalDate
 fun UpcomingScreen(
     viewModel: TaskListViewModel,
     modifier: Modifier = Modifier,
-    bottomBar: @Composable () -> Unit = {}
+    bottomBar: @Composable () -> Unit = {},
+    // The three dots at the end of the header row. A slot rather than a route,
+    // because navigating is the host's job and this screen only has to leave
+    // room for it.
+    overflow: @Composable RowScope.() -> Unit = {}
 ) {
     val tasks by viewModel.upcomingTasks.collectAsStateWithLifecycle()
     val today by viewModel.today.collectAsStateWithLifecycle()
@@ -77,7 +82,8 @@ fun UpcomingScreen(
         onReschedule = viewModel::rescheduleTask,
         modifier = modifier,
         snackbarHostState = snackbarHostState,
-        bottomBar = bottomBar
+        bottomBar = bottomBar,
+        overflow = overflow
     )
 
     TaskDetailsSheetHost(
@@ -106,7 +112,8 @@ private fun UpcomingContent(
     onReschedule: (String, LocalDate?) -> Unit,
     modifier: Modifier = Modifier,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
-    bottomBar: @Composable () -> Unit = {}
+    bottomBar: @Composable () -> Unit = {},
+    overflow: @Composable RowScope.() -> Unit = {}
 ) {
     // Collapses as the list moves under it, as Today and Inbox do. A pinned
     // behaviour would hold the full height of a two-row bar in every scroll
@@ -130,6 +137,7 @@ private fun UpcomingContent(
         bottomBar = bottomBar,
         topBar = {
             FocuslistTopAppBar(
+                actions = overflow,
                 title = stringResource(R.string.upcoming_title),
                 // No subtitle. It carried a count of the tasks below it, which
                 // is the one thing a list of tasks already shows: the rows are

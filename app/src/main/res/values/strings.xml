@@ -120,6 +120,7 @@
     <!-- Reminder health, from the reminder/Health * frames. -->
     <string name="reminder_health_title">Reminder health</string>
     <string name="reminder_health_back">Back</string>
+    <string name="logbook_back">Back</string>
     <string name="reminder_health_checking_label">Checking reminder health…</string>
     <string name="reminder_health_checking_body">Checking notification access, exact alarms, and battery restrictions.</string>
     <string name="reminder_health_ready_label">READY</string>

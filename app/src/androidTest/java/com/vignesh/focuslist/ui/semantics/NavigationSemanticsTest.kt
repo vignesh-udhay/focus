@@ -6,10 +6,12 @@ import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vignesh.focuslist.ui.navigation.FocuslistNavigationBar
+import com.vignesh.focuslist.ui.navigation.FocuslistOverflowMenu
 import com.vignesh.focuslist.ui.navigation.FocuslistRoutes
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -17,15 +19,23 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * The bottom navigation bar's accessibility contract.
+ * The navigation chrome's accessibility contract.
  *
  * Two things have to be true for a screen reader user to navigate at all: every
  * destination must carry a readable label, and the current one must publish its
- * selected state so "Today, selected" is what gets announced rather than four
- * items that sound identical.
+ * selected state, so "Inbox, selected" is announced rather than three items
+ * that sound identical.
  *
- * More is not a destination. It is a menu, and what it opens has to be
- * reachable and labelled too, which is the part most easily lost.
+ * The bar holds the three primary destinations `PRODUCT.md` names. Everything
+ * else is behind the app-bar overflow, which is a menu rather than a place, and
+ * what it opens has to be reachable and labelled too. That is the part most
+ * easily lost.
+ *
+ * **These tests name the three destinations as a requirement, not as a record
+ * of what the bar happens to hold.** The previous version asserted whatever was
+ * there, so when Upcoming sat behind More instead of in the bar, in
+ * contradiction to `PRODUCT.md`, nothing failed and the gap survived three
+ * commits. A test that only describes the code cannot notice the code is wrong.
  *
  * Phone layouts only, per this phase's scope. The rail is not exercised here.
  */
@@ -38,15 +48,19 @@ class NavigationSemanticsTest {
     private fun setBar(
         fontScale: Float,
         currentRoute: String = FocuslistRoutes.TODAY,
-        onOpenTopLevel: (String) -> Unit = {},
-        onOpenSecondary: (String) -> Unit = {}
+        onOpenTopLevel: (String) -> Unit = {}
     ) {
         rule.setFocuslistContent(fontScale) {
             FocuslistNavigationBar(
                 currentRoute = currentRoute,
-                onOpenTopLevel = onOpenTopLevel,
-                onOpenSecondary = onOpenSecondary
+                onOpenTopLevel = onOpenTopLevel
             )
+        }
+    }
+
+    private fun setOverflow(fontScale: Float, onOpen: (String) -> Unit = {}) {
+        rule.setFocuslistContent(fontScale) {
+            FocuslistOverflowMenu(onOpen = onOpen)
         }
     }
 
@@ -64,13 +78,34 @@ class NavigationSemanticsTest {
     @Test
     fun everyDestination_isLabelled_at200() = assertEveryDestinationIsLabelled(FontScale200)
 
+    /**
+     * The bar holds those three and nothing else.
+     *
+     * The half the old suite was missing. Labelling what is present cannot
+     * catch a destination that should be present and is not, nor a fourth that
+     * should not be there at all, which is what More was.
+     */
+    private fun assertTheBarHoldsExactlyTheThree(fontScale: Float) {
+        setBar(fontScale)
+
+        assertEquals(
+            DESTINATION_LABELS.size,
+            rule.onAllNodes(isSelectable()).fetchSemanticsNodes().size
+        )
+    }
+
+    @Test
+    fun theBar_holdsExactlyTheThree_at100() = assertTheBarHoldsExactlyTheThree(FontScale100)
+
+    @Test
+    fun theBar_holdsExactlyTheThree_at200() = assertTheBarHoldsExactlyTheThree(FontScale200)
+
     private fun assertCurrentDestinationIsSelected(fontScale: Float) {
         setBar(fontScale, currentRoute = FocuslistRoutes.INBOX)
 
         rule.onNode(hasText(INBOX) and isSelectable()).assertIsSelected()
         rule.onNode(hasText(TODAY) and isSelectable()).assertIsNotSelected()
-        rule.onNode(hasText(TODAY) and isSelectable()).assertIsNotSelected()
-        rule.onNode(hasText(MORE) and isSelectable()).assertIsNotSelected()
+        rule.onNode(hasText(UPCOMING) and isSelectable()).assertIsNotSelected()
     }
 
     @Test
@@ -81,21 +116,28 @@ class NavigationSemanticsTest {
     fun currentDestination_isSelected_at200() =
         assertCurrentDestinationIsSelected(FontScale200)
 
-    private fun assertMoreIsSelectedOnASecondaryRoute(fontScale: Float) {
+    /**
+     * On an overflow destination, nothing in the bar claims to be current.
+     *
+     * Logbook and Reminder health are rooms rather than places, and they are
+     * why those screens hide the bar entirely. If one ever shows it, this says
+     * what the user would see: three items, none of them where they are.
+     */
+    private fun assertNothingIsSelectedOnAnOverflowRoute(fontScale: Float) {
         setBar(fontScale, currentRoute = FocuslistRoutes.LOGBOOK)
 
-        // Logbook is reached through More, so More is where the user is.
-        rule.onNode(hasText(MORE) and isSelectable()).assertIsSelected()
-        rule.onNode(hasText(TODAY) and isSelectable()).assertIsNotSelected()
+        DESTINATION_LABELS.forEach { label ->
+            rule.onNode(hasText(label) and isSelectable()).assertIsNotSelected()
+        }
     }
 
     @Test
-    fun more_isSelectedOnASecondaryRoute_at100() =
-        assertMoreIsSelectedOnASecondaryRoute(FontScale100)
+    fun nothing_isSelectedOnAnOverflowRoute_at100() =
+        assertNothingIsSelectedOnAnOverflowRoute(FontScale100)
 
     @Test
-    fun more_isSelectedOnASecondaryRoute_at200() =
-        assertMoreIsSelectedOnASecondaryRoute(FontScale200)
+    fun nothing_isSelectedOnAnOverflowRoute_at200() =
+        assertNothingIsSelectedOnAnOverflowRoute(FontScale200)
 
     private fun assertTappingADestinationOpensIt(fontScale: Float) {
         val opened = mutableListOf<String>()
@@ -112,13 +154,26 @@ class NavigationSemanticsTest {
     @Test
     fun tappingADestination_opensIt_at200() = assertTappingADestinationOpensIt(FontScale200)
 
-    private fun assertMoreOpensLabelledDestinations(fontScale: Float) {
+    /** The overflow button is reachable without sight of the three dots. */
+    private fun assertTheOverflowIsLabelled(fontScale: Float) {
+        setOverflow(fontScale)
+
+        rule.onNodeWithContentDescription(MORE).assertIsDisplayed()
+    }
+
+    @Test
+    fun theOverflow_isLabelled_at100() = assertTheOverflowIsLabelled(FontScale100)
+
+    @Test
+    fun theOverflow_isLabelled_at200() = assertTheOverflowIsLabelled(FontScale200)
+
+    private fun assertTheOverflowOpensLabelledDestinations(fontScale: Float) {
         val opened = mutableListOf<String>()
-        setBar(fontScale, onOpenSecondary = { route -> opened += route })
+        setOverflow(fontScale, onOpen = { route -> opened += route })
 
-        rule.onNode(hasText(MORE) and isSelectable()).performClick()
+        rule.onNodeWithContentDescription(MORE).performClick()
 
-        SECONDARY_LABELS.forEach { label ->
+        OVERFLOW_LABELS.forEach { label ->
             rule.onNodeWithText(label).assertIsDisplayed()
         }
 
@@ -128,25 +183,30 @@ class NavigationSemanticsTest {
     }
 
     @Test
-    fun more_opensLabelledDestinations_at100() =
-        assertMoreOpensLabelledDestinations(FontScale100)
+    fun theOverflow_opensLabelledDestinations_at100() =
+        assertTheOverflowOpensLabelledDestinations(FontScale100)
 
     @Test
-    fun more_opensLabelledDestinations_at200() =
-        assertMoreOpensLabelledDestinations(FontScale200)
+    fun theOverflow_opensLabelledDestinations_at200() =
+        assertTheOverflowOpensLabelledDestinations(FontScale200)
 
     private companion object {
         const val TODAY = "Today"
         const val INBOX = "Inbox"
-        const val MORE = "More"
         const val UPCOMING = "Upcoming"
+        const val MORE = "More"
         const val LOGBOOK = "Logbook"
+        const val REMINDER_HEALTH = "Reminder health"
 
         /**
-         * Three, not four. Focus left the bar when it became a sheet opened
-         * from the task it is for; `focus.md` records why.
+         * The three `PRODUCT.md` names, in the order the board shows them.
+         *
+         * Focus is not among them. It left the bar when it became a sheet
+         * opened from the task it is for; `focus.md` records why.
          */
-        val DESTINATION_LABELS = listOf(TODAY, INBOX, MORE)
-        val SECONDARY_LABELS = listOf(UPCOMING, LOGBOOK)
+        val DESTINATION_LABELS = listOf(TODAY, INBOX, UPCOMING)
+
+        /** Settings joins this when it exists. */
+        val OVERFLOW_LABELS = listOf(LOGBOOK, REMINDER_HEALTH)
     }
 }

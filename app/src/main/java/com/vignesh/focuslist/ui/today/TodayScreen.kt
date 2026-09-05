@@ -2,6 +2,7 @@ package com.vignesh.focuslist.ui.today
 
 import android.content.res.Configuration
 import android.text.format.DateFormat
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
@@ -74,7 +75,11 @@ fun TodayScreen(
     viewModel: TaskListViewModel,
     modifier: Modifier = Modifier,
     bottomBar: @Composable () -> Unit = {},
-    onOpenFocus: () -> Unit = {}
+    onOpenFocus: () -> Unit = {},
+    // The three dots at the end of the header row. A slot rather than a route,
+    // because navigating is the host's job and this screen only has to leave
+    // room for it.
+    overflow: @Composable RowScope.() -> Unit = {}
 ) {
     val tasks by viewModel.todayTasks.collectAsStateWithLifecycle()
     val today by viewModel.today.collectAsStateWithLifecycle()
@@ -108,7 +113,8 @@ fun TodayScreen(
         onAddTask = { isQuickAddVisible = true },
         modifier = modifier,
         snackbarHostState = snackbarHostState,
-        bottomBar = bottomBar
+        bottomBar = bottomBar,
+        overflow = overflow
     )
 
     TaskDetailsSheetHost(
@@ -165,7 +171,8 @@ private fun TodayContent(
     onAddTask: () -> Unit,
     modifier: Modifier = Modifier,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
-    bottomBar: @Composable () -> Unit = {}
+    bottomBar: @Composable () -> Unit = {},
+    overflow: @Composable RowScope.() -> Unit = {}
 ) {
     // The large title collapses into a small bar as the list moves under it.
     // A pinned behaviour would hold all 152dp of it in place, which spends a
@@ -198,6 +205,7 @@ private fun TodayContent(
         bottomBar = bottomBar,
         topBar = {
             FocuslistTopAppBar(
+                actions = overflow,
                 title = stringResource(R.string.today_title),
                 subtitle = { TodaySubtitle(today = today, tasks = tasks) },
                 scrollBehavior = scrollBehavior

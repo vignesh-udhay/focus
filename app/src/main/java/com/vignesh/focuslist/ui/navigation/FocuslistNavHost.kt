@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -77,10 +78,15 @@ fun FocuslistNavHost(
         {
             FocuslistNavigationBar(
                 currentRoute = currentRoute,
-                onOpenTopLevel = navController::openTopLevel,
-                onOpenSecondary = navController::openSecondary
+                onOpenTopLevel = navController::openTopLevel
             )
         }
+    }
+
+    // Built once for the same reason the bar is: three screens must offer the
+    // same places, and two copies of a menu drift.
+    val overflow: @Composable RowScope.() -> Unit = {
+        FocuslistOverflowMenu(onOpen = navController::openSecondary)
     }
 
     val graph: @Composable (Modifier) -> Unit = { hostModifier ->
@@ -93,6 +99,7 @@ fun FocuslistNavHost(
                 TodayScreen(
                     viewModel = viewModel,
                     bottomBar = navigationBar,
+                    overflow = overflow,
                     // Nothing to navigate to any more. Choosing a task is what
                     // opens Focus, and the sheet appears over whatever screen
                     // asked for it.
@@ -101,15 +108,25 @@ fun FocuslistNavHost(
             }
 
             composable(FocuslistRoutes.INBOX) {
-                InboxScreen(viewModel = viewModel, bottomBar = navigationBar)
+                InboxScreen(
+                    viewModel = viewModel,
+                    bottomBar = navigationBar,
+                    overflow = overflow
+                )
             }
 
             composable(FocuslistRoutes.UPCOMING) {
-                UpcomingScreen(viewModel = viewModel, bottomBar = navigationBar)
+                UpcomingScreen(
+                    viewModel = viewModel,
+                    bottomBar = navigationBar,
+                    overflow = overflow
+                )
             }
 
             composable(FocuslistRoutes.LOGBOOK) {
-                LogbookScreen(viewModel = viewModel, bottomBar = navigationBar)
+                // No bottom bar, like Reminder health. Both are reached from the
+                // overflow and left by the arrow.
+                LogbookScreen(viewModel = viewModel, onBack = navController::popBackStack)
             }
 
             // No bottom bar. It is a screen about the app rather than a place
@@ -133,7 +150,6 @@ fun FocuslistNavHost(
             FocuslistNavigationRail(
                 currentRoute = currentRoute,
                 onOpenTopLevel = navController::openTopLevel,
-                onOpenSecondary = navController::openSecondary,
                 modifier = Modifier.fillMaxHeight()
             )
 

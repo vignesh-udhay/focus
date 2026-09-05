@@ -1,6 +1,7 @@
 package com.vignesh.focuslist.ui.inbox
 
 import android.content.res.Configuration
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -57,7 +58,11 @@ import java.time.LocalDate
 fun InboxScreen(
     viewModel: TaskListViewModel,
     modifier: Modifier = Modifier,
-    bottomBar: @Composable () -> Unit = {}
+    bottomBar: @Composable () -> Unit = {},
+    // The three dots at the end of the header row. A slot rather than a route,
+    // because navigating is the host's job and this screen only has to leave
+    // room for it.
+    overflow: @Composable RowScope.() -> Unit = {}
 ) {
     val tasks by viewModel.inboxTasks.collectAsStateWithLifecycle()
     val today by viewModel.today.collectAsStateWithLifecycle()
@@ -80,7 +85,8 @@ fun InboxScreen(
         onAddTask = { isQuickAddVisible = true },
         modifier = modifier,
         snackbarHostState = snackbarHostState,
-        bottomBar = bottomBar
+        bottomBar = bottomBar,
+        overflow = overflow
     )
 
     if (isQuickAddVisible) {
@@ -128,7 +134,8 @@ private fun InboxContent(
     onAddTask: () -> Unit,
     modifier: Modifier = Modifier,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
-    bottomBar: @Composable () -> Unit = {}
+    bottomBar: @Composable () -> Unit = {},
+    overflow: @Composable RowScope.() -> Unit = {}
 ) {
     // The large title collapses as the list moves under it, as on Today.
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -146,6 +153,7 @@ private fun InboxContent(
         bottomBar = bottomBar,
         topBar = {
             FocuslistTopAppBar(
+                actions = overflow,
                 title = stringResource(R.string.inbox_title),
                 // Nothing to count when the list is empty, and "0 items
                 // waiting to process" above an empty state says the same
