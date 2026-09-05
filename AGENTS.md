@@ -282,6 +282,14 @@ Rules:
 - `isIgnoringBatteryOptimizations()` reports on stock Android only. It is not
   evidence that a reminder will arrive on a Samsung, Xiaomi or OnePlus
   device.
+- `canScheduleExactAlarms()` returning true is not evidence that an alarm will
+  be exact. Measured on a OnePlus 8T on 5 September 2026: with
+  `USE_EXACT_ALARM` granted and that call returning true,
+  `setExactAndAllowWhileIdle` still produced an alarm carrying no
+  `FLAG_STANDALONE` and a window of 0.75 times its futurity, which is AOSP's
+  heuristic for an inexact alarm. Permission is what the system agrees to be
+  asked for, not what it agrees to do. Verify by observing the scheduled
+  alarm in `dumpsys alarm`, never by asking permission.
 - A missed reminder must be detectable after the fact. Record the time each
   alarm was scheduled for alongside the time it actually fired, on both
   `System.currentTimeMillis()` and `SystemClock.elapsedRealtime()`. The wall

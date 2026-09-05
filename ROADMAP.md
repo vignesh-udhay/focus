@@ -11,33 +11,47 @@ scope it delivers is in `PRODUCT.md`.
 
 **Phase 1: Make it tell you.** Started.
 
-The design exists. `Clean slate / Reminder delivery` and `Reminder delivery
-— dark` in the Figma file cover the collapsed and expanded notification, the
+The design exists. The Clean Slate board in Figma covers the whole app, and
+its `notify/*` frames cover the collapsed and expanded notification, the
 snooze choice, the lock screen, the full-screen alarm, opening the app from a
-reminder, and several reminders firing at once. Do not invent notification
+reminder, and several at once, in light and dark. Do not invent notification
 layout; it is drawn.
 
-The data model is done: `reminderAt` on `Task` and `TaskEntity`, schema
-version 5 with `MIGRATION_4_5`, and `core/domain/Reminders.kt` holding
-`pendingReminders` and `missedReminders`. Those two are what a boot receiver
-rebuilds from, and both are pure functions taking the current time as a
-parameter, so a phone that was off for nine hours is a JVM test rather than a
-device. The migration test moved to version 5 but has not been run on a
-device yet.
+Done, and verified on a OnePlus 8T:
 
-Next: the `AlarmManager` scheduler, the boot receiver, the alarm-grade
-notification channel, Done and Snooze actions, the permission flow, and
+- `reminderAt` on `Task` and `TaskEntity`, schema version 5 with
+  `MIGRATION_4_5`, and `core/domain/Reminders.kt` holding `pendingReminders`
+  and `missedReminders`
+- `ReminderScheduler`, which makes `AlarmManager` agree with storage and
+  holds no memory of what it scheduled last time, run by any task write, by
+  boot, by `MY_PACKAGE_REPLACED`, and by a clock or timezone change
+- `USE_EXACT_ALARM` and `RECEIVE_BOOT_COMPLETED` in the manifest
+- An alarm-grade channel, separate from the focus channel
+
+The path works end to end on hardware: a reminder in storage reaches a
+notification with the app closed, a reminder on a completed task is never
+scheduled, and a package replacement rebuilds the alarms without the app
+being opened.
+
+Next: notification content with Done and Snooze, the permission flow, and
 setting a reminder from the task details sheet.
 
-A throwaway spike on branch `spike/exact-alarms` is measuring whether exact
-alarms actually arrive on a OnePlus 8T. It has already established two things:
-`USE_EXACT_ALARM` is auto-granted with no prompt, so Phase 1 needs no settings
-hand-off, and a boot receiver does recover alarms across a restart. Its first
-delivery figures were unusable, because they were measured on the wall clock
-alone while the device corrected its own clock mid-test. That is where the
-`ACTION_TIME_CHANGED` rule in `AGENTS.md` came from. While a run is in
-progress, do not install anything to that phone: replacing the package ends
-the test.
+**Exact alarms are being demoted on that device, and Phase 2 has to deal with
+it.** `setExactAndAllowWhileIdle` produces an alarm with no `FLAG_STANDALONE`
+and a window of 0.75 times its futurity, which is the inexact heuristic, even
+though `canScheduleExactAlarms()` returns true and the permission is granted.
+See `docs/decisions.md`, D-009. It also explains the exact-alarm spike's
+result that exact and inexact arrived within 0.1 seconds of each other: they
+were the same kind of alarm.
+
+Still unverified: the Room migration test moved to version 5 but has never
+run, because it needs a real SQLite runtime and an instrumented run wipes
+every attached device.
+
+The throwaway spike on branch `spike/exact-alarms` is no longer installed.
+Its remaining value is measuring how far a demoted alarm drifts overnight in
+Doze. While a run is in progress, do not install anything to that phone:
+replacing the package ends the test.
 
 Update this line when a phase begins and when it ends. It is the first thing
 a new coding session should read, and the only place that says where the work

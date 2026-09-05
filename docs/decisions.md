@@ -278,3 +278,60 @@ rather than decoration on content.
 **What would reverse this.** Evidence that a specific Material default harms
 legibility or reliability on real devices. Taste is not enough. Taste is what
 produced the overrides in the first place.
+
+---
+
+## D-009. Phase 2 checks whether the device keeps alarms, not whether it granted permission
+
+**Decision.** The reminder health work in Phase 2 has to answer "is this
+device actually delivering exact alarms" rather than "is this app allowed to
+ask for them". Those are different questions, and only the first one predicts
+whether a reminder arrives.
+
+Concretely, that means the app measures its own delivery: it records the time
+each alarm was scheduled for and the time it actually fired, and it inspects
+what it got rather than trusting what it asked for. A health screen built on
+permission checks alone would report green on a device that silently drops
+reminders.
+
+**Why.** This started as an argument from reviews. It is now an argument from
+a measurement.
+
+On a OnePlus 8T, Android 14, on 5 September 2026, with the app holding
+`USE_EXACT_ALARM` (auto-granted, no prompt) and `canScheduleExactAlarms()`
+returning true, `setExactAndAllowWhileIdle` produced this:
+
+    origWhen=2026-09-05 15:00:00.000  window=+8m51s  flags=0x4
+
+Scheduled at 14:48:09, so a futurity of 711 seconds and a window of 531,
+which is 0.747 of it. That ratio is AOSP's `maxTriggerTime` heuristic for an
+**inexact** alarm, and `flags=0x4` carries no `FLAG_STANDALONE`, which an
+exact alarm sets. The app's own fallback warning did not fire, so the exact
+API was the one called. TickTick, on the same device at the same moment, had
+`window=0`.
+
+Three things were ruled out. It is not our code: the fallback branch logs, and
+it stayed silent while the warning string was verified present in the
+installed APK. It is not the permission: it was granted and the system's own
+check agreed. It is not battery optimisation: adding the app to the deviceidle
+allowlist changed the flag from `0x4` to `0x8` and left the window untouched.
+
+The same device freezes the process around every broadcast, logged by
+`OplusHansManager` as freeze and unfreeze roughly three seconds apart, which
+is the budget a reconciliation gets.
+
+This also explains the exact-alarm spike, which found exact and inexact alarms
+arriving within 0.1 seconds of each other across four scenarios. That looked
+like a measurement problem. It was the finding: they were the same kind of
+alarm.
+
+**What this does not mean.** Not that exact scheduling should be abandoned. It
+is free, it is correct on devices that honour it, and asking for it is what
+makes the difference visible. See `AGENTS.md`, which keeps
+`setExactAndAllowWhileIdle` as the rule and adds the warning that its success
+cannot be assumed.
+
+**What would reverse this.** Evidence that the demotion is something the app
+causes and can stop, on more than one device. One phone is one phone, and the
+honest next step is measuring a second manufacturer before building detection
+around a single observation.
