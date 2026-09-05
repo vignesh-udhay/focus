@@ -1310,6 +1310,28 @@ class TaskListViewModelTest {
         throw AssertionError("no edit reached the DAO")
     }
 
+    /**
+     * Whether the one-shot reminder signal was raised, waited for rather than
+     * sampled.
+     *
+     * `editTask` writes to the repository and *then* raises the signal, so
+     * [awaitEdited] returning proves only that the write landed. Reading
+     * `reminderJustSet.value` on the next line races the same coroutine
+     * reaching the line that sets it.
+     *
+     * That race failed this suite once, which is the better outcome. In the
+     * four tests expecting false it would have passed while reading a flag
+     * that had not been set yet, so a regression raising the permission screen
+     * on every edit could have gone in green.
+     *
+     * The tests expecting true return as soon as it arrives. The ones
+     * expecting false wait the full timeout, which is the price of an honest
+     * negative.
+     */
+    private fun awaitReminderSignal(model: TaskListViewModel): Boolean = runBlocking {
+        withTimeoutOrNull(TIMEOUT_MILLIS) { model.reminderJustSet.first { it } } ?: false
+    }
+
     /** Waits until at least [count] writes have reached the DAO. */
     private fun awaitUpdates(count: Int) {
         repeat(200) {
@@ -2629,7 +2651,7 @@ class TaskListViewModelTest {
         model.edit(id = "a", reminderAt = reminder)
         awaitEdited("a")
 
-        assertEquals(true, model.reminderJustSet.value)
+        assertEquals(true, awaitReminderSignal(model))
     }
 
     @Test
@@ -2640,6 +2662,11 @@ class TaskListViewModelTest {
 
         model.edit(id = "a", reminderAt = reminder)
         awaitEdited("a")
+        // Wait for the ask before answering it. Acknowledging a signal that
+        // has not been raised yet lowers nothing, and the flag then comes up
+        // behind the assertion.
+        assertEquals(true, awaitReminderSignal(model))
+
         model.acknowledgeReminder()
 
         assertEquals(false, model.reminderJustSet.value)
@@ -2654,7 +2681,7 @@ class TaskListViewModelTest {
         model.edit(id = "a", reminderAt = reminder.plusHours(1))
         awaitEdited("a")
 
-        assertEquals(true, model.reminderJustSet.value)
+        assertEquals(true, awaitReminderSignal(model))
     }
 
     @Test
@@ -2669,7 +2696,7 @@ class TaskListViewModelTest {
         model.edit(id = "a", title = "Chase the missing invoice")
         awaitEdited("a")
 
-        assertEquals(false, model.reminderJustSet.value)
+        assertEquals(false, awaitReminderSignal(model))
     }
 
     @Test
@@ -2682,7 +2709,7 @@ class TaskListViewModelTest {
         model.edit(id = "a", reminderAt = null)
         awaitEdited("a")
 
-        assertEquals(false, model.reminderJustSet.value)
+        assertEquals(false, awaitReminderSignal(model))
     }
 
     @Test
@@ -2694,7 +2721,7 @@ class TaskListViewModelTest {
         model.edit(id = "a", title = "Chase the missing invoice")
         awaitEdited("a")
 
-        assertEquals(false, model.reminderJustSet.value)
+        assertEquals(false, awaitReminderSignal(model))
     }
 
     // Notes
