@@ -248,7 +248,8 @@ class MigrationTest {
             MIGRATION_3_4,
             MIGRATION_4_5,
             MIGRATION_5_6,
-            MIGRATION_6_7
+            MIGRATION_6_7,
+            MIGRATION_7_8
         ).use { database ->
             database.query(
                 "SELECT notes, recurrence, spawnedFromId, reminderAt FROM tasks WHERE id = ?",
@@ -331,10 +332,12 @@ class MigrationTest {
                 """
                 INSERT INTO reminder_deliveries
                     (id, taskId, taskTitle, dueAt, scheduledWallAt,
-                     scheduledElapsedAt, arrivedWallAt, arrivedElapsedAt, outcome)
+                     scheduledElapsedAt, arrivedWallAt, arrivedElapsedAt,
+                     scheduledAheadMs, outcome)
                 VALUES
                     ('d1', 't1', 'Take medication', '2026-09-05T15:30',
-                     1788615000000, 1000000, 1788617460000, 3460000, 'Announced')
+                     1788615000000, 1000000, 1788617460000, 3460000,
+                     28800000, 'Announced')
                 """.trimIndent()
             )
 
@@ -347,6 +350,41 @@ class MigrationTest {
                 // 41 minutes, on the clock that cannot be corrected.
                 assertEquals(41L * 60 * 1000, cursor.getLong(1))
                 assertEquals("Announced", cursor.getString(2))
+            }
+        }
+    }
+
+    /**
+     * A delivery whose futurity was never recorded counts as having tested
+     * nothing.
+     *
+     * The default has to be zero rather than anything convenient. The column
+     * exists to tell a delivery that was exposed to idle time from one that
+     * was not, and a row that predates it was not measured either way. Reading
+     * an unknown as a long futurity would let old rows clear a warning about a
+     * case nobody observed.
+     */
+    @Test
+    fun aDeliveryFromBeforeTheColumnTestedNothing() {
+        seedVersion1()
+
+        migrate().use { database ->
+            database.execSQL(
+                """
+                INSERT INTO reminder_deliveries
+                    (id, taskId, taskTitle, dueAt, scheduledWallAt,
+                     scheduledElapsedAt, arrivedWallAt, arrivedElapsedAt, outcome)
+                VALUES
+                    ('old', 't1', 'Take medication', '2026-09-05T15:30',
+                     1788615000000, 1000000, 1788615000000, 1000000, 'Announced')
+                """.trimIndent()
+            )
+
+            database.query(
+                "SELECT scheduledAheadMs FROM reminder_deliveries WHERE id = 'old'"
+            ).use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals(0L, cursor.getLong(0))
             }
         }
     }
@@ -456,6 +494,6 @@ class MigrationTest {
         const val TEST_DB = "migration-test.db"
 
         /** The schema every migration in this test is aimed at. */
-        const val LatestVersion = 7
+        const val LatestVersion = 8
     }
 }

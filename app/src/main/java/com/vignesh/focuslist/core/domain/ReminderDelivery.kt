@@ -49,6 +49,16 @@ data class ReminderDelivery(
     /** The same arrival on `SystemClock.elapsedRealtime()`. */
     val arrivedElapsedAt: Long,
 
+    /**
+     * How far ahead this alarm was set when it was scheduled.
+     *
+     * Not derivable from the two timestamps above, which say when the alarm
+     * was aimed and when it landed, never when it was placed. It is recorded
+     * because it is the only signal the app has about whether a delivery
+     * actually tested anything: see [testsIdleDelivery].
+     */
+    val scheduledAhead: Duration,
+
     val outcome: DeliveryOutcome
 ) {
 
@@ -82,7 +92,40 @@ data class ReminderDelivery(
             (arrivedWallAt.toEpochMilli() - scheduledWallAt.toEpochMilli()) -
                 (arrivedElapsedAt - scheduledElapsedAt)
         )
+
+    /**
+     * Whether this delivery is worth anything as evidence that the device
+     * behaves.
+     *
+     * The failure Phase 2 exists for happens to a phone that has been left
+     * alone: manufacturer sleep features and Doze both need idle time before
+     * they bite. A reminder set for five minutes' time, while the user is
+     * holding the phone, is never going to meet either, so it arriving
+     * punctually says nothing about the one set the night before.
+     *
+     * Futurity is a proxy rather than a measurement. A phone can be in use for
+     * the whole hour and the app cannot tell. It is the honest best available:
+     * a demoted alarm's window is a fraction of its futurity, so the further
+     * ahead an alarm is set, the more exposure it has and the more its
+     * punctuality is worth.
+     *
+     * A delivery that fails this is still recorded and can still be late. Only
+     * the clearing of a warning needs evidence; a missed reminder is a missed
+     * reminder however soon it was set.
+     */
+    val testsIdleDelivery: Boolean
+        get() = scheduledAhead >= EvidenceHorizon
 }
+
+/**
+ * How far ahead an alarm has to be set before its punctuality means anything.
+ *
+ * An hour, which is comfortably past the point where a screen-off phone enters
+ * light Doze and where the manufacturer features in question start freezing
+ * background processes. Shorter than that and a punctual delivery proves the
+ * app can talk to `AlarmManager`, which was never in doubt.
+ */
+val EvidenceHorizon: Duration = Duration.ofHours(1)
 
 /** Whether the reminder actually reached the user. */
 enum class DeliveryOutcome {

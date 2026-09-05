@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.vignesh.focuslist.core.domain.DeliveryOutcome
 import com.vignesh.focuslist.core.domain.ReminderDelivery
+import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
 
@@ -36,6 +37,8 @@ data class ReminderDeliveryEntity(
     val scheduledElapsedAt: Long,
     val arrivedWallAt: Long,
     val arrivedElapsedAt: Long,
+    /** Milliseconds between the alarm being placed and the moment it was for. */
+    val scheduledAheadMs: Long,
     val outcome: String
 )
 
@@ -56,6 +59,7 @@ internal fun ReminderDeliveryEntity.toDomain(): ReminderDelivery {
         scheduledElapsedAt = scheduledElapsedAt,
         arrivedWallAt = Instant.ofEpochMilli(arrivedWallAt),
         arrivedElapsedAt = arrivedElapsedAt,
+        scheduledAhead = Duration.ofMillis(scheduledAheadMs),
         outcome = outcome.toOutcome()
     )
 }
@@ -69,6 +73,7 @@ internal fun ReminderDelivery.toEntity(): ReminderDeliveryEntity = ReminderDeliv
     scheduledElapsedAt = scheduledElapsedAt,
     arrivedWallAt = arrivedWallAt.toEpochMilli(),
     arrivedElapsedAt = arrivedElapsedAt,
+    scheduledAheadMs = scheduledAhead.toMillis(),
     outcome = outcome.name
 )
 

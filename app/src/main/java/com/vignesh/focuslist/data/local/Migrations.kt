@@ -125,6 +125,26 @@ val MIGRATION_6_7 = Migration(6, 7) { database ->
     )
 }
 
+/**
+ * Version 8 records how far ahead each alarm was set.
+ *
+ * Not derivable from what version 7 already stores, which says when the alarm
+ * was aimed and when it landed but never when it was placed. The health rules
+ * need it to tell a delivery that proved something from one that did not: a
+ * reminder set for five minutes' time cannot meet Doze or a manufacturer sleep
+ * feature, so it arriving punctually is no evidence that the ones which do
+ * will.
+ *
+ * `NOT NULL DEFAULT 0`, and zero is the conservative reading. A row written
+ * before this column existed becomes a delivery that tested nothing, which is
+ * what an unknown futurity should count as.
+ */
+val MIGRATION_7_8 = Migration(7, 8) { database ->
+    database.execSQL(
+        "ALTER TABLE reminder_deliveries ADD COLUMN scheduledAheadMs INTEGER NOT NULL DEFAULT 0"
+    )
+}
+
 /** Every migration, in order, for the builder and the migration test. */
 val FocuslistMigrations = arrayOf(
     MIGRATION_1_2,
@@ -132,5 +152,6 @@ val FocuslistMigrations = arrayOf(
     MIGRATION_3_4,
     MIGRATION_4_5,
     MIGRATION_5_6,
-    MIGRATION_6_7
+    MIGRATION_6_7,
+    MIGRATION_7_8
 )

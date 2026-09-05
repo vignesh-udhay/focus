@@ -154,12 +154,12 @@ enum class DeviceRestriction {
 val ConcernWindow: Duration = Duration.ofDays(7)
 
 /**
- * How many punctual deliveries in a row count as this device behaving.
+ * How many qualifying deliveries in a row count as this device behaving.
  *
  * Small on purpose. The question is not whether the device is proven, it is
- * whether the app has any reason to nag. A handful of reminders arriving on
- * time is reason enough to stop, and the moment one does not, the record says
- * so and the warning comes back.
+ * whether the app has any reason to nag. A few reminders that were genuinely
+ * exposed to idle time and arrived anyway is reason enough to stop, and the
+ * moment one does not, the record says so and the warning comes back.
  */
 const val EvidenceOfHealth = 3
 
@@ -214,9 +214,17 @@ private fun backgroundWorkState(
 ): CheckState {
     if (restriction == null) return CheckState.Ok
 
-    val latest = recent.sortedByDescending { it.arrivedWallAt }.take(EvidenceOfHealth)
+    // Only deliveries that were actually exposed to idle time count. A run of
+    // reminders set for five minutes' time and arriving on the second says
+    // nothing about the one set for tomorrow morning, and clearing the warning
+    // on them would be the app reassuring the user about a case it never
+    // tested.
+    val evidence = recent
+        .filter { it.testsIdleDelivery }
+        .sortedByDescending { it.arrivedWallAt }
+        .take(EvidenceOfHealth)
 
-    return if (latest.size >= EvidenceOfHealth && latest.none { it.isConcerning() }) {
+    return if (evidence.size >= EvidenceOfHealth && evidence.none { it.isConcerning() }) {
         CheckState.Ok
     } else {
         CheckState.Warning

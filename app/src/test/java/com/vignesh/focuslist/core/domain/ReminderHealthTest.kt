@@ -24,6 +24,7 @@ class ReminderHealthTest {
         id: String = "d1",
         lateBy: Duration = Duration.ZERO,
         arrivedAgo: Duration = Duration.ofHours(1),
+        scheduledAhead: Duration = Duration.ofHours(8),
         outcome: DeliveryOutcome = DeliveryOutcome.Announced
     ): ReminderDelivery {
         val arrived = now.minus(arrivedAgo)
@@ -37,6 +38,7 @@ class ReminderHealthTest {
             scheduledElapsedAt = 1_000_000L,
             arrivedWallAt = arrived,
             arrivedElapsedAt = 1_000_000L + lateBy.toMillis(),
+            scheduledAhead = scheduledAhead,
             outcome = outcome
         )
     }
@@ -241,6 +243,45 @@ class ReminderHealthTest {
         assertEquals(
             CheckState.Warning,
             health(restriction = DeviceRestriction.SleepStandby, deliveries = stale).backgroundWork
+        )
+    }
+
+    @Test
+    fun `punctual reminders that were never exposed do not clear the warning`() {
+        // The rule this whole column exists for. Three reminders set for five
+        // minutes' time arriving on the second is the app proving it can talk
+        // to AlarmManager, not that this phone delivers after a night idle.
+        val hasty = (1..EvidenceOfHealth).map {
+            delivery(
+                id = "d$it",
+                arrivedAgo = Duration.ofHours(it.toLong()),
+                scheduledAhead = Duration.ofMinutes(5)
+            )
+        }
+
+        assertEquals(
+            CheckState.Warning,
+            health(restriction = DeviceRestriction.SleepStandby, deliveries = hasty).backgroundWork
+        )
+    }
+
+    @Test
+    fun `a mix clears the warning only on the qualifying ones`() {
+        // Two overnight reminders and a pile of hasty ones is still one short
+        // of the evidence needed, however many rows the table holds.
+        val mixed = (1..EvidenceOfHealth - 1).map {
+            delivery(id = "long$it", arrivedAgo = Duration.ofHours(it.toLong()))
+        } + (1..5).map {
+            delivery(
+                id = "short$it",
+                arrivedAgo = Duration.ofHours(it.toLong()),
+                scheduledAhead = Duration.ofMinutes(5)
+            )
+        }
+
+        assertEquals(
+            CheckState.Warning,
+            health(restriction = DeviceRestriction.SleepStandby, deliveries = mixed).backgroundWork
         )
     }
 

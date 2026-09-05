@@ -26,6 +26,7 @@ class ReminderDeliveryTest {
         id: String = "d1",
         lateBy: Duration = Duration.ZERO,
         wallLateBy: Duration = lateBy,
+        scheduledAhead: Duration = Duration.ofHours(8),
         outcome: DeliveryOutcome = DeliveryOutcome.Announced
     ) = ReminderDelivery(
         id = id,
@@ -36,6 +37,7 @@ class ReminderDeliveryTest {
         scheduledElapsedAt = 1_000_000L,
         arrivedWallAt = scheduled.plus(wallLateBy),
         arrivedElapsedAt = 1_000_000L + lateBy.toMillis(),
+        scheduledAhead = scheduledAhead,
         outcome = outcome
     )
 
@@ -182,6 +184,50 @@ class ReminderDeliveryTest {
         // Zero rather than absent, so a caller comparing against a threshold
         // does not have to handle "no answer" as a third state.
         assertEquals(Duration.ZERO, worstLateness(emptyList()))
+    }
+
+    // 5. Whether a delivery proves anything
+
+    @Test
+    fun `a reminder set the night before is evidence`() {
+        // Long enough that a screen-off phone reaches Doze, and that a
+        // manufacturer sleep feature has had its chance.
+        assertEquals(true, delivery(scheduledAhead = Duration.ofHours(8)).testsIdleDelivery)
+    }
+
+    @Test
+    fun `a reminder set for five minutes time proves nothing`() {
+        // The phone is in the user's hand and nothing has had time to throttle
+        // anything. It arriving punctually says only that AlarmManager works,
+        // which was never in question.
+        assertEquals(false, delivery(scheduledAhead = Duration.ofMinutes(5)).testsIdleDelivery)
+    }
+
+    @Test
+    fun `the horizon is inclusive`() {
+        assertEquals(true, delivery(scheduledAhead = EvidenceHorizon).testsIdleDelivery)
+        assertEquals(
+            false,
+            delivery(scheduledAhead = EvidenceHorizon.minusSeconds(1)).testsIdleDelivery
+        )
+    }
+
+    @Test
+    fun `an unrecorded futurity proves nothing`() {
+        // Zero is what a row written before the column existed reads as, and
+        // what the receiver falls back to. Unknown has to count as untested,
+        // or an absent measurement would clear a warning.
+        assertEquals(false, delivery(scheduledAhead = Duration.ZERO).testsIdleDelivery)
+    }
+
+    @Test
+    fun `a short reminder can still be late`() {
+        // Only the clearing of a warning needs evidence. A missed reminder is
+        // missed however soon it was set.
+        val hasty = delivery(scheduledAhead = Duration.ofMinutes(2), lateBy = Duration.ofMinutes(41))
+
+        assertEquals(false, hasty.testsIdleDelivery)
+        assertEquals(true, hasty.isConcerning())
     }
 
     // 5. The device this was written for

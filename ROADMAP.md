@@ -61,6 +61,13 @@ A restrictive device that then delivers `EvidenceOfHealth` reminders on the
 trot stops being warned about, and one late delivery brings the warning back.
 The app cannot read the setting, so behaviour is the only evidence there is.
 
+**Only deliveries that were exposed to idle time count as that evidence.**
+`schema version 8` records how far ahead each alarm was set, and one set less
+than `EvidenceHorizon` ahead proves nothing: the failure needs a phone that has
+been left alone, so a reminder set for five minutes' time arriving punctually
+says only that `AlarmManager` works. Without this the warning could clear on
+daytime reminders and go quiet before the 6am one was missed.
+
 Remaining in Phase 2, and all of it is drawn: the three status checks
 (`reminder/Health Ready`), OEM restriction detection and routing
 (`reminder/Health Action`, which names OnePlus sleep standby directly), the

@@ -25,6 +25,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
@@ -103,12 +104,18 @@ class AndroidReminderAlarms(private val context: Context) : ReminderAlarms {
             data = Uri.parse("focuslist://reminder/$taskId")
             putExtra(ReminderReceiver.EXTRA_TASK_ID, taskId)
             putExtra(ReminderReceiver.EXTRA_SCHEDULED_WALL, at.toEpochMilli())
-            // The same instant on the clock that cannot be corrected, reached
-            // by measuring how far away the target is right now.
+
+            // How far away the target is from the moment it is being placed.
+            // Read once and used twice: to reach the same instant on the clock
+            // that cannot be corrected, and to say later whether this delivery
+            // was ever exposed to the idle time the health rules care about.
+            val ahead = at.toEpochMilli() - System.currentTimeMillis()
+
             putExtra(
                 ReminderReceiver.EXTRA_SCHEDULED_ELAPSED,
-                SystemClock.elapsedRealtime() + (at.toEpochMilli() - System.currentTimeMillis())
+                SystemClock.elapsedRealtime() + ahead
             )
+            putExtra(ReminderReceiver.EXTRA_SCHEDULED_AHEAD, ahead.coerceAtLeast(0))
         }
 
         return PendingIntent.getBroadcast(
@@ -148,6 +155,9 @@ class ReminderReceiver : BroadcastReceiver() {
             intent.getLongExtra(EXTRA_SCHEDULED_WALL, arrivedWallAt.toEpochMilli())
         )
         val scheduledElapsedAt = intent.getLongExtra(EXTRA_SCHEDULED_ELAPSED, arrivedElapsedAt)
+        // Zero by default, which reads as a delivery that tested nothing. The
+        // conservative answer for an alarm placed before this was recorded.
+        val scheduledAhead = Duration.ofMillis(intent.getLongExtra(EXTRA_SCHEDULED_AHEAD, 0L))
 
         val finish = goAsync()
 
@@ -177,6 +187,7 @@ class ReminderReceiver : BroadcastReceiver() {
                             scheduledElapsedAt = scheduledElapsedAt,
                             arrivedWallAt = arrivedWallAt,
                             arrivedElapsedAt = arrivedElapsedAt,
+                            scheduledAhead = scheduledAhead,
                             outcome = outcome
                         )
                     )
@@ -215,6 +226,9 @@ class ReminderReceiver : BroadcastReceiver() {
 
         /** The same moment on `SystemClock.elapsedRealtime()`. */
         const val EXTRA_SCHEDULED_ELAPSED = "focuslist.extra.scheduledElapsed"
+
+        /** How far ahead the alarm was set, in milliseconds. */
+        const val EXTRA_SCHEDULED_AHEAD = "focuslist.extra.scheduledAhead"
     }
 }
 
