@@ -90,15 +90,12 @@
     <string name="task_schedule_back">Back to task details</string>
     <string name="task_schedule_no_date">No date</string>
     <string name="task_details_cancel">Cancel</string>
-    <string name="task_reminder_heading">Reminder</string>
-    <string name="task_reminder_back">Back to task details</string>
     <string name="task_reminder_at">Remind me at</string>
     <string name="task_reminder_none">Reminder not set</string>
     <!-- The day and time a reminder is set for, as "Today, 9:00". -->
     <string name="task_reminder_when">%1$s, %2$s</string>
     <!-- The row on task details, once a reminder is set. -->
     <string name="task_reminder_summary">Reminder %1$s</string>
-    <string name="task_reminder_set">Set</string>
     <string name="task_reminder_clear">Clear</string>
     <string name="task_details_save">Save</string>
     <string name="quick_add_title_label">New task</string>

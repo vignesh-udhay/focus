@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.DatePicker
@@ -28,7 +27,11 @@ import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimeInput
 import androidx.compose.material3.TimePicker
+import androidx.compose.material3.TimePickerDialog
+import androidx.compose.material3.TimePickerDialogDefaults
+import androidx.compose.material3.TimePickerDisplayMode
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.rememberDatePickerState
@@ -38,6 +41,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -126,15 +130,18 @@ internal fun TaskDetailsSheet(
         mutableStateOf(task.reminderAt)
     }
 
-    // Which of the sheet's three pages is showing.
+    // Which of the sheet's two pages is showing.
     //
-    // One sheet rather than several stacked. A ModalBottomSheet is a dialog
-    // with its own Window, so stacking means one of them per page: the scrim
-    // darkens twice and back has to be dispatched across the pair. A page is
-    // also nearly the height of the screen, so a stacked sheet would cover the
-    // one beneath it anyway and the context it was meant to preserve would not
-    // be visible.
-    var page by rememberSaveable(task.id) { mutableStateOf(SheetPage.Details) }
+    // One sheet rather than two stacked. A ModalBottomSheet is a dialog with
+    // its own Window, so stacking means two of them: the scrim darkens twice
+    // and back has to be dispatched across the pair. The page is also nearly
+    // the height of the screen, so a stacked sheet would cover the one beneath
+    // it anyway and the context it was meant to preserve would not be visible.
+    var isScheduleOpen by rememberSaveable(task.id) { mutableStateOf(false) }
+
+    // The reminder is a dialog rather than a page, so it opens over whichever
+    // of the two is showing and returns to it.
+    var isReminderOpen by rememberSaveable(task.id) { mutableStateOf(false) }
 
     // Blank means no estimate. Anything else has to be a real number of minutes.
     val minutes = duration.trim().toIntOrNull()
@@ -156,7 +163,7 @@ internal fun TaskDetailsSheet(
         // Back belongs to the page, not the sheet. Without this the system
         // would close the whole sheet from an inner page, throwing away the
         // draft rather than returning to the details it came from.
-        BackHandler(enabled = page != SheetPage.Details) { page = SheetPage.Details }
+        BackHandler(enabled = isScheduleOpen) { isScheduleOpen = false }
 
         Column(
             modifier = Modifier
@@ -171,24 +178,27 @@ internal fun TaskDetailsSheet(
                 .padding(bottom = FocuslistSpacing.lg),
             verticalArrangement = Arrangement.spacedBy(FocuslistSpacing.md)
         ) {
-            when (page) {
-                SheetPage.Reminder -> ReminderPage(
-                    title = title,
-                    scheduled = scheduled,
-                    today = today,
+            if (isReminderOpen) {
+                ReminderDialog(
                     reminderAt = reminderAt,
+                    // The task's own day, or today for a task that has none.
+                    // Read at the moment the dialog opens, so a day chosen on
+                    // the Schedule page a second ago is the one it uses.
+                    day = reminderAt?.toLocalDate() ?: scheduled ?: today,
                     onSet = {
                         reminderAt = it
-                        page = SheetPage.Details
+                        isReminderOpen = false
                     },
                     onClear = {
                         reminderAt = null
-                        page = SheetPage.Details
+                        isReminderOpen = false
                     },
-                    onBack = { page = SheetPage.Details }
+                    onDismiss = { isReminderOpen = false }
                 )
+            }
 
-                SheetPage.Schedule -> SchedulePage(
+            if (isScheduleOpen) {
+                SchedulePage(
                     scheduled = scheduled,
                     onScheduledChange = { scheduled = it },
                     dueText = dueText,
@@ -200,10 +210,10 @@ internal fun TaskDetailsSheet(
                     recurrence = recurrence,
                     onRecurrenceChange = { recurrence = it },
                     isValid = isDurationValid && isDueValid,
-                    onBack = { page = SheetPage.Details }
+                    onBack = { isScheduleOpen = false }
                 )
-
-                SheetPage.Details -> DetailsPage(
+            } else {
+                DetailsPage(
                     title = title,
                     onTitleChange = { title = it },
                     notes = notes,
@@ -216,9 +226,9 @@ internal fun TaskDetailsSheet(
                         minutes = if (duration.isBlank()) null else minutes,
                         recurrence = recurrence
                     ),
-                    onOpenSchedule = { page = SheetPage.Schedule },
+                    onOpenSchedule = { isScheduleOpen = true },
                     reminderSummary = reminderSummary(reminderAt, today),
-                    onOpenReminder = { page = SheetPage.Reminder },
+                    onOpenReminder = { isReminderOpen = true },
                     isValid = title.isNotBlank() && isDurationValid && isDueValid,
                     onDismiss = onDismiss,
                     onSave = {
@@ -474,146 +484,91 @@ private fun SchedulePage(
 }
 
 /**
- * When the app should speak up, as `reminder/Set Reminder` draws it.
+ * When the app should speak up, as `task/Set Reminder — Clean Slate` draws it.
  *
- * A day and a time, in that order, over a card restating which task is about
- * to start interrupting. The card is not decoration: this page is two levels
- * down from a list, and setting a reminder on the wrong task is the kind of
- * mistake that is only discovered when it goes off.
+ * A dialog over the details, not a page within them. A reminder is one value,
+ * and a page for one value costs a journey the user then has to come back
+ * from. The frame floats it over the task it belongs to, which also answers
+ * "which task am I setting this on" without restating the task anywhere.
  *
- * The day is a chip rather than a calendar on the page, because a reminder is
- * nearly always today or tomorrow and a month grid for that is a lot of screen
- * spent on a decision already made. The calendar is one tap away for the rest.
+ * The time only. The day comes from the task: the day it is scheduled for, or
+ * today when it has none. Storage still holds a full date and time, and
+ * `PRODUCT.md` still says a reminder is independent of the scheduled date, but
+ * nothing on this dialog moves it off that day. See `ROADMAP.md`.
  *
- * The day defaults to the task's scheduled day, or to today when it has none.
- * A default, not a constraint: `PRODUCT.md` says a reminder is independent of
- * the scheduled date, so the chip moves freely.
- *
- * Unlike the Schedule page, this one does not write into the draft as it goes.
- * The picker has no empty position, so a page that updated live would set a
- * reminder on every task whose details anyone happened to open. Set and Clear
- * say what they do; Cancel leaves the task exactly as it was found.
+ * Clear sits beside Cancel. The design draws no way to remove a reminder, and
+ * a reminder that cannot be removed is a worse problem than a third button.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ReminderPage(
-    title: String,
-    scheduled: LocalDate?,
-    today: LocalDate,
+private fun ReminderDialog(
     reminderAt: LocalDateTime?,
+    day: LocalDate,
     onSet: (LocalDateTime) -> Unit,
     onClear: () -> Unit,
-    onBack: () -> Unit
+    onDismiss: () -> Unit
 ) {
-    var day by rememberSaveable {
-        mutableStateOf(reminderAt?.toLocalDate() ?: scheduled ?: today)
-    }
-    var isCalendarOpen by rememberSaveable { mutableStateOf(false) }
-
     val time = reminderAt?.toLocalTime() ?: DefaultReminderTime
     val state = rememberTimePickerState(
         initialHour = time.hour,
         initialMinute = time.minute,
+        // The device's own preference, so the dial the user is handed matches
+        // the clock they read everywhere else.
         is24Hour = DateFormat.is24HourFormat(LocalContext.current)
     )
 
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(top = FocuslistSpacing.xs)
-    ) {
-        IconButton(onClick = onBack) {
-            Icon(
-                painter = painterResource(R.drawable.ic_arrow_back),
-                contentDescription = stringResource(R.string.task_reminder_back)
-            )
-        }
+    // Not saved across a process death, deliberately. The time survives inside
+    // the picker's own state; which of the two ways to enter it was showing is
+    // not worth a saver.
+    var mode by remember { mutableStateOf(TimePickerDisplayMode.Picker) }
 
-        Text(
-            text = stringResource(R.string.task_reminder_heading),
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.semantics { heading() }
-        )
-    }
-
-    Surface(
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-        shape = MaterialTheme.shapes.extraLarge,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(
-                horizontal = FocuslistSpacing.md,
-                vertical = FocuslistSpacing.xs
-            )
-        ) {
+    TimePickerDialog(
+        onDismissRequest = onDismiss,
+        title = {
             Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge,
-                maxLines = SummaryTitleMaxLines,
-                overflow = TextOverflow.Ellipsis
+                text = stringResource(R.string.task_reminder_at),
+                style = MaterialTheme.typography.labelMedium
             )
-
-            Text(
-                text = listOf(
-                    scheduled?.let { scheduledDateLabel(it, today) }
-                        ?: stringResource(R.string.task_schedule_no_date),
-                    reminderSummary(reminderAt, today)
-                ).joinToString(SummarySeparator),
-                style = MaterialTheme.typography.bodyMedium
+        },
+        // The keyboard toggle the frame draws. Material supplies both icons
+        // and the tooltip, so this costs one line rather than a new asset.
+        modeToggleButton = {
+            TimePickerDialogDefaults.DisplayModeToggle(
+                displayMode = mode,
+                onDisplayModeChange = {
+                    mode = if (mode == TimePickerDisplayMode.Picker) {
+                        TimePickerDisplayMode.Input
+                    } else {
+                        TimePickerDisplayMode.Picker
+                    }
+                }
             )
-        }
-    }
+        },
+        confirmButton = {
+            TextButton(onClick = { onSet(day.atTime(state.hour, state.minute)) }) {
+                Text(stringResource(android.R.string.ok))
+            }
+        },
+        dismissButton = {
+            Row(horizontalArrangement = Arrangement.spacedBy(FocuslistSpacing.xs)) {
+                // Only where there is something to clear, so the dialog does
+                // not offer to undo a thing that has not been done.
+                if (reminderAt != null) {
+                    TextButton(onClick = onClear) {
+                        Text(stringResource(R.string.task_reminder_clear))
+                    }
+                }
 
-    AssistChip(
-        onClick = { isCalendarOpen = true },
-        label = { Text(scheduledDateLabel(day, today)) }
-    )
-
-    if (isCalendarOpen) {
-        TaskDatePickerDialog(
-            initialDate = day,
-            onDismiss = { isCalendarOpen = false },
-            onPicked = { day = it }
-        )
-    }
-
-    // The label belongs to the picker rather than beside it, which is how the
-    // frame draws it and which keeps the page's one primary action in reach
-    // without scrolling. The dial has a fixed height, so the room for that has
-    // to come from the gaps around it.
-    Column(verticalArrangement = Arrangement.spacedBy(FocuslistSpacing.xs)) {
-        Text(
-            text = stringResource(R.string.task_reminder_at),
-            style = MaterialTheme.typography.labelLarge
-        )
-
-        TimePicker(state = state)
-    }
-
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(FocuslistSpacing.xs),
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        // Only offered where there is something to clear, so the page does not
-        // present undoing a thing that has not been done.
-        if (reminderAt != null) {
-            TextButton(onClick = onClear) {
-                Text(stringResource(R.string.task_reminder_clear))
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(android.R.string.cancel))
+                }
             }
         }
-
-        Spacer(Modifier.weight(1f))
-
-        TextButton(onClick = onBack) {
-            Text(stringResource(R.string.task_details_cancel))
-        }
-
-        Button(
-            onClick = { onSet(day.atTime(state.hour, state.minute)) }
-        ) {
-            Text(stringResource(R.string.task_reminder_set))
+    ) {
+        if (mode == TimePickerDisplayMode.Input) {
+            TimeInput(state = state)
+        } else {
+            TimePicker(state = state)
         }
     }
 }
@@ -653,9 +608,6 @@ private fun timeLabel(time: LocalTime): String {
     return DateFormat.getTimeFormat(context).format(Date.from(moment))
 }
 
-/** The three things the sheet can be showing. */
-private enum class SheetPage { Details, Schedule, Reminder }
-
 /**
  * The reminder draft, across a process death.
  *
@@ -675,8 +627,6 @@ private val ReminderSaver: Saver<LocalDateTime?, String> = Saver(
  * arbitrary hour either way, but two arbitrary hours would be worse.
  */
 private val DefaultReminderTime: LocalTime = MorningHour
-
-private const val SummaryTitleMaxLines = 2
 
 /**
  * The row that stands in for everything on the Schedule page.

@@ -39,6 +39,24 @@ the task details sheet, drawn from the `reminder/Set Reminder` frame. A
 reminder set by hand through the app reached the notification, and Done and
 Snooze both did what they say.
 
+The picker is a dialog over the details, from
+`task/Set Reminder — Clean Slate`, not a page of its own. Two things that
+frame shows are deliberately not built:
+
+- **It sets a time, not a day.** The reminder lands on the day the task is
+  scheduled for, or today when it has none. Storage still holds a full date
+  and time and `PRODUCT.md` still says a reminder is independent of the
+  scheduled date, but no control in the app now moves it off that day. The
+  older `reminder/Set Reminder` frame had a day chip; the Clean Slate one
+  does not.
+- **The screen behind the dialog is not the screen the app has.** The frame
+  draws a full Task screen: app bar, a task hero card with the checkbox and
+  notes, a read-only Plan card listing Scheduled, Due date, Reminder,
+  Duration and Repeat, and a Start focus button. The app has a modal bottom
+  sheet with a Details page and a Schedule page. That is a redesign of the
+  whole task-details surface, not a reminder change, and it is not Phase 1
+  work.
+
 Next, and the last of Phase 1: the permission screen. The frame is
 `reminder/Precise Reminder Permission`, and it is being retargeted at
 `POST_NOTIFICATIONS` rather than exact alarms. Its closing line promises a
