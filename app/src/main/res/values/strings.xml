@@ -110,4 +110,19 @@
     </plurals>
     <string name="reminder_channel_name">Reminders</string>
     <string name="reminder_channel_description">Tasks you asked to be reminded about, at the time you chose.</string>
+    <string name="reminder_action_done">Done</string>
+    <string name="reminder_action_snooze">Snooze</string>
+    <string name="reminder_snooze_until">Snooze until</string>
+    <string name="reminder_snooze_ten_minutes">10 min</string>
+    <string name="reminder_snooze_one_hour">1 hour</string>
+    <string name="reminder_snooze_this_evening">This evening</string>
+    <string name="reminder_snooze_tomorrow">Tomorrow %1$s</string>
+    <!-- The notification says "Every day" where the details sheet says
+         "Daily". A notification is read at a glance, mid-task, and phrases
+         the repeat as the sentence it belongs to. -->
+    <string name="reminder_repeat_daily">Every day</string>
+    <string name="reminder_repeat_weekly">Every week</string>
+    <string name="reminder_repeat_monthly">Every month</string>
+    <string name="reminder_repeat_yearly">Every year</string>
+    <string name="reminder_summary_separator">%1$s · %2$s</string>
 </resources>

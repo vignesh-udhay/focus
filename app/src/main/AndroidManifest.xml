@@ -55,6 +55,12 @@
             android:name=".core.notification.ReminderReceiver"
             android:exported="false" />
 
+        <!-- Not exported: only the notification's own PendingIntents reach it,
+             and they are created by this app. -->
+        <receiver
+            android:name=".core.notification.ReminderActionReceiver"
+            android:exported="false" />
+
         <!-- Exported, because the system sends all four of these from outside
              the app. A restart loses every alarm, and a clock or timezone
              change moves what the surviving ones mean, so all of them lead to

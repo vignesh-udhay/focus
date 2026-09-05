@@ -32,6 +32,7 @@ private class FakeTaskDao : TaskDao {
     val updated = mutableListOf<TaskEntity>()
     val softDeleted = mutableListOf<Pair<String, Long>>()
     val remindersDelivered = mutableListOf<Pair<String, Long>>()
+    val remindersRescheduled = mutableListOf<Pair<String, String?>>()
     val restored = mutableListOf<String>()
     val deleted = mutableListOf<String>()
 
@@ -51,6 +52,10 @@ private class FakeTaskDao : TaskDao {
 
     override suspend fun markReminderDelivered(id: String, deliveredAt: Long) {
         remindersDelivered += id to deliveredAt
+    }
+
+    override suspend fun rescheduleReminder(id: String, reminderAt: String?) {
+        remindersRescheduled += id to reminderAt
     }
 
     override suspend fun restore(id: String) {
@@ -229,6 +234,32 @@ class TaskRepositoryTest {
 
         assertEquals(listOf("a" to 1_767_255_300_987L), dao.remindersDelivered)
     }
+
+    @Test
+    fun `rescheduleReminder encodes the new time the way the column stores it`() = runBlocking {
+        repository.rescheduleReminder("a", LocalDateTime.of(2026, 9, 5, 9, 30))
+
+        assertEquals(listOf("a" to "2026-09-05T09:30"), dao.remindersRescheduled)
+    }
+
+    @Test
+    fun `rescheduleReminder passes null through to clear a reminder`() = runBlocking {
+        repository.rescheduleReminder("a", null)
+
+        assertEquals(listOf("a" to null), dao.remindersRescheduled)
+    }
+
+    @Test
+    fun `rescheduling is one statement, so a new time cannot stay marked delivered`() =
+        runBlocking {
+            repository.rescheduleReminder("a", LocalDateTime.of(2026, 9, 5, 9, 30))
+
+            // The clearing is in the SQL, not here, which is what makes it
+            // impossible to move a reminder and forget. A second call to
+            // markReminderDelivered would be a second statement and could be
+            // skipped; this asserts nobody added one.
+            assertEquals(emptyList<Pair<String, Long>>(), dao.remindersDelivered)
+        }
 
     @Test
     fun `markReminderDelivered touches only the task it names`() = runBlocking {

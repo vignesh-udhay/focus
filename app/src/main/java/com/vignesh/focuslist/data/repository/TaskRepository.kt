@@ -1,12 +1,14 @@
 package com.vignesh.focuslist.data.repository
 
 import com.vignesh.focuslist.core.domain.Task
+import com.vignesh.focuslist.data.local.TaskConverters
 import com.vignesh.focuslist.data.local.TaskDao
 import com.vignesh.focuslist.data.local.toDomain
 import com.vignesh.focuslist.data.local.toEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.Instant
+import java.time.LocalDateTime
 
 /**
  * Storage of tasks, in domain terms.
@@ -55,6 +57,20 @@ class TaskRepository(private val dao: TaskDao) {
      */
     suspend fun markReminderDelivered(id: String, deliveredAt: Instant) {
         dao.markReminderDelivered(id = id, deliveredAt = deliveredAt.toEpochMilli())
+    }
+
+    /**
+     * Moves [id]'s reminder to [reminderAt], or clears it when null.
+     *
+     * Encoded the same way `TaskConverters` stores the column, and it clears
+     * the delivery record in the same statement so the new time is owed rather
+     * than born already announced.
+     */
+    suspend fun rescheduleReminder(id: String, reminderAt: LocalDateTime?) {
+        dao.rescheduleReminder(
+            id = id,
+            reminderAt = TaskConverters.localDateTimeToText(reminderAt)
+        )
     }
 
     suspend fun restore(id: String) {

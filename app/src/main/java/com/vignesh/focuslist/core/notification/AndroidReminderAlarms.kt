@@ -136,7 +136,7 @@ class ReminderReceiver : BroadcastReceiver() {
                 }
 
                 context.ensureReminderChannel()
-                context.postReminder(taskId, task.title)
+                context.postReminder(task)
 
                 // Only after it was actually said. This is what stops the
                 // reminder being announced again on every later pass.
@@ -204,35 +204,6 @@ internal fun Context.ensureReminderChannel() {
     }
 
     manager.createNotificationChannel(channel)
-}
-
-/**
- * One notification per task, so several reminders at once read as several
- * things to do rather than the last one overwriting the rest.
- *
- * Deliberately plain for now. The notification frames on the design board specify the
- * collapsed and expanded layouts, the snooze choice and the Done action, and those are the
- * next slice; this posts something truthful in the meantime rather than
- * pretending the design is not there.
- */
-private fun Context.postReminder(taskId: String, title: String) {
-    val open = PendingIntent.getActivity(
-        this,
-        taskId.hashCode(),
-        Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP),
-        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-    )
-
-    val notification = NotificationCompat.Builder(this, ReminderChannelId)
-        .setSmallIcon(R.drawable.ic_notifications)
-        .setContentTitle(title)
-        .setContentIntent(open)
-        .setAutoCancel(true)
-        .setPriority(NotificationCompat.PRIORITY_HIGH)
-        .setCategory(NotificationCompat.CATEGORY_REMINDER)
-        .build()
-
-    NotificationManagerCompat.from(this).notify(taskId.hashCode(), notification)
 }
 
 internal const val ReminderChannelId = "focuslist.reminder"

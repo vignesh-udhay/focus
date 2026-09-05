@@ -62,6 +62,24 @@ interface TaskDao {
     suspend fun markReminderDelivered(id: String, deliveredAt: Long)
 
     /**
+     * Moves a reminder to a new time and forgets that the old one was
+     * announced.
+     *
+     * The two halves are one statement because they are one fact. A reminder
+     * given a new time has not been delivered yet, and a version of this that
+     * set the time without clearing the record would produce a reminder born
+     * already delivered, which never fires. That invariant is stated on
+     * `Task.reminderDeliveredAt`; this is where it is kept.
+     *
+     * @param reminderAt ISO-8601 local date and time, matching the column's
+     * encoding, or null to clear the reminder entirely.
+     */
+    @Query(
+        "UPDATE tasks SET reminderAt = :reminderAt, reminderDeliveredAt = NULL WHERE id = :id"
+    )
+    suspend fun rescheduleReminder(id: String, reminderAt: String?)
+
+    /**
      * Undoes a soft delete, returning the task to [observeTasks].
      *
      * Clearing the timestamp is the whole operation: nothing else about the

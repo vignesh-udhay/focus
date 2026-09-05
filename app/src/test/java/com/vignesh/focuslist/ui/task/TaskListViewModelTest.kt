@@ -9,6 +9,7 @@ import com.vignesh.focuslist.core.domain.TaskPlacement
 import com.vignesh.focuslist.core.domain.upcomingTasks
 import com.vignesh.focuslist.core.time.CurrentDay
 import com.vignesh.focuslist.data.local.TaskDao
+import com.vignesh.focuslist.data.local.TaskConverters
 import com.vignesh.focuslist.data.local.TaskEntity
 import com.vignesh.focuslist.data.local.toEntity
 import com.vignesh.focuslist.data.repository.TaskRepository
@@ -68,6 +69,19 @@ private class FakeTaskDao : TaskDao {
     }
 
     /** Marks the row rather than removing it, as the real UPDATE does. */
+    override suspend fun rescheduleReminder(id: String, reminderAt: String?) {
+        emissions.value = emissions.value.map { stored ->
+            if (stored.id == id) {
+                stored.copy(
+                    reminderAt = TaskConverters.textToLocalDateTime(reminderAt),
+                    reminderDeliveredAt = null
+                )
+            } else {
+                stored
+            }
+        }
+    }
+
     override suspend fun markReminderDelivered(id: String, deliveredAt: Long) {
         emissions.value = emissions.value.map { stored ->
             if (stored.id == id) {

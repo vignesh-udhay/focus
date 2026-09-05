@@ -19,6 +19,7 @@ import com.vignesh.focuslist.core.domain.Task
 import com.vignesh.focuslist.core.domain.TaskPlacement
 import com.vignesh.focuslist.core.time.CurrentDay
 import com.vignesh.focuslist.data.local.TaskDao
+import com.vignesh.focuslist.data.local.TaskConverters
 import com.vignesh.focuslist.data.local.TaskEntity
 import com.vignesh.focuslist.data.local.toEntity
 import com.vignesh.focuslist.data.repository.TaskRepository
@@ -146,6 +147,19 @@ internal class FakeTaskDao(initial: List<Task> = emptyList()) : TaskDao {
 
     override suspend fun update(task: TaskEntity) {
         rows.value = rows.value.map { stored -> if (stored.id == task.id) task else stored }
+    }
+
+    override suspend fun rescheduleReminder(id: String, reminderAt: String?) {
+        rows.value = rows.value.map { stored ->
+            if (stored.id == id) {
+                stored.copy(
+                    reminderAt = TaskConverters.textToLocalDateTime(reminderAt),
+                    reminderDeliveredAt = null
+                )
+            } else {
+                stored
+            }
+        }
     }
 
     override suspend fun markReminderDelivered(id: String, deliveredAt: Long) {
