@@ -151,19 +151,22 @@ version-1 database walked to 9, a version-2 one, and a fully populated
 version-8 row crossing the recreated table with only `placement` missing.
 524 unit tests.
 
-**The navigation bar still does not match.** `TopLevelDestinations` holds
-Today and Inbox only; Upcoming is a `SecondaryDestination` behind More
-alongside Logbook and Reminder health. `PRODUCT.md` names three primary
-destinations and the board puts Logbook, Reminder health and Settings in an
-app-bar overflow instead of a More tab. This is reconciliation, not new build,
-so it needs no decision and is the next thing to do.
+4. **The navigation bar was reconciled last.** Upcoming moved into the bar,
+   the More tab went, and Logbook and Reminder health moved to an app-bar
+   overflow. Logbook lost its bottom bar and gained a back arrow, because with
+   More gone there was nothing in the bar for it to select and it would have
+   drawn three items and told the user they were in none of them.
 
-It was missed because removing Anytime and Someday from More left a plausible
-looking menu, and every test asserted the arrangement rather than the
-requirement. Nothing failed.
+This last one was nearly missed. Removing Anytime and Someday from More left a
+plausible looking menu, and every navigation test asserted the arrangement
+that existed rather than the requirement in `PRODUCT.md`, so nothing could
+fail. It was found by writing a sentence in `ARCHITECTURE.md` and checking it.
+`NavigationSemanticsTest` now asserts the bar holds exactly the three names
+`PRODUCT.md` gives.
 
-After that, what is left in Phase 3 is new build, and each piece needs a
-decision before it is started: the UP NEXT hero card on Today,
+**The information architecture now matches `PRODUCT.md` and the board.** What
+is left in Phase 3 is new build, and each piece needs a decision before it is
+started: the UP NEXT hero card on Today,
 Task Details as a full screen with a read-only Plan card, and Focus gaining a
 timer with pause and resume. The last contradicts D-004 and needs a
 superseding entry first. Do not restyle a screen the board does not contain.
