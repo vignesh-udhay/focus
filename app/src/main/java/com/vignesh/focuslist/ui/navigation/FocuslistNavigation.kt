@@ -36,6 +36,7 @@ object FocuslistRoutes {
     const val ANYTIME = "anytime"
     const val SOMEDAY = "someday"
     const val LOGBOOK = "logbook"
+    const val REMINDER_HEALTH = "reminder-health"
 }
 
 /**
@@ -70,6 +71,14 @@ private val SecondaryDestinations = listOf(
         FocuslistRoutes.LOGBOOK,
         R.string.logbook_title,
         R.drawable.ic_logbook
+    ),
+    // Behind More for now. The Clean Slate board puts it in an app-bar
+    // overflow beside Logbook and Settings, which arrives with Phase 3's
+    // navigation change rather than here.
+    SecondaryDestination(
+        FocuslistRoutes.REMINDER_HEALTH,
+        R.string.reminder_health_title,
+        R.drawable.ic_notifications
     )
 )
 

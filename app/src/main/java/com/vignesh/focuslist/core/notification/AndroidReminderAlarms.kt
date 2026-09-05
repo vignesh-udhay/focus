@@ -288,4 +288,4 @@ internal fun Context.ensureReminderChannel() {
 
 internal const val ReminderChannelId = "focuslist.reminder"
 
-private const val LogTag = "FocuslistReminder"
+internal const val LogTag = "FocuslistReminder"

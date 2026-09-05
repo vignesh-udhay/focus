@@ -68,13 +68,26 @@ been left alone, so a reminder set for five minutes' time arriving punctually
 says only that `AlarmManager` works. Without this the warning could clear on
 daytime reminders and go quiet before the 6am one was missed.
 
-Remaining in Phase 2, and all of it is drawn: the three status checks
-(`reminder/Health Ready`), OEM restriction detection and routing
-(`reminder/Health Action`, which names OnePlus sleep standby directly), the
-missed-reminder state (`reminder/Health Missed`), the health screen's loading
-state (`reminder/Health Checking`), the test reminder
-(`reminder/Test Reminder`), and its entry point (`core/Today — Reminder health`,
-reached from the app bar overflow).
+Third slice: **the health screen**, `ui/health/`, with all four states, the
+three rows, the settings routing, and the test reminder. Reachable from More
+for now; the Clean Slate board puts it in an app-bar overflow, which arrives
+with Phase 3's navigation change.
+
+`ReminderHealthState.ActionNeeded` carries which check caused it. The first
+build of the screen did not, and blamed the manufacturer's sleep feature for a
+notification permission the user had refused. The headline and the button both
+read `ReminderHealth.firstFailing`, so they cannot point at different problems.
+
+The test reminder travels the same road as a real one: `AlarmManager`, a
+receiver, a notification, and a row in the delivery record. Its thirty-second
+futurity is under `EvidenceHorizon` by design, so it can raise a warning and
+never clear one. Measured on the emulator at four milliseconds late, against
+the roughly fifty seconds D-009 measured on the OnePlus.
+
+Remaining in Phase 2: routing to the manufacturer's own battery screen. The
+button currently opens the app's Android settings page, which exists on every
+device, rather than guessing at an OEM intent that resolves on one skin and
+crashes on another. `reminder/Health Action` implies the deeper link.
 
 **Phase 3 and the design pass are the same job.** The Clean Slate board
 mentions Anytime and Someday nowhere, and every screen on it carries the same

@@ -10,6 +10,8 @@ import com.vignesh.focuslist.core.notification.AndroidFocusAlarms
 import com.vignesh.focuslist.core.notification.AndroidReminderAlarms
 import com.vignesh.focuslist.core.notification.FocusAlarms
 import com.vignesh.focuslist.core.notification.ReminderAlarms
+import com.vignesh.focuslist.core.notification.AndroidReminderHealthChecks
+import com.vignesh.focuslist.core.notification.ReminderHealthChecks
 import com.vignesh.focuslist.core.notification.ReminderScheduler
 import com.vignesh.focuslist.core.time.SystemCurrentDay
 import com.vignesh.focuslist.data.repository.ReminderDeliveryRepository
@@ -99,6 +101,11 @@ class FocuslistApplication : Application() {
      * clock change, when this process may have only just been created.
      */
     val reminderScheduler: ReminderScheduler by lazy { ReminderScheduler(reminderAlarms) }
+
+    /** What the platform will admit about whether a reminder can arrive. */
+    val reminderHealthChecks: ReminderHealthChecks by lazy {
+        AndroidReminderHealthChecks(this, reminderAlarms)
+    }
 
     /**
      * Lives as long as the process, because what it watches does.

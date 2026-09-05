@@ -55,9 +55,20 @@ data class ReminderHealth(
     val state: ReminderHealthState
         get() = when {
             latestConcern != null -> ReminderHealthState.Missed(latestConcern)
-            checks.any { (_, state) -> state != CheckState.Ok } -> ReminderHealthState.ActionNeeded
+            firstFailing != null -> ReminderHealthState.ActionNeeded(firstFailing!!)
             else -> ReminderHealthState.Ready
         }
+
+    /**
+     * The check to talk about, worst first, or null when all three pass.
+     *
+     * Ordered by what a failure costs rather than by how the screen lays them
+     * out. Blocked notifications mean nothing appears at all; a refused exact
+     * alarm means it appears late; a manufacturer feature means it might. One
+     * screen, one sentence, one button, all naming the same thing.
+     */
+    val firstFailing: HealthCheck?
+        get() = checks.firstOrNull { (_, state) -> state != CheckState.Ok }?.first
 }
 
 /** One thing that has to hold for a reminder to arrive. */
@@ -107,8 +118,17 @@ sealed interface ReminderHealthState {
     /** `reminder/Health Ready`. */
     data object Ready : ReminderHealthState
 
-    /** Something is configured in a way that will cost the user. `Health Action`. */
-    data object ActionNeeded : ReminderHealthState
+    /**
+     * Something is configured in a way that will cost the user.
+     * `reminder/Health Action`.
+     *
+     * Carries which check caused it, because the three fail differently and a
+     * screen that said the same sentence for all of them would be wrong twice
+     * out of three times. That is not hypothetical: the first build of this
+     * screen blamed the manufacturer for a notification permission the user
+     * had refused.
+     */
+    data class ActionNeeded(val cause: HealthCheck) : ReminderHealthState
 
     /** A reminder actually went wrong. `reminder/Health Missed`. */
     data class Missed(val delivery: ReminderDelivery) : ReminderHealthState

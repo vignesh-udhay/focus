@@ -74,19 +74,54 @@ class ReminderHealthTest {
     // 2. A check failing
 
     @Test
-    fun `notifications blocked needs action`() {
+    fun `notifications blocked needs action, and says so`() {
         assertEquals(
-            ReminderHealthState.ActionNeeded,
+            ReminderHealthState.ActionNeeded(HealthCheck.Notifications),
             health(notifications = CheckState.Blocked).state
         )
     }
 
     @Test
-    fun `exact alarms blocked needs action`() {
+    fun `exact alarms blocked needs action, and says so`() {
         assertEquals(
-            ReminderHealthState.ActionNeeded,
+            ReminderHealthState.ActionNeeded(HealthCheck.ExactAlarms),
             health(exactAlarms = CheckState.Blocked).state
         )
+    }
+
+    @Test
+    fun `the worst failure is the one named`() {
+        // The regression this carries a cause for. The first build of the
+        // screen blamed the manufacturer's sleep feature for a notification
+        // permission the user had refused, because every failure produced the
+        // same sentence. Nothing appearing at all beats appearing late.
+        val everythingWrong = health(
+            notifications = CheckState.Blocked,
+            exactAlarms = CheckState.Blocked,
+            restriction = DeviceRestriction.SleepStandby
+        )
+
+        assertEquals(
+            ReminderHealthState.ActionNeeded(HealthCheck.Notifications),
+            everythingWrong.state
+        )
+        assertEquals(HealthCheck.Notifications, everythingWrong.firstFailing)
+    }
+
+    @Test
+    fun `a late alarm is named ahead of a device that might cause one`() {
+        assertEquals(
+            ReminderHealthState.ActionNeeded(HealthCheck.ExactAlarms),
+            health(
+                exactAlarms = CheckState.Blocked,
+                restriction = DeviceRestriction.SleepStandby
+            ).state
+        )
+    }
+
+    @Test
+    fun `nothing failing has nothing to name`() {
+        assertNull(health().firstFailing)
     }
 
     @Test
@@ -96,7 +131,7 @@ class ReminderHealthTest {
         // this device has one, and saying so before a reminder is missed beats
         // explaining it afterwards.
         assertEquals(
-            ReminderHealthState.ActionNeeded,
+            ReminderHealthState.ActionNeeded(HealthCheck.BackgroundWork),
             health(restriction = DeviceRestriction.SleepStandby).state
         )
     }
@@ -184,7 +219,7 @@ class ReminderHealthTest {
             deliveries = listOf(delivery(arrivedAgo = ConcernWindow.plusDays(1), lateBy = Duration.ofHours(3)))
         ).state
 
-        assertEquals(ReminderHealthState.ActionNeeded, state)
+        assertEquals(ReminderHealthState.ActionNeeded(HealthCheck.Notifications), state)
     }
 
     // 5. A restrictive device proving itself

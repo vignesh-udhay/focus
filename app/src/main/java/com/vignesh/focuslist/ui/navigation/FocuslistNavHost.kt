@@ -24,6 +24,8 @@ import com.vignesh.focuslist.core.domain.TaskPlacement
 import com.vignesh.focuslist.ui.focus.FocusSheet
 import com.vignesh.focuslist.ui.inbox.InboxScreen
 import com.vignesh.focuslist.ui.logbook.LogbookScreen
+import com.vignesh.focuslist.ui.health.ReminderHealthScreen
+import com.vignesh.focuslist.ui.health.ReminderHealthViewModel
 import com.vignesh.focuslist.ui.placement.PlacementScreen
 import com.vignesh.focuslist.ui.reminder.ReminderPermissionGate
 import com.vignesh.focuslist.ui.task.TaskListViewModel
@@ -48,6 +50,8 @@ fun FocuslistNavHost(
 ) {
     val currentEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentEntry?.destination?.route
+
+    val application = LocalContext.current.applicationContext as FocuslistApplication
 
     // Obtained here, above the graph, and handed to every screen. Inside a
     // destination the view model store owner is that destination's back stack
@@ -127,6 +131,20 @@ fun FocuslistNavHost(
             composable(FocuslistRoutes.LOGBOOK) {
                 LogbookScreen(viewModel = viewModel, bottomBar = navigationBar)
             }
+
+            // No bottom bar. It is a screen about the app rather than a place
+            // among the lists, and the frame draws a back arrow instead.
+            composable(FocuslistRoutes.REMINDER_HEALTH) {
+                ReminderHealthScreen(
+                    viewModel = viewModel(
+                        factory = ReminderHealthViewModel.Factory(
+                            deliveries = application.reminderDeliveryRepository,
+                            checks = application.reminderHealthChecks
+                        )
+                    ),
+                    onBack = navController::popBackStack
+                )
+            }
         }
     }
 
@@ -175,8 +193,6 @@ fun FocuslistNavHost(
     // set is not a reason to hide the question, and the question is the one
     // thing on screen that cannot simply be asked again later.
     val reminderJustSet by viewModel.reminderJustSet.collectAsStateWithLifecycle()
-
-    val application = LocalContext.current.applicationContext as FocuslistApplication
 
     ReminderPermissionGate(
         isRequested = reminderJustSet,

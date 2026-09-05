@@ -13,6 +13,7 @@ import com.vignesh.focuslist.core.domain.Recurrence
 import com.vignesh.focuslist.core.domain.SnoozeOption
 import com.vignesh.focuslist.core.domain.Task
 import com.vignesh.focuslist.core.domain.availableSnoozeOptions
+import java.time.Instant
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
@@ -80,6 +81,36 @@ internal fun Context.postSnoozeOptions(task: Task, now: LocalDateTime) {
     }
 
     NotificationManagerCompat.from(this).notify(task.notificationId, builder.build())
+}
+
+/**
+ * The test reminder, arriving.
+ *
+ * Deliberately plain: no Done, no Snooze, nothing to act on. There is no task
+ * behind it, and offering to complete one would be the app inventing work. It
+ * says what it is and how late it was, which is the only thing the person who
+ * asked for it wants to know.
+ *
+ * The lateness is in the text rather than left for the health screen, because
+ * the point of the test is that the user is looking at the phone when it
+ * arrives, or at least at the notification.
+ */
+internal fun Context.postTestReminder(arrivedAt: Instant) {
+    val builder = NotificationCompat.Builder(this, ReminderChannelId)
+        .setSmallIcon(R.drawable.ic_notifications)
+        .setContentTitle(getString(R.string.reminder_test_title))
+        .setContentText(
+            getString(
+                R.string.reminder_test_body,
+                formatTime(arrivedAt.atZone(ZoneId.systemDefault()).toLocalTime())
+            )
+        )
+        .setContentIntent(openIntent(TestReminder.TaskId))
+        .setAutoCancel(true)
+        .setPriority(NotificationCompat.PRIORITY_HIGH)
+        .setCategory(NotificationCompat.CATEGORY_REMINDER)
+
+    NotificationManagerCompat.from(this).notify(TestReminder.TaskId.notificationId, builder.build())
 }
 
 /** Takes the reminder off screen once it has been dealt with. */
