@@ -107,7 +107,54 @@ class SnoozeTest {
         )
     }
 
-    // 4. What gets offered
+    // 4. Precision
+
+    @Test
+    fun `a snooze carries no sub-second precision`() {
+        // Found in storage on a device: 2026-09-05T17:14:51.740593, because
+        // LocalDateTime.now() carries nanoseconds and ten minutes was added to
+        // them. Nothing displayed it and it fired in the right second, but it
+        // is untidy in the column and wrong in a backup file.
+        val messy = LocalDateTime.of(2026, 9, 5, 17, 4, 51, 740_593_000)
+
+        SnoozeOption.entries.forEach { option ->
+            val until = snoozedUntil(option, messy)
+            assertEquals("$option kept nanoseconds", 0, until?.nano ?: 0)
+        }
+    }
+
+    @Test
+    fun `truncating never ends the quiet early`() {
+        // Truncated, not rounded. A snooze is a promise about how long the
+        // quiet lasts, and rounding to the minute would cut it short by up to
+        // fifty-nine seconds.
+        val messy = LocalDateTime.of(2026, 9, 5, 17, 4, 51, 740_593_000)
+
+        assertEquals(
+            LocalDateTime.of(2026, 9, 5, 17, 14, 51),
+            snoozedUntil(SnoozeOption.TenMinutes, messy)
+        )
+        assertEquals(
+            LocalDateTime.of(2026, 9, 5, 18, 4, 51),
+            snoozedUntil(SnoozeOption.OneHour, messy)
+        )
+    }
+
+    @Test
+    fun `the named hours were already exact and stay so`() {
+        val messy = LocalDateTime.of(2026, 9, 5, 9, 30, 12, 345_678_000)
+
+        assertEquals(
+            LocalDateTime.of(2026, 9, 5, 18, 0),
+            snoozedUntil(SnoozeOption.ThisEvening, messy)
+        )
+        assertEquals(
+            LocalDateTime.of(2026, 9, 6, 9, 0),
+            snoozedUntil(SnoozeOption.TomorrowMorning, messy)
+        )
+    }
+
+    // 5. What gets offered
 
     @Test
     fun `three are offered in the morning, and the far one is this evening`() {

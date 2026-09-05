@@ -3,6 +3,7 @@ package com.vignesh.focuslist.core.domain
 import java.time.Duration
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.temporal.ChronoUnit
 
 /**
  * Putting a reminder off, and how far.
@@ -54,16 +55,29 @@ val MorningHour: LocalTime = LocalTime.of(9, 0)
  * The result is a wall-clock time, matching [Task.reminderAt], so a snooze
  * survives a timezone change the same way the original reminder does.
  */
-fun snoozedUntil(option: SnoozeOption, now: LocalDateTime): LocalDateTime? = when (option) {
-    SnoozeOption.TenMinutes -> now.plus(Duration.ofMinutes(10))
-    SnoozeOption.OneHour -> now.plus(Duration.ofHours(1))
+fun snoozedUntil(option: SnoozeOption, now: LocalDateTime): LocalDateTime? {
+    // Whole seconds. The two relative options are measured from the moment the
+    // user tapped, and LocalDateTime.now() carries nanoseconds, so without
+    // this a snooze stored as 2026-09-05T17:14:51.740593. Nothing displayed it
+    // and it fired within the same second, but it is untidy in the column and
+    // would look wrong in a backup file the user can open.
+    //
+    // Truncated rather than rounded to the minute, because a snooze is a
+    // promise about how long the quiet lasts. Rounding down would end it up to
+    // fifty-nine seconds early.
+    val moment = now.truncatedTo(ChronoUnit.SECONDS)
 
-    // Strictly after, so tapping it at exactly 18:00 does not set a reminder
-    // for the moment that has just arrived.
-    SnoozeOption.ThisEvening ->
-        now.toLocalDate().atTime(EveningHour).takeIf { it.isAfter(now) }
+    return when (option) {
+        SnoozeOption.TenMinutes -> moment.plus(Duration.ofMinutes(10))
+        SnoozeOption.OneHour -> moment.plus(Duration.ofHours(1))
 
-    SnoozeOption.TomorrowMorning -> now.toLocalDate().plusDays(1).atTime(MorningHour)
+        // Strictly after, so tapping it at exactly 18:00 does not set a
+        // reminder for the moment that has just arrived.
+        SnoozeOption.ThisEvening ->
+            moment.toLocalDate().atTime(EveningHour).takeIf { it.isAfter(moment) }
+
+        SnoozeOption.TomorrowMorning -> moment.toLocalDate().plusDays(1).atTime(MorningHour)
+    }
 }
 
 /**
