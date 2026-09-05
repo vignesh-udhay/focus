@@ -9,7 +9,11 @@ scope it delivers is in `PRODUCT.md`.
 
 ## Current phase
 
-**Phase 1: Make it tell you.** Not started.
+**Phase 1: Make it tell you.** Not started in code. The design for it now
+exists: `Clean slate / Reminder delivery` and `Reminder delivery — dark` in
+the Figma file cover the collapsed and expanded notification, the snooze
+choice, the lock screen, the full-screen alarm, opening the app from a
+reminder, and several reminders firing at once.
 
 Update this line when a phase begins and when it ends. It is the first thing
 a new coding session should read, and the only place that says where the work
