@@ -9,89 +9,60 @@ scope it delivers is in `PRODUCT.md`.
 
 ## Current phase
 
-**Phase 1: Make it tell you.** Started.
-
-The design exists. The Clean Slate board in Figma covers the whole app, and
-its `notify/*` frames cover the collapsed and expanded notification, the
-snooze choice, the lock screen, the full-screen alarm, opening the app from a
-reminder, and several at once, in light and dark. Do not invent notification
-layout; it is drawn.
-
-Done, and verified on a OnePlus 8T:
-
-- `reminderAt` on `Task` and `TaskEntity`, schema version 5 with
-  `MIGRATION_4_5`, and `core/domain/Reminders.kt` holding `pendingReminders`
-  and `missedReminders`
-- `ReminderScheduler`, which makes `AlarmManager` agree with storage and
-  holds no memory of what it scheduled last time, run by any task write, by
-  boot, by `MY_PACKAGE_REPLACED`, and by a clock or timezone change
-- `USE_EXACT_ALARM` and `RECEIVE_BOOT_COMPLETED` in the manifest
-- An alarm-grade channel, separate from the focus channel
-
-The path works end to end on hardware: a reminder in storage reaches a
-notification with the app closed, a reminder on a completed task is never
-scheduled, and a package replacement rebuilds the alarms without the app
-being opened.
-
-Also done, and verified on the same device: Done and Snooze on the
-notification, the snooze arithmetic behind them, and a Set Reminder page in
-the task details sheet, drawn from the `reminder/Set Reminder` frame. A
-reminder set by hand through the app reached the notification, and Done and
-Snooze both did what they say.
-
-The picker is a dialog over the details, from
-`task/Set Reminder — Clean Slate`, not a page of its own. Two things that
-frame shows are deliberately not built:
-
-- **It sets a time, not a day.** The reminder lands on the day the task is
-  scheduled for, or today when it has none. Storage still holds a full date
-  and time and `PRODUCT.md` still says a reminder is independent of the
-  scheduled date, but no control in the app now moves it off that day. The
-  older `reminder/Set Reminder` frame had a day chip; the Clean Slate one
-  does not.
-- **The screen behind the dialog is not the screen the app has.** The frame
-  draws a full Task screen: app bar, a task hero card with the checkbox and
-  notes, a read-only Plan card listing Scheduled, Due date, Reminder,
-  Duration and Repeat, and a Start focus button. The app has a modal bottom
-  sheet with a Details page and a Schedule page. That is a redesign of the
-  whole task-details surface, not a reminder change, and it is not Phase 1
-  work.
-
-Also done: the permission flow, from
-`reminder/Precise Permission — Clean Slate`. Two permissions are checked when
-a reminder is first set. Notifications get Android's own dialog, because
-refusing that one drops the notification entirely and nothing appears. Exact
-alarms get the screen, because Android raises no dialog for that one: it is a
-settings page the user has to be walked to, which is what the frame says.
+**Phase 2: Make it trustworthy.** Started. Phase 1 is complete.
 
 **Read the design from `Focuslist — M3 Expressive Clean Slate` (node
 `161:3405`) and nothing else.** An earlier page, `Focuslist — M3 Expressive
-V1`, is still in the file and disagrees with it. Work in this phase was
-started against the old page twice before that was noticed.
+V1`, is still in the file and disagrees with it. Phase 1 work was started
+against the old page twice before that was noticed.
 
-On Android 13 and up the exact-alarm screen never appears, because the app
-holds `USE_EXACT_ALARM` and `canScheduleExactAlarms()` is then always true. It
-is reachable on API 31 and 32 only. That is correct, and it is also not the
-problem: D-009 is a demotion no permission screen fixes.
+Phase 1 delivered reminders end to end: a time on a task, an exact alarm that
+survives a restart and a clock change, an alarm-grade channel, Done and
+Snooze on the notification, the snooze arithmetic, a Set Reminder dialog, and
+a permission flow covering notifications and exact alarms. All verified on a
+OnePlus 8T and on an emulator.
 
-Phase 1 is complete.
+Phase 2 has one delivered slice: **the delivery record**, `schema version 7`
+and the `reminder_deliveries` table. `ReminderReceiver` writes a row every
+time a reminder fires, carrying the task's title as it read then, the moment
+the alarm was aimed at, the moment it arrived, and whether it was announced or
+suppressed. Both clocks, as `AGENTS.md` requires. `core/domain/ReminderDelivery.kt`
+holds the arithmetic and `LateThreshold`.
 
-**Exact alarms are being demoted on that device, and Phase 2 has to deal with
-it.** `setExactAndAllowWhileIdle` produces an alarm with no `FLAG_STANDALONE`
-and a window of 0.75 times its futurity, which is the inexact heuristic, even
-though `canScheduleExactAlarms()` returns true and the permission is granted.
-See `docs/decisions.md`, D-009. It also explains the exact-alarm spike's
-result that exact and inexact arrived within 0.1 seconds of each other: they
-were the same kind of alarm.
+It is kept apart from the task because a task's own `reminderDeliveredAt` is
+cleared by rescheduling, by completing, and by a recurring occurrence rolling
+forward, so the evidence was being destroyed by ordinary use.
 
-Still unverified: the Room migration test moved to version 5 but has never
-run, because it needs a real SQLite runtime and an instrumented run wipes
-every attached device.
+Verified on the emulator: a reminder whose alarm fired while the permission
+dialog was still on screen recorded `Suppressed`, and granting the permission
+produced a second row recording `Announced`.
 
-The throwaway spike on branch `spike/exact-alarms` is no longer installed.
-Its remaining value is measuring how far a demoted alarm drifts overnight in
-Doze. While a run is in progress, do not install anything to that phone:
-replacing the package ends the test.
+**One limit to know before building the health screen.** The app cannot detect
+that it was demoted. There is no public API to read back a scheduled alarm's
+window, and D-009's evidence came from `dumpsys`. So "Exact alarms: Allowed"
+will read Allowed on the OnePlus while reminders still drift. The headline
+state has to be driven by the delivery record, not by the permission checks.
+
+Remaining in Phase 2, and all of it is drawn: the three status checks
+(`reminder/Health Ready`), OEM restriction detection and routing
+(`reminder/Health Action`, which names OnePlus sleep standby directly), the
+missed-reminder state (`reminder/Health Missed`), the health screen's loading
+state (`reminder/Health Checking`), the test reminder
+(`reminder/Test Reminder`), and its entry point (`core/Today — Reminder health`,
+reached from the app bar overflow).
+
+**Phase 3 and the design pass are the same job.** The Clean Slate board
+mentions Anytime and Someday nowhere, and every screen on it carries the same
+three-item bar: Today, Inbox, Upcoming, with Logbook, Reminder health and
+Settings behind an app-bar overflow. `PRODUCT.md` already describes that
+information architecture. Only the code disagrees, in 17 files under
+`app/src/main`. Do not restyle a screen the board does not contain.
+
+Three things the board shows are new build rather than reconciliation, and
+each needs a decision before it is started: the UP NEXT hero card on Today,
+Task Details as a full screen with a read-only Plan card, and Focus gaining a
+timer with pause and resume. The last contradicts D-004 and needs a
+superseding entry first.
 
 Update this line when a phase begins and when it ends. It is the first thing
 a new coding session should read, and the only place that says where the work

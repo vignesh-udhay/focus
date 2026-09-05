@@ -89,6 +89,48 @@ val MIGRATION_5_6 = Migration(5, 6) { database ->
     database.execSQL("ALTER TABLE tasks ADD COLUMN reminderDeliveredAt INTEGER")
 }
 
+/**
+ * Version 7 gives the app somewhere to write down what it actually delivered.
+ *
+ * The first migration here that adds a table rather than a column, and the
+ * first thing stored that is not a task. `docs/decisions.md` D-009 is the
+ * reason: on a device that silently demotes exact alarms every permission the
+ * app can check reports success while reminders arrive late, so the only
+ * honest measure is a record of what happened, kept by the app itself.
+ *
+ * Nothing is backfilled. No install has this history, and inventing rows
+ * saying reminders arrived on time would be the app vouching for a past it
+ * did not observe.
+ *
+ * `scheduledElapsedAt` and `arrivedElapsedAt` are milliseconds since boot, not
+ * dates. They are stored beside the wall-clock pair because `AGENTS.md`
+ * requires both: a phone corrects its own clock routinely, and the wall clock
+ * alone cannot tell a late alarm apart from a clock that moved under it.
+ */
+val MIGRATION_6_7 = Migration(6, 7) { database ->
+    database.execSQL(
+        """
+        CREATE TABLE IF NOT EXISTS reminder_deliveries (
+            id TEXT NOT NULL PRIMARY KEY,
+            taskId TEXT NOT NULL,
+            taskTitle TEXT NOT NULL,
+            dueAt TEXT NOT NULL,
+            scheduledWallAt INTEGER NOT NULL,
+            scheduledElapsedAt INTEGER NOT NULL,
+            arrivedWallAt INTEGER NOT NULL,
+            arrivedElapsedAt INTEGER NOT NULL,
+            outcome TEXT NOT NULL
+        )
+        """.trimIndent()
+    )
+}
+
 /** Every migration, in order, for the builder and the migration test. */
-val FocuslistMigrations =
-    arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+val FocuslistMigrations = arrayOf(
+    MIGRATION_1_2,
+    MIGRATION_2_3,
+    MIGRATION_3_4,
+    MIGRATION_4_5,
+    MIGRATION_5_6,
+    MIGRATION_6_7
+)

@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.os.SystemClock
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -16,6 +17,8 @@ import androidx.core.content.getSystemService
 import com.vignesh.focuslist.FocuslistApplication
 import com.vignesh.focuslist.MainActivity
 import com.vignesh.focuslist.R
+import com.vignesh.focuslist.core.domain.DeliveryOutcome
+import com.vignesh.focuslist.core.domain.ReminderDelivery
 import com.vignesh.focuslist.core.domain.hasLiveReminder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -23,6 +26,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.Instant
+import java.util.UUID
 
 /**
  * The real reminder alarm, from the device.
@@ -47,7 +51,7 @@ class AndroidReminderAlarms(private val context: Context) : ReminderAlarms {
             Log.e(LogTag, "No AlarmManager. Reminder for $taskId cannot be scheduled at all.")
             return
         }
-        val intent = pendingIntent(taskId)
+        val intent = pendingIntent(taskId, at)
 
         if (canScheduleExact()) {
             alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at.toEpochMilli(), intent)
@@ -61,7 +65,9 @@ class AndroidReminderAlarms(private val context: Context) : ReminderAlarms {
     }
 
     override fun cancel(taskId: String) {
-        alarms?.cancel(pendingIntent(taskId))
+        // The extras differ from whatever is outstanding, and matching ignores
+        // extras, so this cancels the alarm this task actually has.
+        alarms?.cancel(pendingIntent(taskId, Instant.EPOCH))
     }
 
     override fun canScheduleExact(): Boolean =
@@ -80,11 +86,29 @@ class AndroidReminderAlarms(private val context: Context) : ReminderAlarms {
      * share a hash would collide on request code alone, and one reminder would
      * silently replace another. A per-task `data` URI makes them distinct
      * whatever the hash does.
+     *
+     * The intent also carries the moment it was aimed at, on both clocks, so
+     * the receiver can say how late it was. `AGENTS.md` requires both: a phone
+     * corrects its own clock from carrier time and from NTP as a matter of
+     * routine, and a correction between here and delivery lands entirely on
+     * the wall clock, where it is indistinguishable from a late alarm.
+     *
+     * Extras survive because `FLAG_UPDATE_CURRENT` rewrites them on every
+     * reschedule, and the reconciliation reschedules everything owed on every
+     * task write, on boot, and on a clock change. Matching ignores extras, so
+     * they cannot make two alarms collide or fail to.
      */
-    private fun pendingIntent(taskId: String): PendingIntent {
+    private fun pendingIntent(taskId: String, at: Instant): PendingIntent {
         val intent = Intent(context, ReminderReceiver::class.java).apply {
             data = Uri.parse("focuslist://reminder/$taskId")
             putExtra(ReminderReceiver.EXTRA_TASK_ID, taskId)
+            putExtra(ReminderReceiver.EXTRA_SCHEDULED_WALL, at.toEpochMilli())
+            // The same instant on the clock that cannot be corrected, reached
+            // by measuring how far away the target is right now.
+            putExtra(
+                ReminderReceiver.EXTRA_SCHEDULED_ELAPSED,
+                SystemClock.elapsedRealtime() + (at.toEpochMilli() - System.currentTimeMillis())
+            )
         }
 
         return PendingIntent.getBroadcast(
@@ -116,6 +140,15 @@ class ReminderReceiver : BroadcastReceiver() {
         val taskId = intent.getStringExtra(EXTRA_TASK_ID) ?: return
         val application = context.applicationContext as? FocuslistApplication ?: return
 
+        // Read first, before anything slow. Both clocks are the measurement,
+        // and a reading taken after a disk query would be measuring the query.
+        val arrivedWallAt = Instant.now()
+        val arrivedElapsedAt = SystemClock.elapsedRealtime()
+        val scheduledWallAt = Instant.ofEpochMilli(
+            intent.getLongExtra(EXTRA_SCHEDULED_WALL, arrivedWallAt.toEpochMilli())
+        )
+        val scheduledElapsedAt = intent.getLongExtra(EXTRA_SCHEDULED_ELAPSED, arrivedElapsedAt)
+
         val finish = goAsync()
 
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
@@ -124,23 +157,50 @@ class ReminderReceiver : BroadcastReceiver() {
                     .firstOrNull { it.id == taskId }
 
                 // Completed, deleted, or its reminder cleared since the alarm
-                // was set. All three mean the user is owed nothing.
+                // was set. All three mean the user is owed nothing, and none
+                // of them is a delivery, so none is written down.
                 if (task == null || !task.hasLiveReminder()) return@launch
+
+                val dueAt = task.reminderAt ?: return@launch
+
+                suspend fun record(outcome: DeliveryOutcome) {
+                    application.reminderDeliveryRepository.record(
+                        ReminderDelivery(
+                            id = UUID.randomUUID().toString(),
+                            taskId = taskId,
+                            // As it reads now, which is when it fired. The
+                            // task may be renamed or deleted afterwards and
+                            // the record still has to name what was late.
+                            taskTitle = task.title,
+                            dueAt = dueAt,
+                            scheduledWallAt = scheduledWallAt,
+                            scheduledElapsedAt = scheduledElapsedAt,
+                            arrivedWallAt = arrivedWallAt,
+                            arrivedElapsedAt = arrivedElapsedAt,
+                            outcome = outcome
+                        )
+                    )
+                }
 
                 if (!context.canPostNotifications()) {
                     // Deliberately left undelivered. Saying nothing is not
                     // delivering, and if the user grants notifications later
                     // the reminder is still owed and will be announced then.
+                    //
+                    // Written down all the same. This is the failure the user
+                    // cannot see, so it is the one most worth recording.
                     Log.w(LogTag, "Cannot post. Reminder for $taskId fired and said nothing.")
+                    record(DeliveryOutcome.Suppressed)
                     return@launch
                 }
 
                 context.ensureReminderChannel()
                 context.postReminder(task)
+                record(DeliveryOutcome.Announced)
 
                 // Only after it was actually said. This is what stops the
                 // reminder being announced again on every later pass.
-                application.taskRepository.markReminderDelivered(taskId, Instant.now())
+                application.taskRepository.markReminderDelivered(taskId, arrivedWallAt)
             } finally {
                 finish.finish()
             }
@@ -149,6 +209,12 @@ class ReminderReceiver : BroadcastReceiver() {
 
     companion object {
         const val EXTRA_TASK_ID = "focuslist.extra.taskId"
+
+        /** The moment this alarm was aimed at, epoch milliseconds. */
+        const val EXTRA_SCHEDULED_WALL = "focuslist.extra.scheduledWall"
+
+        /** The same moment on `SystemClock.elapsedRealtime()`. */
+        const val EXTRA_SCHEDULED_ELAPSED = "focuslist.extra.scheduledElapsed"
     }
 }
 

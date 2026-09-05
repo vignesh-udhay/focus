@@ -12,6 +12,7 @@ import com.vignesh.focuslist.core.notification.FocusAlarms
 import com.vignesh.focuslist.core.notification.ReminderAlarms
 import com.vignesh.focuslist.core.notification.ReminderScheduler
 import com.vignesh.focuslist.core.time.SystemCurrentDay
+import com.vignesh.focuslist.data.repository.ReminderDeliveryRepository
 import com.vignesh.focuslist.data.repository.TaskRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -54,6 +55,18 @@ class FocuslistApplication : Application() {
     }
 
     val taskRepository: TaskRepository by lazy { TaskRepository(database.taskDao()) }
+
+    /**
+     * What the app actually delivered, as opposed to what it intended to.
+     *
+     * Written by `ReminderReceiver` at the moment a reminder fires, and read
+     * by the reminder health work. Separate from [taskRepository] because a
+     * delivery outlives its task and answers a different question: not what
+     * the user has to do, but whether this device can be relied on to say so.
+     */
+    val reminderDeliveryRepository: ReminderDeliveryRepository by lazy {
+        ReminderDeliveryRepository(database.reminderDeliveryDao())
+    }
 
     /**
      * Whether this install is a debug build.

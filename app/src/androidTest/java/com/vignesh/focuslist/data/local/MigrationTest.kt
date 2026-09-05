@@ -247,7 +247,8 @@ class MigrationTest {
             MIGRATION_2_3,
             MIGRATION_3_4,
             MIGRATION_4_5,
-            MIGRATION_5_6
+            MIGRATION_5_6,
+            MIGRATION_6_7
         ).use { database ->
             database.query(
                 "SELECT notes, recurrence, spawnedFromId, reminderAt FROM tasks WHERE id = ?",
@@ -287,6 +288,65 @@ class MigrationTest {
                 }
 
                 assertEquals(3, rows)
+            }
+        }
+    }
+
+    /**
+     * Version 7 arrives with somewhere to write deliveries down, and nothing
+     * written in it.
+     *
+     * The table has to exist, because the receiver writes to it the first time
+     * any reminder fires and a missing table would take down the delivery it
+     * was meant to record. It has to be empty, because rows saying reminders
+     * arrived on time would be the app vouching for a past it never observed,
+     * which is the opposite of what the record is for.
+     */
+    @Test
+    fun migrationAddsAnEmptyDeliveryTable() {
+        seedVersion1()
+
+        migrate().use { database ->
+            database.query("SELECT COUNT(*) FROM reminder_deliveries").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals(0, cursor.getInt(0))
+            }
+        }
+    }
+
+    /**
+     * The delivery table accepts a row of the shape the receiver writes.
+     *
+     * `runMigrationsAndValidate` already proves the columns match the exported
+     * schema. This proves the columns are usable: that both clocks fit, that
+     * nothing the receiver supplies is rejected, and that what comes back out
+     * is what went in.
+     */
+    @Test
+    fun theDeliveryTableHoldsWhatTheReceiverWrites() {
+        seedVersion1()
+
+        migrate().use { database ->
+            database.execSQL(
+                """
+                INSERT INTO reminder_deliveries
+                    (id, taskId, taskTitle, dueAt, scheduledWallAt,
+                     scheduledElapsedAt, arrivedWallAt, arrivedElapsedAt, outcome)
+                VALUES
+                    ('d1', 't1', 'Take medication', '2026-09-05T15:30',
+                     1788615000000, 1000000, 1788617460000, 3460000, 'Announced')
+                """.trimIndent()
+            )
+
+            database.query(
+                "SELECT taskTitle, arrivedElapsedAt - scheduledElapsedAt, outcome " +
+                    "FROM reminder_deliveries"
+            ).use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("Take medication", cursor.getString(0))
+                // 41 minutes, on the clock that cannot be corrected.
+                assertEquals(41L * 60 * 1000, cursor.getLong(1))
+                assertEquals("Announced", cursor.getString(2))
             }
         }
     }
@@ -396,6 +456,6 @@ class MigrationTest {
         const val TEST_DB = "migration-test.db"
 
         /** The schema every migration in this test is aimed at. */
-        const val LatestVersion = 6
+        const val LatestVersion = 7
     }
 }
