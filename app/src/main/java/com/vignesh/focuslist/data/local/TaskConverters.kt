@@ -5,6 +5,7 @@ import com.vignesh.focuslist.core.domain.Recurrence
 import com.vignesh.focuslist.core.domain.TaskPlacement
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 /**
  * Storage encoding for the types Room cannot persist directly.
@@ -20,6 +21,24 @@ object TaskConverters {
 
     @TypeConverter
     fun epochDayToLocalDate(value: Long?): LocalDate? = value?.let(LocalDate::ofEpochDay)
+
+    /**
+     * A reminder time persists as ISO-8601 text, not as a number.
+     *
+     * `LocalDateTime` has no timezone, so there is no correct instant to
+     * reduce it to. Encoding it as an epoch value against UTC would round
+     * trip perfectly and still be a trap: the column would hold numbers that
+     * look exactly like the epoch millis in [instantToEpochMillis] beside it,
+     * and reading one as the other is a bug nothing would catch. Text cannot
+     * be misread that way, and it is legible when someone opens the database
+     * to work out why a reminder fired when it did.
+     */
+    @TypeConverter
+    fun localDateTimeToText(value: LocalDateTime?): String? = value?.toString()
+
+    @TypeConverter
+    fun textToLocalDateTime(value: String?): LocalDateTime? =
+        value?.let(LocalDateTime::parse)
 
     /**
      * A timestamp persists as epoch milliseconds.

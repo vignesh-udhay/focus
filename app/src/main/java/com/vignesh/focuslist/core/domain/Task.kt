@@ -2,6 +2,7 @@ package com.vignesh.focuslist.core.domain
 
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 /**
  * An actionable piece of work.
@@ -29,6 +30,15 @@ import java.time.LocalDate
  * it is not scheduled. Drives the Today and Upcoming views.
  * @param dueDate the day the task is actually due, or null when it has no
  * deadline. Independent of [scheduledDate].
+ * @param reminderAt when to interrupt the user about this task, or null when
+ * the task never speaks up. A wall-clock time rather than an [Instant],
+ * deliberately: a reminder set for 9am means 9am where the user is, so it
+ * follows [scheduledDate] onto the local calendar rather than [createdAt] onto
+ * the absolute timeline. The consequence is that changing timezone changes
+ * when this fires, which is why `AGENTS.md` requires a reschedule on
+ * `ACTION_TIMEZONE_CHANGED`. Independent of [scheduledDate] and [dueDate]: a
+ * task can be scheduled for a day and say nothing, or be unscheduled and still
+ * ring.
  * @param estimatedDurationMinutes how long the task is expected to take, or
  * null when it has no estimate.
  * @param recurrence how often the task comes back, or null when it happens
@@ -49,6 +59,7 @@ data class Task(
     val placement: TaskPlacement = TaskPlacement.INBOX,
     val scheduledDate: LocalDate? = null,
     val dueDate: LocalDate? = null,
+    val reminderAt: LocalDateTime? = null,
     val estimatedDurationMinutes: Int? = null,
     val recurrence: Recurrence? = null,
     /**

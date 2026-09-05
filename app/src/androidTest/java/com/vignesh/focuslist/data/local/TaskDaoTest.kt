@@ -16,6 +16,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 /**
  * Exercises [TaskDao] against a real in-memory Room database, so the entity,
@@ -58,6 +59,7 @@ class TaskDaoTest {
         placement: TaskPlacement = TaskPlacement.ANYTIME,
         scheduledDate: LocalDate? = null,
         dueDate: LocalDate? = null,
+        reminderAt: LocalDateTime? = null,
         estimatedDurationMinutes: Int? = null,
         recurrence: Recurrence? = null,
         spawnedFromId: String? = null,
@@ -72,6 +74,7 @@ class TaskDaoTest {
         createdAt = createdAt,
         scheduledDate = scheduledDate,
         dueDate = dueDate,
+        reminderAt = reminderAt,
         estimatedDurationMinutes = estimatedDurationMinutes,
         recurrence = recurrence,
         spawnedFromId = spawnedFromId,

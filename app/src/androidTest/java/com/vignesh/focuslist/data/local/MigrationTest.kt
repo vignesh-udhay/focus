@@ -245,16 +245,44 @@ class MigrationTest {
             LatestVersion,
             true,
             MIGRATION_2_3,
-            MIGRATION_3_4
+            MIGRATION_3_4,
+            MIGRATION_4_5
         ).use { database ->
             database.query(
-                "SELECT notes, recurrence, spawnedFromId FROM tasks WHERE id = ?",
+                "SELECT notes, recurrence, spawnedFromId, reminderAt FROM tasks WHERE id = ?",
                 arrayOf<Any?>("noted")
             ).use { cursor ->
                 assertTrue(cursor.moveToFirst())
                 assertEquals("Ask about the Tuesday rate", cursor.getString(0))
                 assertTrue(cursor.isNull(1))
                 assertTrue(cursor.isNull(2))
+                assertTrue(cursor.isNull(3))
+            }
+        }
+    }
+
+    /**
+     * A task written before reminders existed does not have one, and a null
+     * column is how the schema says so.
+     *
+     * Worth asserting rather than assuming: a migration that backfilled this
+     * with anything at all would give every task on every existing install a
+     * reminder, and the first the user would know of it is the phone going
+     * off.
+     */
+    @Test
+    fun migratedRowsHaveNoReminder() {
+        seedVersion1()
+
+        migrate().use { database ->
+            database.query("SELECT id, reminderAt FROM tasks").use { cursor ->
+                var rows = 0
+                while (cursor.moveToNext()) {
+                    rows++
+                    assertTrue(cursor.getString(0) + " has a reminder", cursor.isNull(1))
+                }
+
+                assertEquals(3, rows)
             }
         }
     }
@@ -334,16 +362,18 @@ class MigrationTest {
         assertNull(scheduledTask.notes)
 
         assertNull(scheduledTask.recurrence)
+        assertNull(scheduledTask.reminderAt)
 
         assertTrue(tasks.single { it.id == "done" }.isCompleted)
         assertTrue(tasks.all { it.notes == null })
         assertTrue(tasks.all { it.recurrence == null })
+        assertTrue(tasks.all { it.reminderAt == null })
     }
 
     private companion object {
         const val TEST_DB = "migration-test.db"
 
         /** The schema every migration in this test is aimed at. */
-        const val LatestVersion = 4
+        const val LatestVersion = 5
     }
 }

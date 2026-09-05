@@ -14,6 +14,8 @@ import androidx.room.migration.Migration
  * Version 1: the original nine columns.
  * Version 2: adds `notes`.
  * Version 3: adds `recurrence`.
+ * Version 4: adds `spawnedFromId`.
+ * Version 5: adds `reminderAt`.
  */
 
 /**
@@ -43,7 +45,6 @@ val MIGRATION_2_3 = Migration(2, 3) { database ->
     database.execSQL("ALTER TABLE tasks ADD COLUMN recurrence TEXT")
 }
 
-/** Every migration, in order, for the builder and the migration test. */
 /**
  * Version 4 records which occurrence a recurring copy came from.
  *
@@ -55,4 +56,22 @@ val MIGRATION_3_4 = Migration(3, 4) { database ->
     database.execSQL("ALTER TABLE tasks ADD COLUMN spawnedFromId TEXT")
 }
 
-val FocuslistMigrations = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+/**
+ * Version 5 gives a task a time to speak up.
+ *
+ * The same append-a-nullable-column shape as every migration before it. No
+ * existing task has a reminder, and null says so without a row being touched,
+ * so nothing an install already holds can be lost or changed by this.
+ *
+ * `TEXT` because `TaskConverters` stores a reminder as ISO-8601 rather than as
+ * an epoch number. A `LocalDateTime` has no timezone and so has no honest
+ * numeric form, and a column of numbers here would be indistinguishable from
+ * the epoch-millis columns beside it.
+ */
+val MIGRATION_4_5 = Migration(4, 5) { database ->
+    database.execSQL("ALTER TABLE tasks ADD COLUMN reminderAt TEXT")
+}
+
+/** Every migration, in order, for the builder and the migration test. */
+val FocuslistMigrations =
+    arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)

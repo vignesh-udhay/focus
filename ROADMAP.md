@@ -9,11 +9,35 @@ scope it delivers is in `PRODUCT.md`.
 
 ## Current phase
 
-**Phase 1: Make it tell you.** Not started in code. The design for it now
-exists: `Clean slate / Reminder delivery` and `Reminder delivery — dark` in
-the Figma file cover the collapsed and expanded notification, the snooze
-choice, the lock screen, the full-screen alarm, opening the app from a
-reminder, and several reminders firing at once.
+**Phase 1: Make it tell you.** Started.
+
+The design exists. `Clean slate / Reminder delivery` and `Reminder delivery
+— dark` in the Figma file cover the collapsed and expanded notification, the
+snooze choice, the lock screen, the full-screen alarm, opening the app from a
+reminder, and several reminders firing at once. Do not invent notification
+layout; it is drawn.
+
+The data model is done: `reminderAt` on `Task` and `TaskEntity`, schema
+version 5 with `MIGRATION_4_5`, and `core/domain/Reminders.kt` holding
+`pendingReminders` and `missedReminders`. Those two are what a boot receiver
+rebuilds from, and both are pure functions taking the current time as a
+parameter, so a phone that was off for nine hours is a JVM test rather than a
+device. The migration test moved to version 5 but has not been run on a
+device yet.
+
+Next: the `AlarmManager` scheduler, the boot receiver, the alarm-grade
+notification channel, Done and Snooze actions, the permission flow, and
+setting a reminder from the task details sheet.
+
+A throwaway spike on branch `spike/exact-alarms` is measuring whether exact
+alarms actually arrive on a OnePlus 8T. It has already established two things:
+`USE_EXACT_ALARM` is auto-granted with no prompt, so Phase 1 needs no settings
+hand-off, and a boot receiver does recover alarms across a restart. Its first
+delivery figures were unusable, because they were measured on the wall clock
+alone while the device corrected its own clock mid-test. That is where the
+`ACTION_TIME_CHANGED` rule in `AGENTS.md` came from. While a run is in
+progress, do not install anything to that phone: replacing the package ends
+the test.
 
 Update this line when a phase begins and when it ends. It is the first thing
 a new coding session should read, and the only place that says where the work

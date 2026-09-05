@@ -8,6 +8,7 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 class TaskMappersTest {
 
@@ -16,6 +17,7 @@ class TaskMappersTest {
     private val deletedAt: Instant = Instant.parse("2026-01-03T08:15:00Z")
     private val scheduledDate: LocalDate = LocalDate.of(2026, 8, 31)
     private val dueDate: LocalDate = LocalDate.of(2026, 9, 4)
+    private val reminderAt: LocalDateTime = LocalDateTime.of(2026, 8, 31, 9, 30)
 
     private fun fullTask() = Task(
         id = "task-1",
@@ -25,6 +27,7 @@ class TaskMappersTest {
         placement = TaskPlacement.ANYTIME,
         scheduledDate = scheduledDate,
         dueDate = dueDate,
+        reminderAt = reminderAt,
         estimatedDurationMinutes = 45,
         recurrence = Recurrence.WEEKLY,
         spawnedFromId = "task-0",
@@ -40,6 +43,7 @@ class TaskMappersTest {
         createdAt = createdAt,
         scheduledDate = scheduledDate,
         dueDate = dueDate,
+        reminderAt = reminderAt,
         estimatedDurationMinutes = 45,
         recurrence = Recurrence.WEEKLY,
         spawnedFromId = "task-0",
@@ -60,6 +64,7 @@ class TaskMappersTest {
         assertEquals(createdAt, entity.createdAt)
         assertEquals(scheduledDate, entity.scheduledDate)
         assertEquals(dueDate, entity.dueDate)
+        assertEquals(reminderAt, entity.reminderAt)
         assertEquals(45, entity.estimatedDurationMinutes)
         // Neither of these was checked here before, which is how a column can
         // be added to one side of the mapping and quietly dropped on the way
@@ -87,6 +92,7 @@ class TaskMappersTest {
         assertEquals(createdAt, task.createdAt)
         assertEquals(scheduledDate, task.scheduledDate)
         assertEquals(dueDate, task.dueDate)
+        assertEquals(reminderAt, task.reminderAt)
         assertEquals(45, task.estimatedDurationMinutes)
         assertEquals(Recurrence.WEEKLY, task.recurrence)
         assertEquals("task-0", task.spawnedFromId)
@@ -115,6 +121,14 @@ class TaskMappersTest {
 
         assertNull(task.toEntity().dueDate)
         assertNull(fullEntity().copy(dueDate = null).toDomain().dueDate)
+    }
+
+    @Test
+    fun `null reminderAt survives both directions`() {
+        val task = fullTask().copy(reminderAt = null)
+
+        assertNull(task.toEntity().reminderAt)
+        assertNull(fullEntity().copy(reminderAt = null).toDomain().reminderAt)
     }
 
     @Test

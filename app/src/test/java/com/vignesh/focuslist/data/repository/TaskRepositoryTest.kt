@@ -15,6 +15,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 /**
  * A hand-written stand-in for the Room-generated DAO.
@@ -74,6 +75,7 @@ class TaskRepositoryTest {
         placement: TaskPlacement = TaskPlacement.ANYTIME,
         scheduledDate: LocalDate? = null,
         dueDate: LocalDate? = null,
+        reminderAt: LocalDateTime? = null,
         estimatedDurationMinutes: Int? = null,
         recurrence: Recurrence? = null,
         completedAt: Instant? = null,
@@ -86,6 +88,7 @@ class TaskRepositoryTest {
         createdAt = createdAt,
         scheduledDate = scheduledDate,
         dueDate = dueDate,
+        reminderAt = reminderAt,
         estimatedDurationMinutes = estimatedDurationMinutes,
         recurrence = recurrence,
         spawnedFromId = null,
@@ -100,6 +103,7 @@ class TaskRepositoryTest {
         placement: TaskPlacement = TaskPlacement.ANYTIME,
         scheduledDate: LocalDate? = null,
         dueDate: LocalDate? = null,
+        reminderAt: LocalDateTime? = null,
         estimatedDurationMinutes: Int? = null,
         recurrence: Recurrence? = null,
         completedAt: Instant? = null,
@@ -112,6 +116,7 @@ class TaskRepositoryTest {
         placement = placement,
         scheduledDate = scheduledDate,
         dueDate = dueDate,
+        reminderAt = reminderAt,
         estimatedDurationMinutes = estimatedDurationMinutes,
         recurrence = recurrence,
         completedAt = completedAt,

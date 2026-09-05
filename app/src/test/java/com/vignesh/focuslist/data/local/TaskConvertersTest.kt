@@ -7,6 +7,7 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 class TaskConvertersTest {
 
@@ -178,5 +179,57 @@ class TaskConvertersTest {
 
         assertNotEquals(withNanos, roundTripped)
         assertEquals(Instant.parse("2026-08-31T17:30:45.123Z"), roundTripped)
+    }
+
+    // LocalDateTime <-> ISO-8601 text
+
+    @Test
+    fun `a reminder time round trips exactly`() {
+        val reminder = LocalDateTime.of(2026, 8, 31, 9, 30)
+
+        val encoded = TaskConverters.localDateTimeToText(reminder)
+
+        assertEquals(reminder, TaskConverters.textToLocalDateTime(encoded))
+    }
+
+    @Test
+    fun `a reminder time encodes without a timezone`() {
+        val encoded = TaskConverters.localDateTimeToText(
+            LocalDateTime.of(2026, 8, 31, 9, 30)
+        )
+
+        // No trailing Z and no offset. The absence is the point: this column
+        // holds a wall-clock time, and any zone in the text would be a claim
+        // the type cannot make.
+        assertEquals("2026-08-31T09:30", encoded)
+    }
+
+    @Test
+    fun `a reminder time keeps seconds when it has them`() {
+        val encoded = TaskConverters.localDateTimeToText(
+            LocalDateTime.of(2026, 8, 31, 9, 30, 15)
+        )
+
+        assertEquals("2026-08-31T09:30:15", encoded)
+        assertEquals(
+            LocalDateTime.of(2026, 8, 31, 9, 30, 15),
+            TaskConverters.textToLocalDateTime(encoded)
+        )
+    }
+
+    @Test
+    fun `midnight round trips, and does not collapse to a date`() {
+        val midnight = LocalDateTime.of(2026, 8, 31, 0, 0)
+
+        val encoded = TaskConverters.localDateTimeToText(midnight)
+
+        assertEquals("2026-08-31T00:00", encoded)
+        assertEquals(midnight, TaskConverters.textToLocalDateTime(encoded))
+    }
+
+    @Test
+    fun `no reminder encodes to null and decodes back to null`() {
+        assertNull(TaskConverters.localDateTimeToText(null))
+        assertNull(TaskConverters.textToLocalDateTime(null))
     }
 }

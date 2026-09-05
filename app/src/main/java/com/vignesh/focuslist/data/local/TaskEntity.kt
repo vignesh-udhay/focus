@@ -7,6 +7,7 @@ import com.vignesh.focuslist.core.domain.Recurrence
 import com.vignesh.focuslist.core.domain.TaskPlacement
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 /**
  * The stored form of a task.
@@ -21,7 +22,8 @@ import java.time.LocalDate
  * Converters are registered here rather than on a database class, since no
  * database exists yet. Moving them to `@Database` later is equivalent.
  *
- * [notes] arrived in schema version 2 and [recurrence] in version 3. Where a
+ * [notes] arrived in schema version 2, [recurrence] in version 3, and
+ * [reminderAt] in version 5. Where a
  * field sits in this declaration has no bearing on the stored column order,
  * and Room validates columns by name, so each migration appends its column
  * while it is declared here beside the field it belongs with.
@@ -36,6 +38,7 @@ data class TaskEntity(
     val createdAt: Instant,
     val scheduledDate: LocalDate?,
     val dueDate: LocalDate?,
+    val reminderAt: LocalDateTime?,
     val estimatedDurationMinutes: Int?,
     val recurrence: Recurrence?,
     val spawnedFromId: String?,
