@@ -270,18 +270,30 @@ Rules:
   not for this.
 - Every scheduled reminder must be recoverable after a restart. If it is not
   in storage and rescheduled by the boot receiver, it does not exist.
+- Reschedule on `ACTION_TIME_CHANGED` and `ACTION_TIMEZONE_CHANGED` too. A
+  phone corrects its own clock as a matter of routine, from carrier NITZ and
+  from an NTP poll every 18 hours, and an alarm placed against the old clock
+  then fires at the wrong moment. Same failure as the reboot case: still
+  scheduled, no longer pointing at the time the user asked for. Both actions
+  are on Android's implicit-broadcast exception list, so a manifest receiver
+  still gets them with the app closed.
 - Reminder notifications use their own alarm-grade channel, separate from the
   focus session channel.
 - `isIgnoringBatteryOptimizations()` reports on stock Android only. It is not
   evidence that a reminder will arrive on a Samsung, Xiaomi or OnePlus
   device.
 - A missed reminder must be detectable after the fact. Record the time each
-  alarm was scheduled for alongside the time it actually fired.
+  alarm was scheduled for alongside the time it actually fired, on both
+  `System.currentTimeMillis()` and `SystemClock.elapsedRealtime()`. The wall
+  clock alone cannot tell a late alarm apart from a clock that moved under it.
+  Measuring only the wall clock is how the exact-alarm spike produced a
+  reminder that appeared to arrive five minutes early, which `AlarmManager`
+  has no mechanism to do.
 - Never silently swallow a scheduling failure. If the app cannot promise a
   reminder, it has to say so.
 
-Test scheduling arithmetic, boot rescheduling, and snooze as JVM tests. They
-are domain logic and do not need a device.
+Test scheduling arithmetic, boot rescheduling, clock-change rescheduling, and
+snooze as JVM tests. They are domain logic and do not need a device.
 
 ---
 
