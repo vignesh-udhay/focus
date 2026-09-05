@@ -2,9 +2,11 @@ package com.vignesh.focuslist.core.domain
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 class RecurrenceTest {
 
@@ -159,6 +161,54 @@ class RecurrenceTest {
         assertEquals(date("2026-09-03"), next.scheduledDate)
         assertNull(next.completedAt)
         assertNull(next.deletedAt)
+    }
+
+    @Test
+    fun `the next instance carries the reminder forward, at the same time of day`() {
+        val reminding = chore.copy(
+            reminderAt = LocalDateTime.of(2026, 9, 2, 8, 30),
+            reminderDeliveredAt = createdAt
+        )
+
+        val next = reminding.nextRecurringInstance(date("2026-09-02"), "next", createdAt)!!
+
+        assertEquals(LocalDateTime.of(2026, 9, 3, 8, 30), next.reminderAt)
+    }
+
+    @Test
+    fun `the next instance has not been announced, however announced this one was`() {
+        // The bug this exists for. Carrying the delivery record across left
+        // every occurrence after the first already marked delivered, so a
+        // daily reminder fired once and then went silent for good.
+        val reminding = chore.copy(
+            reminderAt = LocalDateTime.of(2026, 9, 2, 8, 30),
+            reminderDeliveredAt = createdAt
+        )
+
+        val next = reminding.nextRecurringInstance(date("2026-09-02"), "next", createdAt)!!
+
+        assertNull(next.reminderDeliveredAt)
+        assertTrue(next.hasLiveReminder())
+    }
+
+    @Test
+    fun `a reminder that is late by a week moves with the occurrence, not by a day`() {
+        // The shift is the scheduled date's, so a reminder keeps whatever
+        // relationship it had with the day the task is meant to be done.
+        val reminding = chore.copy(reminderAt = LocalDateTime.of(2026, 9, 2, 8, 30))
+
+        val next = reminding.nextRecurringInstance(date("2026-09-09"), "next", createdAt)!!
+
+        assertEquals(date("2026-09-10"), next.scheduledDate)
+        assertEquals(LocalDateTime.of(2026, 9, 10, 8, 30), next.reminderAt)
+    }
+
+    @Test
+    fun `a task with no reminder gains none by repeating`() {
+        val next = chore.nextRecurringInstance(date("2026-09-02"), "next", createdAt)!!
+
+        assertNull(next.reminderAt)
+        assertNull(next.reminderDeliveredAt)
     }
 
     @Test

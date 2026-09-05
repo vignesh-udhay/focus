@@ -106,7 +106,9 @@ private fun Recurrence.advance(anchor: LocalDate, steps: Long): LocalDate = when
  *
  * A due date moves by the same number of days as the scheduled date, which
  * keeps whatever gap the two had. A task due three days after it is meant to
- * be started stays that way next time round.
+ * be started stays that way next time round. A reminder moves the same way,
+ * keeping its time of day, and arrives on the next occurrence not yet
+ * announced.
  */
 fun Task.nextRecurringInstance(today: LocalDate, id: String, createdAt: Instant): Task? {
     val rule = recurrence ?: return null
@@ -120,6 +122,15 @@ fun Task.nextRecurringInstance(today: LocalDate, id: String, createdAt: Instant)
         createdAt = createdAt,
         scheduledDate = nextScheduled,
         dueDate = dueDate?.plusDays(shift),
+        // The reminder moves with the task, by the same shift and at the same
+        // time of day, on the same reasoning as the due date: whatever
+        // relationship the two had is the one the series should keep.
+        reminderAt = reminderAt?.plusDays(shift),
+        // And it has not been announced. Carrying the old delivery record
+        // across left every occurrence after the first already marked
+        // delivered, so a daily reminder fired once and then went silent for
+        // good, which is the most severe failure this product has.
+        reminderDeliveredAt = null,
         // Which occurrence produced this one. Reopening that occurrence uses
         // it to find this copy again and take it back.
         spawnedFromId = this.id,
