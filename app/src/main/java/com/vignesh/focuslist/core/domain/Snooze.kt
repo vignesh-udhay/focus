@@ -67,10 +67,21 @@ fun snoozedUntil(option: SnoozeOption, now: LocalDateTime): LocalDateTime? = whe
 }
 
 /**
- * The options worth showing at [now], in the order the design lists them.
+ * The three options to show at [now].
+ *
+ * Three, not the four the `notify/Snooze options` frame draws, because an
+ * Android notification shows at most three actions. Deliberate deviation from
+ * the design, agreed rather than assumed.
+ *
+ * Nothing is lost, because the fourth slot was never four distinct choices.
+ * The two relative options always apply, and the two named hours are the same
+ * idea at different times of day: before six, the next useful landing point is
+ * this evening, and after it, tomorrow morning. So the third slot holds
+ * whichever of them is still ahead, and the result is a near, middle and far
+ * ladder that is always full.
  *
  * Filtering here rather than in the notification, so what the user is offered
  * and what the arithmetic will do cannot drift apart.
  */
 fun availableSnoozeOptions(now: LocalDateTime): List<SnoozeOption> =
-    SnoozeOption.entries.filter { option -> snoozedUntil(option, now) != null }
+    SnoozeOption.entries.filter { option -> snoozedUntil(option, now) != null }.take(3)

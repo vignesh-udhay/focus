@@ -9,6 +9,7 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import com.vignesh.focuslist.core.domain.Recurrence
 import com.vignesh.focuslist.core.domain.nextRecurringInstance
 import com.vignesh.focuslist.core.domain.Task
+import com.vignesh.focuslist.core.domain.TaskCompletion
 import com.vignesh.focuslist.core.domain.TaskPlacement
 import com.vignesh.focuslist.core.time.CurrentDay
 import com.vignesh.focuslist.core.time.SystemCurrentDay
@@ -117,6 +118,16 @@ class TaskListViewModel(
     private val savedState: SavedStateHandle,
     private val alarms: FocusAlarms
 ) : ViewModel() {
+
+    /**
+     * What completing a task actually does.
+     *
+     * Built here rather than taken as a parameter, because it needs exactly
+     * the two things this view model already holds. A notification action
+     * builds its own from the same two, which is the point of it having moved
+     * out of here: one implementation of what finishing a task means.
+     */
+    private val completion = TaskCompletion(repository, currentDay)
 
     /**
      * The day the dated views are derived against.
@@ -522,25 +533,7 @@ class TaskListViewModel(
             val task = repository.observeTasks().first().firstOrNull { it.id == id } ?: return@launch
 
             if (task.isCompleted) {
-                // Reopening takes back the copy the completion produced, the
-                // same as the undo offer does. The offer only stands for four
-                // seconds and the checkbox is permanent, so leaving this to
-                // the snackbar meant unticking a daily task after the bar had
-                // gone left the user holding two: this one, and tomorrow's.
-                //
-                // Only while the copy is untouched. A spawn that has itself
-                // been completed has its own record and its own successor, and
-                // a deleted one the user has already dealt with; either way it
-                // is no longer a row nobody asked for, and deleting it would
-                // be destroying work rather than tidying up.
-                val tasks = repository.observeTasks().first()
-                tasks.firstOrNull { spawn ->
-                    spawn.spawnedFromId == task.id &&
-                        !spawn.isCompleted &&
-                        !spawn.isDeleted
-                }?.let { spawn -> repository.delete(spawn.id) }
-
-                repository.update(task.copy(completedAt = null))
+                completion.reopen(id)
 
                 // Withdraw whatever offer is standing for this task, rather
                 // than a reconstructed one. Building a `Completion` here with
@@ -552,21 +545,8 @@ class TaskListViewModel(
                 return@launch
             }
 
-            repository.update(task.copy(completedAt = Instant.now()))
-
-            // A recurring task finishes this occurrence and starts the next.
-            // The completed one is left exactly as any other completed task,
-            // so it reaches the Logbook on its own terms, and the copy is a
-            // new row rather than the same one moved: the record of having
-            // done it today should survive it coming back on Thursday.
-            val next = task.nextRecurringInstance(
-                today = currentDay.today.first(),
-                id = UUID.randomUUID().toString(),
-                createdAt = Instant.now()
-            )
-            next?.let { repository.insert(it) }
-
-            _pendingUndo.value = PendingUndo.Completion(task.id, spawnedTaskId = next?.id)
+            _pendingUndo.value =
+                PendingUndo.Completion(task.id, spawnedTaskId = completion.complete(id))
         }
     }
 

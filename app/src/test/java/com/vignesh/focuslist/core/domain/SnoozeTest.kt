@@ -110,24 +110,43 @@ class SnoozeTest {
     // 4. What gets offered
 
     @Test
-    fun `all four are offered in the morning, in the order the design lists them`() {
+    fun `three are offered in the morning, and the far one is this evening`() {
+        // Three rather than the design's four, because a notification shows at
+        // most three actions.
         assertEquals(
-            listOf(
-                SnoozeOption.TenMinutes,
-                SnoozeOption.OneHour,
-                SnoozeOption.ThisEvening,
-                SnoozeOption.TomorrowMorning
-            ),
+            listOf(SnoozeOption.TenMinutes, SnoozeOption.OneHour, SnoozeOption.ThisEvening),
             availableSnoozeOptions(morning)
         )
     }
 
     @Test
-    fun `the evening option is not offered in the evening`() {
+    fun `after six the far one becomes tomorrow morning`() {
         assertEquals(
             listOf(SnoozeOption.TenMinutes, SnoozeOption.OneHour, SnoozeOption.TomorrowMorning),
             availableSnoozeOptions(LocalDateTime.of(2026, 9, 5, 21, 0))
         )
+    }
+
+    @Test
+    fun `there are always exactly three, at every hour of the day`() {
+        // The slot is never empty and never overflows, which is what lets the
+        // notification lay out three actions without asking the time first.
+        (0..23).forEach { hour ->
+            val now = LocalDateTime.of(2026, 9, 5, hour, 30)
+            assertEquals("at $hour:30", 3, availableSnoozeOptions(now).size)
+        }
+    }
+
+    @Test
+    fun `the near two are always offered, whatever the hour`() {
+        (0..23).forEach { hour ->
+            val offered = availableSnoozeOptions(LocalDateTime.of(2026, 9, 5, hour, 30))
+            assertEquals(
+                "at $hour:30",
+                listOf(SnoozeOption.TenMinutes, SnoozeOption.OneHour),
+                offered.take(2)
+            )
+        }
     }
 
     @Test
