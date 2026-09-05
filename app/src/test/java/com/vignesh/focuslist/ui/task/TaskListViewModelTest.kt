@@ -1927,9 +1927,11 @@ class TaskListViewModelTest {
 
     // Inbox
 
-    /** The Inbox state starts empty, so wait for the derived emission. */
+    /** The Inbox state starts empty, so wait briefly for the derived emission. */
     private fun inbox(model: TaskListViewModel, size: Int): List<Task> = runBlocking {
-        model.inboxTasks.first { it.size == size }
+        withTimeoutOrNull(TIMEOUT_MILLIS) {
+            model.inboxTasks.first { it.size == size }
+        } ?: model.inboxTasks.value
     }
 
     /** Waits for Inbox to read as [ids], then returns what it actually holds. */
@@ -1959,14 +1961,17 @@ class TaskListViewModelTest {
     }
 
     @Test
-    fun inboxExcludesTriagedTasks() {
+    fun inboxIncludesTriagedTasks() {
         store(
             task(id = "captured", placement = TaskPlacement.INBOX),
             task(id = "anytime", placement = TaskPlacement.ANYTIME),
             task(id = "someday", placement = TaskPlacement.SOMEDAY)
         )
 
-        assertEquals(listOf("captured"), inbox(viewModel(), 1).map { it.id })
+        assertEquals(
+            listOf("captured", "anytime", "someday"),
+            inbox(viewModel(), 3).map { it.id }
+        )
     }
 
     @Test
@@ -2075,7 +2080,7 @@ class TaskListViewModelTest {
         assertTrue(dao.inserted.isEmpty())
     }
 
-    // Triage moves a task out of Inbox
+    // Scheduling moves a task out of Inbox; legacy placement changes do not.
 
     @Test
     fun schedulingAnInboxTaskMovesItToToday() {
@@ -2090,28 +2095,28 @@ class TaskListViewModelTest {
     }
 
     @Test
-    fun triagingAnInboxTaskToAnytimeRemovesItFromInbox() {
+    fun movingAnInboxTaskToAnytimeKeepsItInInbox() {
         store(task(id = "a", placement = TaskPlacement.INBOX))
         val model = viewModel()
         inbox(model, 1)
 
         model.edit(id = "a", placement = TaskPlacement.ANYTIME, scheduledDate = null)
 
-        assertEquals(emptyList<String>(), awaitInboxIds(model, emptyList()))
+        assertEquals(listOf("a"), awaitInboxIds(model, listOf("a")))
         assertEquals(TaskPlacement.ANYTIME, storedRow("a").placement)
-        // Still stored, just no longer in the queue.
+        // Still stored and still in Inbox because it remains unscheduled.
         assertNull(storedRow("a").deletedAt)
     }
 
     @Test
-    fun triagingAnInboxTaskToSomedayRemovesItFromInbox() {
+    fun movingAnInboxTaskToSomedayKeepsItInInbox() {
         store(task(id = "a", placement = TaskPlacement.INBOX))
         val model = viewModel()
         inbox(model, 1)
 
         model.edit(id = "a", placement = TaskPlacement.SOMEDAY, scheduledDate = null)
 
-        assertEquals(emptyList<String>(), awaitInboxIds(model, emptyList()))
+        assertEquals(listOf("a"), awaitInboxIds(model, listOf("a")))
         assertEquals(TaskPlacement.SOMEDAY, storedRow("a").placement)
     }
 
@@ -2873,11 +2878,14 @@ class TaskListViewModelTest {
             task(id = "done", completedAt = completedAt)
         )
         val model = viewModel()
-        inbox(model, 1)
+        inbox(model, 3)
 
         currentDay.advanceTo(tomorrow)
 
-        assertEquals(listOf("inbox"), awaitInboxIds(model, listOf("inbox")))
+        assertEquals(
+            listOf("inbox", "anytime", "someday"),
+            awaitInboxIds(model, listOf("inbox", "anytime", "someday"))
+        )
         assertEquals(listOf("anytime"), awaitAnytimeIds(model, listOf("anytime")))
         assertEquals(listOf("someday"), awaitSomedayIds(model, listOf("someday")))
         assertEquals(listOf("done"), awaitLogbookIds(model, listOf("done")))

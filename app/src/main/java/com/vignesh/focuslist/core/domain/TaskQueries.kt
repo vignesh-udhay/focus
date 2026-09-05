@@ -5,8 +5,9 @@ import java.time.LocalDate
 /**
  * The derived task views.
  *
- * Today and Upcoming are queries over [Task.scheduledDate], not states stored
- * on a task. Inbox, Anytime, and Someday read the [TaskPlacement] axis.
+ * Today, Inbox, and Upcoming are queries over [Task.scheduledDate], not states
+ * stored on a task. The legacy Anytime and Someday views still read the
+ * [TaskPlacement] axis until Phase 3 removes them.
  *
  * Every query takes the current date explicitly rather than reading the clock,
  * so results are deterministic and testable.
@@ -198,18 +199,15 @@ fun upcomingSections(tasks: List<Task>, today: LocalDate): List<UpcomingSection>
         .map { (date, tasks) -> UpcomingSection(date, tasks) }
 
 /**
- * Captured but not yet triaged: the queue to empty.
+ * Everything outstanding without a scheduled day.
  *
- * A task counts as untriaged only while it is both in [TaskPlacement.INBOX]
- * and unscheduled. Giving a task a day is a decision, so a scheduled task has
- * been triaged even if its placement never changed, and it belongs to Today or
- * Upcoming rather than here.
+ * List membership derives from [Task.scheduledDate], not [Task.placement].
+ * Giving a task a day moves it to Today or Upcoming; removing that day returns
+ * it here. Ignoring placement also keeps legacy Anytime and Someday tasks
+ * reachable while those destinations are removed in Phase 3.
  *
  * Completed tasks are excluded, as in Upcoming. Inbox is a queue, and finishing
  * something is one of the ways it leaves.
- *
- * [anytimeTasks] and [somedayTasks] apply the same rule, so the three of them
- * partition the undated work between them and a task is in exactly one.
  *
  * Newest first, because capture comes in bursts and what was just written down
  * is what the user is still thinking about.
@@ -219,7 +217,6 @@ fun inboxTasks(tasks: List<Task>): List<Task> =
         .filter { task ->
             !task.isDeleted &&
                 !task.isCompleted &&
-                task.placement == TaskPlacement.INBOX &&
                 task.scheduledDate == null
         }
         .sortedByDescending { task -> task.createdAt }
@@ -264,8 +261,9 @@ fun completedTasks(tasks: List<Task>): List<Task> =
  * calls it due.
  *
  * Giving a task a day is the decision these lists are waiting for. Once it has
- * one it belongs to Today or Upcoming, so the three undated lists partition the
- * rest between them and a task is in exactly one place.
+ * one it belongs to Today or Upcoming. While the legacy views remain, their
+ * undated tasks also appear in Inbox so they stay reachable through a primary
+ * destination.
  *
  * Completed tasks are excluded, as in Inbox and Upcoming. These are lists of
  * what could be picked up, and something finished cannot be.

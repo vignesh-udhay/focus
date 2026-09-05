@@ -341,14 +341,14 @@ class TaskQueriesTest {
     // Placement views
 
     @Test
-    fun `inbox returns only inbox tasks`() {
+    fun `inbox includes every undated task regardless of placement`() {
         val tasks = listOf(
             task(id = "a", placement = TaskPlacement.INBOX),
             task(id = "b", placement = TaskPlacement.ANYTIME),
             task(id = "c", placement = TaskPlacement.SOMEDAY)
         )
 
-        assertEquals(listOf("a"), ids(inboxTasks(tasks)))
+        assertEquals(listOf("a", "b", "c"), ids(inboxTasks(tasks)))
     }
 
     // Completed
@@ -484,9 +484,9 @@ class TaskQueriesTest {
     fun `inbox excludes tasks scheduled for any day`() {
         val tasks = listOf(
             task(id = "yesterday", placement = TaskPlacement.INBOX, scheduledDate = yesterday),
-            task(id = "today", placement = TaskPlacement.INBOX, scheduledDate = today),
-            task(id = "tomorrow", placement = TaskPlacement.INBOX, scheduledDate = tomorrow),
-            task(id = "unscheduled", placement = TaskPlacement.INBOX)
+            task(id = "today", placement = TaskPlacement.ANYTIME, scheduledDate = today),
+            task(id = "tomorrow", placement = TaskPlacement.SOMEDAY, scheduledDate = tomorrow),
+            task(id = "unscheduled", placement = TaskPlacement.SOMEDAY)
         )
 
         assertEquals(listOf("unscheduled"), ids(inboxTasks(tasks)))
@@ -502,10 +502,10 @@ class TaskQueriesTest {
     @Test
     fun `inbox puts the newest capture first`() {
         val tasks = listOf(
-            task(id = "middle", placement = TaskPlacement.INBOX, createdAt = timestamp),
+            task(id = "middle", placement = TaskPlacement.ANYTIME, createdAt = timestamp),
             task(
                 id = "oldest",
-                placement = TaskPlacement.INBOX,
+                placement = TaskPlacement.SOMEDAY,
                 createdAt = timestamp.minusSeconds(600)
             ),
             task(
@@ -522,8 +522,8 @@ class TaskQueriesTest {
     fun `inbox keeps input order for captures sharing a timestamp`() {
         val tasks = listOf(
             task(id = "c", placement = TaskPlacement.INBOX),
-            task(id = "a", placement = TaskPlacement.INBOX),
-            task(id = "b", placement = TaskPlacement.INBOX)
+            task(id = "a", placement = TaskPlacement.ANYTIME),
+            task(id = "b", placement = TaskPlacement.SOMEDAY)
         )
 
         // Not sorted by id, and not reordered at all.
@@ -581,7 +581,7 @@ class TaskQueriesTest {
     }
 
     @Test
-    fun `the three undated lists partition the undated work`() {
+    fun `inbox keeps all undated work reachable while legacy views remain`() {
         val tasks = listOf(
             task(id = "inbox", placement = TaskPlacement.INBOX),
             task(id = "anytime", placement = TaskPlacement.ANYTIME),
@@ -589,8 +589,7 @@ class TaskQueriesTest {
             task(id = "dated", placement = TaskPlacement.ANYTIME, scheduledDate = tomorrow)
         )
 
-        // Every undated task in exactly one list, and the dated one in none.
-        assertEquals(listOf("inbox"), ids(inboxTasks(tasks)))
+        assertEquals(listOf("inbox", "anytime", "someday"), ids(inboxTasks(tasks)))
         assertEquals(listOf("anytime"), ids(anytimeTasks(tasks)))
         assertEquals(listOf("someday"), ids(somedayTasks(tasks)))
     }
@@ -649,7 +648,7 @@ class TaskQueriesTest {
     }
 
     @Test
-    fun `the placement views do not leak into each other`() {
+    fun `legacy placement views stay isolated while inbox ignores placement`() {
         val tasks = listOf(
             task(id = "inbox", placement = TaskPlacement.INBOX),
             task(id = "anytime", placement = TaskPlacement.ANYTIME),
@@ -658,7 +657,7 @@ class TaskQueriesTest {
 
         assertEquals(listOf("anytime"), ids(anytimeTasks(tasks)))
         assertEquals(listOf("someday"), ids(somedayTasks(tasks)))
-        assertEquals(listOf("inbox"), ids(inboxTasks(tasks)))
+        assertEquals(listOf("inbox", "anytime", "someday"), ids(inboxTasks(tasks)))
     }
 
     @Test

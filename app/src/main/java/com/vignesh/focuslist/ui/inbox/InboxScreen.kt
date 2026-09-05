@@ -47,11 +47,11 @@ import java.time.Instant
 import java.time.LocalDate
 
 /**
- * Inbox: what has been captured but not yet decided about.
+ * Inbox: everything outstanding without a scheduled date.
  *
- * A queue rather than a bucket. A task leaves by being scheduled, triaged into
- * Anytime or Someday, completed, or deleted, and there is no way to leave it
- * half-done.
+ * A task leaves by being scheduled, completed, or deleted. Its legacy placement
+ * does not affect membership, so undated Anytime and Someday tasks remain
+ * reachable here while those destinations are removed.
  *
  * Quick Add here captures without a date, which is the difference from Today.
  * Deciding when to do it is exactly the decision Inbox exists to defer.
@@ -251,7 +251,7 @@ private fun sampleInboxTasks(): List<Task> = listOf(
         createdAt = SampleTimestamp.plusSeconds(180),
         scheduledDate = LocalDate.now()
     ),
-    // Excluded: triaged into Anytime.
+    // Included: placement is ignored while the task has no scheduled date.
     Task(
         id = "5",
         title = "Read the Compose performance guide",
