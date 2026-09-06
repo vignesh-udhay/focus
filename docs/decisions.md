@@ -442,9 +442,34 @@ that handset and version, and whether Xiaomi behaves like either. Two
 manufacturers is two, and the honest reading of two disagreeing measurements is
 that the population varies, not that Samsung is the norm.
 
-**Not measured on the Samsung:** delivery. The phone was borrowed and could not
-be kept overnight, so this records what the system promised, not what arrived.
-The OnePlus is the only device where both have been observed.
+**And it delivers.** A second reminder on the same phone, set for 13:30:00
+about seven minutes ahead, screen on and unlocked, which is the condition the
+OnePlus was measured in:
+
+    dueAt 2026-09-06T13:30   scheduledAheadMs 435690   outcome Announced
+    wall-clock error +20ms   monotonic error +19ms   clock drift +1ms
+
+**Nineteen milliseconds.** Against roughly fifty seconds on the OnePlus, awake
+and in the user's hand, aimed at 18:25:00 and arriving about 18:25:50. Same
+conditions, same code, the same call, a difference of about three orders of
+magnitude.
+
+So on both phones the scheduled window predicted the delivery. `window=0` gave
+19ms; a window of 0.75 of the futurity gave fifty seconds. That is a tidier
+result than this decision assumed, and it is worth being careful about what it
+does and does not license.
+
+It does not license reading the window instead of measuring delivery. There is
+no public API to read back a scheduled alarm's window; the numbers above came
+from `dumpsys`, which an app cannot run on itself. The app still cannot ask
+what kind of device it is on. It can only watch what happens, which is what
+this decision says.
+
+What it does mean is that the two measurements are consistent with one story:
+some skins demote the alarm at schedule time and then honour the demoted
+promise. That is a better-behaved failure than a device that promises exactness
+and misses anyway, and it is the story to try to break on a third
+manufacturer.
 
 ---
 
