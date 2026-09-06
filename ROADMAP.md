@@ -14,6 +14,12 @@ are complete. **Phase 4 is next**: the Glance widget and real recurrence
 rules, which the plan deliberately sequenced after the information
 architecture settled.
 
+**D-009 now has a second manufacturer.** A Galaxy S24 Ultra on Android 16
+honours `setExactAndAllowWhileIdle` exactly, `window=0`, where the OnePlus 8T
+demotes it. The demotion is not how Android behaves; it is how that phone
+behaves. The decision stands and is stronger for it: both devices reported the
+permission as granted, so only measuring delivery tells them apart.
+
 **Read the design from `Focuslist — M3 Expressive Clean Slate` (node
 `161:3405`) and nothing else.** An earlier page, `Focuslist — M3 Expressive
 V1`, is still in the file and disagrees with it. Phase 1 work was started

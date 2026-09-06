@@ -3110,12 +3110,18 @@ class TaskListViewModelTest {
         // session against the first task's. Without the restart, a fifteen
         // minute task picked up after forty minutes of work would be announced
         // as overrun before it had been started.
-        val secondStart = awaitClockRestart(model, firstStart)
-        assertTrue(secondStart.isAfter(firstStart))
-
         val (title, at) = awaitScheduled { it.first == "Task b" }
+        val secondStart = model.focusSessionStartedAt.value!!
+
         assertEquals("Task b", title)
         assertEquals(secondStart.plusSeconds(15 * 60), at)
+
+        // Not `isAfter`. Both `beginFocus` calls are synchronous, so on a
+        // machine whose clock ticks in whole milliseconds they can land on the
+        // same instant, and this asserted a clock tick rather than the
+        // behaviour. It only ever passed because a second, redundant restart
+        // used to arrive later from a coroutine.
+        assertTrue(!secondStart.isBefore(firstStart))
     }
 
     /** Waits for an alarm to be scheduled, optionally matching [predicate]. */
@@ -3128,17 +3134,6 @@ class TaskListViewModelTest {
         }
 
         throw AssertionError("no matching alarm scheduled; saw ${alarms.scheduled}")
-    }
-
-    /** Waits for the session clock to be restarted away from [previous]. */
-    private fun awaitClockRestart(model: TaskListViewModel, previous: Instant): Instant {
-        repeat(200) {
-            val current = model.focusSessionStartedAt.value
-            if (current != null && current != previous) return current
-            Thread.sleep(POLL_MILLIS)
-        }
-
-        throw AssertionError("session clock never restarted")
     }
 
     /** Waits for the Today state to hold a single task satisfying [predicate]. */

@@ -98,3 +98,27 @@ internal fun restrictionFor(manufacturer: String): DeviceRestriction? {
         else -> null
     }
 }
+
+/**
+ * The manufacturer's name as a sentence would spell it.
+ *
+ * `Build.MANUFACTURER` is whatever the vendor wrote in their build config, and
+ * they do not agree with each other. A Galaxy S24 Ultra reports `samsung`, all
+ * lowercase, so the health screen read "samsung may put Focuslist to sleep".
+ * A OnePlus 8T reports `OnePlus` and reads correctly, which is why this went
+ * unnoticed until the app was run on a second manufacturer.
+ *
+ * Only an all-lowercase name is touched, and only its first letter. That fixes
+ * samsung, oppo, realme and vivo, and leaves alone the vendors who capitalise
+ * deliberately: OnePlus keeps its P, HUAWEI and POCO keep their shouting, and
+ * Xiaomi is already right. Title-casing everything would produce "Oneplus".
+ */
+fun displayManufacturer(manufacturer: String = Build.MANUFACTURER): String {
+    val name = manufacturer.trim()
+
+    return if (name.none { it.isUpperCase() }) {
+        name.replaceFirstChar { first -> first.uppercase() }
+    } else {
+        name
+    }
+}

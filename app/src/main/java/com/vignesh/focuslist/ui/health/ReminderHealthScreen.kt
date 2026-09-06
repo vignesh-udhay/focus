@@ -54,6 +54,7 @@ import com.vignesh.focuslist.core.domain.ReminderDelivery
 import com.vignesh.focuslist.core.domain.ReminderHealth
 import com.vignesh.focuslist.core.domain.ReminderHealthState
 import com.vignesh.focuslist.core.notification.TestReminder
+import com.vignesh.focuslist.core.notification.displayManufacturer
 import com.vignesh.focuslist.core.notification.openAppSettings
 import com.vignesh.focuslist.core.notification.openBackgroundWorkSettings
 import com.vignesh.focuslist.core.notification.resolvableScreens
@@ -403,7 +404,7 @@ private fun stateTitle(state: ReminderHealthState): String = when (state) {
 
         // The frame's own sentence, now said only when it is the true cause.
         HealthCheck.BackgroundWork ->
-            stringResource(R.string.reminder_restriction_action_title, Build.MANUFACTURER)
+            stringResource(R.string.reminder_restriction_action_title, displayManufacturer())
     }
 
     is ReminderHealthState.Missed ->

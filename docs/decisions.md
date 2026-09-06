@@ -391,6 +391,61 @@ What the app cannot promise on this hardware is the second, or even reliably
 the right side of the minute. A task reminder survives that. An alarm clock
 would not, which is one more reason `PRODUCT.md` does not claim to be one.
 
+**The second manufacturer, 6 September 2026. The demotion is not universal.**
+
+A borrowed Galaxy S24 Ultra, SM-S928B, One UI on Android 16. The same debug
+build, the same `setExactAndAllowWhileIdle`, the same permission path. A
+reminder set through the app at 13:04:15 for 16:00:00, a futurity of 10,545
+seconds:
+
+    type=RTC_WAKEUP origWhen=2026-09-06 16:00:00.000 window=0
+    exactAllowReason=policy_permission flags=0x5
+    whenElapsed=+2h55m6s756ms maxWhenElapsed=+2h55m6s756ms
+
+**`window=0`.** `whenElapsed` and `maxWhenElapsed` are the same instant, so
+there is no slack at all. And `flags=0x5` is `FLAG_STANDALONE` plus
+`FLAG_ALLOW_WHILE_IDLE`, where the OnePlus gave `0x4`: the standalone bit that
+an exact alarm sets and an inexact one does not, missing there and present
+here.
+
+Had this phone demoted the alarm the way the OnePlus does, the window would
+have been about 7,908 seconds, 0.75 of the futurity, and `maxWhenElapsed`
+would have sat two hours beyond `whenElapsed`.
+
+The same dump carries its own control. Google Maps had an inexact alarm
+pending:
+
+    type=ELAPSED origWhen=+3h11m32s363ms window=+4h30m0s0ms flags=0x0
+
+So this device is not simply reporting zero for everything. It distinguishes
+exact from inexact, and it put our alarm on the exact side.
+
+**What this changes.** The claim that exact and inexact "were the same kind of
+alarm" is true of the OnePlus and false as a general statement. Asking for an
+exact alarm buys nothing on OxygenOS and buys everything on One UI. Any
+sentence in this document that reads as though the demotion were how Android
+behaves should be read as how *that phone* behaves.
+
+**What this does not change: the decision itself, which is strengthened.**
+Both phones reported `exactAllowReason=policy_permission`. Both said "Exact
+alarms: Allowed". The permission checks were identical and the behaviour was
+opposite. An app cannot ask which kind of device it is running on, so measuring
+what was actually delivered remains the only honest answer, and a health screen
+built on permissions alone would still report green on the OnePlus.
+
+If anything the case is now sharper. It is not that Android is unreliable. It
+is that two flagship phones, given the same call, do different things, and the
+app has no way to know which one it is on except by watching.
+
+**Still open.** Whether the OnePlus demotion is OxygenOS-wide or particular to
+that handset and version, and whether Xiaomi behaves like either. Two
+manufacturers is two, and the honest reading of two disagreeing measurements is
+that the population varies, not that Samsung is the norm.
+
+**Not measured on the Samsung:** delivery. The phone was borrowed and could not
+be kept overnight, so this records what the system promised, not what arrived.
+The OnePlus is the only device where both have been observed.
+
 ---
 
 ## D-010. The deep link into manufacturer battery settings is best effort, and OxygenOS 12 and later is not part of it
@@ -436,9 +491,21 @@ would mean three certain failures on every press, and a button that reads
 carries a Battery usage entry one tap from the setting that matters. Worse
 than a deep link, better than nothing, and honest about which it is.
 
+**One UI is verified, and it works.** On a Galaxy S24 Ultra running Android
+16, the first Samsung candidate,
+`com.samsung.android.lool/com.samsung.android.sm.battery.ui.BatteryActivity`,
+resolves and launches, landing on Samsung's own Battery screen. The app logged
+the component it chose. So the deep link is not a dead feature: OxygenOS
+refuses it and One UI allows it, which is the same shape as everything else in
+D-009.
+
+The other two Samsung candidates do not resolve on that device, and
+`com.samsung.android.sm` does not exist as a package at all. They are kept for
+older One UI versions, and they cost nothing when wrong.
+
 **What this does not mean.** Not that the remaining entries are verified. The
-MIUI, One UI and EMUI names are still guesses, from the same kind of list that
-proved stale here, and none has been tried on that hardware. They are kept
+MIUI and EMUI names are still guesses, from the same kind of list that proved
+stale for OxygenOS, and neither has been tried on that hardware. They are kept
 because they cost nothing when wrong: resolution is checked before launch, the
 launch is guarded, and the fallback is the same page. The instrumented test
 `aRestrictedDeviceHasAtLeastOneScreenToOffer` is what will report the next one

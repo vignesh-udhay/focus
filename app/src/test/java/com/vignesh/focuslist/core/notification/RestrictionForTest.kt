@@ -79,4 +79,31 @@ class RestrictionForTest {
         assertNull(restrictionFor(""))
         assertNull(restrictionFor("   "))
     }
+
+    // How the name is spelled back to the user
+
+    @Test
+    fun `an all-lowercase vendor name is capitalised`() {
+        // Measured on a Galaxy S24 Ultra, which reports "samsung", and read
+        // "samsung may put Focuslist to sleep" on the health screen.
+        assertEquals("Samsung", displayManufacturer("samsung"))
+        assertEquals("Oppo", displayManufacturer("oppo"))
+        assertEquals("Realme", displayManufacturer("realme"))
+    }
+
+    @Test
+    fun `a vendor that capitalises deliberately is left alone`() {
+        // Title-casing everything would produce "Oneplus", which is worse than
+        // the bug it fixes.
+        assertEquals("OnePlus", displayManufacturer("OnePlus"))
+        assertEquals("HUAWEI", displayManufacturer("HUAWEI"))
+        assertEquals("POCO", displayManufacturer("POCO"))
+        assertEquals("Xiaomi", displayManufacturer("Xiaomi"))
+    }
+
+    @Test
+    fun `an empty name survives being spelled back`() {
+        assertEquals("", displayManufacturer(""))
+        assertEquals("", displayManufacturer("   "))
+    }
 }
