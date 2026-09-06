@@ -99,8 +99,8 @@ fun TodayScreen(
         onOpenTask = { id -> openTaskId = id },
         onDelete = viewModel::deleteTask,
         onReschedule = viewModel::rescheduleTask,
-        // Choose the task, then move to Focus. The queue is derived from this
-        // very list, so the task is already in it and Focus opens on it.
+        // Choose the task, then move to Focus. Focus is on the task that was
+        // picked and no other, which is what answers "why this one".
         //
         // Straight into the session, without stopping at the ready state.
         // Picking one task out of a list and choosing Focus on it is the

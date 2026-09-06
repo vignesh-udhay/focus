@@ -132,24 +132,6 @@ fun todayBandOf(task: Task, today: LocalDate): TodayBand = when (todayGroup(task
 }
 
 /**
- * Today's work, still outstanding: what Focus can be pointed at.
- *
- * Defined over [todayTasks] rather than beside it, so Focus follows Today's
- * plan by construction rather than through a second filter that agrees with it
- * until one of the two is edited. The ordering is Today's, unchanged.
- *
- * Completion is the only thing this drops. Today keeps a finished task in its
- * bottom band as a record of the session, but Focus is for working on one task
- * and a finished task cannot be worked on.
- *
- * This is a strict subset of [todayTasks], which is what keeps it safe: Focus
- * is never the only place a task can be found, so nothing is reachable from
- * here and nowhere else.
- */
-fun focusQueue(tasks: List<Task>, today: LocalDate): List<Task> =
-    todayTasks(tasks, today).filter { task -> !task.isCompleted }
-
-/**
  * Tasks scheduled beyond today, and still outstanding.
  *
  * Unlike Today, this excludes completed tasks. A finished task is not something

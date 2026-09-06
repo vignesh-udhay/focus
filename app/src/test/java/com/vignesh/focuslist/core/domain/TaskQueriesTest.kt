@@ -529,62 +529,6 @@ class TaskQueriesTest {
         assertEquals(ids(once), ids(inboxTasks(once)))
     }
 
-    // Focus
-
-    @Test
-    fun `focus excludes a completed task`() {
-        val completed = task(id = "a", scheduledDate = today, completedAt = timestamp)
-
-        assertEquals(emptyList<String>(), ids(focusQueue(listOf(completed), today)))
-    }
-
-    @Test
-    fun `focus keeps an overdue task`() {
-        val overdue = task(id = "a", scheduledDate = yesterday)
-
-        assertEquals(listOf("a"), ids(focusQueue(listOf(overdue), today)))
-    }
-
-    @Test
-    fun `focus excludes a future task`() {
-        val future = task(id = "a", scheduledDate = tomorrow)
-
-        assertEquals(emptyList<String>(), ids(focusQueue(listOf(future), today)))
-    }
-
-    @Test
-    fun `focus excludes a deleted task`() {
-        val deleted = task(id = "a", scheduledDate = today, deletedAt = timestamp)
-
-        assertEquals(emptyList<String>(), ids(focusQueue(listOf(deleted), today)))
-    }
-
-    @Test
-    fun `focus is today minus the completed tasks`() {
-        val tasks = listOf(
-            task(id = "overdue", scheduledDate = yesterday),
-            task(id = "done", scheduledDate = today, completedAt = timestamp),
-            task(id = "now", scheduledDate = today),
-            task(id = "future", scheduledDate = tomorrow)
-        )
-
-        val expected = ids(todayTasks(tasks, today)).filter { it != "done" }
-
-        assertEquals(expected, ids(focusQueue(tasks, today)))
-        // Not just the same members: the same order, taken from Today itself.
-        assertEquals(listOf("now", "overdue"), ids(focusQueue(tasks, today)))
-    }
-
-    @Test
-    fun `focus is empty when nothing is scheduled`() {
-        val tasks = listOf(
-            task(id = "a", scheduledDate = null),
-            task(id = "b", scheduledDate = null)
-        )
-
-        assertEquals(emptyList<String>(), ids(focusQueue(tasks, today)))
-    }
-
     // Today sections
 
     @Test

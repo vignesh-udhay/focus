@@ -107,9 +107,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
  * avoids scale on enter and exit because it implies an elevation change the
  * system does not have.
  *
- * The queue behind it is unchanged. Completing a task takes it out, the next
- * appears without an advance step, and when none are left the session ends on
- * its own rather than stranding the user in a screen with no navigation.
+ * One task, and only the one the user picked. Completing or deleting it ends
+ * the session where the task ended, rather than moving the user on to
+ * something they did not choose.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -118,7 +118,6 @@ fun FocusSheet(
     modifier: Modifier = Modifier
 ) {
     val task by viewModel.focusedTask.collectAsStateWithLifecycle()
-    val queue by viewModel.focusQueue.collectAsStateWithLifecycle()
     val startedAt by viewModel.focusSessionStartedAt.collectAsStateWithLifecycle()
 
     // The sheet carries its own, because the screen it opened over is behind a
@@ -128,13 +127,6 @@ fun FocusSheet(
     // and the other is cancelled by the same change.
     val snackbarHostState = remember { SnackbarHostState() }
     UndoSnackbarEffect(viewModel = viewModel, snackbarHostState = snackbarHostState)
-
-    // What follows the one being worked on. Read from the same queue Focus
-    // draws from, so it cannot disagree with what appears next.
-    val nextTask = remember(queue, task) {
-        val index = queue.indexOfFirst { it.id == task?.id }
-        queue.getOrNull(index + 1).takeIf { index >= 0 }
-    }
 
     ModalBottomSheet(
         // Dismissing is stopping. There is no way to leave the sheet and keep a
@@ -153,7 +145,6 @@ fun FocusSheet(
     ) {
         FocusSheetContent(
             task = task,
-            nextTask = nextTask,
             startedAt = startedAt,
             // The same write every list makes, so finishing a task here is as
             // undoable as finishing it anywhere else. It is also what advances
@@ -177,7 +168,6 @@ fun FocusSheet(
 @Composable
 private fun FocusSheetContent(
     task: Task?,
-    nextTask: Task?,
     startedAt: Instant?,
     onComplete: (String) -> Unit,
     snackbarHostState: SnackbarHostState,
@@ -209,14 +199,14 @@ private fun FocusSheetContent(
             label = "focus content"
         ) { current ->
             if (current == null) {
-                // One state for both ways the queue empties: nothing scheduled,
-                // and everything scheduled already done. A separate "all done"
-                // would be a celebration.
+                // The task is finished, or gone, or was never chosen. One
+                // state for all three, because from here they are the same
+                // fact: there is nothing to work on.
                 //
-                // The sheet stays open on it rather than closing itself. The
-                // queue emptying is the moment the user most deserves to be
-                // told, and a sheet that vanished would have answered by
-                // disappearing.
+                // The sheet stays open on it rather than closing itself. A
+                // sheet that vanished would have answered by disappearing,
+                // and finishing the thing you sat down to do is the moment
+                // worth marking.
                 TaskListEmptyState(
                     headline = stringResource(R.string.focus_empty_headline),
                     supporting = stringResource(R.string.focus_empty_supporting)
@@ -224,7 +214,6 @@ private fun FocusSheetContent(
             } else {
                 FocusTask(
                     task = current,
-                    nextTask = nextTask,
                     startedAt = startedAt,
                     animate = animate,
                     onComplete = { onComplete(current.id) }
@@ -251,7 +240,6 @@ private fun FocusSheetContent(
 @Composable
 private fun FocusTask(
     task: Task,
-    nextTask: Task?,
     startedAt: Instant?,
     animate: Boolean,
     onComplete: () -> Unit
@@ -286,15 +274,6 @@ private fun FocusTask(
                 .align(Alignment.Center)
                 .padding(horizontal = focuslistContentGutter())
                 .padding(horizontal = FocuslistSpacing.lg)
-        )
-
-        FocusFooter(
-            nextTask = nextTask,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(horizontal = FocuslistSpacing.lg)
-                .padding(bottom = FocuslistSpacing.xxl)
         )
     }
 }
@@ -400,40 +379,6 @@ private fun FocusCompleteButton(onClick: () -> Unit) {
             style = ButtonDefaults.textStyleFor(ActionSlotHeight),
             maxLines = 1
         )
-    }
-}
-
-/**
- * The line at the foot of the screen: what follows the task being worked on.
- *
- * A peek and not a picker. It cannot be tapped, scrolled or chosen from,
- * because deciding belongs to Today and a control that let the user swap tasks
- * here would import the deciding back into the mode.
- *
- * It appears on the container's travel rather than on a fade of its own, for
- * the same reason the labels do, and it keeps its space when nothing follows so
- * that the last task of a session does not move the screen.
- */
-@Composable
-private fun FocusFooter(
-    nextTask: Task?,
-    modifier: Modifier = Modifier
-) {
-    Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        if (nextTask != null) {
-            Text(
-                text = stringResource(R.string.focus_next, nextTask.title),
-                style = MaterialTheme.typography.bodyMedium,
-                // Dimmed rather than blurred: Modifier.blur needs API 31 and
-                // the app supports 29, so the effect that works everywhere is
-                // the one that carries the meaning.
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
     }
 }
 
@@ -759,13 +704,6 @@ private val SampleTask = Task(
 /** Half an hour into a forty-five minute estimate, so the preview shows a morph mid-way. */
 private val PreviewSessionStart: Instant = Instant.now().minusSeconds(30 * 60)
 
-private val SampleNextTask = Task(
-    id = "sample-focus-next",
-    title = "Call the plumber about the leak",
-    createdAt = SampleTimestamp,
-    scheduledDate = LocalDate.of(2026, 1, 1),
-    estimatedDurationMinutes = 15
-)
 
 @Preview(name = "Session", showBackground = true)
 @Preview(name = "Session dark", showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
@@ -774,7 +712,6 @@ private fun FocusSessionPreview() {
     FocuslistTheme {
         FocusSheetContent(
             task = SampleTask,
-            nextTask = SampleNextTask,
             startedAt = PreviewSessionStart,
             onComplete = {},
             snackbarHostState = SnackbarHostState()
@@ -790,7 +727,6 @@ private fun FocusEmptyPreview() {
     FocuslistTheme {
         FocusSheetContent(
             task = null,
-            nextTask = null,
             startedAt = null,
             onComplete = {},
             snackbarHostState = SnackbarHostState()

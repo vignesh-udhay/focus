@@ -2865,14 +2865,37 @@ class TaskListViewModelTest {
 
     // Focus
 
+    /**
+     * Nothing is focused until the user says so.
+     *
+     * This replaces a test asserting Focus defaulted to the head of a queue.
+     * That default was the queue `docs/decisions.md` D-004 removed, surviving
+     * as a resolution rule, and it answered "why this task" with "because it
+     * happened to be first".
+     */
     @Test
-    fun focusedTaskDefaultsToTheQueueHead() {
+    fun nothingIsFocusedUntilATaskIsChosen() {
         store(
             task(id = "a", scheduledDate = today),
             task(id = "b", scheduledDate = today)
         )
 
-        assertEquals("a", awaitFocusedTaskId(viewModel(), "a"))
+        assertEquals(null, awaitFocusedTaskId(viewModel(), null))
+    }
+
+    @Test
+    fun deletingTheFocusedTaskEndsFocus() {
+        store(
+            task(id = "a", scheduledDate = today),
+            task(id = "b", scheduledDate = today)
+        )
+        val model = viewModel()
+        model.beginFocus("a")
+        awaitFocusedTaskId(model, "a")
+
+        model.deleteTask("a")
+
+        assertEquals(null, awaitFocusedTaskId(model, null))
     }
 
     @Test
@@ -2930,8 +2953,9 @@ class TaskListViewModelTest {
 
         assertEquals(false, model.isFocusSessionActive.value)
         assertNull(model.focusSessionStartedAt.value)
-        // Back to the head of the queue rather than still pointing at "b".
-        assertEquals("a", awaitFocusedTaskId(model, "a"))
+        // Nothing is focused, rather than the head of a queue. Stopping ends
+        // the session; the next one starts by choosing a task again.
+        assertEquals(null, awaitFocusedTaskId(model, null))
     }
 
     /**
@@ -2951,31 +2975,25 @@ class TaskListViewModelTest {
 
         model.toggleComplete("a")
 
-        assertEquals("b", awaitFocusedTaskId(model, "b"))
+        // Nothing is focused, and the session is still running. The sheet
+        // holds the finished state until the user dismisses it, rather than
+        // vanishing at the moment they have most earned being told they are
+        // done.
+        assertEquals(null, awaitFocusedTaskId(model, null))
         assertTrue(model.isFocusSessionActive.value)
     }
 
     @Test
-    fun completingTheFocusedTaskShowsTheNextOne() {
+    fun reschedulingTheFocusedTaskKeepsFocusOnIt() {
+        // It used to move Focus to the next task in today's queue. Focus is
+        // per task now, so moving the task to another day changes when it is
+        // planned, not what the user is working on.
         store(
             task(id = "a", scheduledDate = today),
             task(id = "b", scheduledDate = today)
         )
         val model = viewModel()
-        assertEquals("a", awaitFocusedTaskId(model, "a"))
-
-        model.toggleComplete("a")
-
-        assertEquals("b", awaitFocusedTaskId(model, "b"))
-    }
-
-    @Test
-    fun reschedulingTheFocusedTaskOutOfTodayShowsTheNextOne() {
-        store(
-            task(id = "a", scheduledDate = today),
-            task(id = "b", scheduledDate = today)
-        )
-        val model = viewModel()
+        model.beginFocus("a")
         assertEquals("a", awaitFocusedTaskId(model, "a"))
 
         model.editTask(
@@ -2989,36 +3007,24 @@ class TaskListViewModelTest {
             reminderAt = null
         )
 
-        assertEquals("b", awaitFocusedTaskId(model, "b"))
-    }
-
-    @Test
-    fun deletingTheFocusedTaskShowsTheNextOne() {
-        store(
-            task(id = "a", scheduledDate = today),
-            task(id = "b", scheduledDate = today)
-        )
-        val model = viewModel()
         assertEquals("a", awaitFocusedTaskId(model, "a"))
-
-        model.deleteTask("a")
-
-        assertEquals("b", awaitFocusedTaskId(model, "b"))
     }
 
     @Test
-    fun focusingATaskOutsideTheQueueFallsBackToTheHead() {
+    fun focusingATaskScheduledForAnotherDayFocusesThatTask() {
+        // Focus is per task, not per day. Only Today offers the control today,
+        // so this is not reachable from the UI, but the rule it used to follow
+        // was "fall back to the head of today's queue", and that rule is what
+        // was removed.
         store(
             task(id = "a", scheduledDate = today),
             task(id = "later", scheduledDate = tomorrow)
         )
         val model = viewModel()
 
-        // Nothing rejects the id. It simply never matches anything in the
-        // queue, which is the same path a task takes when it leaves.
         model.focusTask("later")
 
-        assertEquals("a", awaitFocusedTaskId(model, "a"))
+        assertEquals("later", awaitFocusedTaskId(model, "later"))
     }
 
     /**
@@ -3043,6 +3049,7 @@ class TaskListViewModelTest {
     fun startingASessionSchedulesTheEstimateForTheFocusedTask() {
         store(task(id = "a", scheduledDate = today, estimatedDurationMinutes = 45))
         val model = viewModel()
+        model.focusTask("a")
         awaitFocusedTaskId(model, "a")
 
         model.startFocusSession()
@@ -3071,6 +3078,7 @@ class TaskListViewModelTest {
     fun stoppingASessionCancelsTheAnnouncement() {
         store(task(id = "a", scheduledDate = today, estimatedDurationMinutes = 45))
         val model = viewModel()
+        model.focusTask("a")
         awaitFocusedTaskId(model, "a")
         model.startFocusSession()
         awaitScheduled()
@@ -3081,18 +3089,21 @@ class TaskListViewModelTest {
     }
 
     @Test
-    fun movingToTheNextTaskRestartsTheClockAndReschedules() {
+    fun choosingAnotherTaskRestartsTheClockAndReschedules() {
+        // "The next task" used to mean whatever the queue supplied when this
+        // one was completed. It means a task the user picked now, which is the
+        // only way Focus moves.
         store(
             task(id = "a", scheduledDate = today, estimatedDurationMinutes = 45),
             task(id = "b", scheduledDate = today, estimatedDurationMinutes = 15)
         )
         val model = viewModel()
+        model.beginFocus("a")
         awaitFocusedTaskId(model, "a")
-        model.startFocusSession()
         val firstStart = model.focusSessionStartedAt.value!!
         awaitScheduled()
 
-        model.toggleComplete("a")
+        model.beginFocus("b")
         awaitFocusedTaskId(model, "b")
 
         // The clock measures this task against its own estimate, not the

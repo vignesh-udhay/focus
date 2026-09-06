@@ -13,7 +13,6 @@ import com.vignesh.focuslist.core.domain.TaskCompletion
 import com.vignesh.focuslist.core.time.CurrentDay
 import com.vignesh.focuslist.core.time.SystemCurrentDay
 import com.vignesh.focuslist.core.domain.completedTasks as queryCompletedTasks
-import com.vignesh.focuslist.core.domain.focusQueue as queryFocusQueue
 import com.vignesh.focuslist.core.domain.inboxTasks as queryInboxTasks
 import com.vignesh.focuslist.core.domain.todayTasks as queryTodayTasks
 import com.vignesh.focuslist.core.domain.upcomingTasks as queryUpcomingTasks
@@ -87,7 +86,7 @@ sealed interface PendingUndo {
  * single undo offer stands for the whole app rather than per screen.
  *
  * That covers Focus too, which is not a list: it reads the same stream through
- * [focusQueue] and shows one task from it.
+ * one task, chosen by the user.
  *
  * It holds no view rules of its own: filtering and ordering live in
  * `TaskQueries`, and it knows nothing about Room, entities, or the DAO.
@@ -180,46 +179,34 @@ class TaskListViewModel(
             )
 
     /**
-     * Today's work, still outstanding: what Focus draws from.
-     *
-     * Derived from the same stored stream as every other list, through the
-     * same query layer. Nothing about being focused is stored on a task, so
-     * there is no membership to keep in step with anything.
-     */
-    val focusQueue: StateFlow<List<Task>> =
-        combine(repository.observeTasks(), currentDay.today) { tasks, day ->
-            queryFocusQueue(tasks, day)
-        }
-            .stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
-                initialValue = emptyList()
-            )
-
-    /**
      * The task the user chose to focus on, or null while they have chosen
      * none.
      *
-     * A pointer into [focusQueue], not an attribute of a task. It is
-     * deliberately not persisted: on relaunch it is null and Focus falls back
-     * to the head of the queue, which is a correct state rather than a broken
-     * one.
+     * Not stored on the task, and not persisted across a relaunch. Focus is
+     * entered by picking the task it is for, so a session that did not survive
+     * the process has no task to resume and null is the honest answer.
      */
     private val _focusedTaskId = MutableStateFlow<String?>(null)
 
     /**
-     * The one task Focus is on: the chosen one while it is still available,
-     * otherwise the head of the queue.
+     * The one task Focus is on, and only ever that one.
      *
-     * This fallback is the whole of Focus's behaviour. Completing the task,
-     * rescheduling it out of today, deleting it, and the day rolling over all
-     * take it out of [focusQueue], and the next task appears because the
-     * chosen id no longer matches anything. There is no advance step, and so
-     * no way for one of those four routes to be handled and another missed.
+     * There used to be a fallback here: when the chosen task left, Focus
+     * showed the head of a queue instead. That was the queue `docs/decisions.md`
+     * D-004 removed, surviving as a resolution rule, and it contradicted the
+     * answer Focus gives to "why this task", which is: because you said so.
+     * The Clean Slate board says the same thing in one line on the Focus
+     * screen, "One task. Nothing else until you leave Focus."
+     *
+     * So completing the task, deleting it, or never choosing one all resolve
+     * to null, and the session ends where the task did rather than moving the
+     * user somewhere they did not ask to be.
      */
     val focusedTask: StateFlow<Task?> =
-        combine(focusQueue, _focusedTaskId) { queue, id ->
-            queue.firstOrNull { task -> task.id == id } ?: queue.firstOrNull()
+        combine(repository.observeTasks(), _focusedTaskId) { tasks, id ->
+            tasks.firstOrNull { task ->
+                task.id == id && !task.isDeleted && !task.isCompleted
+            }
         }
             .stateIn(
                 scope = viewModelScope,
@@ -230,10 +217,9 @@ class TaskListViewModel(
     /**
      * Points Focus at [id].
      *
-     * The id is recorded as given, without checking the queue. A task that is
-     * not in it simply never matches, and [focusedTask] shows the head
-     * instead, which is the same thing that happens when the chosen task later
-     * leaves.
+     * Recorded as given, without checking anything. An id that matches no
+     * outstanding task resolves to null, which is the same state as a task
+     * that was completed or deleted while Focus was open.
      */
     fun focusTask(id: String) {
         _focusedTaskId.value = id
@@ -365,20 +351,16 @@ class TaskListViewModel(
                         workingOn = null
                         emptyFlow()
                     } else {
-                        combine(
-                            repository.observeTasks(),
-                            currentDay.today,
-                            _focusedTaskId
-                        ) { tasks, day, chosenId ->
-                            val queue = queryFocusQueue(tasks, day)
-                            queue.firstOrNull { task -> task.id == chosenId }
-                                ?: queue.firstOrNull()
-                        }
+                        // The same flow the screen draws, rather than a
+                        // second copy of the resolution. Two rules for "which
+                        // task is Focus on" is how the alarm ends up announcing
+                        // a task the user is not looking at.
+                        focusedTask
                     }
                 }
                 .collect { task ->
                     if (task == null) {
-                        // The queue running dry no longer ends the session. It
+                        // The task finishing no longer ends the session. It
                         // used to, because a session with nothing in it hid the
                         // navigation behind an empty screen, and that was the
                         // trap the mode existed to avoid. Focus is a sheet now:
@@ -395,8 +377,8 @@ class TaskListViewModel(
                         return@collect
                     }
 
-                    // A different task than a moment ago means the session
-                    // moved on, and the new one gets its own clock. Only from
+                    // A different task than a moment ago means the user
+                    // picked another one, and it gets its own clock. Only from
                     // one real task to another: the first task of a session
                     // must not reset a clock that was just restored from a
                     // killed process.

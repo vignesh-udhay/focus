@@ -38,10 +38,9 @@
     <string name="focus_title">Focus</string>
     <string name="focus_complete">Complete</string>
     <string name="focus_empty_headline">Nothing to focus on</string>
-    <string name="focus_empty_supporting">Tasks scheduled for today appear here.</string>
+    <string name="focus_empty_supporting">Pick a task on Today to focus on it.</string>
     <string name="focus_start">Start</string>
     <string name="focus_stop">Stop focusing</string>
-    <string name="focus_next">Next: %1$s</string>
     <string name="focus_estimate_minutes">%1$d min</string>
     <string name="focus_estimate_reached_title">Estimated time is up</string>
     <string name="focus_channel_name">Focus sessions</string>
