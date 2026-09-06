@@ -186,6 +186,10 @@ class ReminderSchedulerTest {
         repeat(5) { scheduler.reconcile(tasks) }
 
         assertTrue(alarms.scheduled.isEmpty())
+        // The positive half. Without it this passes on a reconcile that does
+        // nothing at all, which is the same evidence as a reconcile that
+        // correctly refuses to re-announce.
+        assertEquals(List(5) { "a" }, alarms.cancelled)
     }
 
     // 3. Running it again
