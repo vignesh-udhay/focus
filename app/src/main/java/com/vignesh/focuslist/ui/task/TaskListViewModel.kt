@@ -338,8 +338,6 @@ class TaskListViewModel(
         // loaded yet": entering Focus would stop the session it was entered
         // for. The repository only emits once it has really read.
         viewModelScope.launch {
-            var workingOn: String? = null
-
             _focusSessionStartedAt
                 .map { startedAt -> startedAt != null }
                 // On the boolean, so restarting the clock for a new task does
@@ -348,7 +346,6 @@ class TaskListViewModel(
                 .flatMapLatest { isRunning ->
                     // Nothing to watch while no session is running.
                     if (!isRunning) {
-                        workingOn = null
                         emptyFlow()
                     } else {
                         // The same flow the screen draws, rather than a
@@ -373,20 +370,18 @@ class TaskListViewModel(
                         // The alarm still goes, because there is nothing left
                         // whose estimate could be reached.
                         alarms.cancel()
-                        workingOn = null
                         return@collect
                     }
 
-                    // A different task than a moment ago means the user
-                    // picked another one, and it gets its own clock. Only from
-                    // one real task to another: the first task of a session
-                    // must not reset a clock that was just restored from a
-                    // killed process.
-                    if (workingOn != null && workingOn != task.id) {
-                        restartFocusClock()
-                    }
-                    workingOn = task.id
-
+                    // No clock restart here. Choosing another task is the only
+                    // way this task changes now, and `beginFocus` already
+                    // restarts the clock as part of choosing.
+                    //
+                    // It used to restart here as well, because the queue could
+                    // hand Focus a new task with no user action behind it. With
+                    // the queue gone that branch fired a second restart a few
+                    // hundred microseconds after the first, so the estimate was
+                    // scheduled against a start time that nothing else held.
                     announce(task)
                 }
         }

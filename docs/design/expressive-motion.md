@@ -1,11 +1,5 @@
 # Motion
 
-> **Superseded in part.** This document still describes the pre-Phase-3
-> information architecture, which included Anytime, Someday, or the Focus
-> queue. Those were removed on evidence: see `docs/decisions.md`, D-002 and
-> D-004. Where this document and `PRODUCT.md` disagree, `PRODUCT.md` is
-> right. This banner comes off in Phase 3, when the document is rewritten.
-
 What moves in Focuslist, how, and why. Read `expressive-design-system.md`
 first for the tags and the principles.
 
@@ -147,7 +141,7 @@ Mild rather than strong: a list of twelve rows springing every time one is
 ticked is noise.
 
 [IMPL] Every task collection applies it, not only Today. A task leaving Inbox
-when it is triaged, or leaving Anytime when it is completed, is the same event
+when it is scheduled, or leaving Today when it is completed, is the same event
 as a task moving between Today's bands and reads the same way. A list where
 rows move and a list where they vanish are two different products.
 

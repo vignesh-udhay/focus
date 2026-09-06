@@ -1,11 +1,5 @@
 # Task Details
 
-> **Superseded in part.** This document still describes the pre-Phase-3
-> information architecture, which included Anytime, Someday, or the Focus
-> queue. Those were removed on evidence: see `docs/decisions.md`, D-002 and
-> D-004. Where this document and `PRODUCT.md` disagree, `PRODUCT.md` is
-> right. This banner comes off in Phase 3, when the document is rewritten.
-
 The sheet that edits one task. Reached by tapping a row on any list.
 
 ---
@@ -24,10 +18,10 @@ Six fields, and only these six:
 
 - title
 - notes
-- placement
 - scheduled date, typed or picked
 - due date, typed or picked
 - estimated duration
+- reminder
 
 Completion and deletion are deliberately absent. They have their own
 interactions, and editing a task must not quietly finish or remove it.
@@ -108,11 +102,6 @@ still takes over at the top, so dragging it closed keeps working.
 
 # Known gaps
 
-The placement segmented button row overflows at very large font scales: the
-Someday label spills outside its segment. `SingleChoiceSegmentedButtonRow`
-divides the width evenly and does not wrap. This predates notes and is
-unrelated to the height of the sheet.
-
 A date field is one line, so at large font scales a long value is scrolled
 within it rather than wrapped. The resolved date underneath is not truncated,
 so the whole day is always readable.
@@ -138,7 +127,7 @@ than a blank, and that a note survives being read back from storage.
 `DateParserTest` covers everything the date fields accept and refuse.
 
 `TaskDetailsSemanticsTest` covers the sheet: every field is labelled, the three
-identical "Clear" buttons are told apart by description, the placement control
+identical "Clear" buttons are told apart by description, the recurrence control
 publishes which option is current, a blank title and an unreadable date each
 refuse Save visibly, and Save is reachable by scrolling at 200% font scale,
 which is what the sheet's `verticalScroll` exists for.

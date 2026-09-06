@@ -1,13 +1,7 @@
 # Focus
 
-> **Superseded in part.** This document still describes the pre-Phase-3
-> information architecture, which included Anytime, Someday, or the Focus
-> queue. Those were removed on evidence: see `docs/decisions.md`, D-002 and
-> D-004. Where this document and `PRODUCT.md` disagree, `PRODUCT.md` is
-> right. This banner comes off in Phase 3, when the document is rewritten.
-
-The execution mode. A primary navigation destination whose content is a single
-task, not a task list.
+The execution mode. A sheet opened from one task, not a destination and not a
+task list.
 
 `PRODUCT.md` gives Focus two sentences: it is "the execution mode for working
 on one task", and it "should remove distractions and make the current task
@@ -294,83 +288,38 @@ Not a timer. There is no countdown, no elapsed clock, no digits, and running
 past the estimate is ordinary: the shape settles at its final form and stays
 there. Overrunning is not failure and the screen does not say it is.
 
-## What comes next
-
-One line, dimmed, at the bottom: the task after this one in the queue, or
-nothing when this is the last.
-
-An earlier version of this document ruled a preview of the next task out of
-scope, as "one more thing to look at instead of the task". The reversal is
-deliberate. `PRODUCT.md` lists a focus queue as a V1 feature, and a queue no
-one can see is not a queue; the core promise is knowing what to do next, and
-the moment the user is most entitled to that answer is while finishing the
-thing before it.
-
-It is a peek, not a picker. It cannot be tapped, scrolled, or chosen from.
-Deciding belongs to Today; Session is for execution, and a control that let the
-user swap tasks here would import the deciding back into the mode.
-
-Dimmed with colour, not blur. `Modifier.blur` needs API 31 and the app supports
-29, so the effect that works everywhere is the one that carries the meaning.
-
-## The way out
-
-An on-screen close control, and back.
-
-Back alone is not enough. Gesture navigation draws no visible back affordance,
-and this screen has hidden the one control the user knows about. `PRODUCT.md`
-requires that the UI not depend exclusively on gestures, and here that
-requirement is what keeps the mode from being the trap it would otherwise be.
-
-Back leaves the session before it leaves the screen: Session, then Ready, then
-wherever Focus was opened from.
-
----
-
-# The queue
-
-Focus draws from `TaskQueries.focusQueue`, which is Today's outstanding work:
-
-    focusQueue(tasks, today) = todayTasks(tasks, today) minus the completed
-
-Defined over `todayTasks` rather than beside it, so Focus follows Today's plan
-by construction. Two separate filters would agree until one of them was edited.
-
-Completion is the only thing dropped. Today keeps a finished task in its bottom
-band as a record of the session; Focus is for working on one task, and a
-finished task cannot be worked on. The ordering is Today's, unchanged: today's
-work first, then what has slipped.
-
-Nothing about being *in* the queue is stored. There is no `focused` column, no
-ordering column, and no membership to keep in step with anything.
-
-Because Focus resolves to the head of this queue, the order the queue arrives
-in is user-visible. `TaskDao.observeTasks` guarantees a total order for exactly
-that reason; see `storage.md`.
-
 ---
 
 # Which task
 
+    the task the user chose, while it is outstanding
+
+That is the whole of Focus's behaviour. Completing it or deleting it resolves
+to null, and Focus ends where the task ended.
+
+**There used to be a queue here, and it outlived the decision that removed
+it.** `docs/decisions.md` D-004 cut the Focus queue on the grounds that "the
+queue multiplies the concept. Focus works on one task." What survived was a
+resolution rule:
+
     the chosen task while it is still in the queue, otherwise the head
 
-That one line is the whole of Focus's behaviour, and it is worth being precise
-about why it is written that way. Completing the task, rescheduling it out of
-today, deleting it, and the day rolling over all take it out of the queue. In
-every one of those cases the chosen id stops matching anything and the head
-appears instead.
+That fallback was the queue. Completing the task, rescheduling it out of
+today, deleting it, or the day rolling over all dropped the chosen task, and
+Focus moved to whatever headed today's list. It is also precisely the
+behaviour that took Focus out of the navigation bar, described below: the user
+landed on a task with nothing to say why that one.
 
-So "complete the task, show the next task" is emergent. There is no advance
-step, and therefore no way for one of those four routes to be handled and
-another quietly missed.
+The Clean Slate board settles it. No Focus frame carries a next-task preview,
+and Focus — Ready reads "One task. Nothing else until you leave Focus."
 
-The choice is a pointer into a derived list, not an attribute of a task. It
-lives in `TaskListViewModel`, which is app-scoped, so choosing a task on Today
-and arriving at Focus finds it still chosen.
+The choice is one id in `TaskListViewModel`, which is app-scoped, so choosing
+a task on Today and arriving at Focus finds it still chosen. Nothing about
+being focused is stored on the task: there is no `focused` column and no
+membership to keep in step with anything.
 
-It is deliberately not persisted. After the process dies the choice is gone and
-Focus opens on the head of the queue, which is a correct state rather than a
-broken one.
+It is deliberately not persisted. After the process dies the choice is gone
+and nothing is focused, which is the honest answer rather than a broken one.
 
 ---
 
@@ -410,9 +359,9 @@ smallest one. It records that a session is running and when it began. It does
 not record which task, which stays a pointer as above; it does not touch the
 database; and it adds no column to a task.
 
-## Ending on an empty queue
+## Ending with nothing to work on
 
-A session with nothing left to work on has ended, whether or not it was
+A session whose task is finished or gone has ended, whether or not it was
 stopped. Leaving it running would hide the navigation behind an empty screen,
 which is the trap the mode exists to avoid.
 
@@ -439,8 +388,8 @@ purpose: picking one task out of a list and choosing Focus on it is the
 deciding already done, and a second confirming tap would be friction with
 nothing behind it.
 
-Only Today rows offer it. The queue is derived from Today, so a row on Anytime,
-Someday, Upcoming, or the Logbook would have to either do nothing or silently
+Only Today rows offer it. A row on Upcoming or the Logbook would have to
+either do nothing or silently
 schedule the task for today, and neither is specified behaviour. `TaskListRow`
 takes `onFocus` as a nullable callback and omits the menu item when it is not
 given, so those four screens are unchanged.
@@ -453,12 +402,12 @@ The same write every list makes, through `toggleComplete`, raising the same
 single undo offer. Finishing a task in Focus is exactly as undoable as
 finishing it anywhere else, and the offer follows the user to another screen.
 
-Undoing puts the task back in the queue. If it was the chosen one, Focus shows
+Undoing puts the task back. If it was the chosen one, Focus shows
 it again.
 
 Completing inside a session does not leave it. The next task appears in place
 and the session continues, which is `PRODUCT.md`'s "continue to the next task"
-taken literally. The session ends only when the user stops it or the queue runs
+taken literally. The session ends only when the user stops it or the task runs
 out.
 
 It is not silent, though. The shape springs back to the circle as the new title
@@ -478,7 +427,7 @@ version was really after, and it can be had without leaving the mode.
 
 # Empty state
 
-One state, for both of the ways the queue empties: nothing scheduled for today,
+One state, for all the ways Focus ends with nothing to show: the task finished,
 and everything scheduled already done.
 
 Deliberately one rather than two. A separate "all done" state would be a
@@ -549,7 +498,6 @@ Not part of Focus:
 - editing, and the task details sheet
 - a curated or reorderable queue, and any stored notion of *which* task is
   focused
-- pulling work from Anytime when Today is empty
 - a picker, a scroller, or any way to change task from inside a session
 - white noise and screen dimming
 - do not disturb, and anything else that changes the state of the device
@@ -650,20 +598,21 @@ alarm against the machine running the suite.
 
 # Verification
 
-`focusQueue` is covered by `TaskQueriesTest`, and the resolution rule by
-`TaskListViewModelTest`, including the four routes that take a task out of the
-queue. `focusProgress` is covered by `FocusProgressTest`, including overrun, a
-clock that has gone backwards, and a missing estimate.
+The resolution rule is covered by `TaskListViewModelTest`: nothing is focused
+until a task is chosen, choosing one focuses that task whatever day it is
+scheduled for, and completing or deleting it ends Focus rather than moving on.
+`focusProgress` is covered by `FocusProgressTest`, including overrun, a clock
+that has gone backwards, and a missing estimate.
 
 `TaskListViewModelTest` also covers the announcement: that starting a session
 schedules the focused task's estimate, that a task without one schedules
-nothing, that stopping cancels, and that moving to the next task restarts the
+nothing, that stopping cancels, and that choosing another task restarts the
 clock and reschedules against the new estimate.
 
 `FocusSessionSemanticsTest` covers the contract that makes hiding the
 navigation safe: Ready keeps the bar and shows the estimate, Session hides the
-bar and offers a visible way out, completing advances without leaving, an
-emptied queue returns the navigation, and a session started before the screen
+bar and offers a visible way out, completing ends the task without leaving,
+a session with nothing to show returns the navigation, and a session started before the screen
 opens survives the screen opening. Ready and Session are both checked at 100%
 and 200% font scale.
 

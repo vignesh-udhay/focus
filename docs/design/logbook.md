@@ -1,11 +1,5 @@
 # Logbook
 
-> **Superseded in part.** This document still describes the pre-Phase-3
-> information architecture, which included Anytime, Someday, or the Focus
-> queue. Those were removed on evidence: see `docs/decisions.md`, D-002 and
-> D-004. Where this document and `PRODUCT.md` disagree, `PRODUCT.md` is
-> right. This banner comes off in Phase 3, when the document is rewritten.
-
 ## Purpose
 
 The Logbook holds every task that has been completed.
@@ -29,10 +23,9 @@ A task appears in the Logbook when it is completed and not deleted:
 
     !isDeleted && isCompleted
 
-Nothing else is consulted. Placement and scheduling are ignored entirely, so a
-completed task is reachable here whatever its other fields say. That is the
-whole point: there is no combination of placement and date that can hide a
-finished task.
+Nothing else is consulted. Scheduling is ignored entirely, so a completed
+task is reachable here whatever its other fields say. That is the whole point:
+there is no date, and no absence of one, that can hide a finished task.
 
 `completedAt` remains the single source of truth for completion, as it is
 everywhere else. The Logbook adds no field, no flag, and no second collection.
@@ -49,8 +42,8 @@ Newest completion first, by `completedAt` descending.
 Tasks completed at the same instant keep the order the query was given.
 
 This is the only list ordered by `completedAt`, and the only one that ignores
-both `scheduledDate` and `placement`. A task created long ago but finished this
-morning belongs at the top; when it was captured is not what this list is about.
+`scheduledDate` entirely. A task created long ago but finished this morning
+belongs at the top; when it was captured is not what this list is about.
 
 The ordering lives in `TaskQueries.completedTasks`, not in the screen.
 
@@ -62,12 +55,13 @@ The Logbook and Today deliberately overlap. Today keeps completed tasks in its
 bottom band, as `today-screen.md` specifies, and the Logbook keeps every
 completed task. A task completed today and scheduled for today appears in both.
 
-This is the same kind of intentional overlap as an Anytime task scheduled for
-today appearing in both Anytime and Today. The lists answer different questions,
-and neither hides a task from the other.
+The lists answer different questions, and neither hides a task from the
+other.
 
-Inbox, Upcoming, Anytime, and Someday all exclude completed tasks. Those are
-lists of what could be picked up. The Logbook is their counterpart.
+Inbox, Today and Upcoming all exclude completed tasks, except for Today's
+bottom band. Those are lists of what could be picked up. The Logbook is their
+counterpart, and it is what makes dropping a completed task safe: without it,
+finishing something would put it beyond reach once the undo snackbar lapsed.
 
 ---
 

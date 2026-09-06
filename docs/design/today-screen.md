@@ -277,7 +277,7 @@ The move is not animated: the row simply appears in its new position.
 Completing and opening stay separate, as specified in `task-row.md`.
 
 The row's `onClick` opens `TaskDetailsSheet`, a `ModalBottomSheet` editing the
-five fields a task carries about itself: title, placement, scheduled date, due
+the fields a task carries about itself: title, notes, scheduled date, due
 date, and estimated duration. It must not navigate, and there is no details
 screen or back stack.
 
@@ -471,7 +471,7 @@ Built and working:
   snackbar
 - starting Focus on a task from the long-press actions menu, described in
   `focus.md`
-- Task Details, editing title, notes, placement, scheduled date, due date, and
+- Task Details, editing title, notes, scheduled date, due date, and
   estimated duration, described in `task-details.md`
 
 Tasks are stored in a Room database owned by `FocuslistApplication`, read

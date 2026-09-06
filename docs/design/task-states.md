@@ -1,13 +1,7 @@
 # Task states
 
-> **Superseded in part.** This document still describes the pre-Phase-3
-> information architecture, which included Anytime, Someday, or the Focus
-> queue. Those were removed on evidence: see `docs/decisions.md`, D-002 and
-> D-004. Where this document and `PRODUCT.md` disagree, `PRODUCT.md` is
-> right. This banner comes off in Phase 3, when the document is rewritten.
-
-Where a task can be found, for every combination of the four things a task
-records. This document exists to keep one promise checkable:
+Where a task can be found, for every combination of the three things that
+decide it. This document exists to keep one promise checkable:
 
 > Every non-deleted task is reachable from at least one intentional surface,
 > and completing a task never makes it permanently unreachable.
@@ -19,55 +13,48 @@ queries, not a second definition of them.
 
 # The dimensions
 
-- placement: Inbox, Anytime, Someday
 - scheduled date: past, today, future, none
 - completed: yes, no
 - deleted: yes, no
 
-Three by four by two by two is 48 combinations. Twenty-four are deleted and
-intentionally unreachable. The other 24 are below.
+Four by two by two is 16 combinations. Eight are deleted and intentionally
+unreachable. The other eight are below.
+
+**There used to be a fourth dimension.** Placement, one of Inbox, Anytime or
+Someday, which tripled the table to 48. It was removed at schema version 9,
+and the table did not merely shrink: the question "where is this task" stopped
+having two answers that could disagree. `docs/decisions.md` D-002 has the
+reasoning.
 
 ---
 
 # Outstanding tasks
 
-| placement | scheduled | reachable from |
-| --- | --- | --- |
-| Inbox | none | Inbox |
-| Inbox | past | Today, overdue band |
-| Inbox | today | Today |
-| Inbox | future | Upcoming |
-| Anytime | none | Anytime |
-| Anytime | past | Today, overdue band |
-| Anytime | today | Today |
-| Anytime | future | Upcoming |
-| Someday | none | Someday |
-| Someday | past | Today, overdue band |
-| Someday | today | Today |
-| Someday | future | Upcoming |
+| scheduled | reachable from |
+| --- | --- |
+| none | Inbox |
+| past | Today, overdue band |
+| today | Today |
+| future | Upcoming |
 
-One thing is worth reading off this table: **every outstanding task is in
-exactly one list.** A day decides it. Without one, placement decides between
-Inbox, Anytime and Someday; with one, the day sends it to Today or Upcoming and
-placement stops mattering until the day is taken away again.
+**The day decides, and nothing else does.** A task with no day is in Inbox; a
+task with one is in Today or Upcoming. There is no second axis for the two to
+argue over, so every outstanding task is in exactly one list by construction
+rather than by the queries happening to agree.
 
-This is a reversal. Anytime and Someday used to read placement alone, so a
-scheduled task appeared in two lists at once, and the table above had "Anytime,
-and Today" in it four times. The reasoning was that placement and scheduling
-are independent axes and neither should hide the other, which is true of the
-data and wrong for the lists: it meant Anytime showed work already planned for
-today, and it meant a Someday task could be scheduled for this afternoon, the
-list calling something deliberately deferred while the calendar called it due.
-
-Giving a task a day is the decision the three undated lists are waiting for.
-Inbox already worked this way; the other two now match it.
+That is what the placement removal bought. Under the old model Inbox required
+both `placement == INBOX` and no scheduled date, which left an undated Anytime
+or Someday task in no list at all: present in the database, reachable from
+nowhere, and invisible because the Anytime and Someday screens existed to
+cover for it. Removing those screens without first widening Inbox would have
+stranded real work. See `ROADMAP.md` for the order that avoided it.
 
 ---
 
 # Completed tasks
 
-All twelve completed combinations are reachable from the Logbook, whatever the
-placement and whatever the date. The Logbook filters on completion alone.
+All four completed combinations are reachable from the Logbook, whatever the
+date. The Logbook filters on completion alone.
 
 Today additionally keeps a completed task in its bottom band when it was
 scheduled for today or earlier, so finishing something does not make it vanish
@@ -85,10 +72,11 @@ record and its own successor, and a deleted one has already been dealt with;
 either way it has stopped being a row nobody asked for, and removing it would
 destroy work rather than tidy up.
 
-Focus adds no dimension to the table above. Being focused is not stored on a
-task: the Focus queue is Today's outstanding work, so Focus is a strict subset
-of Today and is never the only place a task can be found. It holds no completed
-tasks, and the Logbook covers those as it does everywhere else. See `focus.md`.
+Focus adds no dimension to this table. Being focused is not stored on a task:
+it is one id held in memory for as long as the sheet is open, and the task it
+names is reachable from whichever list its date puts it in. Focus shows only
+the task the user picked, so it can never be the only place something is
+found. See `focus.md`.
 
 Every other list drops a completed task. The Logbook is what makes that safe:
 without it, completing a task would put it permanently beyond reach once the
@@ -114,7 +102,10 @@ implemented and neither should be invented.
 
 A new list surface should be checked against the outstanding table above, and
 a new task field that affects filtering should add a dimension to it. Notes,
-added in schema version 2, adds none: nothing filters, orders, or groups by it,
-so it cannot strand a task anywhere. The
-invariant is easy to break quietly: a query that excludes one more thing is a
-one-line change, and the state it strands has no test that fails.
+added in schema version 2, adds none: nothing filters, orders, or groups by
+it, so it cannot strand a task anywhere.
+
+The invariant is easy to break quietly. A query that excludes one more thing
+is a one-line change, and the state it strands has no test that fails. That is
+not hypothetical: `inboxTasks` carried exactly such a clause for months, and
+what it stranded was invisible only because two screens existed to hide it.

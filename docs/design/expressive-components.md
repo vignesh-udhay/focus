@@ -1,11 +1,5 @@
 # Components
 
-> **Superseded in part.** This document still describes the pre-Phase-3
-> information architecture, which included Anytime, Someday, or the Focus
-> queue. Those were removed on evidence: see `docs/decisions.md`, D-002 and
-> D-004. Where this document and `PRODUCT.md` disagree, `PRODUCT.md` is
-> right. This banner comes off in Phase 3, when the document is rewritten.
-
 How each Focuslist component looks and behaves. Read
 `expressive-design-system.md` for the tokens this file spends, and
 `expressive-motion.md` for anything that moves.
@@ -171,29 +165,19 @@ transient state in the row itself.
 destructive, so the thumb does not land on Delete. Delete is labelled in
 `error`.
 
-[FD] Focus appears only on Today rows. The Focus queue is derived from Today,
-so anywhere else the action would either do nothing or have to schedule the
-task for today, and neither is specified behaviour.
+[FD] Focus appears only on Today rows. Elsewhere the action would have to
+either do nothing or schedule the task for today, and neither is specified
+behaviour.
 
-[FD] The triage actions, Move to Anytime and Move to Someday, appear only on
-the three undated lists. Those two hold undated work, so filing a dated task
-there would put it somewhere it will not appear, and an action that visibly
-does nothing is worse than one that is not there.
+[FD] There are no triage actions. The row menu once carried Move to Anytime
+and Move to Someday, filing a task into one of two undated lists. Both lists
+were removed on evidence, `docs/decisions.md` D-002, and the axis behind them
+went with schema version 9. What is left is the decision those actions were
+working around: give the task a day, or do not.
 
-[FD] Each list offers the buckets a task is not already in, on the same
-reasoning that leaves off the day a task already sits on. Never a move back to
-Inbox: Inbox means untriaged, and deliberately untriaging something is not a
-thing anyone wants. Something that no longer belongs in Anytime gets a day, or
-Someday, or deleted.
-
-[FD] They were added because triage could not reach them. The row menu offered
-only scheduling and deletion, so the two buckets that exist purely for triage
-were the one triage outcome you could not choose from the triage screen: it
-took opening the task, changing Placement and saving, four interactions against
-two.
-
-[FD] The move offers undo, like rescheduling and for the same reason. It makes
-the task vanish from the list it was taken on, so it answers the same way.
+[FD] Never a move back to Inbox. Inbox now means undated, so removing a task's
+day is what puts it there, and a separate control saying the same thing twice
+would be one more way to express one decision.
 
 ---
 
@@ -213,8 +197,7 @@ the `completion` token. This is the only component with that privilege.
 the screen has something to scroll under the bar, a scroll behaviour. Today
 passes `exitUntilCollapsedScrollBehavior` so the large title collapses as the
 list moves under it; a pinned behaviour would hold all 152dp of a two-row bar in
-place. Focus passes none because there is nothing to scroll, and the placement
-screen passes none because the tabs below the bar have to stay reachable.
+place. Focus passes none because there is nothing to scroll.
 
 [FD] The title carries heading semantics and no style of our own. The flexible
 bar draws it at `displaySmall` expanded and shrinks it as the bar collapses;
@@ -242,8 +225,8 @@ the value ends with, which is a number with no meaning and no token.
 get one. Today's date is not in the list and its planned total is a sum of it;
 Inbox's count is the size of a pile the user is deciding whether to work
 through now. Upcoming had one and lost it: a count of tasks that are already
-grouped under their own day headings tells the reader what they can see.
-Anytime and the Logbook have never had one.
+grouped under their own day headings tells the reader what they can see. The
+Logbook has never had one.
 
 [FD] So the bars are not all the same height, and that is correct rather than
 drift. A bar sizes to what the screen has to say, and inventing subtitles for
@@ -423,8 +406,8 @@ confirming action that cannot be reached is a broken screen.
 
 ## Quick Add
 
-[FD] One field and one action. Do not add a second field, a date picker, or a
-placement control. Capture should require almost no decisions.
+[FD] One field and one action. Do not add a second field or a date picker.
+Capture should require almost no decisions.
 
 [FD] The field reads a day off the end of the title and marks it: the matched
 words take `primary`, and a supporting line under the field names the resolved
@@ -448,9 +431,10 @@ A rewrite the user cannot see is one they cannot correct. See
 
 ## Task Details
 
-[FD] Two pages in one sheet. Details carries what the task is: title, notes and
-placement, plus one row summarising when it happens. Schedule carries when and
-how big: the day, the due date, the estimated duration and the recurrence.
+[FD] Two pages in one sheet. Details carries what the task is, its title and
+notes, plus one row summarising when it happens and one summarising its
+reminder. Schedule carries when and how big: the day, the due date, the
+estimated duration and the recurrence.
 
 [FD] Split because seven controls at once is what `PRODUCT.md` means by
 "avoid exposing every possible property at once".
@@ -740,8 +724,8 @@ low-risk reversible actions, and undo covers those instead.
 
 # Segmented controls
 
-[IMPL] `SingleChoiceSegmentedButtonRow` for placement, `PrimaryTabRow` for the
-Anytime and Someday tabs.
+[IMPL] `SingleChoiceSegmentedButtonRow` for recurrence. There are no tab rows
+left: the pair that carried Anytime and Someday went with those lists.
 
 [FD] Segmented controls are for small, mutually exclusive, equally weighted
 choices. Three options is the practical limit.
@@ -749,11 +733,11 @@ choices. Three options is the practical limit.
 [FD] A segmented row must not overflow at large font scales, and must not
 truncate a label to avoid doing so.
 
-[IMPL] The placement row scrolls sideways when it cannot fit. Its minimum width
+[IMPL] A segmented row scrolls sideways when it cannot fit. Its minimum width
 is the width of the field, so at ordinary font scales the three buttons divide
 that exactly as before and there is nothing to scroll. At 200% three labels no
 longer fit across a phone, and the row grows to the width its content needs
-rather than clipping Someday out of reach.
+rather than clipping an option out of reach.
 
 [FD] Scrolling in preference to wrapping. Segmented buttons are joined, and
 their start, middle and end shapes only read as one control on one line;

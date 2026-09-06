@@ -147,7 +147,7 @@ so this follows for free.
 ## Semantic colour
 
 [FD] `error` means one thing: an action that destroys something. There is no
-success colour, no warning colour, and no per-placement colour.
+success colour and no warning colour.
 
 [FD] An overdue date takes `tertiary`, not `error`. It used to take `error`, and
 the change is deliberate.
@@ -556,7 +556,7 @@ screen.
 Known, recorded here so they are not rediscovered.
 
 Items 1 to 5 were resolved when the foundation was built. Items 6 to 8 were
-resolved by the retrofit: the placement row now scrolls rather than overflowing,
+resolved by the retrofit: the segmented rows now scroll rather than overflowing,
 every screen has adopted the system, and the content column is in place.
 
 What remains:

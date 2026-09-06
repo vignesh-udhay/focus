@@ -9,8 +9,10 @@ scope it delivers is in `PRODUCT.md`.
 
 ## Current phase
 
-**Phase 3: Subtract.** Started. The subtraction itself is done. Phases 1 and
-2 are complete.
+**Phase 3: Subtract. Complete**, all four exit criteria met. Phases 1 and 2
+are complete. **Phase 4 is next**: the Glance widget and real recurrence
+rules, which the plan deliberately sequenced after the information
+architecture settled.
 
 **Read the design from `Focuslist — M3 Expressive Clean Slate` (node
 `161:3405`) and nothing else.** An earlier page, `Focuslist — M3 Expressive
@@ -164,9 +166,29 @@ fail. It was found by writing a sentence in `ARCHITECTURE.md` and checking it.
 `NavigationSemanticsTest` now asserts the bar holds exactly the three names
 `PRODUCT.md` gives.
 
-**The information architecture now matches `PRODUCT.md` and the board.** What
-is left in Phase 3 is new build, and each piece needs a decision before it is
-started: the UP NEXT hero card on Today,
+Two things finished it after the navigation.
+
+**The Focus queue, which had outlived the decision that removed it.** D-004 cut
+it; what survived was a resolution rule, `the chosen task while it is still in
+the queue, otherwise the head`. That fallback was the queue: completing,
+deleting or rescheduling the chosen task moved Focus to whatever headed
+today's list. It was visible to the user as a "Next:" footer. The board is
+explicit, no Focus frame has a next-task preview and Focus — Ready reads "One
+task. Nothing else until you leave Focus."
+
+**The design documents.** Ten under `docs/design/` still described Anytime,
+Someday or placement. All seven Superseded banners are gone, which is what
+they promised: "this banner comes off in Phase 3, when the document is
+rewritten." `navigation.md` and `task-states.md` were rewritten; the rest were
+corrected in place. Every remaining mention of those words records that they
+were removed rather than describing them as present.
+
+**Not in Phase 3, and not started:** the UP NEXT hero card, Task Details as a
+full screen, and the Focus timer. All three come from the board rather than
+from this plan, and each needs a decision before it is built. The timer
+contradicts D-004 and needs a superseding entry first. The board is the source
+of truth for how the app should feel; it is not a scope document, and taking
+work from it directly is how a phase quietly grows: the UP NEXT hero card on Today,
 Task Details as a full screen with a read-only Plan card, and Focus gaining a
 timer with pause and resume. The last contradicts D-004 and needs a
 superseding entry first. Do not restyle a screen the board does not contain.
