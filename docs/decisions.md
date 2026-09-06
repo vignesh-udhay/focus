@@ -355,6 +355,42 @@ causes and can stop, on more than one device. One phone is one phone, and the
 honest next step is measuring a second manufacturer before building detection
 around a single observation.
 
+**A second measurement, overnight, 6 September 2026.** The 8-hour scenario,
+which is the one the first spike never ran: set at 23:53:55 for 07:53:55, an
+exact and an inexact alarm side by side, phone left alone off charge, app in
+the `active` standby bucket at both ends.
+
+    SET    8 hours exact    exact    in 480min  bucket=active
+    SET    8 hours inexact  inexact  in 480min  bucket=active
+    FIRED  8 hours exact    exact    delivery -37.7s  clock steady
+    FIRED  8 hours inexact  inexact  delivery -37.6s  clock steady
+
+Two things in that.
+
+**Exact bought nothing again, across a whole night.** The two alarms arrived
+0.1 seconds apart. The first spike found the same thing over minutes and it
+was read as a measurement problem; it survives eight hours and a full Doze,
+so it is not one.
+
+**Both arrived 37.7 seconds early**, and `clock steady` means the wall clock
+and `elapsedRealtime` agree on that, so it is not the NITZ correction the
+two-clock measurement exists to rule out. Early is a different failure from
+the window expansion this decision was written about, which makes alarms late.
+The likeliest explanation is that OxygenOS delivered the alarm on a wake-up
+the device was already performing rather than scheduling its own 37 seconds
+later, but that is a guess and nothing here proves it.
+
+**This is not the second manufacturer this decision asks for.** It is the same
+phone under harder conditions, so it sharpens the finding rather than settling
+it.
+
+It is also, read plainly, better news than the first measurement. Roughly 38
+seconds either side of the mark, across eight hours of a sleeping phone, is a
+reminder that arrives when it should for anything a person schedules by hand.
+What the app cannot promise on this hardware is the second, or even reliably
+the right side of the minute. A task reminder survives that. An alarm clock
+would not, which is one more reason `PRODUCT.md` does not claim to be one.
+
 ---
 
 ## D-010. The deep link into manufacturer battery settings is best effort, and OxygenOS 12 and later is not part of it
