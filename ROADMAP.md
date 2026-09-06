@@ -14,11 +14,18 @@ are complete. **Phase 4 is next**: the Glance widget and real recurrence
 rules, which the plan deliberately sequenced after the information
 architecture settled.
 
-**D-009 now has a second manufacturer.** A Galaxy S24 Ultra on Android 16
-honours `setExactAndAllowWhileIdle` exactly, `window=0`, where the OnePlus 8T
-demotes it. The demotion is not how Android behaves; it is how that phone
-behaves. The decision stands and is stronger for it: both devices reported the
-permission as granted, so only measuring delivery tells them apart.
+**D-009 now rests on three manufacturers, and the OnePlus is the outlier.** A
+Galaxy S24 Ultra on Android 16 and a Xiaomi on HyperOS both honour
+`setExactAndAllowWhileIdle` exactly, `window=0`, delivering 19ms and 280ms
+late. The OnePlus 8T demotes the alarm and delivers about fifty seconds late.
+The demotion is a minority behaviour, not how Android works.
+
+The decision stands and is stronger for it. All three reported the permission
+granted and all three said "Exact alarms: Allowed", while the behaviour
+differed by three orders of magnitude, so only measuring delivery tells them
+apart. The Xiaomi also showed the health screen earning its place: Focuslist
+was absent from MIUI's Background autostart list, so on that phone it could
+not have rebuilt its alarms after a restart at all.
 
 **Read the design from `Focuslist — M3 Expressive Clean Slate` (node
 `161:3405`) and nothing else.** An earlier page, `Focuslist — M3 Expressive

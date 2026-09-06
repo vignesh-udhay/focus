@@ -471,6 +471,57 @@ promise. That is a better-behaved failure than a device that promises exactness
 and misses anyway, and it is the story to try to break on a third
 manufacturer.
 
+**The third manufacturer, 6 September 2026. The OnePlus is the outlier.**
+
+A Xiaomi `peux`, HyperOS V816 on Android 13. `USE_EXACT_ALARM` auto-granted at
+API 33, app in the `active` bucket, screen on and unlocked. A reminder set for
+14:25:00, about eight minutes ahead:
+
+    type=RTC_WAKEUP origWhen=2026-09-06 14:25:00.000 window=0
+    exactAllowReason=policy_permission flags=0x5
+    whenElapsed=+7m55s593ms maxWhenElapsed=+7m55s593ms
+
+    dueAt 2026-09-06T14:25  scheduledAheadMs 478790  outcome Announced
+    wall error +279ms  monotonic error +280ms  clock drift -1ms
+
+`window=0`, the standalone flag set, and delivery 280 milliseconds late. Three
+devices now:
+
+| device | skin | OS | scheduled window | delivery error |
+| --- | --- | --- | --- | --- |
+| OnePlus 8T | OxygenOS 14 | Android 14 | 0.75 × futurity | ~50,000 ms |
+| Galaxy S24 Ultra | One UI | Android 16 | 0 | 19 ms |
+| Xiaomi peux | HyperOS V816 | Android 13 | 0 | 280 ms |
+
+Two of three honour the exact alarm. The one that does not is the phone this
+decision was written on, and it is worth saying plainly: **the demotion is a
+minority behaviour, not how Android works.** MIUI has the worst reputation of
+the three skins and it behaved correctly.
+
+**On all three, the scheduled window predicted the delivery.** A zero window
+gave tens or hundreds of milliseconds; a window of 0.75 of the futurity gave
+fifty seconds. That is a consistent story across three vendors and three
+Android versions, and it is the story to try to break next.
+
+**None of this weakens the decision, and one observation strengthens it
+sharply.** All three phones reported `exactAllowReason=policy_permission` and
+all three said "Exact alarms: Allowed" on the health screen. The permission
+answer was identical and the behaviour differed by three orders of magnitude.
+An app has no API to read a scheduled alarm's window back, so it cannot tell
+these devices apart except by watching what arrives.
+
+**And the Xiaomi showed what the health screen is for.** Its Background
+autostart screen listed six apps allowed to start in the background. Focuslist
+was not among them, so on that phone the app could not have rebuilt its alarms
+after a restart at all. The warning the health screen shows on a Xiaomi is not
+a precaution about what MIUI might do. It was, on this handset, a correct
+statement about what MIUI had already done.
+
+**Still not measured anywhere but the OnePlus:** delivery across a real
+overnight Doze. The Samsung and the Xiaomi were both borrowed and measured
+awake. What they establish is that the promise differs by vendor, not what
+happens to any of them after eight hours of sleep.
+
 ---
 
 ## D-010. The deep link into manufacturer battery settings is best effort, and OxygenOS 12 and later is not part of it
@@ -516,6 +567,11 @@ would mean three certain failures on every press, and a button that reads
 carries a Battery usage entry one tap from the setting that matters. Worse
 than a deep link, better than nothing, and honest about which it is.
 
+**MIUI is verified too, and it works.** On a Xiaomi `peux` running HyperOS
+V816, `com.miui.securitycenter/com.miui.permcenter.autostart.AutoStartManagementActivity`
+resolves and launches, landing on MIUI's Background autostart list. Both MIUI
+candidates resolve on that device.
+
 **One UI is verified, and it works.** On a Galaxy S24 Ultra running Android
 16, the first Samsung candidate,
 `com.samsung.android.lool/com.samsung.android.sm.battery.ui.BatteryActivity`,
@@ -528,9 +584,14 @@ The other two Samsung candidates do not resolve on that device, and
 `com.samsung.android.sm` does not exist as a package at all. They are kept for
 older One UI versions, and they cost nothing when wrong.
 
-**What this does not mean.** Not that the remaining entries are verified. The
-MIUI and EMUI names are still guesses, from the same kind of list that proved
-stale for OxygenOS, and neither has been tried on that hardware. They are kept
+**What this does not mean.** Not that everything is verified. EMUI is still a
+guess, from the same kind of list that proved stale for OxygenOS, and no
+Huawei has been tried. The four ColorOS-era names are kept for handsets that
+never took the ColorOS 12 update, and were confirmed absent on the OnePlus 8T.
+
+Three of the four vendor families have now been tried on real hardware. Two
+work, one is impossible. That is a better record than "best effort" suggested
+when this was written, and the entry above should be read with it. They are kept
 because they cost nothing when wrong: resolution is checked before launch, the
 launch is guarded, and the fallback is the same page. The instrumented test
 `aRestrictedDeviceHasAtLeastOneScreenToOffer` is what will report the next one
