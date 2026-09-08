@@ -1,5 +1,6 @@
 package com.vignesh.focuslist.ui.navigation
 
+import android.net.Uri
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Box
@@ -37,6 +38,22 @@ object FocuslistRoutes {
     const val UPCOMING = "upcoming"
     const val LOGBOOK = "logbook"
     const val REMINDER_HEALTH = "reminder-health"
+
+    /**
+     * Task Details, which gained a route with `docs/decisions.md` D-018.
+     *
+     * It was a `ModalBottomSheet` opened over whichever list the row was tapped
+     * on, and it is a full screen now, which makes it a destination rather than
+     * state. It is a room by `navigation.md`'s rule: a back arrow, no navigation
+     * bar, and back returns to the list it was opened from.
+     */
+    const val TASK_DETAILS = "task-details/{taskId}"
+
+    /** The route for one task, with [id] filled in. */
+    fun taskDetails(id: String): String = "task-details/" + Uri.encode(id)
+
+    /** The argument name `TASK_DETAILS` declares, read back by the NavHost. */
+    const val TASK_ID_ARG = "taskId"
 }
 
 /**
@@ -86,6 +103,10 @@ private data class TopLevelDestination(
      * signal rather than the only one. Drawing a filled variant to fill the
      * hole would be inventing a symbol instead of using a pair Material
      * defines, which is what the three-dot More item used to justify.
+     *
+     * No bar item is null any more. `ic_upcoming_filled` was drawn from
+     * `ic_upcoming`'s own frame rather than invented, which is the distinction
+     * the paragraph above draws: it is the same glyph filled, not a new symbol.
      */
     @param:DrawableRes val selectedIconRes: Int? = null
 )
@@ -111,7 +132,13 @@ private val TopLevelDestinations = listOf(
     TopLevelDestination(
         FocuslistRoutes.UPCOMING,
         R.string.upcoming_title,
-        R.drawable.ic_upcoming
+        R.drawable.ic_upcoming,
+        // Drawn for this app rather than taken from the Material kit, which has
+        // no filled calendar. `navigation.md` named it as the one asset the bar
+        // was missing, and said that until it existed the bar could not be
+        // consistent either way: two filled icons out of three reads as a
+        // defect. It exists now, so all three are filled when selected.
+        R.drawable.ic_upcoming_filled
     )
 )
 

@@ -10,283 +10,195 @@ decision recorded as one.
 
 ---
 
-# Two states
+# One surface, six states
 
-Focus is a destination and a mode, and the difference between them is the whole
-design.
+Focus is one surface with six states, opened as a sheet over the screen that
+asked for it. It is not two screens, and it has not been a destination since
+`docs/decisions.md` D-004 removed the queue a bar entry would have landed on.
+`navigation.md` holds the current arrangement.
 
-**Ready** is a place. The task that is next, how long it was estimated at, and
-a control to begin. The navigation stays.
+    Ready              4-sided    45:00    45 min focus       play  · Complete
+    Running           12-sided    44:37    45 min focus       pause · Complete
+    Paused             4-sided    32:18    32 min left        play  · Complete
+    Estimate reached  12-sided    00:00    Estimate reached   Complete · +5 min
+    Open-ended        12-sided    12:43    No time limit      pause · Complete
+    Open-ended paused  4-sided    12:43    No time limit      play  · Complete
 
-**Session** is a mode. The task grows into the screen, the navigation goes, and
-what is left is the task, the action that finishes it, and a quiet line saying
-what follows.
+D-013 added the pause, the resume and the extension. D-014 settled what the
+shape says. D-015 settled what leaving does.
 
-The split is not decoration. It is what makes hiding the navigation honest.
-
-An earlier version of this document said the navigation bar always stays,
-because "a destination that hides the control used to open it would be a trap
-rather than a calm screen". That reasoning is still correct and is exactly why
-the split exists. A user who merely tapped Focus in the bar has asked for
-nothing and must not be locked in; a user who tapped Start has asked for the
-mode and can leave it by an on-screen control or by back. Ready keeps the bar.
-Only Session takes it.
+**An earlier version of this document split Focus into Ready and Session**, two
+states with different navigation: Ready kept the bar, because a user who had
+merely tapped Focus in the bar had asked for nothing and must not be locked in,
+and Session took it, because that user had asked for the mode. Both halves are
+gone. There is no Focus item in the navigation bar to arrive from, and a sheet
+has no navigation bar to keep or take in any state. What that argument was
+protecting still holds and is now D-015's job: leaving is always safe, because
+leaving never destroys anything.
 
 ---
 
-# What Ready shows
+# What it shows
 
-The visual treatment is specified in `expressive-components.md` under "Focus
-screen". What follows is the product behaviour it renders.
+Top to bottom: the task title, the shape with the remaining time inside it, one
+status line, and one row of two controls.
 
-The task title, the estimated duration if the task carries one, and one row
-holding Complete and play.
+**The title is the heading, and the largest thing on the screen.** It sits above
+the shape rather than inside it, capped at four lines. D-014 carries the
+measurements: a cookie yields about 70% of its box as usable area, so four lines
+at 200% font scale would need a 514dp square on a 412dp screen, and the 240dp
+column inside the shape fills at 24 characters. Outside it the title has the
+full width and the cap holds at every font scale.
+
+The cap exists because a title that overruns a fixed shape is cut through the
+middle of a line and reads as broken rather than as shortened. The full title is
+one tap away in Task Details.
+
+**The time is second, at Headline Small, inside the shape.** It is a real
+readout rather than an ornament: an estimate counts down, an open-ended session
+counts up, and a paused session has to be able to say what is left or resuming
+it means nothing. D-014 records why it is not Display Large, which is what the
+board drew first. The largest object on a screen built to stop clock-watching
+should not be the clock.
 
 The estimate is shown because Today already shows it. A screen about doing the
 work should not be the one place the size of it is withheld, and the number is
 the user's own answer to how long this will take.
 
-Play is the control that becomes the session, and it sits at the end of the row
-because that is where the container has to start from. It is a square icon
-button, which matters for more than looks: the container is a rounded rectangle
-whose corners sit at half its height, so a square one is already the circle both
-shape rings begin at, and the growth hands straight over. The wide pill that
-used to be here had to travel through stadium-to-circle first. It is an icon and
-not a word for a second reason: holding no text, it has no reason to grow with
-the font scale, which leaves Complete the width it needs at 200%.
+**The status line carries only what the controls cannot say.** The button
+already reads Pause or Resume, so putting the state in text would say it twice.
+What is left is the budget, and the one moment with no control to announce it:
 
-**A recorded reversal.** Start used to be the only thing in the middle of the
-screen with the task, and Complete a quiet text action beneath it, on the
-grounds that starting is the constructive act and completing without starting is
-the exception. Two things were wrong with it. The weight was argued but the
-grammar was not: the two controls were different kinds of thing in Ready and the
-same kind of thing in Session, so Complete had to be built twice and swapped,
-and two controls cannot travel. And the ordering said nothing — a quiet action
-below a loud one reads as a footnote rather than as the other half of a pair.
+    Ready, Running       45 min focus
+    Paused               32 min left
+    Estimate reached     Estimate reached
+    Open-ended, paused   No time limit
 
-Now they are one row and one Complete. Complete keeps its lower standing through
-tone rather than through type: beside play it takes the secondary container,
-because it is the second of two actions; alone in the session it arrives at the
-primary, because by then it is the only action there is. Both ends of that are
-read off the container's travel, so the tone cannot finish before the move does.
+Ready and Running read the same line, deliberately. What tells them apart is the
+shape, the icon on the button, and the digits moving.
+
+**The clock control is a round icon button.** 56dp, filled, carrying play or
+pause. Holding no text, it does not grow with the font scale, and that is what
+makes the row fit: at 200% two worded buttons come to roughly 223dp and 198dp
+and overflow the 364dp row, while a circle and one word come to about 282dp.
+
+This is the surviving half of an older argument that also claimed the button had
+to be square, because the container transform started from it and a square is
+already the circle the shape rings began at. The transform is gone. The width is
+still real.
+
+Its content description names the action per state, Start focus, Pause focus,
+Resume focus, and never the glyph.
+
+Estimate reached is the one state with no clock control, because there is no
+clock left to control. It carries Complete and +5 min, both worded. Complete is
+the primary there and +5 min the secondary: a timer running out is more often
+the moment work is finished than the moment it needs extending, and the control
+that reads as the default should be the likelier one.
+
+**Complete keeps its lower standing through tone.** It is the tonal button in
+every state, beside a filled control, because it is the second of two actions.
+
+An earlier version made Complete a quiet text action below Start, on the grounds
+that starting is the constructive act and completing without starting is the
+exception. It was reversed for a reason that still holds: a quiet action below a
+loud one reads as a footnote rather than as the other half of a pair.
 
 Complete stays available without entering a session for the same reason it
 always did. A task can turn out to be already done, or to take ten seconds, and
 making the user start and stop a session to tick it off would be ceremony for
 its own sake.
 
-There is no top app bar, in either state. Every other screen is a list and
-wears its name; this one shows a single task, the navigation bar already says
-which destination it is, and a heading reading "Focus" above the task would be
-the screen naming itself instead of naming the work.
+**There is a top app bar. It holds one control and no title.** An earlier
+version of this document ruled the bar out entirely, arguing that a heading
+reading "Focus" above the task would be the screen naming itself instead of
+naming the work. Half of that was right, and it took a second pass to separate
+the halves. A sheet has no navigation bar underneath it saying where the user
+is, so it has to carry its own way out. It does not have to carry a name, and
+while it did, the screen had two centred headings stacked and the upper one was
+about the app rather than about the work. The name is published as `paneTitle`,
+which a screen reader announces and nothing draws.
+
+**The control is a chevron down, not a close X.** D-015 made it
+non-destructive: it pauses, and hands the session to the Focus now card. An X
+claims the thing is finished. A chevron says it has been put away, which is what
+actually happens, and where it went is on the screen underneath. It also agrees
+with the gesture: a bottom sheet is dismissed by dragging down, and the control
+in the corner should not mean something different from the drag that does the
+same job.
 
 Still absent: capture, editing, Task Details, metadata beyond the estimate, a
 floating action button.
 
 ---
 
-# Becoming the session
+# The shape
 
-The control the user presses is the thing that becomes the session.
+`MaterialShapes.Cookie4Sided` at rest and `MaterialShapes.Cookie12Sided` while
+running, drawn behind the time, morphing between the two on a state change and
+not moving in between.
 
-Play is a circle; the session is a circle with the task inside it. Pressing play
-grows the one into the other: the container lifts off the button, travels up the
-screen and inflates around words that were already there, while its colour goes
-from the button's `primary` to the shape's quiet container role. The title does
-not move at any point. It is the fixed thing the session forms around, and that
-is what makes the session read as the same screen rather than a new one.
+**What it says is whether the clock is running.** That is the whole of it. It is
+not a gauge and does not track progress. The digits do that.
 
-Complete goes with it, from beside play to the middle of the slot, and it travels
-by stretching: its leading edge sets off first and its trailing edge follows, so
-it reaches for the centre and then gathers itself up behind. Both edges are read
-off the container's own travel rather than sprung separately. Two springs would
-settle at two rates and the button would arrive in two pieces; worse, on the way
-back the stiffer edge would lead in the wrong direction and the stretch would
-become a squash. As a function of one value, leaving is the exact mirror of
-arriving.
+This is D-014, and it replaced a design in which the shape was the progress
+indicator: a determinate walk from `Circle` to `Clover8Leaf` against the
+estimate, and a ring of six shapes for a session with no estimate to walk
+against. That design was never drawn. What the board actually carried was one
+frozen shape in all six states, at full extension whether the estimate was
+untouched or spent.
 
-[IMPL] Two things about that pass were found by watching it on a device, not by
-reasoning about it. The container starts as play's own square and grows out of
-the row, so it sweeps straight over Complete; and Complete's tone travels from
-the secondary container to the primary while the container behind it travels the
-other way. Two colours crossing in opposite directions meet in the middle, and
-for a few frames the button and the thing sweeping over it were the same grey
-and the pair read as one smear. Complete's tone is therefore held on the
-fade-through split until the crossing is done, and it lifts to Material's raised
-elevation for the duration of the pass and back to flat at both ends, because a
-shadow is what says which of two overlapping surfaces is in front. This is the
-only place on this screen where two surfaces overlap at all.
+The reason it went is worth keeping here. Once D-013 put a readable number on
+the screen, the shape and the digits measured the same quantity, and the shape
+was the worse of the two at it: it cannot be read to a value, and it publishes
+nothing to a screen reader. A second channel that says what the first says, less
+well, is decoration, and `expressive-motion.md` bans decoration.
 
-What does move is the action slot, and it moves because the square is only
-reserved once there is a shape to put in it. Ready gives the region above the
-slot the title's own height, so Start sits directly under the words; Session
-grows it to the square. An earlier version reserved the full square in both,
-which kept the slot still at the cost of 145dp of nothing between a two-line
-title and the button, and more than that for a short one. Of the three things
-that cannot all hold at once — the title stays put, the shape is a square
-centred on it, the button sits below the shape — the button's position is the
-cheapest to give up, and it is the control being transformed anyway.
+Saying whether the clock is running is a different job, and one the shape is
+good at. It is the question a glance at this screen asks, and the digits answer
+it only by being watched for a second.
 
-[IMPL] The title's centre is unaffected by the region growing: the column is
-centred and everything below the title is a fixed height, so the centre works
-out to half the window less half of the gap and slot, whatever the region is
-doing. Measured at zero pixels of drift across the transition.
+**The rule that governs it is unchanged: the morph carries information or it
+does not happen.** Only what counts as information has moved, from a fraction to
+a state.
 
-This is Material's container transform, which M3 describes as creating "the
-strongest relationship between elements" of any of its transition patterns and
-names a persistent container as the usual way to carry it. It replaces a
-scale-and-fade, and replacing it was also a correction: M3 says Android avoids
-scale on enter and exit because it implies an elevation change the system does
-not have.
+`expressive-motion.md` still allows exactly one shape morph in this app and this
+is still it. It is cheaper than it was: two shapes rather than a walk through
+many, and it runs on a state change rather than continuously, so nothing on this
+screen animates while a session is merely running.
 
-The container is a rounded rectangle whose corners stay at half its own height,
-so it is a stadium the whole way up and a circle the moment the box is square.
-Only then does the session's ring take over, and every ring begins at that same
-circle, so the handover cannot be seen. This matters for the rule in
-`expressive-motion.md`: the app still has exactly one shape morph, and it is
-still the one that carries progress. Growing a button into a circle is
-geometry, not a second morph.
+**Material's shape principles say shape is versatile and not semantic**, and
+warn against giving a particular shape a particular meaning. This sits close to
+that line and stays inside it. Nothing claims four lobes means stopped in the
+abstract. What carries the meaning is that the shape changes when the state
+changes, and the state is named in text beside it either way.
 
-That both rings begin at the circle is a constraint worth keeping rather than a
-coincidence. A polygon cannot be drawn into a box that is not yet square
-without being stretched the same way an elongated shape would be, so a ring
-starting anywhere else would need a further leg to get there, and the growth
-would stop being one gesture.
-
-The colour is not animated separately. Given a spec of its own it would need an
-effects spec, and an effects spec settles roughly eight times stiffer than the
-spatial spec the bounds are travelling on: the container turned pale while it
-was visibly still the button, and read as two things rather than one. Making
-the colour a function of how far the shape has grown means there is only one
-animation, and the two cannot come apart.
-
-The task holding still is not free, and the thing that threatened it was not
-the transform. Session takes the navigation bar away, so the Scaffold hands
-back a content area a whole bar taller, and anything centred in it drops by
-half a bar the instant Start is pressed. Measured on the emulator, the title
-fell 42dp: the shape grew around words that were themselves sliding down the
-screen. The centred region therefore ignores the bottom inset, so both states
-share a middle, and the footer is handed the inset directly since it is the
-only thing that needs it.
-
-Everything that appears and disappears during the transform is driven off the
-container's own travel rather than given an animation of its own. This is not
-tidiness: a cross-fade on an effects spec settles roughly eight times stiffer
-than the container moves, so the labels finished swapping while the container
-was barely underway, and "Start" was left drawn on the page it had just been
-lifted off, in the `onPrimary` its vanished container called for. In a light
-theme that is white on white.
-
-The swap is a fade-through rather than a cross-fade: the outgoing label is gone
-before the incoming one appears, instead of the two sitting on top of each
-other at half opacity, which read as neither word. Material splits the two
-halves at thirty percent, and thirty percent of this particular transform is
-also about as far as the container can travel while still covering the slot it
-started in, so a label never outlives its own background.
-
-Under reduced motion none of this plays. The two states swap, which is what a
-request for stillness asks for, and nothing is withheld: both states say
-everything they say in text.
+Running past the estimate is ordinary. The digits reach zero, the status line
+says so, and nothing completes the task by itself. Overrunning is not failure
+and the screen does not say it is.
 
 ---
 
-# What Session shows
+# The container transform, and why it is gone
 
-The task title, the estimate, the shape, Complete, a way out, and one line
-naming what comes next.
+An earlier version grew the play button into the session's shape, and a long
+passage of this document worked out how: the colour read off the container's
+travel rather than sprung separately, so the two could not come apart; the
+fade-through split at thirty percent, so a label never outlived its own
+background; Complete stretching from its leading edge, so that leaving was the
+exact mirror of arriving; the raised elevation held for the duration of the
+pass, because a shadow is what says which of two overlapping surfaces is in
+front.
 
-## The shape
+All of it was real and none of it survives. It existed to join two screens that
+are now one surface, and the thing it grew into is now a shape that changes in
+place. The sheet's own entrance is the transition into Focus, and
+`expressive-motion.md` forbids a second shape morph.
 
-A `Morph` between `MaterialShapes.Circle` and `MaterialShapes.Clover8Leaf`,
-drawn behind the title, advanced by how far the session has run against the
-task's estimate.
-
-This is the one place Focuslist takes Material 3 Expressive's shape morphing,
-and it is taken on one condition: **the morph carries information or it does
-not happen.** A shape that merely animated would be the decorative motion
-`expressive-motion.md` forbids. This one is a progress indicator with no number
-to read.
-
-That imprecision is the point. A silhouette cannot be read to a percentage, and
-should not be: a gauge invites clock-watching, which is the opposite of what
-this screen is for. The morph says time is moving. It does not invite you to
-check how much.
-
-A task with no estimate gets a shape that moves anyway, and this is a recorded
-reversal. An earlier version of this document gave it the starting shape and no
-movement at all, on the grounds that a shape drifting to a rhythm of its own
-would look like information and be none. The objection to that is simpler than
-the argument for it: a session showing a shape that never moves does not read
-as "nothing to measure", it reads as broken, and half the sessions in a list
-that does not force estimates would look that way.
-
-## Determinate and indeterminate
-
-The two cases are told apart the way Material tells them apart, which is by the
-kind of motion rather than by what any one shape means.
-
-**With an estimate**, two shapes and a single walk between them, driven by the
-fraction of the estimate used up. It starts at the circle and settles on the
-clover when the estimate is spent.
-
-A version of this ran the other way, from the busy shape to the circle, on the
-idea that a task should visibly simplify as it nears done. It was reverted, and
-the reasons are worth keeping. The benefit was invisible: nobody watches a
-forty-five minute morph end to end, so the only moment anyone reliably sees is
-the start, and running it backwards made every session open on the busiest
-shape in the set. The cost was not invisible at all. The container transform
-ends at a circle, so a session that began at the clover needed a third leg to
-bloom from one into the other, and that leg existed for no other reason. One
-direction gives the calmer opening and a simpler transform; the other gives a
-nice sentence.
-
-**Without one**, a ring of six shapes walked round and round, arriving nowhere.
-The ring begins at the circle and its last shape morphs back into its first, so
-the seam cannot be seen and there is no final form to be mistaken for an
-arrival.
-
-The six are chosen for contrast rather than for what any of them is: circle,
-rounded square, four-lobed cookie, pentagon, soft burst, gem. Every step
-changes the *kind* of form — round to flat-edged, flat-edged to lobed, lobed to
-five-fold, five-fold to many-bumped — because a ring whose shapes differ only
-in how many bumps they have is a bump counter rather than a walk. The first
-version of this ring was exactly that: four of its six were the same roundish
-blob at different resolutions, and it read as one shape breathing rather than
-as a sequence.
-
-Ruled out, and why: the elongated shapes (`Pill`, `Oval`) stretch when drawn
-into a square; the asymmetric ones (`Arch`, `Fan`, `SemiCircle`, `ClamShell`)
-read as a container cut off around a centred title; the spiky ones (`Burst`,
-`Boom`) are the wrong register for a screen about calm; the deeply indented
-ones (`Flower`, `SoftBoom`) squeeze the four lines of title the shape has to
-hold; and the literal ones (`Heart`, `Ghostish`, the pixel shapes) carry
-meaning, which is the trap the shape principles warn about.
-
-This is Material's own encoding. Its loading indicator ships two shape lists, a
-pair for the determinate case and a sequence of seven for the indeterminate
-one, and the distinction it draws is exactly this one: known duration against
-unknown. Borrowing it means the screen is using a convention people have met in
-every spinner rather than a private vocabulary.
-
-Which matters, because Material's shape principles say plainly that shape is
-versatile and not semantic, and warn against giving a particular shape a
-particular meaning. Nothing here does. No single form stands for anything;
-swapping the ring for six other shapes would change how the screen looks and
-nothing about what it says. What carries the meaning is that one motion arrives
-and the other does not.
-
-A second version of this document had the unestimated case travel out to one
-far shape and back, a triangle wave between two forms. It was honest but slow
-to explain itself: it only announced itself as a cycle at the moment it turned
-round, ten minutes in, and everything before that looked exactly like progress
-toward a destination. A ring says it within a shape or two.
-
-Twenty minutes is long on purpose, for the whole ring. The shape has to be too
-slow to watch, or it becomes the clock this screen exists to hide.
-
-Not a timer. There is no countdown, no elapsed clock, no digits, and running
-past the estimate is ordinary: the shape settles at its final form and stays
-there. Overrunning is not failure and the screen does not say it is.
+It is recorded rather than deleted because the reasoning generalises past this
+screen: two things animating on separate specs arrive at separate times, and the
+fix is to make one a function of the other rather than to tune both until they
+agree.
 
 ---
 
@@ -329,9 +241,23 @@ One value: when work on the current task began.
 
     focusSessionStartedAt: Instant?
 
-A moment rather than a running total, so progress can be worked out from the
-clock whenever anyone asks. `focusProgress(startedAt, now, estimate)` derives
-the fraction and is a pure function beside `TaskQueries`.
+A moment rather than a running total, so the remaining time can be worked out
+from the clock whenever anyone asks. `FocusSession` is the pure model beside
+`TaskQueries`, holding the origin, the moment of any pause, and any extension;
+its `elapsed(now)` and `remaining(now, estimate)` derive everything else. The
+digits on screen are that derivation, formatted.
+
+`focusProgress(startedAt, now, estimate)` used to sit here and returned a
+fraction. It went with D-014: a fraction existed to advance the shape, and the
+shape stopped measuring.
+
+**Pausing moves the origin rather than starting a tally.** D-013 added a pause,
+which looks like it forces a stored total: something has to remember the eleven
+minutes already worked. It does not. Resuming shifts `focusSessionStartedAt`
+forward by however long the pause lasted, so the single value goes on meaning
+exactly what it meant before, and the rule below survives intact. What a paused
+session shows is the elapsed time it held at the moment it paused, which is what
+its digits already say.
 
 **It measures the task, not the session.** It is restarted when the session
 moves on to the next task, because the fraction it feeds is against *that
@@ -362,8 +288,9 @@ database; and it adds no column to a task.
 ## Ending with nothing to work on
 
 A session whose task is finished or gone has ended, whether or not it was
-stopped. Leaving it running would hide the navigation behind an empty screen,
-which is the trap the mode exists to avoid.
+stopped. Leaving it running would leave a sheet counting down against a task
+that no longer exists, which is the one case D-015 does not cover: pausing is
+safe because there is something to come back to, and here there is not.
 
 [IMPL] Watched in `TaskListViewModel` against `repository.observeTasks()`, not
 from the screen and not against `focusedTask`. Every exposed `StateFlow` begins
@@ -376,17 +303,36 @@ one entry that has to work. The repository only emits once it has really read.
 
 # Entry
 
-Two ways in:
+Three ways in:
 
-- the Focus item in the navigation bar, which opens **Ready** on whatever the
-  rule above resolves to
-- Focus in a Today row's long-press actions menu, which chooses that task and
-  starts the **session** directly
+- **the Focus now card on Today**, which opens the sheet in **Ready** on the
+  task the card names
+- **Start focus on Task Details**, which opens the sheet in **Ready** on the
+  task being edited
 
-The second is `PRODUCT.md`'s "choose task, tap Focus". It skips Ready on
-purpose: picking one task out of a list and choosing Focus on it is the
-deciding already done, and a second confirming tap would be friction with
-nothing behind it.
+Both are `PRODUCT.md`'s "choose task, tap Focus", and **both land on Ready**.
+
+**A third way used to exist**, Focus in a Today row's long-press menu, and it was
+the one that skipped Ready and started the session directly, "because picking one
+task out of a list and choosing Focus on it is the deciding already done". D-023
+removed the row menu, and the special case went with it.
+
+That is a simplification rather than a loss. Ready was previously reachable by
+some routes and not others, so the state a user met depended on how they had
+arrived. Now every entry lands on the same place and the user presses play.
+
+The first does not skip it, and the difference is who chose. The card names a
+task the app picked and gives its reason; Ready is where the user agrees with
+that pick before the clock runs. This is also the only thing that makes Ready
+reachable, which is worth stating plainly, because a drawn state nothing can
+arrive at is a state that should not exist.
+
+**There used to be a third way in**, the Focus item in the navigation bar,
+opening on whatever a queue resolved to. D-004 removed the queue and
+`navigation.md` removed the bar item. Landing a user on whichever task happened
+to head a list, with nothing to say why that one, is precisely what both
+decisions were getting rid of. The Focus now card is its replacement and differs
+in the one way that mattered: it says why this task.
 
 Only Today rows offer it. A row on Upcoming or the Logbook would have to
 either do nothing or silently
@@ -402,77 +348,69 @@ The same write every list makes, through `toggleComplete`, raising the same
 single undo offer. Finishing a task in Focus is exactly as undoable as
 finishing it anywhere else, and the offer follows the user to another screen.
 
-Undoing puts the task back. If it was the chosen one, Focus shows
-it again.
+Completing closes the sheet and returns to Today. Undoing puts the task back on
+the list; it does not reopen Focus.
 
-Completing inside a session does not leave it. The next task appears in place
-and the session continues, which is `PRODUCT.md`'s "continue to the next task"
-taken literally. The session ends only when the user stops it or the task runs
-out.
-
-It is not silent, though. The shape springs back to the circle as the new title
-arrives, which is the one moment in a session where the shape moves for a
-reason other than the clock. It is not decoration: the clock has genuinely
-restarted, because progress is measured against *this* task's estimate, and the
-shape is saying so. Without it a task finished early would hand over to a shape
-sitting two thirds of the way along, which would be measuring the new task
-against the old one's time.
-
-An earlier version of this document had completion end the session and return
-to Ready, so each task began with a fresh Start. It was rejected for costing a
-tap per task and for contradicting the clause above; the reset is what that
-version was really after, and it can be had without leaving the mode.
+**An earlier version had the session continue onto the next task**, calling that
+`PRODUCT.md`'s "continue to the next task" taken literally, with the shape
+springing back as the new title arrived so the restarted clock had something
+saying so. All of that needs a queue, and D-004 removed the queue. It survived
+here for the same reason the old resolution rule under "Which task" survived,
+and it goes for the same reason: there is no next task to continue to, because
+Focus works on the one task the user chose.
 
 ---
 
-# Empty state
+# There is no empty state
 
-One state, for all the ways Focus ends with nothing to show: the task finished,
-and everything scheduled already done.
+Focus is always opened on a task, completing that task returns to Today, and
+leaving pauses rather than ends. So the only way to arrive at an empty Focus is
+for the task to be deleted from somewhere else while the sheet is open. When
+that happens the sheet closes and returns to Today, which is where the user
+would have to go anyway.
 
-Deliberately one rather than two. A separate "all done" state would be a
-celebration, and `PRODUCT.md` rules those out.
+**An earlier version specified one**, covering "the task finished, and
+everything scheduled already done", arrived at rather than cut to: the last
+shape unwound to the circle and shrank back into the button it came out of
+before the empty state faded in, so that the ending was felt without being
+celebrated. It needed the queue to have a notion of everything being done, it
+needed the container transform to arrive the way it described, and it was never
+drawn. Closing is the honest answer for a screen that has nothing left to be
+about.
 
-It is arrived at rather than cut to. The last shape unwinds to the circle and
-shrinks back into the button it came out of, and only then does the empty state
-fade in. That is the ordinary end-of-session movement doing the work, not a
-flourish added for the occasion: nothing is said that would not be said by
-stopping a session by hand. The ending is felt because the screen takes the
-time to end, which is as close to a celebration as this screen is allowed to
-get.
+What that version was protecting is worth keeping in view: `PRODUCT.md` rules
+out celebrations, so whatever Focus does at the end must not become one. Closing
+quietly clears that bar by not saying anything at all.
 
 ---
 
 # Accessibility
 
-The task title is the heading a screen reader lands on, in both states.
+The task title is the heading a screen reader lands on, in every state.
 
-The shape publishes nothing, and that is deliberate rather than an omission.
-An earlier version of this document said it carried `progressSemantics`; it
-never did, and now it should not. With an estimate there is a fraction, but the
-shape is built to be unreadable as a gauge and announcing it to the decimal
-would hand a screen reader the clock-watching this screen exists to prevent.
-Without an estimate there is no progress at all, only a cycle, and publishing a
-value that goes back down would be worse than publishing nothing.
+The shape publishes nothing, and under D-014 that is no longer a difficult
+call. What it says is whether the clock is running, and that is already said
+twice in text: the button reads Pause or Resume, and the status line names the
+state. The shape is never the only channel, so it needs no semantics of its own.
 
-What matters is that the shape is never the only channel, and it is not: the
-task, the estimate and every control are text.
+An earlier version of this document said the shape carried `progressSemantics`.
+It never did, and it should not have: announcing a deliberately unreadable gauge
+to the decimal would have handed a screen reader exactly the clock-watching this
+screen exists to prevent. That whole problem is now gone, because the number is
+on the screen as text for everyone.
 
-Reduced motion is respected, and the line it draws is the same one the shape is
-built on. The enter transition is decoration and is skipped entirely. The morph
-is **not**, because it is information: freezing it would answer a request for
-stillness by withholding the answer. See `expressive-motion.md`.
+Reduced motion is respected, and D-014 makes it cheap. The morph is a brief
+state change rather than a running animation, so under reduced motion the shape
+simply swaps. Nothing is withheld by that: the state it was expressing is in the
+button label and the status line either way. Nothing else on this screen moves
+while a session is running. See `expressive-motion.md`.
 
-The title is capped at four lines with an ellipsis, which is what the square
-holds at the largest system font scale. It is the one piece of text in the app
-with a hard ceiling, and it exists because a title that overruns a fixed shape
-is cut through the middle of a line and reads as broken rather than as
-shortened. The full title is one tap away in Task Details.
-
-The cap applies in Ready too. It used to be Session's alone, on the grounds
-that Ready had no shape to overrun; it now has the same square reserved whether
-or not the shape has grown into it, and a title that overran it there would
-collide with Start and then be cut anyway the moment the session began.
+The title is capped at four lines with an ellipsis. It is the one piece of text
+in the app with a hard ceiling. The cap exists because a title that overruns a
+fixed container is cut through the middle of a line and reads as broken rather
+than as shortened, and four lines is what the column holds at the largest system
+font scale once the title sits outside the shape. D-014 has the arithmetic for
+why it could not stay inside it. The full title is one tap away in Task Details.
 
 ---
 
@@ -490,10 +428,13 @@ hold every one of them.
 
 # Out of scope
 
+**Superseded in part by D-013.** The pause and the resume come back, and so does
+the readout. What follows is the list as it now stands; the two struck items and
+the reasoning are below it.
+
 Not part of Focus:
 
-- a countdown, an elapsed clock, or any digits counting anything
-- a pause, a resume, or a session history
+- a session history: no log of past sessions, no totals, no streaks
 - capture, quick add, or a floating action button
 - editing, and the task details sheet
 - a curated or reorderable queue, and any stored notion of *which* task is
@@ -504,6 +445,61 @@ Not part of Focus:
 - a foreground service, and any claim on the process while a session runs
 - reminders, due-date alerts, and any notification not about the running
   session
+
+## What D-013 took off this list, and why
+
+**A pause and a resume.** D-013 names this one and gives the argument: the Focus
+now card's first and strongest reason is "resume paused focus", and building the
+card without a session that can be paused ships two of its three reasons and
+leaves the most useful one as a comment. `PRODUCT.md` principle 7 still rules out
+the session history, and nothing here asks for one.
+
+**A countdown and an elapsed clock.** D-013 does not name this one, and it takes
+it all the same: its six-state table gives every state a readout, and three of
+those states cannot be told apart without one. That gap was found while building
+this and settled rather than guessed at.
+
+The reason the digits now earn their place is that a pause created a state the
+old rule could not describe. "Paused" with nothing after it does not tell the
+user whether they have five minutes left or forty, which is exactly the question
+someone deciding whether to resume is asking. The original rule was written for a
+screen where the only two states were running and not running, and where the
+shape carried everything a running session had to say.
+
+**The shape's own rule did not survive**, and this paragraph used to say it had.
+It read: the shape is still deliberately unreadable as a gauge, still derived
+from the clock, and still says only that the session is running and how far along
+it is. D-014 took the second half of that away. Once the digits were on screen,
+the shape and the number were measuring the same thing and the shape was worse at
+it, so the shape stopped measuring and now says only whether the clock is
+running. See "The shape" above.
+
+The clock-watching objection is real and was weighed. It is answered by what the
+readout is attached to: a control. Every state that shows digits shows them above
+the one decision that state offers, so the number is being read to make a choice
+rather than watched to pass the time.
+
+**Ready comes back too**, as a state. D-013 lists it among the six, and the code
+had removed it when Focus left the navigation bar and the only entry left was a
+task row, which went straight into the session on purpose. Ready is reached from
+the Focus now card instead, which is the replacement for the navigation-bar entry
+this document originally gave it: the card names a task the app chose, and Ready
+is where the user agrees with the choice before the clock runs.
+
+This paragraph used to end by saying a row long-press still skipped Ready. D-023
+removed the row menu, so nothing skips it any more and every entry lands there.
+See Entry above.
+
+Ready comes back without the container transform `expressive-components.md`
+describes for it. The sheet's own entrance already does that job, and rebuilding
+the transform would be a second shape morph, which `expressive-motion.md`
+forbids.
+
+**The play button itself did come back**, which an earlier version of this note
+said it had not. It is a plain 56dp round icon button rather than the origin of a
+transform, and it is there for the half of the original argument that never
+depended on the transform: holding no text, it does not grow with the font scale,
+and two worded buttons overflow the row at 200%. See "What it shows".
 
 ---
 
@@ -601,36 +597,42 @@ alarm against the machine running the suite.
 The resolution rule is covered by `TaskListViewModelTest`: nothing is focused
 until a task is chosen, choosing one focuses that task whatever day it is
 scheduled for, and completing or deleting it ends Focus rather than moving on.
-`focusProgress` is covered by `FocusProgressTest`, including overrun, a clock
-that has gone backwards, and a missing estimate.
+`FocusSession` is covered by `FocusSessionTest`, including overrun, a clock that
+has gone backwards, and a missing estimate. Pause and resume belong there too:
+resuming shifts the origin, so a session paused for ten minutes and resumed
+reports the same elapsed time it held when it paused. So does the extension,
+which does *not* move the origin, because moving it underflowed against a
+zero-floored elapsed and was silently eaten.
+
+`FocusProgressTest` covered the same three edge cases against the fraction and
+was deleted with it.
 
 `TaskListViewModelTest` also covers the announcement: that starting a session
 schedules the focused task's estimate, that a task without one schedules
-nothing, that stopping cancels, and that choosing another task restarts the
-clock and reschedules against the new estimate.
+nothing, that pausing cancels, and that resuming reschedules against the time
+that is actually left rather than the whole estimate.
 
-`FocusSessionSemanticsTest` covers the contract that makes hiding the
-navigation safe: Ready keeps the bar and shows the estimate, Session hides the
-bar and offers a visible way out, completing ends the task without leaving,
-a session with nothing to show returns the navigation, and a session started before the screen
-opens survives the screen opening. Ready and Session are both checked at 100%
-and 200% font scale.
+`FocusSessionSemanticsTest` covers the six states. Each publishes its task title
+as a heading, names its clock control by the action rather than the glyph,
+carries its status line as text, and offers a visible way out. Completing ends
+the task and returns to Today. **Leaving pauses rather than stops**, which is
+D-015 and is the assertion that matters most here, because the failure it guards
+against is a silent one. Every state is checked at 100% and 200% font scale,
+including a four-line title.
 
-The morph cannot be tested. Spring physics and a shape advancing over
-forty-five minutes are not meaningfully assertable, so the shape is checked by
-watching it on the emulator at several points across a short estimate. State it
-that way in reports: the morph was observed, not tested.
+**The shape is testable now, and it was not before.** D-014 made it a function of
+one boolean: 4-sided at rest, 12-sided while running. That is an assertion rather
+than an observation, which the old design could never manage, because a shape
+advancing over forty-five minutes on spring physics is not meaningfully
+assertable. What still has to be watched rather than tested is whether the change
+reads at a glance, which is D-014's own reversal condition.
 
-The same goes for the container transform, and it is worth knowing how to look
-at it: the animator duration scale can be turned up, which Compose respects, so
-the growth can be sampled frame by frame instead of guessed at. Turn it back
-down afterwards.
+**The screen is idle while a session runs**, which is worth stating because it
+used to not be. The old unestimated session walked a ring forever, so the screen
+never went idle and anything waiting on idleness had to be told not to. Nothing
+here animates between state changes any more, so that workaround goes.
 
-A session on a task with no estimate never stops animating, because its cycle
-has no end to reach. That is the design and not an oversight, but it means the
-screen is never idle while such a session is open, so anything that waits for
-idleness has to be told not to. Both themes and the
-session's session-survives-process-death behaviour are also checked by hand.
+Both themes and the session-survives-process-death behaviour are checked by hand.
 
 The notification itself is checked by hand on the emulator against a
 one-minute estimate, in both directions: backgrounded, it arrives; left on

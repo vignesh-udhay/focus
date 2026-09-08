@@ -13,7 +13,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -21,8 +20,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -39,7 +36,6 @@ import com.vignesh.focuslist.ui.component.TaskListEmptyState
 import com.vignesh.focuslist.ui.component.TaskListRow
 import com.vignesh.focuslist.ui.component.UndoSnackbarHost
 import com.vignesh.focuslist.ui.task.QuickAddSheet
-import com.vignesh.focuslist.ui.task.TaskDetailsSheetHost
 import com.vignesh.focuslist.ui.task.TaskListViewModel
 import com.vignesh.focuslist.ui.task.UndoSnackbarEffect
 import com.vignesh.focuslist.ui.theme.FocuslistTheme
@@ -57,6 +53,9 @@ import java.time.LocalDate
 @Composable
 fun InboxScreen(
     viewModel: TaskListViewModel,
+    // Tapping a row opens Task Details, which is a destination since D-018
+    // rather than a sheet this screen hosts. The route is the host's to know.
+    onOpenTask: (String) -> Unit,
     modifier: Modifier = Modifier,
     bottomBar: @Composable () -> Unit = {},
     // The three dots at the end of the header row. A slot rather than a route,
@@ -70,7 +69,6 @@ fun InboxScreen(
     // Screen state, not app state: opening Quick Add here says nothing about
     // whether Today has its own sheet open.
     var isQuickAddVisible by rememberSaveable { mutableStateOf(false) }
-    var openTaskId by rememberSaveable { mutableStateOf<String?>(null) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     UndoSnackbarEffect(viewModel = viewModel, snackbarHostState = snackbarHostState)
@@ -79,7 +77,7 @@ fun InboxScreen(
         tasks = tasks,
         today = today,
         onToggleComplete = viewModel::toggleComplete,
-        onOpenTask = { id -> openTaskId = id },
+        onOpenTask = onOpenTask,
         onDelete = viewModel::deleteTask,
         onReschedule = viewModel::rescheduleTask,
         onAddTask = { isQuickAddVisible = true },
@@ -100,20 +98,18 @@ fun InboxScreen(
             onSave = { parsed ->
                 val captured = viewModel.createTask(
                     title = parsed.title,
-                    scheduledDate = parsed.date
+                    scheduledDate = parsed.date,
+                    // A time with no day still needs a day to ring on, and
+                    // Inbox has none to give. Today is the honest default:
+                    // a reminder is independent of a scheduled date, so the
+                    // task stays in Inbox and still speaks up this afternoon.
+                    reminderAt = parsed.reminderAt(viewModel.today.value)
                 )
                 if (captured) isQuickAddVisible = false
             }
         )
     }
 
-    TaskDetailsSheetHost(
-        openTaskId = openTaskId,
-        tasks = tasks,
-        today = today,
-        viewModel = viewModel,
-        onDismiss = { openTaskId = null }
-    )
 }
 
 /**
@@ -138,8 +134,6 @@ private fun InboxContent(
     overflow: @Composable RowScope.() -> Unit = {}
 ) {
     // The large title collapses as the list moves under it, as on Today.
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-
     val taskColors = ListItemDefaults.segmentedColors(
         containerColor = MaterialTheme.colorScheme.surfaceContainer
     )
@@ -147,31 +141,19 @@ private fun InboxContent(
     val gutter = focuslistContentGutter()
 
     Scaffold(
-        modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface,
         snackbarHost = { UndoSnackbarHost(snackbarHostState) },
         bottomBar = bottomBar,
         topBar = {
             FocuslistTopAppBar(
                 actions = overflow,
-                title = stringResource(R.string.inbox_title),
-                // Nothing to count when the list is empty, and "0 items
-                // waiting to process" above an empty state says the same
-                // thing twice, the second time worse.
-                subtitle = if (tasks.isEmpty()) {
-                    null
-                } else {
-                    {
-                        Text(
-                            text = pluralStringResource(
-                                R.plurals.inbox_waiting,
-                                tasks.size,
-                                tasks.size
-                            )
-                        )
-                    }
-                },
-                scrollBehavior = scrollBehavior
+                title = stringResource(R.string.inbox_title)
+                // The count went with D-020, which made every bar 64dp and
+                // subtitleless. It was the strongest of the three subtitles and
+                // it still went, because the height it justified was the thing
+                // being bought back and a subtitle and the height are one
+                // decision. The list below says how much is waiting.
             )
         },
         floatingActionButton = {
@@ -211,8 +193,6 @@ private fun InboxContent(
                         colors = taskColors,
                         onToggleComplete = { onToggleComplete(task.id) },
                         onOpen = { onOpenTask(task.id) },
-                        onDelete = { onDelete(task.id) },
-                        onReschedule = { date -> onReschedule(task.id, date) },
                         // A task leaving the list when it is scheduled or
                         // completed travels out rather than vanishing.
                         modifier = Modifier.animateItem(

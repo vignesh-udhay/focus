@@ -49,6 +49,23 @@ The ordering lives in `TaskQueries.completedTasks`, not in the screen.
 
 ---
 
+# Grouping
+
+Completed tasks sit under a heading naming the day they were finished, newest
+day first. Inside a day the order is `completedAt` descending, as above.
+
+D-016 is the entry. The argument is that the ordering was otherwise invisible: a
+list sorted by completion time with nothing marking the days gives a reader no
+way to tell whether the twelfth row is from yesterday or from March. The
+headings add no data, because `completedAt` is already the sort key, and no
+field, query or state.
+
+A heading says when, and only when. There is no count beside it. That is the
+line D-016 draws, and it is the same line the Out of scope list draws further
+down.
+
+---
+
 # Relationship to the other lists
 
 The Logbook and Today deliberately overlap. Today keeps completed tasks in its
@@ -71,7 +88,7 @@ finishing something would put it beyond reach once the undo snackbar lapsed.
 | --- | --- |
 | Tap checkbox | Reopens the task |
 | Tap row body | Opens task details |
-| Long press | Opens the task actions menu |
+| Long press | Nothing, since D-023 |
 | Swipe | Nothing |
 
 ## Reopening
@@ -96,22 +113,39 @@ here.
 
 ## Deleting
 
-Long press and Delete behave exactly as on every other list: a soft delete with
-an undo snackbar. The row keeps its `completedAt`, so undoing a deletion returns
-it to the Logbook still completed.
+Deletion behaves exactly as on every other list: a soft delete with an undo
+snackbar. The row keeps its `completedAt`, so undoing a deletion returns it to
+the Logbook still completed.
+
+It is reached from Task Details rather than from the row. D-023 removed the row's
+actions menu, so tapping through is the route from every list including this
+one.
 
 ---
 
 # Structure
 
-A `Scaffold` with a compact `TopAppBar`, the shared snackbar host, and the same
+A `Scaffold` with a compact top app bar, the shared snackbar host, and the same
 segmented collection every list uses, through `TaskListRow`.
+
+Rows take `Status=Completed`: the title dims to `onSurfaceVariant`, the checkbox
+is checked, and the duration stays on the right. The supporting line is hidden
+here. The only thing it would carry is the date, and the day heading above the
+row has already said it.
 
 There is no add-task button. Nothing is captured already finished.
 
-The screen carries the same navigation bar every other list does. It is
-reached from More, the way `PRODUCT.md` places the secondary lists, but it is
-not a dead end: Today and Inbox stay one tap away.
+**The screen is a room, not a place.** It draws a back arrow and no navigation
+bar, and it is reached from the app-bar overflow on Today, Inbox and Upcoming.
+`navigation.md` holds the rule: a screen wears either the bar and an overflow, or
+a back arrow and no bar, never both.
+
+An earlier version of this section said the Logbook "carries the same navigation
+bar every other list does" and is "reached from More". Both halves are stale.
+More was a bar item standing in for a screen `PRODUCT.md` never defined, and it
+is gone; what sat behind it moved to the overflow. The bar went with it, because
+a bar showing three destinations with none of them current tells the user they
+are nowhere.
 
 ---
 
@@ -132,15 +166,41 @@ done, not a score for having done it.
 
 ---
 
+# Loading and read failure
+
+Two more states, drawn on the board in chapter 09 beside the Logbook itself.
+
+**First load** shows the M3 Expressive loading indicator, centred, and nothing
+else. The chrome stays: the back arrow works before the list has arrived, so a
+slow read is never a trap.
+
+**A read that failed** shows the error-toned empty state and a Try again button.
+The wording matters more here than on other screens, because this is the list
+that exists to make completing a task safe:
+
+    Couldn't load your Logbook
+
+    The record is safe. This is a read that failed.
+
+The supporting line says what did not happen. A user who cannot see their
+finished work has a reasonable fear that it is gone, and the screen answers it
+directly rather than leaving them to infer it from a retry button.
+
+---
+
 # Out of scope
 
 Not part of this screen:
 
-- grouping by day, week, or month
 - any limit on how far back the Logbook reaches
 - purging, archiving, or a retention policy
 - counts, streaks, statistics, or any summary of throughput
 - a separate view for deleted tasks
+
+**Grouping by day was on this list, and D-016 took it off.** Day headings stay.
+Week and month grouping do not, and neither does a count beside a heading, which
+is the step that turns a record into the scoreboard the rest of this list exists
+to prevent.
 
 The last two matter most. `PRODUCT.md` rules out streaks, points, productivity
 scores, and complex analytics, and a list of finished work is exactly where
@@ -171,5 +231,9 @@ for completion, and it is still open for deletion.
 
 Implemented. `LogbookScreen` reads `TaskListViewModel.completedTasks`, derived
 from `TaskQueries.completedTasks` over the shared repository stream, and is a
-destination in the navigation graph, reached from the More menu in the
-navigation bar.
+destination in the navigation graph, reached from the app-bar overflow.
+
+**Not yet built:** the day grouping D-016 settles, and the loading and
+read-failure states above. The screen currently renders one flat list. Grouping
+is a presentation change over the existing query, since `completedAt` is already
+the sort key, so it needs no schema or repository work.

@@ -11,26 +11,6 @@ import androidx.compose.ui.unit.dp
  */
 object FocuslistDimensions {
 
-    /**
-     * End padding that lines trailing app-bar text up with the content below it.
-     *
-     * The app bar insets its title area by 16dp at the start but only 4dp at the
-     * end, because the end is where action icons would sit and these bars carry
-     * none. A right-aligned subtitle therefore overhangs the task collection,
-     * and the text's own trailing bearing takes back part of the difference.
-     *
-     * 6dp is what the two together come to. Measured rather than derived: on a
-     * Pixel emulator the text lands 10.3dp from the screen edge with no padding
-     * and moves a point for a point after that, so 6dp puts it within a third of
-     * a point of the 16dp the rows end on. Both 4dp and 8dp were tried and land
-     * about two points out, one either side.
-     *
-     * Not a spacing value, which is why it is here rather than in
-     * [FocuslistSpacing]: it describes a relationship between two components'
-     * insets, not a gap anyone chose.
-     */
-    val AppBarTrailingTextAlignment = 6.dp
-
     /** The smallest an interactive target may be, in either direction. */
     val TouchTargetMin = 48.dp
 
@@ -60,6 +40,50 @@ object FocuslistDimensions {
      * are reachable on either side of it.
      */
     val NavigationRailBreakpoint = 600.dp
+
+    /**
+     * The column Focus lays its four elements out in.
+     *
+     * `expressive-components.md` draws Focus as one 364dp column, centred in the
+     * content area rather than pinned under the app bar: it is a single-purpose
+     * mode screen with one column on it, and hanging that column from the top
+     * left the lower half of the screen empty for no reason.
+     *
+     * It is also the width the action row's arithmetic is done against. Two
+     * worded buttons come to roughly 223dp and 198dp at 200% font scale and
+     * overflow it, which is why the clock control is an icon.
+     */
+    val FocusColumnWidth = 364.dp
+
+    /**
+     * The gap between everything on Focus.
+     *
+     * One value for all three gaps, because the screen is four elements in a
+     * column and giving them different spacings would imply a grouping that is
+     * not there. 20dp rather than a `FocuslistSpacing` step, because it sits
+     * between `md` and `lg` and the design names it: at 16dp the shape crowds
+     * the title, at 24dp the column overflows a short screen at 200%.
+     */
+    val FocusColumnGap = 20.dp
+
+    /**
+     * The Focus shape, at a fixed size in every window.
+     *
+     * It holds a fixed-size readout rather than content, so scaling it with the
+     * window would only make the digits look lost. An earlier design capped it
+     * at 320dp "so a wide window gets a shape, not a wall", which was solving a
+     * problem this size does not have.
+     */
+    val FocusShapeSize = 180.dp
+
+    /**
+     * The height of both controls in Focus's action row.
+     *
+     * A floor for the worded button, which is allowed to grow to hold its label
+     * at large font scales, and a fixed square for the clock control, because
+     * roundness is what keeps it from growing with the text at all.
+     */
+    val FocusControlSize = 56.dp
 
     /**
      * Vertical space a list reserves below its last row when the screen has a

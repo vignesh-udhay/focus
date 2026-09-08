@@ -21,14 +21,18 @@ import java.time.Instant
 /**
  * The task row's accessibility contract.
  *
- * The row carries three separate actions and a screen reader has to be able to
- * tell them apart: tapping opens details, long-pressing opens the actions menu,
- * and the checkbox completes the task. Each is announced by its own label, and
- * the checkbox's label names the task so a list of ten rows does not read as
- * ten identical "checkbox, not ticked".
+ * The row carries two actions and a screen reader has to be able to tell them
+ * apart: tapping opens details, and the checkbox completes the task. Each is
+ * announced by its own label, and the checkbox's label names the task so a list
+ * of ten rows does not read as ten identical "checkbox, not ticked".
+ *
+ * **The actions menu is gone**, so the cases that covered it went with it.
+ * `docs/decisions.md` D-023 removed the trailing button and the long press; what
+ * they reached lives on Task Details now, which `TaskDetailsSemanticsTest`
+ * covers.
  *
  * The row is exercised through [TaskListRow] rather than the bare `TaskRow`,
- * because the labels and the menu are what the screens actually compose.
+ * because the labels are what the screens actually compose.
  */
 @RunWith(AndroidJUnit4::class)
 class TaskRowSemanticsTest {
@@ -40,9 +44,7 @@ class TaskRowSemanticsTest {
         fontScale: Float,
         task: Task,
         onToggleComplete: () -> Unit = {},
-        onOpen: () -> Unit = {},
-        onDelete: () -> Unit = {},
-        onFocus: (() -> Unit)? = null
+        onOpen: () -> Unit = {}
     ) {
         rule.setFocuslistContent(fontScale) {
             TaskListRow(
@@ -51,9 +53,7 @@ class TaskRowSemanticsTest {
                 shapes = ListItemDefaults.segmentedShapes(index = 0, count = 1),
                 colors = ListItemDefaults.segmentedColors(),
                 onToggleComplete = onToggleComplete,
-                onOpen = onOpen,
-                onDelete = onDelete,
-                onFocus = onFocus
+                onOpen = onOpen
             )
         }
     }
@@ -65,7 +65,6 @@ class TaskRowSemanticsTest {
 
         // "Double tap to open task details", not "double tap to activate".
         rule.onNode(hasClickLabel("Open task details")).assertExists()
-        rule.onNode(hasLongClickLabel("Show task actions")).assertExists()
     }
 
     @Test
@@ -157,58 +156,6 @@ class TaskRowSemanticsTest {
 
     @Test
     fun metadata_isReadable_at200() = assertMetadataIsReadable(FontScale200)
-
-    private fun assertLongPressOffersFocusAndDelete(fontScale: Float) {
-        var deletes = 0
-        var focuses = 0
-        setRow(
-            fontScale,
-            outstanding(),
-            onDelete = { deletes++ },
-            onFocus = { focuses++ }
-        )
-
-        rule.onNode(hasLongClickLabel("Show task actions")).performAccessibilityLongClick()
-
-        rule.onNodeWithText("Focus").assertIsDisplayed()
-        rule.onNodeWithText("Delete").assertIsDisplayed()
-
-        rule.onNodeWithText("Delete").performClick()
-
-        assertEquals(1, deletes)
-        assertEquals(0, focuses)
-    }
-
-    private fun assertActionsButtonOffersTheSameMenu(fontScale: Float) {
-        var deletes = 0
-        setRow(fontScale, outstanding(), onDelete = { deletes++ }, onFocus = {})
-
-        // The visible route to the same menu. Long press is kept and still
-        // works, but it is a gesture with nothing on screen to suggest it, and
-        // Delete and Focus live nowhere else.
-        rule.onNodeWithContentDescription("Show task actions").performClick()
-
-        rule.onNodeWithText("Delete").assertIsDisplayed()
-        rule.onNodeWithText("Delete").performClick()
-
-        assertEquals(1, deletes)
-    }
-
-    @Test
-    fun actionsButton_offersTheSameMenu_at100() =
-        assertActionsButtonOffersTheSameMenu(FontScale100)
-
-    @Test
-    fun actionsButton_offersTheSameMenu_at200() =
-        assertActionsButtonOffersTheSameMenu(FontScale200)
-
-    @Test
-    fun longPress_offersFocusAndDelete_at100() =
-        assertLongPressOffersFocusAndDelete(FontScale100)
-
-    @Test
-    fun longPress_offersFocusAndDelete_at200() =
-        assertLongPressOffersFocusAndDelete(FontScale200)
 
     private fun outstanding(): Task = testTask(
         id = "1",

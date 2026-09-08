@@ -42,12 +42,26 @@ val FocuslistSeed: Color = Color(0xFF4F5DFF)
  * them needs `material-color-utilities`, which this project does not depend
  * on, and because a fallback palette is a fixed design decision with no
  * business being recomputed on every launch.
+ *
+ * Light `onPrimaryContainer` is tone 30, not tone 10. It was `#001356`, which
+ * is tone 10 and reads blue rather than indigo — a hue the primary palette does
+ * not otherwise contain. Current M3 puts light on-primary-container at tone 30;
+ * Material's own baseline uses `#4F378A`. Tone 30 here is `#403D89`, which is
+ * also the dark scheme's `primaryContainer`, and M3 expects those two to match.
+ * This is what the Focus now card's text resolves through.
+ *
+ * Both schemes set the three fixed roles the mascot illustrations are drawn
+ * against: `primaryFixed` (P90), `primaryFixedDim` (P80) and
+ * `onPrimaryFixedVariant` (P30). Fixed roles hold the same value in light and
+ * dark by definition, which is why they carry identical hex in both schemes
+ * below; that is the point of them, not a copy-paste slip. Dynamic colour
+ * supplies its own, so these only apply to the fallback.
  */
 val FocuslistLightColorScheme: ColorScheme = lightColorScheme(
     primary = Color(0xFF5B54A3),
     onPrimary = Color(0xFFFFFFFF),
     primaryContainer = Color(0xFFE5DEFF),
-    onPrimaryContainer = Color(0xFF001356),
+    onPrimaryContainer = Color(0xFF403D89),
     inversePrimary = Color(0xFFCABEFF),
     secondary = Color(0xFF605B75),
     onSecondary = Color(0xFFFFFFFF),
@@ -80,6 +94,9 @@ val FocuslistLightColorScheme: ColorScheme = lightColorScheme(
     surfaceContainer = Color(0xFFEFEDF4),
     surfaceContainerHigh = Color(0xFFE9E7EF),
     surfaceContainerHighest = Color(0xFFE3E1E9),
+    primaryFixed = Color(0xFFE5DEFF),
+    primaryFixedDim = Color(0xFFCABEFF),
+    onPrimaryFixedVariant = Color(0xFF403D89),
 )
 
 /** The dark fallback, from the same seed and the same palettes. */
@@ -120,4 +137,7 @@ val FocuslistDarkColorScheme: ColorScheme = darkColorScheme(
     surfaceContainer = Color(0xFF201F24),
     surfaceContainerHigh = Color(0xFF2A292F),
     surfaceContainerHighest = Color(0xFF35343A),
+    primaryFixed = Color(0xFFE5DEFF),
+    primaryFixedDim = Color(0xFFCABEFF),
+    onPrimaryFixedVariant = Color(0xFF403D89),
 )

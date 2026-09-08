@@ -16,7 +16,7 @@ new component because an existing one is nearly right; say what is missing.
     SegmentedListItem      Checkbox        FloatingActionButton
     NavigationBar          DropdownMenu    ModalBottomSheet
     DatePickerDialog       OutlinedTextField                Snackbar
-    LargeFlexibleTopAppBar PrimaryTabRow   Button / TextButton / OutlinedButton
+    TopAppBar              PrimaryTabRow   Button / TextButton / OutlinedButton
 
 [FD] Do not introduce, unless a later product decision explicitly requires one:
 
@@ -34,36 +34,86 @@ excluded because Focuslist has no use for them, not because they are unsound.
 The most repeated element in the app, and the one worth the most care.
 
 [IMPL] `TaskRow` wraps `SegmentedListItem`. `TaskListRow` wraps `TaskRow` with
-metadata derivation and the long-press menu. Keep both, and keep the segmented
+metadata derivation. Keep both, and keep the segmented
 collection structure: `ListItemDefaults.segmentedShapes(index, count)`,
 `segmentedColors`, and `SegmentedGap` between rows.
 
+## Why the board builds its rows rather than instancing the kit
+
+[FD] The four row components on the board — Task row, Plan row, Settings
+navigation row, Settings toggle row — are built from primitives. Only the leaf
+atoms come from the M3 kit: the checkbox, the radio button, the chevron.
+
+This is written down because "why isn't this a kit instance" is a reasonable
+question with a non-obvious answer, and guessing at it once already produced a
+wrong one.
+
+[M3] **The kit does have a segmented list.** It is not a component of its own,
+which is why searching the library by name finds nothing: it is
+`Type = Segmented (filled)` on the kit's `List` set, a container of ten
+`List item` instances at a 2dp gap. That 2dp is the same gap these rows use, so
+it is a useful confirmation of the spacing.
+
+[FD] What it does not express is the anatomy. The kit's `List item` offers
+`Trailing` as None, Check Box, Icon, Radio Button or Switch. A task row's
+trailing is a duration string and an icon button together, which is not among
+them. The `Content` slot could hold one, but at that point the kit is supplying
+a container and everything inside it is ours regardless.
+
+[FD] The four rows also differ from one another in ways a single kit variant
+would have to be overridden for: 72dp for the two-line task row, 56dp for the
+one-line Plan row, 72dp for a Settings row carrying supporting text, 56dp for a
+radio row.
+
+[IMPL] The deciding reason is that the code does not use a kit approximation
+either. `TaskRow.kt` calls `SegmentedListItem` with
+`ListItemDefaults.segmentedShapes(index, count)`, which is real Compose M3
+Expressive. The board's job is to describe what the app renders, and a
+hand-built row matching it is closer to the truth than an instance of something
+adjacent.
+
+## The four rows share a base, and it is variables rather than a component
+
+[FD] The obvious shared base, a container component the four compose, cannot be
+built here. It needs a content slot, and slots cannot be created through the
+Figma plugin API. What can be shared is the values, and the values are what
+drifted.
+
+    Segmented/Radius outer   →  Corner/Large        16
+    Segmented/Radius inner   →  Corner/Extra Small   4
+    Segmented/Gap            →  Spacing/2            2
+
+[IMPL] All four sets bind every corner of every variant to the two radius
+variables, 240 bindings across 60 variants, and every frame that groups rows
+binds its `itemSpacing` to the gap.
+
+[FD] They are aliases onto the existing scale rather than new numbers. The scale
+stays the single source of the values; these say which of them the segmented
+treatment uses. That is the difference that matters: binding the rows straight
+to `Corner/Large` would stop anyone typing 28, but moving the treatment to 20dp
+would still mean finding all four again. One edit now.
+
+[FD] The surface needed nothing. All four were already bound to
+`surfaceContainerLow`.
+
+[FD] **What this does not protect is variant structure.** A variable cannot make
+one component carry the same states as another, and that half of the drift stays
+manual: the Plan row shipped no Pressed or Focused while the Settings row had
+both, which is how it also ended up at 28dp on `surfaceContainerHigh` without
+anyone noticing. Enabled, Pressed and Focused is the set. Hovered, Dragged and
+Disabled exist in the kit's `List item` and are deliberately unused.
+
 ## Anatomy
 
-[FD] Checkbox leading, title, optional metadata line beneath, and one trailing
-button that opens the actions menu. Nothing else: no drag handle, no chevron,
-no avatar.
+[FD] Checkbox leading, title, optional metadata line beneath, and the duration
+at the end. Nothing else: no drag handle, no chevron, no avatar, and **no
+trailing button**.
 
-[FD] The trailing button is new, and it reverses a rule this file used to state
-as "nothing else, no trailing icon". The reason it changed: Delete and Focus
-live only in the actions menu, Task Details deliberately excludes both, and
-long press was the only way to reach them. `PRODUCT.md` says the UI must not
-depend exclusively on gestures, and a gesture with nothing on screen to suggest
-it was exactly that.
-
-Long press is kept. Assistive technology reaches the menu through the row's
-labelled long-press action, so the button is a second route rather than a
-replacement, and it is discoverability the button adds rather than access.
-
-[IMPL] `IconButtonDefaults.extraSmallContainerSize(IconButtonWidthOption.Narrow)`,
-which draws 28 by 32. Narrow is what makes the container taller than it is wide,
-and every number is a Material token. The container is only what is drawn:
-`IconButton` applies `minimumInteractiveComponentSize` first, so the target is
-48dp without the row carrying a 48dp square.
-
-[FD] The menu anchors to the row's end, where the button is. A long press
-anywhere on the row opens the same menu in the same place; one position is
-easier to learn than a menu that appears wherever the finger landed.
+[FD] A trailing actions button was added once and D-023 removed it. It had
+reversed this file's own "nothing else, no trailing icon" on the grounds that
+Delete and Focus were reachable only by a gesture, which `PRODUCT.md` forbids as
+the sole route. Task Details now holds both, so the gesture is no longer alone
+and the rule it broke stands again.
 
 | Element | Role | Colour |
 | --- | --- | --- |
@@ -71,13 +121,10 @@ easier to learn than a menu that appears wherever the finger landed.
 | Metadata | `bodySmall` | `onSurfaceVariant` |
 | Overdue date within metadata | `bodySmall` | `tertiary` |
 
-[FD] Two levels of *text* hierarchy in a row, still. The trailing button is a
-control rather than a third line of content, and it carries no label, so the
-title remains the only thing being scanned.
-
-[FD] What it costs is width, and the cost is real. Adding it pushed two of five
-seeded titles onto a second line until the screen margin was returned to `md`.
-Anything else that wants room in a row is competing with the title for it.
+[FD] Two levels of *text* hierarchy in a row. Anything that wants room in a row
+is competing with the title for it, which the removed trailing button proved:
+it pushed two of five seeded titles onto a second line until the screen margin
+was returned to `md`.
 
 [IMPL] The row carries a minimum height from `FocuslistDimensions`. A floor,
 not a height: a row with metadata or a wrapped title is already taller and
@@ -124,9 +171,9 @@ list selection and would contradict a settled product decision. See `focus.md`.
 
 ## Interaction
 
-[FD] Tap opens Task Details. The trailing button opens the actions menu, and
-long press opens the same menu in the same position. The checkbox toggles
-completion and is not part of the row's click target.
+[FD] Tap opens Task Details. The checkbox toggles completion and is not part of
+the row's click target. There is nothing else: D-023 removed the actions menu
+and the long press that opened it.
 
 [FD] The row does not change shape or size when pressed. Material's ripple and
 state layer are the entire press feedback. A springing row in a list of twelve
@@ -143,10 +190,9 @@ animation.
 [IMPL] All of this already exists and must be preserved:
 
 - Checkbox `contentDescription`: "Mark X complete" / "Mark X not complete".
-- Row click label: "Open task details". `SegmentedListItem` takes a long-press
-  label but no click label, so this is applied through a `semantics` modifier
-  that names the existing action rather than replacing it.
-- Long-press label: "Show task actions".
+- Row click label: "Open task details". `SegmentedListItem` takes no click
+  label, so this is applied through a `semantics` modifier that names the
+  existing action rather than replacing it.
 - Checkbox touch target at least 48dp.
 
 ## Large font scales
@@ -156,28 +202,49 @@ Metadata wraps. The checkbox stays 48dp.
 
 ---
 
-# Task actions menu
+# The row has no actions menu
 
-[IMPL] A `DropdownMenu` anchored to the row, opened by long press, holding
-transient state in the row itself.
+[FD] `docs/decisions.md` D-023 removed the trailing button and the long-press
+menu. Tapping a row opens Task Details, and everything the menu carried lives
+there: rescheduling through the Plan rows, Start focus as the primary action,
+Delete in the overflow.
 
-[FD] Focus first where it is offered, then Delete. Constructive before
-destructive, so the thumb does not land on Delete. Delete is labelled in
-`error`.
+[FD] **The menu existed for a reason that three later decisions removed.** This
+section used to justify the trailing button by saying Delete and Focus "live
+only in the actions menu, Task Details deliberately excludes both". D-018 gave
+Task Details a Start focus, D-022 gave it Delete, and its Plan rows give it
+rescheduling. Nothing was excluded any more, and the button had outlived its
+premise without anyone going back to check.
 
-[FD] Focus appears only on Today rows. Elsewhere the action would have to
-either do nothing or schedule the task for today, and neither is specified
-behaviour.
+[FD] It had also become a worse duplicate. The menu offered Today, Tomorrow and
+Pick a date; the Scheduled sheet offers No date, Today, Tomorrow, This weekend
+and Choose a date, and cannot be beaten by a subset that has no way to clear a
+date.
 
-[FD] There are no triage actions. The row menu once carried Move to Anytime
-and Move to Someday, filing a task into one of two undated lists. Both lists
-were removed on evidence, `docs/decisions.md` D-002, and the axis behind them
-went with schema version 9. What is left is the decision those actions were
-working around: give the task a day, or do not.
+[FD] Three of the menu's five items were rescheduling, which is administration,
+and a permanent trailing button gave the most administrative action the most
+prominent position on every line of every list. `PRODUCT.md` principle 4 asks
+for the opposite. The width was real too: adding the button pushed two of five
+seeded titles onto a second line until the screen margin was returned to `md`.
 
-[FD] Never a move back to Inbox. Inbox now means undated, so removing a task's
-day is what puts it there, and a separate control saying the same thing twice
-would be one more way to express one decision.
+[FD] What it costs is a tap. Rescheduling from a list is three rather than two,
+and rows no longer answer a long press. Nothing became unreachable. D-023
+records the trade and names what would reverse it: if this proves too slow, the
+answer is a bottom sheet on long press, which is where Material's compact
+guidance points for a five-item menu, not the button returning.
+
+[FD] Two rules from the old menu survive it, because they are about the product
+rather than the control.
+
+**There are no triage actions.** The row menu once carried Move to Anytime and
+Move to Someday, filing a task into one of two undated lists. Both lists were
+removed on evidence, D-002, and the axis behind them went with schema version 9.
+What is left is the decision those actions were working around: give the task a
+day, or do not.
+
+**Never a move back to Inbox.** Inbox means undated, so removing a task's day is
+what puts it there, and a separate control saying the same thing twice would be
+one more way to express one decision.
 
 ---
 
@@ -192,65 +259,63 @@ the `completion` token. This is the only component with that privilege.
 
 # Top app bar
 
-[IMPL] `FocuslistTopAppBar`, one component for every screen, wrapping
-`LargeFlexibleTopAppBar`. Callers pass a title, optionally a subtitle, and where
-the screen has something to scroll under the bar, a scroll behaviour. Today
-passes `exitUntilCollapsedScrollBehavior` so the large title collapses as the
-list moves under it; a pinned behaviour would hold all 152dp of a two-row bar in
-place. Focus passes none because there is nothing to scroll.
+[IMPL] `FocuslistTopAppBar`, one component for every list screen, wrapping the
+compact M3 `TopAppBar` at 64dp. Callers pass a title and, on the three primary
+destinations, the overflow. It is pinned: no scroll behaviour, no collapse.
 
-[FD] The title carries heading semantics and no style of our own. The flexible
-bar draws it at `displaySmall` expanded and shrinks it as the bar collapses;
-naming a style here would fight that and freeze the collapsed state at the
-expanded size.
+[FD] The title carries heading semantics and no style of our own. The component
+supplies `titleLarge`.
 
-[FD] The subtitle is a slot rather than a string, because Today spends it on two
-facts at once. A screen with nothing to say there passes nothing.
+## There is no subtitle
 
-[FD] A subtitle holding two facts tells them apart by position: the first at the
-start, the second at the end, and neither in a container. Today reads
-"Wednesday, September 2" against "2h 5m planned"; Inbox has one fact and simply
-states it. The total was briefly given a tinted pill, and it read as decoration,
-which `PRODUCT.md` rules out. Alignment does the same work for nothing.
+[FD] D-020 removed it, and with it the 152dp `LargeFlexibleTopAppBar` the
+subtitle was the only justification for. `today-screen.md` carries the reasoning,
+and the rule that matters if anyone reopens it: the subtitle and the height are
+one decision and move together or not at all.
 
-[IMPL] A right-aligned subtitle needs a small end padding. Material insets the
-bar's title area by 16dp at the start and 4dp at the end, because the end is
-where action icons would sit and these bars have none. `xxs` takes most of the
-difference back: measured on device, the text lands 1.5dp outside the edge the
-rows end on, against 5.7dp with no padding. Deliberately not exact. Closing the
-last 1.5dp would mean compensating for the trailing bearing of whichever glyph
-the value ends with, which is a number with no meaning and no token.
+Most of this section used to be about subtitles. That Today spent one on two
+facts at once, the date and a planned total, told apart by alignment rather than
+by a container. That a right-aligned subtitle needed `xxs` end padding, because
+Material insets the title area 16dp at the start and 4dp at the end, landing the
+text 1.5dp outside the edge the rows end on. That Inbox's count earned one while
+Upcoming's did not. That the bars were therefore different heights, and that this
+was correct rather than drift.
 
-[FD] A subtitle has to say something the list below it cannot, or it does not
-get one. Today's date is not in the list and its planned total is a sum of it;
-Inbox's count is the size of a pile the user is deciding whether to work
-through now. Upcoming had one and lost it: a count of tasks that are already
-grouped under their own day headings tells the reader what they can see. The
-Logbook has never had one.
+D-017 removed the total, D-020 removed the date, and Inbox's count went with
+them. All four bars are 64dp now and none has a subtitle.
 
-[FD] So the bars are not all the same height, and that is correct rather than
-drift. A bar sizes to what the screen has to say, and inventing subtitles for
-the two screens with nothing to say — to make four headers agree — would be
-adding noise for symmetry.
+[FD] One line survives, because it is the rule that would govern a subtitle
+coming back: **a subtitle has to say something the list below it cannot, or it
+does not get one.** Upcoming already failed that test, its count being of tasks
+already grouped under their own day headings.
 
-[FD] A count says nothing when there is nothing to count. Inbox drops its
-subtitle entirely when the list is empty, rather than reading "0 items waiting
-to process" above an empty state that already says so.
+## The overflow is the only action
 
-[FD] No actions, no navigation icon: every destination is reachable from the
-navigation bar, so there is nothing for an app bar action to do that the bar
-does not already do.
+[FD] On Today, Inbox and Upcoming, and nowhere else. A standard icon button
+rather than a filled one, opening Logbook, Reminder health and Settings.
+`navigation.md` holds the rule: reaching the other lists is the navigation bar's
+job, and the overflow carries what the navigation bar does not.
 
-[FD] The bar names no colour. Material's default is `surface` at rest lifting to
-`surfaceContainer`, and the page is `surface`, so bar and page are one ground
-and the collection is the only thing on it. An earlier override existed only
-because the page had been moved onto a container role; it went when the page
-came back.
+An earlier version of this section read "No actions, no navigation icon: every
+destination is reachable from the navigation bar, so there is nothing for an app
+bar action to do that the bar does not already do." That was written while More
+was a bar item. `navigation.md` removed More and moved what sat behind it into
+this overflow, so the premise is gone.
 
-[IMPL] Shared rather than repeated because those two properties are always
-applied together and six copies drifted apart on both. Do not build a bar by
+[FD] Rooms take a back arrow and no overflow instead, through
+`Focuslist / Room header`. A screen wears the bar and an overflow, or a back
+arrow and no bar, never both.
+
+## Colour and sharing
+
+[FD] The bar names no colour. Material's default is `surface`, and the page is
+`surface`, so bar and page are one ground and the collection is the only thing
+on it. An earlier override existed only because the page had been moved onto a
+container role; it went when the page came back.
+
+[IMPL] Shared rather than repeated because these properties are always applied
+together and six copies drifted apart on all of them. Do not build a bar by
 hand; if a screen needs something this cannot express, say so.
-
 ---
 
 # Navigation bar
@@ -356,14 +421,77 @@ token composed from the spacing scale, not a number written into a screen.
 
 # Empty states
 
-[IMPL] `TaskListEmptyState`: a centred column of two lines. Material 3 has no
-empty-state component.
+[IMPL] `TaskListEmptyState`. Material 3 has no empty-state component, so this is
+Focuslist's own: a 24dp inset, an 80dp expressive icon container, a 12dp gap,
+then a centred headline and supporting line.
 
 [FD] Headline in `titleMediumEmphasized`, supporting line in `bodyMedium` and
-`onSurfaceVariant`. No illustration, no icon, no action button.
+`onSurfaceVariant`.
+
+[FD] An earlier version of this section ended "No illustration, no icon, no
+action button". All three have since arrived and the section did not keep up.
+The component carries an icon container; the board has an illustrated variant per
+screen carrying the mascot, drawn but not yet exported; and the error tone is
+paired with an action.
+
+[FD] Two tones. `Neutral` explains an empty collection. `Error` explains a read
+that failed, and is the only one that takes a button beside it: a separate M3
+medium 56dp Try again, sitting below the component rather than inside it.
+
+## No container, in any state
+
+[FD] Empty and error states sit directly on the background. There is no card, no
+surface, and no elevation.
+
+[FD] The plain variants used to draw one: a 28dp radius on `surfaceContainerLow`
+with 24dp of padding. The illustrated variants never did, so the app had two
+empty-state treatments and the thing that decided between them was whether a
+mascot had been drawn for that screen yet. That is invisible to a user and it
+made the Logbook's empty state look unlike every other empty state in the app.
+
+[FD] The card went rather than spreading. A card is a container for related
+content, and an empty state is the absence of content, so a surface drawn around
+nothing is decoration around nothing. Removing it also cost 48dp of padding that
+was only ever inseting content from a card edge, and it lets the copy use the
+full 380dp column the illustrated variants already use.
+
+[FD] **An error still reads as an error without one.** Its icon container takes
+`errorContainer` with the glyph on `onErrorContainer`, and it is the only state
+carrying an action button. Those two are the signal; the card was adding nothing
+the colour was not already saying.
+
+[IMPL] The icon is the screen's own, outlined, in `onErrorContainer`: `today`,
+`inbox`, `schedule`. Upcoming had drifted on both counts, bound to `onSurface`
+and swapped to a filled `schedule`, which rendered a near-black disc on a pink
+container while the other two were dark red outlines.
 
 [FD] The copy is plain. An empty list is not an achievement, and nothing here
 congratulates the user or decorates the absence.
+
+## Error copy says what did not happen
+
+[FD] The headline names the read that failed. The supporting line says the data
+is intact, because that is the question the user actually has:
+
+    Couldn't load your tasks
+    Your tasks are safe. This is a read that failed.
+
+    Couldn't load your Logbook
+    The record is safe. This is a read that failed.
+
+[FD] **It must not mention a connection.** Inbox and Upcoming both read "Check
+your connection and try again", and that was wrong in a way worth recording.
+Focuslist has no accounts, no cloud sync and no backend, and `PRODUCT.md` puts
+all three permanently out of scope. Every read is local. Telling users to check
+their connection sends them to fix something that was never involved, and it
+implies the app has a server it does not have. This is the same failure as the
+Logbook's removed summary card: interface text asserting something untrue about
+the system.
+
+[FD] The Logbook's wording differs on purpose. It is the screen that exists to
+make completing a task safe, so a user who cannot see their finished work has a
+specific and reasonable fear. "The record is safe" answers that fear rather than
+the generic one.
 
 ---
 
@@ -391,20 +519,31 @@ twice and spend width the rest of the line needs. `TaskListRow` takes
 
 # Sheets
 
-[IMPL] `ModalBottomSheet` for both Quick Add and Task Details, with only the
-Hidden and Expanded states enabled: neither has a half-height state worth
-stopping at.
+[IMPL] `ModalBottomSheet` for Quick Add and for each of the sheets Task
+Details' Plan rows open, with only the Hidden and Expanded states enabled: none
+of them has a half-height state worth stopping at.
 
 [FD] Standard Material scrim, drag handle and corner treatment. Sheet motion is
 the Material default.
 
-[FD] A sheet holds a draft. Nothing is written until the user confirms, so
-dismissing leaves the task exactly as it was.
+[FD] **A sheet used to hold a draft**, and Task Details was the reason that rule
+existed: nothing was written until Save, so dismissing left the task exactly as
+it was. D-018 removed the draft along with the Save, and records it as the price
+rather than pretending it is free. Quick Add still holds one, because a capture
+that has not been confirmed is not a task yet.
 
-[FD] Sheet content scrolls. Six fields do not fit at large font scales, and a
-confirming action that cannot be reached is a broken screen.
+[FD] Content scrolls. Six fields do not fit at large font scales, and an action
+that cannot be reached is a broken screen.
 
 ## Quick Add
+
+**Extended by D-011.** A trailing time is now read as well as a day, and when
+one is read the sheet shows a single dismissible Reminder chip. The rule below
+against a second way to set a date is kept, and is why the day still has no
+chip. The reminder chip is not a second setter: nothing else in the sheet sets
+a reminder, and dismissing it unmarks the same run in the field, so there is
+one mechanism rather than two. The sheet also lost its heading; the FAB that
+opens it already says "Add task".
 
 [FD] One field and one action. Do not add a second field or a date picker.
 Capture should require almost no decisions.
@@ -431,65 +570,75 @@ A rewrite the user cannot see is one they cannot correct. See
 
 ## Task Details
 
-[FD] Two pages in one sheet. Details carries what the task is, its title and
-notes, plus one row summarising when it happens and one summarising its
-reminder. Schedule carries when and how big: the day, the due date, the
-estimated duration and the recurrence.
+**Superseded by D-018.** This section described a two-page bottom sheet holding
+a draft: a Details page and a Schedule page swapping inside one
+`ModalBottomSheet`, a summary row reading "Today · 45 min · Daily", a typed due
+date, a `BackHandler` on the second page, no Reminder row, completion and
+deletion deliberately absent, and a confirming action disabled while a field was
+invalid. None of it survives. `task-details.md` holds the current design.
 
-[FD] Split because seven controls at once is what `PRODUCT.md` means by
-"avoid exposing every possible property at once".
+What follows is the visual treatment only.
 
-[FD] The summary row states what is set rather than naming the page it opens.
-A row reading only "Schedule" would hide its own contents: someone looking for
-the duration would have no reason to think it lives behind a date. It reads
-"Today · 45 min · Daily", in the order and with the separator a task row uses.
+[FD] A full screen, not a sheet. Three regions on one scrolling column:
+identity, plan, action.
 
-[IMPL] One `ModalBottomSheet` whose content swaps, not two stacked. A modal
-sheet on Android is a dialog with its own `Window`, so stacking means two of
-them: the scrim darkens twice and back has to be dispatched across the pair.
-The Schedule page is also nearly the height of the screen, so a stacked sheet
-would cover the one beneath it and the context it was meant to preserve would
-not be visible anyway.
+| Element | Treatment |
+| --- | --- |
+| App bar | back arrow, no title, no overflow |
+| Title | Headline Small, `onSurface`, borderless, four-line cap, heading |
+| Notes | Body Large, `onSurfaceVariant`, borderless, several lines |
+| Section label | the shared `SectionLabel`, reading "Plan" |
+| Plan row | 56dp, `surfaceContainerLow`, 16dp outer and 4dp inner, 2dp gap |
+| Start focus | full width, 56dp, the screen's only accent |
 
-[FD] The Schedule page carries a back arrow and a `BackHandler`. Without the
-handler the system would close the whole sheet from the second page, throwing
-away the draft rather than returning to the details it came from.
+[FD] **No card around the identity region**, and that is the fix rather than the
+omission. A tinted container read as a summary, which is exactly why the two
+most-edited fields on the screen looked read-only. A Material text field brings
+its own container, so putting real fields inside a card nests one in another.
 
-[FD] The due date is hidden behind an offer to add one, and shown already open
-for a task that has one. Most tasks have no deadline, and a field that is nearly
-always blank is a decision asked of everyone to serve a few.
+[IMPL] The fields are borderless: every `TextFieldDefaults` colour is
+transparent except the cursor, which is what says the text can be typed into.
+They commit on blur rather than per keystroke, and the field is the draft until
+focus leaves it.
 
-[FD] Not tied to Repeats, though that was considered. The recurrence
-roll-forward is the only place the app touches a due date, but that is where the
-code happens to use it rather than where a user needs it: a deadline is most
-natural on a one-off, and "every Monday" needs none at all. Tying the field to
-recurrence would hide it in the case it is most useful and show it in the case
-it is least.
+[FD] The rows are the row family's Plan variant, which the section above
+specifies and binds to the shared radius and gap variables. Each shows its value
+rather than naming the sheet it opens: `Due date  None` says what can be set,
+and an empty field does not.
 
-[FD] Worth knowing about `dueDate` before spending more on it: nothing reads it.
-No list filters on it, nothing sorts by it, no row shows it, and overdue is
-`scheduledDate.isBefore(today)`. `nextRecurringInstance` shifts it forward by
-the same number of days as the scheduled date, keeping whatever gap the two had,
-and that is the whole of its behaviour. It is a well-kept record with no reader.
-If it is ever to mean something, the plumbing that keeps it meaningful across a
-repeating series already exists and is tested.
+[FD] **Unset values are not styled differently.** `None` and `Doesn't repeat`
+render exactly like `Today` and `45m`. `task-details.md` carries the argument in
+full, including the reason there is no token for it: the next step down from
+`onSurfaceVariant` is `outline`, which on `surfaceContainerLow` is about 3.8:1
+and fails AA at 14sp.
 
-[FD] The day is picked from a calendar; the due date is still typed. Natural
-language stays where capture happens, in Quick Add, which is where speed is the
-point. This is the organise-later step, where a specific day is usually wanted.
-A deadline is more often described than located, so "next friday" still works
-there.
+[FD] Durations read through `DurationLabel`: `45m`, `1h`, `1h 30m`. Never
+"45 min", which nothing else in the app says.
 
-[FD] No Time and no Reminder row. The design draws both. A task carries no time
-of day, and reminders are named in `PRODUCT.md` but not built, so either would
-be new functionality rather than a redesign.
+## The sheets the rows open
 
-[FD] Completion and deletion are deliberately absent; they have their own
-interactions, and editing must not quietly finish or remove a task.
+[FD] Both date sheets are one shape: a title, the clear option full width, three
+day presets in a 2x2 grid, then a full-width Choose a date opening the Material
+date picker. Only the due date carries a supporting line, because it is the one
+that has to explain what it is for.
 
-[FD] Validation shows in the field, not on the button: an invalid field is
-marked with the Material error treatment and carries supporting text saying
-what is wrong. The confirming action is disabled while any field is invalid.
+[FD] A preset is filled when it is the value the task holds and outlined
+otherwise. That is the one place a value is styled differently on this screen,
+and it is about the control rather than about whether the field is set.
+
+[IMPL] Custom duration is an `AlertDialog` rather than a second sheet. A modal
+sheet on Android is a dialog with its own window, so stacking means two of them:
+the scrim darkens twice and back has to be dispatched across the pair. That
+lesson is inherited from the screen this replaced, where it was learned the hard
+way, and it is the one thing from the two-page design worth carrying forward.
+
+[FD] The reminder is a dialog over the screen, unchanged from the design that
+preceded this one. D-018 rewrote how a reminder is reached, not what setting one
+is, and it is the one control the board still draws exactly as it was.
+
+[FD] The Repeat sheet offers `Recurrence`'s four periods and none, and nothing
+else. The board's editor with an interval, a weekday set and an end condition is
+Phase 4 per D-019.
 
 ---
 
@@ -549,167 +698,83 @@ something that is not urgent.
 
 # Focus screen
 
-[FD] A primary destination whose content is one task, not a list. Two states;
-the product behaviour is in `focus.md`.
+**Superseded by D-014 and D-015.** This section used to specify a two-state
+screen, Ready and Session, joined by a container transform that grew the play
+button into a shape carrying progress, with an action slot that changed height
+between the two and a foot that held the way out. None of that survives.
+`focus.md` holds the current design and all of the reasoning; what follows is
+the visual treatment only.
 
-[FD] Both states are one layout, not two cross-faded against each other. The
-container, the title and the action slot are each a single element that
-changes. That is what lets the title stay still while the session forms around
-it; see "Becoming the session" in `focus.md`.
-
-## Ready
-
-| Element | Treatment |
-| --- | --- |
-| Task title | `headlineMediumEmphasized`, `onSurface`, centred, heading semantics |
-| Estimate | `bodyLarge`, `onSurface`, centred, under the title, omitted when absent |
-| Complete | `Button` at the medium height, 20dp corner, `secondaryContainer` |
-| Play | square `IconButton` at the medium height, `onPrimary` icon, at the row's end |
-| Top app bar | absent |
-| Everything else | absent |
-
-[FD] One row of two buttons, Complete then play. The weights are carried by
-tone, not by type: play sits on the drawn `primary` container and Complete takes
-the secondary one. An earlier version made Start a wide labelled button in the
-slot and Complete a `TextButton` beneath it. That is a recorded reversal, and
-the reason is in `focus.md`: two controls of different kinds cannot be the same
-control in both states, so Complete had to be built twice and swapped, and a
-swapped control cannot travel.
-
-[FD] Play is square, and both of its reasons are load-bearing. The drawn
-container's corners sit at half its height, so a square container is already the
-circle the shape rings begin at and the old stadium-to-circle leg disappears.
-And an icon carries no text, so it does not grow with the font scale, which is
-what leaves Complete the width it needs at 200%.
-
-[IMPL] Play's own container is transparent. The fill behind it is the drawn
-container, because that is the thing that grows away when the session begins,
-and a second container painted on top of it would stay behind and give the trick
-away. The icon colour is named for the same reason.
-
-[IMPL] Which is also why play's pressed shape is not asked of Material. A
-`shapes` argument would square the ripple off over a fill that stayed round.
-Instead one press value feeds both: the drawn container's corners pull in to
-Material's own pressed corner, and the ripple follows the same number. Both run
-on Material's effects spec, which is what Material uses for this animation
-itself, to keep any bounce out of it.
-
-[IMPL] Play is left out of the tree entirely once it has faded, not held at zero
-alpha. An alpha of zero hides a node from the eye and from nothing else: it stays
-in the semantics tree, and a running session went on offering a Start button that
-could not be seen and did nothing. `FocusSessionSemanticsTest` caught it. The
-row's width does not depend on that child, so dropping it moves nothing.
-
-[IMPL] The row is a `Layout`, not a `Row`, because Complete leaves its own slot
-during the transform and a `Row` cannot place a child outside one. The width
-reported is always Ready's, never the stretched one, so the stretch cannot feed
-back into the size the container is measured against. It is also clamped to the
-column's width, or a long label at a large font scale would hang the row off the
-shape it is meant to be sitting on.
-
-## Session
+One surface, six states, in a sheet. Centred on a 364dp column, top to bottom:
 
 | Element | Treatment |
 | --- | --- |
-| Shape | a ring of `MaterialShapes`, `surfaceContainerHigh`, square, capped at 320dp |
-| Task title | `headlineMediumEmphasized`, `primary`, centred, max 4 lines |
-| Estimate | `bodyLarge`, `primary`, under the title |
-| Complete | the same `Button`, arrived at the centre and at `primary` |
-| Stop | `IconButton` with `ic_close`, top start |
-| Next task | `bodyMedium`, `onSurfaceVariant`, at the foot of the screen |
-| Top app bar | absent |
-| Navigation bar | absent |
+| Title | Headline Medium Emphasized, `onSurface`, centred, four-line cap |
+| Shape | 180dp, `primaryContainer` |
+| Time | Headline Small, `onPrimaryContainer`, centred in the shape |
+| Status | Body Medium, `onSurfaceVariant`, centred |
+| Clock control | 56dp round filled icon button, play or pause |
+| Complete | 56dp tonal button |
 
-## The action slot
+[FD] Gaps are 20dp throughout. The column is centred in the content area between
+the app bar and the bottom inset rather than pinned under the app bar: this is a
+single-purpose mode screen with one column on it, and hanging that column from
+the top left the lower half of the screen empty for no reason.
 
-[FD] One slot, in both states, at `ButtonDefaults.MediumContainerHeight`. Ready
-puts Complete and play in it, Session puts Complete alone, and Complete is the
-same button throughout: it travels from beside play to the middle rather than
-being swapped for another control that looks like it.
+[FD] The shape is `MaterialShapes.Cookie4Sided` at rest and `Cookie12Sided`
+while running. On the board the geometry comes from the M3 Design Kit Shape Set,
+variants "4-sided cookie" and "12-sided cookie", which are the same shapes.
 
-[IMPL] The container no longer starts from the whole slot but from play's own
-square at the slot's end, which is what makes it a circle from the first frame.
-The slot is still measured, because the row's width is what Complete's journey
-is measured across.
+[FD] It is a fixed 180dp and does not grow with the window. It holds a
+fixed-size readout rather than content, so scaling it would only make the
+digits look lost. An earlier version capped it at 320dp "so a wide window gets a
+shape, not a wall", which was solving a problem this size does not have.
 
-[FD] The slot travels between the two states, because Ready reserves only the
-title's height above it rather than the whole square. `focus.md` has the
-reasoning under "Becoming the session".
+[FD] The title sits outside the shape rather than inside it, and that change has
+an arithmetic reason rather than a taste one. A cookie yields about 70% of its
+box as usable area, so four lines at 200% font scale would need a 514dp square
+on a 412dp screen, and three lines would need 411dp with nothing left for
+margins. D-014 has the working.
 
-[FD] Medium rather than large. The design draws its buttons at 84dp, which is
-not one of Material's five button heights; large is a 96dp box a label has to
-fit inside at every scale.
+[FD] The shape is drawn, not clipped to. A `Shape` would have to be a new object
+every tick to change, which puts the work in layout; drawing reads the state in
+the draw phase, where a changed value costs one redraw of one node. This
+survives from the old design and is cheaper now, because the value changes on a
+state change rather than on every tick.
 
-[IMPL] The medium height is a floor for Complete, not a fixed size. Pinned at
-exactly 56dp the label was cut through the middle of its letters at 200% font
-scale, so the button is allowed to grow to hold its own text, and the slot
-reports the size it actually took. Play is fixed at that height in both
-directions, because it holds an icon and squareness is what makes the container
-a circle. Verified at 200%: the row still fits, still centres, and "Complete"
-is neither clipped nor ellipsised.
+[FD] The clock control is an icon button everywhere it appears, because holding
+no text it does not grow with the font scale. Two worded buttons come to roughly
+223dp and 198dp at 200% and overflow the 364dp row; a circle and one word come
+to about 282dp.
 
-## The foot of the screen
+[FD] Estimate reached is the only state with no clock control, since there is no
+clock left to control. It carries two worded buttons, Complete and +5 min, with
+Complete as the primary.
 
-[FD] The peek at what follows, and nothing else. It is Session's alone; Ready
-leaves it empty. It keeps its space when nothing follows, so the last task of a
-session does not move the screen.
+[FD] Complete is tonal in every state, beside a filled control, because it is
+the second of two actions.
 
-## Appearing and disappearing
+[FD] The app bar holds one control and no title: a chevron down at the start,
+keeping its 48dp target. Per D-015 it pauses rather than stops, so it discards
+nothing in any state, and back does the same. A chevron rather than an X because
+the session is being put away rather than closed, and because a bottom sheet is
+dismissed by dragging down, so the control should not mean something different
+from the gesture.
 
-[FD] Everything that comes and goes across the transform is driven off the
-container's travel rather than given an animation of its own, and the swap is a
-fade-through rather than a cross-fade: the outgoing label is gone before the
-incoming one appears. `focus.md` records why both, under "Becoming the
-session". The short version is that a cross-fade on an effects spec settles far
-faster than the container moves, which left labels drawn on backgrounds that
-had already gone.
+[FD] The screen name is published as `paneTitle` rather than drawn. While the
+bar carried a centred "Focus", the screen had two centred headings stacked and
+the upper one named the app instead of the work.
 
-## Both
+[FD] The task title takes `onSurface`, not `onPrimaryContainer`. It sits on the
+background now that it is outside the shape. Only the digits, which are inside
+the shape, take `onPrimaryContainer`. The two happen to be close in the fallback
+palette, so getting this wrong is invisible until a dynamic scheme pulls them
+apart.
 
-[FD] Which shapes depends on whether the task carries an estimate: two walked
-once from circle to clover when it does, a ring of six walked forever when it
-does not. Both begin at the circle, which is where the container transform
-leaves off. `focus.md` has the reasoning under
-"Determinate and indeterminate"; the short version is that this is the
-distinction Material's own loading indicator draws, and it is carried by the
-kind of motion rather than by what any one shape means.
-
-[FD] The shape is drawn, not clipped to. A `Shape` would have to be a new
-object every tick to change, which puts the work in layout; drawing reads the
-progress in the draw phase, where a changed value costs one redraw of one node.
-
-[FD] Capped at 320dp so a wide window gets a shape, not a wall.
-
-[FD] The title is the one piece of text in the app with a hard line cap, and it
-is capped in both states. A fixed square cannot grow to fit, and a title that
-overruns it is cut through the middle of a line, which reads as broken rather
-than as shortened. Four lines is what the square holds at 200% font scale. The
-cap applies in Ready too, where there is no shape yet, because the square is
-reserved in both states and a title that overran it would collide with Start
-and then be cut anyway the moment the session began.
-
-[FD] The shape is `surfaceContainerHigh` with a `primary` title, not
-`primaryContainer` with `onPrimaryContainer`. It is the ground the task sits
-on, and a 320dp block of the brand colour is not ground. `primary` on a surface
-container is the pairing a text button already uses, so it holds up under
-dynamic colour.
-
-[FD] Absent on purpose in both states: metadata beyond the estimate, editing,
-Task Details, a countdown or elapsed clock, capture, a floating action button.
-`PRODUCT.md` asks Focus to remove distractions, and every affordance left out is
-one that would work against that.
-
-[FD] The navigation bar stays in Ready and goes in Session. Focus is reached
-from the bar, and a destination that hides the control used to open it is a
-trap; a mode the user started, and can stop, is not. Session therefore has to
-carry a visible exit, because gesture navigation draws no back affordance.
-
-[FD] When the focused task changes, the title changes with `stateColor` and the
-button does not move. No celebration. The reward is the next task appearing.
-
-[FD] The shape morph is the one place Focuslist takes Material 3 Expressive's
-shape morphing, and it is conditional: it advances against the task's estimate
-or it does not move. See `expressive-motion.md`.
+[FD] Interaction states are not drawn at the Focus level. The controls are
+instances of the M3 Icon button and Button sets, which already ship Enabled,
+Hovered, Focused, Pressed and Disabled. Restating them would give the two copies
+somewhere to disagree.
 
 ---
 

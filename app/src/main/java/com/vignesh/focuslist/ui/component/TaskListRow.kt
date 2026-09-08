@@ -1,24 +1,9 @@
 package com.vignesh.focuslist.ui.component
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ListItemColors
 import androidx.compose.material3.ListItemShapes
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import com.vignesh.focuslist.R
 import com.vignesh.focuslist.core.domain.Recurrence
@@ -26,38 +11,29 @@ import com.vignesh.focuslist.core.domain.Task
 import java.time.LocalDate
 
 /**
- * A task in a list, with the actions menu its long press opens.
+ * A task in a list.
  *
- * Wraps [TaskRow] with the behaviour every task collection needs: metadata
- * derived from the task's own fields, and the actions a long press offers.
- * Screens differ in what they show and how they order it, not in how a single
- * row behaves.
+ * Wraps [TaskRow] with the one thing every task collection needs on top of it:
+ * metadata derived from the task's own fields. Screens differ in what they show
+ * and how they order it, not in how a single row behaves.
  *
- * The menu is ordered by how often an action is wanted and how much it costs
- * to be wrong about. Moving the task to another day comes first, because
- * deciding a task is not for today is the most repeated decision a list asks
- * for and it should not cost a trip through Task Details. Delete comes last,
- * so it is never what the thumb lands on.
+ * **It has no actions of its own.** `docs/decisions.md` D-023 removed the
+ * trailing button and the long-press menu that used to carry Delete, Focus and
+ * three reschedule actions. Tapping the row opens Task Details, and everything
+ * the menu offered lives there: rescheduling through the Plan rows, Start focus
+ * as the primary action, Delete in the overflow.
  *
- * Deletion is deliberate rather than a gesture away: long press, then choose
- * Delete. Recovery is the undo the caller offers, so a single stray gesture
- * should not be able to clear a task off the screen.
+ * The menu existed because Task Details excluded those actions, which D-018,
+ * D-022 and the Plan rows each stopped being true without anyone revisiting the
+ * button. It had also become a subset of the Scheduled sheet that could not
+ * clear a date.
  *
- * Whether the menu is open, and whether the calendar is up, are transient
- * state of this one row. Nothing outside it needs to know, so they stay here
- * rather than in a view model.
+ * What it costs is a tap: rescheduling from a list is three rather than two, and
+ * rows no longer answer a long press. Nothing became unreachable. D-023 records
+ * the trade and what would reverse it.
  *
- * @param today the date metadata is phrased against, and the day the Today and
- * Tomorrow actions resolve to. Passed in rather than read from the clock so the
- * row stays deterministic.
- * @param onFocus starts Focus on this task. Null, the default, leaves the
- * action off the menu: the Focus queue is derived from Today, so only a Today
- * row can offer it. Anywhere else the action would either do nothing or have
- * to schedule the task for today, and neither is specified behaviour.
- * @param onReschedule moves this task to a day. Null, the default, leaves the
- * three move actions off the menu, which is what the Logbook wants: a
- * completed task is a record of when the work was done, and moving it would be
- * rewriting that rather than planning anything.
+ * @param today the date metadata is phrased against. Passed in rather than read
+ * from the clock so the row stays deterministic.
  * @param showDate whether the metadata line names the scheduled day. False on a
  * list whose section headings already do, so the row does not repeat it.
  */
@@ -69,150 +45,23 @@ internal fun TaskListRow(
     colors: ListItemColors,
     onToggleComplete: () -> Unit,
     onOpen: () -> Unit,
-    onDelete: () -> Unit,
     modifier: Modifier = Modifier,
-    onFocus: (() -> Unit)? = null,
-    onReschedule: ((LocalDate?) -> Unit)? = null,
     showDate: Boolean = true
 ) {
-    var areActionsVisible by remember { mutableStateOf(false) }
-    var isPickerOpen by rememberSaveable { mutableStateOf(false) }
-
-    // The menu anchors to the row it acts on.
-    Box(modifier = modifier) {
-        TaskRow(
-            title = task.title,
-            isCompleted = task.isCompleted,
-            shapes = shapes,
-            onToggleComplete = { onToggleComplete() },
-            onClick = onOpen,
-            onLongClick = { areActionsVisible = true },
-            onClickLabel = stringResource(R.string.task_open),
-            onLongClickLabel = stringResource(R.string.task_actions),
-            colors = colors,
-            metadata = taskMetadata(task = task, today = today, showDate = showDate),
-            // The menu is emitted beside the button rather than beside the row.
-            // A popup anchors to where it sits in the layout, so placed in the
-            // row it opened at the row's start, a long way from the control that
-            // opens it.
-            //
-            // A long press anywhere on the row opens the same menu in the same
-            // place. One position is easier to learn than a menu that appears
-            // wherever the finger landed.
-            trailingContent = {
-                Box {
-                    TaskActionsButton(onClick = { areActionsVisible = true })
-
-                DropdownMenu(
-                    expanded = areActionsVisible,
-                    onDismissRequest = { areActionsVisible = false }
-                ) {
-                    if (onReschedule != null) {
-                        // A day the task is already on is left off rather than shown
-                        // and ignored. An action that visibly does nothing is worse
-                        // than one that is not there at all.
-                        if (task.scheduledDate != today) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.task_reschedule_today)) },
-                                onClick = {
-                                    areActionsVisible = false
-                                    onReschedule(today)
-                                }
-                            )
-                        }
-
-                        val tomorrow = today.plusDays(1)
-                        if (task.scheduledDate != tomorrow) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.task_reschedule_tomorrow)) },
-                                onClick = {
-                                    areActionsVisible = false
-                                    onReschedule(tomorrow)
-                                }
-                            )
-                        }
-
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.task_reschedule_pick)) },
-                            onClick = {
-                                areActionsVisible = false
-                                isPickerOpen = true
-                            }
-                        )
-                    }
-
-                    if (onFocus != null) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.task_focus)) },
-                            onClick = {
-                                areActionsVisible = false
-                                onFocus()
-                            }
-                        )
-                    }
-
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.task_delete)) },
-                        onClick = {
-                            areActionsVisible = false
-                            onDelete()
-                        }
-                    )
-                }
-                }
-            },
-            // A day that has already passed. The date text already says so on
-            // its own; the colour is the second cue on top of it.
-            isOverdue = task.scheduledDate?.isBefore(today) == true && !task.isCompleted
-        )
-
-    }
-
-    if (isPickerOpen && onReschedule != null) {
-        TaskDatePickerDialog(
-            // Opens on the day the task is already on, so a small correction
-            // starts from where the task is rather than from nothing.
-            initialDate = task.scheduledDate,
-            onDismiss = { isPickerOpen = false },
-            onPicked = onReschedule
-        )
-    }
-}
-
-/**
- * The control that opens a row's actions.
- *
- * Long press opened this menu and still does. It is kept because assistive
- * technology reaches the menu through the row's labelled long-press action.
- * What it could not do is be seen: Delete and Focus were reachable only by a
- * gesture with nothing on screen to suggest it, and `PRODUCT.md` says the UI
- * must not depend exclusively on gestures.
- *
- * Extra small and narrow, which is a real Material size rather than a chosen
- * one: `IconButtonWidthOption.Narrow` is what makes the container taller than
- * it is wide, and 28 by 32 is within four points of the design on both axes.
- *
- * The small container is only what is drawn. `IconButton` applies
- * `minimumInteractiveComponentSize` before it, so the target stays 48dp and the
- * row does not have to carry a 48dp square to be hittable.
- */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun TaskActionsButton(onClick: () -> Unit) {
-    IconButton(
-        onClick = onClick,
-        modifier = Modifier.size(
-            IconButtonDefaults.extraSmallContainerSize(
-                IconButtonDefaults.IconButtonWidthOption.Narrow
-            )
-        )
-    ) {
-        Icon(
-            painter = painterResource(R.drawable.ic_more_vert),
-            contentDescription = stringResource(R.string.task_actions),
-            modifier = Modifier.size(IconButtonDefaults.extraSmallIconSize)
-        )
-    }
+    TaskRow(
+        title = task.title,
+        isCompleted = task.isCompleted,
+        shapes = shapes,
+        onToggleComplete = { onToggleComplete() },
+        onClick = onOpen,
+        onClickLabel = stringResource(R.string.task_open),
+        modifier = modifier,
+        colors = colors,
+        metadata = taskMetadata(task = task, today = today, showDate = showDate),
+        // A day that has already passed. The date text already says so on its
+        // own; the colour is the second cue on top of it.
+        isOverdue = task.scheduledDate?.isBefore(today) == true && !task.isCompleted
+    )
 }
 
 /**

@@ -20,9 +20,10 @@ import java.time.LocalDate
  * what is left.
  *
  * The result is ordered so the list reads as a deliberate plan rather than a
- * database result: today's work first, then what has slipped, then what is
- * already done. Within each of those groups the caller's order is preserved,
- * because nothing here knows better than the order it was given.
+ * database result: what has slipped, then today's untimed work, then today's
+ * timed work, then what is already done. That is a timeline, read the way a
+ * timeline reads. Within each group the caller's order is preserved, because
+ * nothing here knows better than the order it was given.
  */
 fun todayTasks(tasks: List<Task>, today: LocalDate): List<Task> =
     tasks
@@ -33,41 +34,71 @@ fun todayTasks(tasks: List<Task>, today: LocalDate): List<Task> =
         // sortedBy is stable, which is what preserves input order within a group.
         .sortedBy { task -> todayGroup(task, today) }
 
-/** Scheduled for today, still outstanding. */
-private const val SCHEDULED_TODAY = 0
+/** Scheduled before today, still outstanding, and needing a decision. */
+private const val OVERDUE = 0
 
-/** Scheduled before today, still outstanding. */
-private const val OVERDUE = 1
+/** Today, with no time on it. Do it whenever. */
+private const val NO_TIME_SET = 1
+
+/** Today, with a time. It will announce itself. */
+private const val LATER_TODAY = 2
 
 /** Done, whenever it was scheduled. */
-private const val COMPLETED = 2
+private const val COMPLETED = 3
 
 /**
  * Which band of the Today list a task belongs to.
+ *
+ * Four bands since `docs/decisions.md` D-012, and in this order: Overdue, No
+ * time set, Later today, Completed.
+ *
+ * **Overdue is first because the bands are a timeline**, and past, present,
+ * future is the order a timeline reads in. More than that: an overdue task is
+ * the one thing on this screen that represents the product's defining failure, a
+ * reminder that fired and was not acted on. Placing it below work scheduled for
+ * later in the day says the opposite of what `PRODUCT.md` says about
+ * reliability. The counter-argument, that opening on overdue work is a guilt
+ * list, was weighed and is answered by the Focus now card sitting above all of
+ * it, so the screen still opens on what to do rather than on what was missed.
+ *
+ * **Today's two bands are told apart by whether the task carries a reminder**,
+ * which is what "it will announce itself" means. A task with a time does not
+ * need to be remembered, because the app will say; a task without one is only
+ * ever done because the user looked.
  *
  * Completion is checked first, so a completed task sinks to the bottom whether
  * it was scheduled for today or is overdue.
  */
 private fun todayGroup(task: Task, today: LocalDate): Int = when {
     task.isCompleted -> COMPLETED
-    task.scheduledDate == today -> SCHEDULED_TODAY
-    else -> OVERDUE
+    task.scheduledDate != today -> OVERDUE
+    task.reminderAt == null -> NO_TIME_SET
+    else -> LATER_TODAY
 }
 
 /**
- * The three groups [todayTasks] already sorts into.
+ * The four groups [todayTasks] already sorts into.
  *
  * The ordering has always existed; naming it lets Today label the groups
  * instead of presenting one run of rows whose order the user has to infer.
  * This adds no filtering and changes no order.
+ *
+ * There were three of these before D-012, and the first was unlabelled on the
+ * argument that "at the top of the Today screen, today's work needs no
+ * announcement". The band order changed, so the first band is no longer the one
+ * that needs no announcement, and the argument retired with the position. Every
+ * band carries a label now.
  */
 enum class TodayBand {
 
-    /** Scheduled for today, still outstanding. */
-    SCHEDULED,
-
-    /** Scheduled before today, still outstanding. */
+    /** Scheduled before today, still outstanding. Needs a decision. */
     OVERDUE,
+
+    /** Today, with no time on it. Do it whenever. */
+    NO_TIME_SET,
+
+    /** Today, with a time. It will announce itself. */
+    LATER_TODAY,
 
     /** Done, whenever it was scheduled. */
     COMPLETED
@@ -75,27 +106,6 @@ enum class TodayBand {
 
 /** One band and the tasks in it, in the order [todayTasks] produced them. */
 data class TodaySection(val band: TodayBand, val tasks: List<Task>)
-
-/**
- * Total estimated minutes still to do today, or null when nothing says.
- *
- * Counts every outstanding task the Today view shows, which means overdue work
- * as well as work scheduled for today: both are on the plate, and a total that
- * quietly omitted the overdue half would understate the day. Completed tasks
- * are excluded because the number answers "how much is left", not "how much was
- * there".
- *
- * Null rather than zero when no outstanding task carries an estimate. Zero and
- * "unknown" are different facts, and the header shows nothing for the second
- * rather than claiming a day with no work in it.
- */
-fun todayPlannedMinutes(tasks: List<Task>, today: LocalDate): Int? {
-    val estimates = todayTasks(tasks, today)
-        .filterNot(Task::isCompleted)
-        .mapNotNull(Task::estimatedDurationMinutes)
-
-    return if (estimates.isEmpty()) null else estimates.sum()
-}
 
 /**
  * [todayTasks], split at the points where its band changes.
@@ -108,8 +118,17 @@ fun todayPlannedMinutes(tasks: List<Task>, today: LocalDate): Int? {
  * Empty bands produce no section, so a day with nothing overdue has no empty
  * heading to explain.
  */
-fun todaySections(tasks: List<Task>, today: LocalDate): List<TodaySection> =
+fun todaySections(
+    tasks: List<Task>,
+    today: LocalDate,
+    // The task the Focus now card is holding, or null when the card is absent.
+    // It leaves its band, so it is never on screen twice: D-012 says the
+    // promoted task leaves the list, and a task appearing in both places would
+    // make the card look like a duplicate rather than a promotion.
+    promotedTaskId: String? = null
+): List<TodaySection> =
     todayTasks(tasks, today)
+        .filterNot { task -> task.id == promotedTaskId }
         .fold(mutableListOf<Pair<TodayBand, MutableList<Task>>>()) { sections, task ->
             val band = todayBandOf(task, today)
             val current = sections.lastOrNull()
@@ -126,8 +145,9 @@ fun todaySections(tasks: List<Task>, today: LocalDate): List<TodaySection> =
 
 /** Which band [task] falls into, by the same rule [todayTasks] sorts on. */
 fun todayBandOf(task: Task, today: LocalDate): TodayBand = when (todayGroup(task, today)) {
-    SCHEDULED_TODAY -> TodayBand.SCHEDULED
     OVERDUE -> TodayBand.OVERDUE
+    NO_TIME_SET -> TodayBand.NO_TIME_SET
+    LATER_TODAY -> TodayBand.LATER_TODAY
     else -> TodayBand.COMPLETED
 }
 

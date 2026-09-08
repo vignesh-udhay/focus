@@ -73,7 +73,7 @@ class ScreenChromeSemanticsTest {
         title = "Today",
         emptyHeadline = "Nothing scheduled for today",
         emptySupporting = "Add a task when you are ready."
-    ) { viewModel -> TodayScreen(viewModel = viewModel) }
+    ) { viewModel -> TodayScreen(viewModel = viewModel, onOpenTask = {}) }
 
     @Test
     fun today_hasHeadingAndEmptyState_at100() = today(FontScale100)
@@ -86,7 +86,7 @@ class ScreenChromeSemanticsTest {
         title = "Inbox",
         emptyHeadline = "Inbox is empty",
         emptySupporting = "Anything you capture without a day waits here."
-    ) { viewModel -> InboxScreen(viewModel = viewModel) }
+    ) { viewModel -> InboxScreen(viewModel = viewModel, onOpenTask = {}) }
 
     @Test
     fun inbox_hasHeadingAndEmptyState_at100() = inbox(FontScale100)
@@ -99,7 +99,7 @@ class ScreenChromeSemanticsTest {
         title = "Upcoming",
         emptyHeadline = "Nothing scheduled ahead",
         emptySupporting = "Tasks scheduled for a later day appear here."
-    ) { viewModel -> UpcomingScreen(viewModel = viewModel) }
+    ) { viewModel -> UpcomingScreen(viewModel = viewModel, onOpenTask = {}) }
 
     @Test
     fun upcoming_hasHeadingAndEmptyState_at100() = upcoming(FontScale100)
@@ -112,7 +112,7 @@ class ScreenChromeSemanticsTest {
         title = "Logbook",
         emptyHeadline = "Nothing completed yet",
         emptySupporting = "Tasks you finish are kept here."
-    ) { viewModel -> LogbookScreen(viewModel = viewModel) }
+    ) { viewModel -> LogbookScreen(viewModel = viewModel, onOpenTask = {}) }
 
     @Test
     fun logbook_hasHeadingAndEmptyState_at100() = logbook(FontScale100)

@@ -59,7 +59,6 @@ from that list in memory by a pure function in `core/domain/TaskQueries.kt`:
     todayTasks(tasks, today)
     upcomingTasks(tasks, today)
     todaySections(tasks, today)
-    todayPlannedMinutes(tasks, today)
 
 These take data and return data. No Android types, no coroutines, no
 repository. That is what makes the app's actual behavior testable as plain JVM

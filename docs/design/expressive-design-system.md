@@ -266,7 +266,7 @@ and the rest are available through `MaterialTheme.typography`.
 | Where | Role |
 | --- | --- |
 | Focus task title | `headlineMediumEmphasized` |
-| Screen titles in the app bar | `LargeFlexibleTopAppBar` default, `displaySmall` |
+| Screen titles in the app bar | `titleLargeEmphasized` |
 | Empty-state headlines | `titleMediumEmphasized` |
 
 [FD] Everything else uses the standard scale:
@@ -292,9 +292,12 @@ of them stand out.
 it. The emphasized roles come from the Material defaults and do not need to be
 declared.
 
-`displaySmall` is there because `LargeFlexibleTopAppBar` draws its expanded
-title with it, and Material's default weight for it is Regular. Without the
-override the largest text in the app would also be the lightest.
+`displaySmall` was there because `LargeFlexibleTopAppBar` drew its expanded
+title with it and Material's default weight for it is Regular, so without the
+override the largest text in the app would also have been the lightest. D-020
+replaced that bar with a compact one at `titleLarge`, so nothing in the app
+draws `displaySmall` any more. The override is harmless and can go whenever
+`Type.kt` is next touched.
 
 ## Wrapping and scale
 
@@ -318,24 +321,30 @@ expressive additions.
 [M3] `MaterialShapes` provides thirty-five morphable polygons (Burst, Flower,
 Sunny, Puffy and so on) for shape morphing.
 
-[FD] Focuslist uses **seven**, and all seven are on one screen. The Focus
-session's shape is drawn from `Circle`, `Square`, `Cookie4Sided`, `Pentagon`,
-`SoftBurst` and `Gem` when the task carries no estimate, and from `Circle` and
-`Clover8Leaf` when it does. Nothing else in the app uses a polygon at all: no
-expressive shape as an interaction pattern, no shape change for novelty. A task
-list still has nothing to gain from a button that becomes a flower.
+[FD] Focuslist uses **two**, and both are on one screen. The Focus session's
+shape is `Cookie4Sided` at rest and `Cookie12Sided` while running. Nothing else
+in the app uses a polygon at all: no expressive shape as an interaction pattern,
+no shape change for novelty. A task list still has nothing to gain from a button
+that becomes a flower.
 
-[FD] An earlier version of this document said Focuslist used none of them, and
-that was true when it was written. It is worth being honest about the drift
-rather than quietly restating the number: Focus is meant to be the calmest
-screen in the app and it now holds the most expressive thing in it. Each step
-was individually defensible — the morph carries progress, the ring is
-Material's own way of saying "duration unknown" — but the accumulation is a
-real cost and the next proposal to add a shape should have to answer for it.
+[FD] It used to be seven, and the count coming back down belongs here, because
+this is where the worry was written. An earlier version of this document said
+Focuslist used none of them, which was true when it was written. Then Focus grew
+a ring of six shapes for a session with no estimate and a pair for one with an
+estimate, and this passage recorded the drift honestly: Focus is meant to be the
+calmest screen in the app and it had come to hold the most expressive thing in
+it. Each step was individually defensible. The accumulation was the cost, and
+the next proposal to add a shape was told it would have to answer for it.
 
-[FD] The line that still holds, and the one to defend, is that every one of the
-seven is in service of a single question: how is this session going? None of
-them decorates anything, and `focus.md` records the reasoning per shape.
+[FD] D-014 answered it from the other direction instead. Once D-013 put the
+digits on screen, the shape stopped carrying progress, and a shape whose only
+job is to say whether the clock is running needs exactly two forms. The screen
+meant to be the calmest in the app is no longer the one holding the most
+expressive thing in it.
+
+[FD] The line that still holds is that both shapes serve a single question, and
+that the question is narrower than it was: is this session running? Neither
+decorates anything, and `focus.md` records the reasoning.
 
 [FD] The Focuslist scale is softer than Material's at the small end and stops
 where Material's does at the top:

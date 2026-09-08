@@ -67,5 +67,10 @@ fun rememberDayMonthFormat(): DateTimeFormatter {
     }
 }
 
-/** Weekday, month, day: the three fields a heading and the Today subtitle show. */
+/**
+ * Weekday, month, day: the three fields a day heading shows.
+ *
+ * Upcoming's headings are the only caller now. Today's subtitle used to share
+ * it, and D-020 removed that subtitle along with the date it carried.
+ */
 private const val DayMonthSkeleton = "EEEMMMd"

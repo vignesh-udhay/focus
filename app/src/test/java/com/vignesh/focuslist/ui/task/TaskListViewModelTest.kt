@@ -3,6 +3,8 @@ package com.vignesh.focuslist.ui.task
 import androidx.lifecycle.SavedStateHandle
 import com.vignesh.focuslist.MainDispatcherRule
 import com.vignesh.focuslist.core.notification.FocusAlarms
+import com.vignesh.focuslist.core.domain.FocusNowReason
+import com.vignesh.focuslist.core.domain.FocusSession
 import com.vignesh.focuslist.core.domain.Recurrence
 import com.vignesh.focuslist.core.domain.Task
 import com.vignesh.focuslist.core.domain.upcomingTasks
@@ -842,7 +844,7 @@ class TaskListViewModelTest {
             task(id = "today", scheduledDate = today)
         )
         val model = viewModel()
-        assertEquals(listOf("today", "overdue", "done"), visible(model, 3).map { it.id })
+        assertEquals(listOf("overdue", "today", "done"), visible(model, 3).map { it.id })
 
         model.deleteTask("overdue")
         assertEquals(listOf("today", "done"), visible(model, 2).map { it.id })
@@ -851,7 +853,7 @@ class TaskListViewModelTest {
         model.undoDelete("overdue")
 
         // Back between the two bands, not appended to the end of the list.
-        assertEquals(listOf("today", "overdue", "done"), visible(model, 3).map { it.id })
+        assertEquals(listOf("overdue", "today", "done"), visible(model, 3).map { it.id })
     }
 
     @Test
@@ -1042,7 +1044,7 @@ class TaskListViewModelTest {
             task(id = "a", scheduledDate = today)
         )
         val model = viewModel()
-        assertEquals(listOf("a", "overdue", "done"), visible(model, 3).map { it.id })
+        assertEquals(listOf("overdue", "a", "done"), visible(model, 3).map { it.id })
 
         model.toggleComplete("a")
         awaitUndoOffer(model)
@@ -1054,8 +1056,8 @@ class TaskListViewModelTest {
         model.undoComplete("a")
 
         assertEquals(
-            listOf("a", "overdue", "done"),
-            awaitTodayIds(model, listOf("a", "overdue", "done"))
+            listOf("overdue", "a", "done"),
+            awaitTodayIds(model, listOf("overdue", "a", "done"))
         )
     }
 
@@ -1067,7 +1069,7 @@ class TaskListViewModelTest {
             task(id = "a", scheduledDate = today.minusDays(4))
         )
         val model = viewModel()
-        assertEquals(listOf("today", "a", "done"), visible(model, 3).map { it.id })
+        assertEquals(listOf("a", "today", "done"), visible(model, 3).map { it.id })
 
         model.toggleComplete("a")
         awaitUndoOffer(model)
@@ -1081,8 +1083,8 @@ class TaskListViewModelTest {
 
         // Back to overdue, between today's work and what is done.
         assertEquals(
-            listOf("today", "a", "done"),
-            awaitTodayIds(model, listOf("today", "a", "done"))
+            listOf("a", "today", "done"),
+            awaitTodayIds(model, listOf("a", "today", "done"))
         )
     }
 
@@ -1563,8 +1565,8 @@ class TaskListViewModelTest {
         model.edit(id = "a", scheduledDate = today.minusDays(1))
 
         assertEquals(
-            listOf("b", "a", "done"),
-            awaitTodayIds(model, listOf("b", "a", "done"))
+            listOf("a", "b", "done"),
+            awaitTodayIds(model, listOf("a", "b", "done"))
         )
     }
 
@@ -1724,7 +1726,7 @@ class TaskListViewModelTest {
         )
         val model = viewModel()
 
-        assertEquals(listOf("today", "overdue"), visible(model, 2).map { it.id })
+        assertEquals(listOf("overdue", "today"), visible(model, 2).map { it.id })
         assertEquals(listOf("future"), upcoming(model, 1).map { it.id })
     }
 
@@ -1768,7 +1770,7 @@ class TaskListViewModelTest {
 
         assertEquals(emptyList<String>(), awaitUpcomingIds(model, emptyList()))
         // Overdue, so below today's outstanding work.
-        assertEquals(listOf("today", "a"), awaitTodayIds(model, listOf("today", "a")))
+        assertEquals(listOf("a", "today"), awaitTodayIds(model, listOf("a", "today")))
     }
 
     @Test
@@ -2399,8 +2401,8 @@ class TaskListViewModelTest {
 
         // After: both are in Today, the older one now overdue and below.
         assertEquals(
-            listOf("isNowToday", "wasToday"),
-            awaitTodayIds(model, listOf("isNowToday", "wasToday"))
+            listOf("wasToday", "isNowToday"),
+            awaitTodayIds(model, listOf("wasToday", "isNowToday"))
         )
     }
 
@@ -2930,17 +2932,18 @@ class TaskListViewModelTest {
         model.beginFocus("b")
 
         assertEquals("b", awaitFocusedTaskId(model, "b"))
-        assertTrue(model.isFocusSessionActive.value)
-        assertNotNull(model.focusSessionStartedAt.value)
+        assertTrue(model.isFocusSheetOpen.value)
+        assertNotNull(model.focusSession.value)
     }
 
     /**
-     * The running flag is what puts the sheet on screen, so the chosen task has
-     * to go when the session does. Left behind, it would be a choice nobody
-     * made, waiting to reopen on a task the user had walked away from.
+     * Ending Focus clears everything, and only two things end it: completing the
+     * task, and the task being deleted from somewhere else. D-015 took away the
+     * control that stopped a session outright, so this is no longer something
+     * the user can do by leaving.
      */
     @Test
-    fun stoppingForgetsWhichTaskWasChosen() {
+    fun endingFocusForgetsWhichTaskWasChosen() {
         store(
             task(id = "a", scheduledDate = today),
             task(id = "b", scheduledDate = today)
@@ -2949,22 +2952,32 @@ class TaskListViewModelTest {
         model.beginFocus("b")
         awaitFocusedTaskId(model, "b")
 
-        model.stopFocusSession()
+        model.endFocus()
 
-        assertEquals(false, model.isFocusSessionActive.value)
-        assertNull(model.focusSessionStartedAt.value)
+        assertEquals(false, model.isFocusSheetOpen.value)
+        assertNull(model.focusSession.value)
         // Nothing is focused, rather than the head of a queue. Stopping ends
         // the session; the next one starts by choosing a task again.
         assertEquals(null, awaitFocusedTaskId(model, null))
     }
 
     /**
-     * The whole reason the sheet stays open when a task is finished. Completing
-     * inside Focus has to keep the session running, or the mode would end every
-     * time it succeeded.
+     * A task finished from anywhere closes the sheet.
+     *
+     * `focus.md`: completing closes Focus and returns to Today, and there is no
+     * empty state. **An earlier version asserted the opposite**, that the sheet
+     * held a finished state until dismissed, "rather than vanishing at the
+     * moment they have most earned being told they are done". That needed the
+     * queue to have a notion of everything being done, and D-004 removed the
+     * queue; closing is the honest answer for a screen with nothing left to be
+     * about.
+     *
+     * Driven through `toggleComplete` rather than `completeFromFocus`, because
+     * the sheet has to close however the task was finished — from a
+     * notification, or from another screen, not only from its own button.
      */
     @Test
-    fun completingInsideASessionKeepsItRunning() {
+    fun completingTheFocusedTaskAnywhereClosesTheSheet() {
         store(
             task(id = "a", scheduledDate = today),
             task(id = "b", scheduledDate = today)
@@ -2975,12 +2988,18 @@ class TaskListViewModelTest {
 
         model.toggleComplete("a")
 
-        // Nothing is focused, and the session is still running. The sheet
-        // holds the finished state until the user dismisses it, rather than
-        // vanishing at the moment they have most earned being told they are
-        // done.
         assertEquals(null, awaitFocusedTaskId(model, null))
-        assertTrue(model.isFocusSessionActive.value)
+        awaitSheetClosed(model)
+        assertEquals(false, model.isFocusSheetOpen.value)
+        assertNull(model.focusSession.value)
+    }
+
+    /** Waits for the watcher to reach the sheet flag, which is asynchronous. */
+    private fun awaitSheetClosed(model: TaskListViewModel) {
+        repeat(200) {
+            if (!model.isFocusSheetOpen.value) return
+            Thread.sleep(POLL_MILLIS)
+        }
     }
 
     @Test
@@ -3058,7 +3077,7 @@ class TaskListViewModelTest {
         assertEquals("Task a", title)
         // Forty-five minutes after the clock started, give or take the moment
         // the test took to get here.
-        val started = model.focusSessionStartedAt.value!!
+        val started = model.focusSession.value!!.startedAt
         assertEquals(started.plusSeconds(45 * 60), at)
     }
 
@@ -3075,7 +3094,7 @@ class TaskListViewModelTest {
     }
 
     @Test
-    fun stoppingASessionCancelsTheAnnouncement() {
+    fun endingASessionCancelsTheAnnouncement() {
         store(task(id = "a", scheduledDate = today, estimatedDurationMinutes = 45))
         val model = viewModel()
         model.focusTask("a")
@@ -3083,7 +3102,7 @@ class TaskListViewModelTest {
         model.startFocusSession()
         awaitScheduled()
 
-        model.stopFocusSession()
+        model.endFocus()
 
         assertTrue(alarms.cancellations > 0)
     }
@@ -3100,7 +3119,7 @@ class TaskListViewModelTest {
         val model = viewModel()
         model.beginFocus("a")
         awaitFocusedTaskId(model, "a")
-        val firstStart = model.focusSessionStartedAt.value!!
+        val firstStart = model.focusSession.value!!.startedAt
         awaitScheduled()
 
         model.beginFocus("b")
@@ -3111,7 +3130,7 @@ class TaskListViewModelTest {
         // minute task picked up after forty minutes of work would be announced
         // as overrun before it had been started.
         val (title, at) = awaitScheduled { it.first == "Task b" }
-        val secondStart = model.focusSessionStartedAt.value!!
+        val secondStart = model.focusSession.value!!.startedAt
 
         assertEquals("Task b", title)
         assertEquals(secondStart.plusSeconds(15 * 60), at)
@@ -3125,6 +3144,196 @@ class TaskListViewModelTest {
     }
 
     /** Waits for an alarm to be scheduled, optionally matching [predicate]. */
+    // --- D-013: pause, resume, and what survives leaving the sheet -----------
+
+    /**
+     * **D-015, and the assertion that matters most here**, because the failure
+     * it guards against is a silent one.
+     *
+     * Leaving pauses. It never stops. Stopping when the user meant to pause
+     * loses the elapsed time with nothing that puts it back; pausing when they
+     * meant to stop leaves one card on Today they can ignore. One failure is
+     * unrecoverable and invisible, the other costs a glance.
+     */
+    @Test
+    fun leavingTheSheetPausesARunningSession() {
+        store(task(id = "a", scheduledDate = today, estimatedDurationMinutes = 45))
+        val model = viewModel()
+        model.beginFocus("a")
+        awaitFocusedTaskId(model, "a")
+
+        model.leaveFocusSheet()
+
+        val session = model.focusSession.value
+        assertNotNull(session)
+        assertTrue(session!!.isPaused)
+        // The sheet goes, and the session does not. The two used to be the same
+        // flag, which is exactly what D-015 made impossible.
+        assertEquals(false, model.isFocusSheetOpen.value)
+        // And the task pointer stays, or the Focus now card would have nothing
+        // to name and the session would be unreachable.
+        assertEquals("a", awaitFocusedTaskId(model, "a"))
+    }
+
+    @Test
+    fun leavingTheSheetKeepsAnAlreadyPausedSession() {
+        store(task(id = "a", scheduledDate = today, estimatedDurationMinutes = 45))
+        val model = viewModel()
+        model.beginFocus("a")
+        awaitFocusedTaskId(model, "a")
+
+        model.pauseFocusSession()
+        val pausedAt = model.focusSession.value!!.pausedAt
+        model.leaveFocusSheet()
+
+        // Leaving a paused session does not re-pause it and move the moment it
+        // stopped, which would quietly hand the user back time they did not work.
+        assertEquals(pausedAt, model.focusSession.value?.pausedAt)
+    }
+
+    /**
+     * Completing is the one thing that ends Focus from inside. The screen has
+     * nothing left to be about, so it closes rather than sitting on a task that
+     * is done.
+     */
+    @Test
+    fun completingFromFocusEndsItAndClosesTheSheet() {
+        store(task(id = "a", scheduledDate = today, estimatedDurationMinutes = 45))
+        val model = viewModel()
+        model.beginFocus("a")
+        awaitFocusedTaskId(model, "a")
+
+        model.completeFromFocus("a")
+
+        assertEquals(false, model.isFocusSheetOpen.value)
+        assertNull(model.focusSession.value)
+        assertEquals(null, awaitFocusedTaskId(model, null))
+    }
+
+    /** The card opens Ready: a task chosen, and no clock running yet. */
+    @Test
+    fun theCardOpensFocusOnReady() {
+        store(task(id = "a", scheduledDate = today, estimatedDurationMinutes = 45))
+        val model = viewModel()
+        runBlocking { model.focusNow.first { it?.task?.id == "a" } }
+
+        model.openFocusFromCard()
+
+        assertTrue(model.isFocusSheetOpen.value)
+        assertEquals("a", awaitFocusedTaskId(model, "a"))
+        // Ready. The user agrees with the card's pick before the clock runs.
+        assertNull(model.focusSession.value)
+    }
+
+    /**
+     * Except for the paused reason, where the card's button already read Resume.
+     * Making the user press play inside the sheet would be a confirmation of a
+     * confirmation.
+     */
+    @Test
+    fun theCardResumesAPausedSessionRatherThanOpeningReady() {
+        store(task(id = "a", scheduledDate = today, estimatedDurationMinutes = 45))
+        val model = viewModel()
+        model.beginFocus("a")
+        awaitFocusedTaskId(model, "a")
+        model.leaveFocusSheet()
+
+        runBlocking {
+            model.focusNow.first { it?.reason == FocusNowReason.ResumePaused }
+        }
+        model.openFocusFromCard()
+
+        assertTrue(model.isFocusSheetOpen.value)
+        assertEquals(false, model.focusSession.value!!.isPaused)
+    }
+
+    @Test
+    fun pausingKeepsTheWorkAndResumingDoesNotCountTheGap() {
+        store(task(id = "a", scheduledDate = today, estimatedDurationMinutes = 45))
+        val model = viewModel()
+        model.beginFocus("a")
+        awaitFocusedTaskId(model, "a")
+
+        model.pauseFocusSession()
+        val paused = model.focusSession.value!!
+        val held = paused.elapsed(Instant.now())
+
+        model.resumeFocusSession()
+
+        val resumed = model.focusSession.value!!
+        assertEquals(false, resumed.isPaused)
+        // The origin moved rather than a total being banked, so the session
+        // reads what it held when it paused. Compared to the second, because
+        // both calls read a real clock.
+        assertEquals(held.seconds, resumed.elapsed(Instant.now()).seconds)
+    }
+
+    /**
+     * A paused clock has no moment for the estimate to arrive at. An alarm left
+     * pointing at one would fire while the user was deliberately not working,
+     * which is the reminder-grade failure this app exists to avoid, inverted.
+     */
+    @Test
+    fun pausingCancelsTheAnnouncementAndResumingBringsItBack() {
+        store(task(id = "a", scheduledDate = today, estimatedDurationMinutes = 45))
+        val model = viewModel()
+        model.beginFocus("a")
+        awaitFocusedTaskId(model, "a")
+        awaitScheduled()
+        val before = alarms.cancellations
+
+        model.pauseFocusSession()
+
+        // The pause reaches the alarm, rather than only the flow.
+        repeat(200) {
+            if (alarms.cancellations > before) return@repeat
+            Thread.sleep(POLL_MILLIS)
+        }
+        assertTrue(alarms.cancellations > before)
+
+        val scheduledBefore = alarms.scheduled.size
+        model.resumeFocusSession()
+
+        repeat(200) {
+            if (alarms.scheduled.size > scheduledBefore) return@repeat
+            Thread.sleep(POLL_MILLIS)
+        }
+        assertTrue(alarms.scheduled.size > scheduledBefore)
+    }
+
+    @Test
+    fun extendingPushesTheAnnouncementOutByFiveMinutes() {
+        store(task(id = "a", scheduledDate = today, estimatedDurationMinutes = 45))
+        val model = viewModel()
+        model.beginFocus("a")
+        awaitFocusedTaskId(model, "a")
+        val (_, first) = awaitScheduled()
+
+        model.extendFocusSession()
+
+        val (_, second) = awaitScheduled { (_, at) -> at.isAfter(first) }
+        assertEquals(
+            first.plusSeconds(FocusSession.ExtensionMinutes * 60L).epochSecond,
+            second.epochSecond
+        )
+        // The task's own estimate is untouched: one session running long is not
+        // a correction to how long the user said the work takes.
+        assertEquals(45, storedRow("a").estimatedDurationMinutes)
+    }
+
+    /** A paused session still counts as being in the mode, so the bar stays away. */
+    @Test
+    fun aPausedSessionIsStillActive() {
+        store(task(id = "a", scheduledDate = today, estimatedDurationMinutes = 45))
+        val model = viewModel()
+        model.beginFocus("a")
+        awaitFocusedTaskId(model, "a")
+
+        model.pauseFocusSession()
+
+        assertTrue(model.isFocusSheetOpen.value)
+    }
+
     private fun awaitScheduled(
         predicate: (Pair<String, Instant>) -> Boolean = { true }
     ): Pair<String, Instant> {

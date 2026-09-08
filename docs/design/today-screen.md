@@ -48,7 +48,7 @@ network.
 A single `Scaffold`:
 
     Scaffold
-    ├── topBar                 LargeFlexibleTopAppBar, title and subtitle
+    ├── topBar                 TopAppBar, 64dp, title only, pinned
     ├── snackbarHost           SnackbarHost, carrying the undo offer
     ├── bottomBar              NavigationBar, passed in by the caller
     ├── floatingActionButton   FloatingActionButton
@@ -84,49 +84,66 @@ for.
 
 # Top app bar
 
-Use `LargeFlexibleTopAppBar`, start-aligned, through `FocuslistTopAppBar`.
+A compact 64dp M3 `TopAppBar`, start-aligned, through `FocuslistTopAppBar`.
 
 - title: `Text("Today")`
-- subtitle: the date, and a pill carrying the total time still planned
+- subtitle: none
 - navigationIcon: omitted, because Today is a root destination
-- actions: none. Reaching the other lists is the navigation bar's job, not the
-  app bar's.
-- expandedHeight: the default, 152dp with a subtitle
+- actions: the overflow, as a standard icon button, opening Logbook, Reminder
+  health and Settings. Reaching the other lists is still the navigation bar's
+  job, not the app bar's; this is for what the navigation bar does not carry.
 - colors: the Material default, named nowhere
 
-## This reverses an earlier rule, deliberately
+It is pinned. It holds its 64dp in every scroll position.
 
-This section previously said the opposite. It named
-`LargeFlexibleTopAppBar` among the components to avoid, and argued:
+## This section has reversed twice, and D-020 is the second
+
+The bar was compact, became `LargeFlexibleTopAppBar` at 152dp, and is compact
+again. Both moves turned on one question, and it is worth stating plainly so a
+third change has to answer it:
+
+**Does the header carry information the screen does not otherwise say?**
+
+The original rule said no, and refused the tall bar:
 
 > A tall header would spend the most valuable part of the screen restating a
 > label the user already knows, and it would push the first tasks down out of
 > the opening view. Task visibility wins over header prominence.
 
-That argument is right **about a title**, and it is kept for one: "Today" is a
-label the user already knows, because they tapped Today to get here. If the
-header carried only a title, the old rule would still stand.
+The first reversal accepted that this was right *about a title*, and overturned
+it only because the header had gained a payload: a pill carrying the total time
+still planned, and the date. D-017 removed the pill and recorded that the case
+then rested on the date alone, "thinner than when the case was made". D-020
+removed the date, which left nothing.
 
-Two things it assumed are no longer true.
+**The suspension ended. The argument never changed.** Anyone proposing a tall
+bar a third time has to put something in it first.
 
-**The header now carries information rather than a label.** The date is not
-available anywhere else on the screen, and the planned total answers the
-question `PRODUCT.md` puts at the centre of Today: knowing that two hours of
-work remain is part of deciding what to do next. Neither restates anything.
+## The subtitle and the height are one decision
 
-**The old bar was pinned.** It held its 64dp in every scroll position and never
-gave it back. This one collapses to 64dp as soon as the list moves under it, so
-the extra height is spent only on the opening view and returned immediately.
+This is the trap the second reversal walked into, and it is marked here so the
+next reader does not walk into it too.
 
-The cost is real and worth stating: at rest the header is 152dp against the old
-64dp, which is roughly one task row below the fold. That was accepted knowingly.
+Removing the subtitle looks like tidying. The date restates the destination name
+at higher precision, which is an odd thing for a subtitle to do, and a 36sp
+title renders perfectly well without one. Each step is defensible alone. But the
+subtitle was the entire justification for the height, so dropping only the
+subtitle leaves 152dp holding a single word, which is worse than either end of
+the decision.
 
-`MediumFlexibleTopAppBar` was considered as a middle option and rejected. With a
-subtitle it is 136dp, so it saves 16dp, and it drops the subtitle to
-`labelLarge` at 14sp, which makes the date and the pill harder to read. It costs
-fidelity to the design and buys almost nothing. If the opening view ever has to
-be protected, go back to the compact bar and find another home for the date and
-the pill; do not take the middle.
+If a subtitle ever returns, the height question reopens with it. They move
+together or not at all.
+
+## Where the date went
+
+Nowhere. D-020 records why: nothing on Today needs it. The bands are relative,
+Overdue and No time set and Later today, and so is the Focus now card, so no
+row, band or card is harder to read for its absence. It was pleasant rather than
+load-bearing.
+
+If that turns out to be wrong, the answer is the date as the title in the
+compact bar, not the tall bar returning. The height was never what made the date
+useful.
 
 ## Still true
 
@@ -134,36 +151,46 @@ Do not use `CenterAlignedTopAppBar`. A start-aligned title is the Android
 convention for a root list destination, and a centered one reads as an iOS
 navigation bar.
 
-Do not override the app bar's title typography. The component supplies it, and
-shrinks it as the bar collapses; naming a style freezes the collapsed state at
-the expanded size.
-
+Do not override the app bar's title typography. The component supplies it. The
+original reason was that naming a style freezes the collapsed state at the
+expanded size, which a pinned bar cannot suffer from; the rule survives its
+reason because a screen naming its own type is how a design system stops being
+one.
 ---
 
 # Scrolling behavior
 
 The `LazyColumn` is the only scroll container on the screen.
 
-Let the app bar collapse:
+The app bar is pinned and takes no scroll behaviour. It holds its 64dp in every
+scroll position.
 
-- create the behavior with `TopAppBarDefaults.exitUntilCollapsedScrollBehavior()`
-- apply `Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)` to the
-  `Scaffold`
-- pass the same `scrollBehavior` to the app bar
+This section used to say the opposite at length: create
+`TopAppBarDefaults.exitUntilCollapsedScrollBehavior()`, apply
+`Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)` to the `Scaffold`,
+and pass the same behaviour to the bar, so that 152dp gave its height back as the
+list moved under it. D-020 removed the tall bar, and 64dp has nothing to collapse
+to.
 
-The bar gives back its extra height as the list moves under it and settles at
-64dp, changing its container color on the way. A pinned behaviour would hold all
-152dp of a two-row bar in every scroll position, which is the thing the old
-compact rule was right to object to.
-`TopAppBarDefaults.enterAlwaysScrollBehavior()` is the alternative worth
-trying if the bar starts to feel like it is in the way: it scrolls the bar
-off and returns it on the first upward scroll, handing those few dp back to
-the list. Compare both on a device before switching.
+`TopAppBarDefaults.enterAlwaysScrollBehavior()` is still worth knowing about if
+the bar ever starts to feel like it is in the way: it scrolls the bar off and
+returns it on the first upward scroll, handing those 64dp to the list. That is a
+separate question from the height and can be answered on its own.
 
 The activity already runs edge to edge. Apply the Scaffold's `innerPadding`
 to the list's `contentPadding`, not as a `padding` modifier wrapped around
 the list. Content must scroll under the system bars rather than stopping
 short of them.
+
+## The FAB does not hide on scroll
+
+Material allows it and this screen declines it. Hiding the capture control
+while someone is reading their list removes it at the moment they are most
+likely to think of something new, and `PRODUCT.md` asks that capture require
+almost no decisions. Today is short enough that a persistent FAB rarely covers
+anything worth seeing.
+
+That holds only if the list can scroll clear of it. See Spacing.
 
 ---
 
@@ -178,9 +205,36 @@ Use `FocuslistSpacing` for spacing the components do not own.
 
 The bottom content padding must clear the floating action button, or the last
 task sits underneath it and cannot be tapped. Combine the Scaffold's bottom
-inset with the height of the medium extended FAB, the spacing the Scaffold
-leaves beneath it, and a gap above it, composed from `FocuslistSpacing`
-tokens rather than written as one hard-coded figure.
+inset with the height of the FAB, the spacing the Scaffold leaves beneath it,
+and a gap above it, composed from `FocuslistSpacing` tokens rather than written
+as one hard-coded figure. The FAB is the 56dp default size, so that is roughly
+72dp of clearance before the navigation bar is counted.
+
+The board briefly drew the 80dp medium size, which M3 Expressive offers. It was
+changed back to match the code. 56dp is the standard FAB, and the 24dp the
+larger one costs is permanent, because this FAB does not hide on scroll.
+
+The failure is quiet, which is why it is worth stating. The last row is still
+drawn, so nothing looks broken; its checkbox and its whole 72dp target are
+simply covered, and the task cannot be completed from the list. No composed
+frame on the board shows this, because every one of them happens to hold a
+short enough list that the content ends above the FAB. Do not read their
+spacing as the specification.
+
+## Section labels align with the group, not the text inside it
+
+A band label starts where the group it heads starts. The task cards sit at
+`FocuslistSpacing.md` from the screen edge, so the label starts there too, and
+the two form one column.
+
+An earlier version indented Today's labels a further 16dp, which aligned them
+to nothing: not the card edge, and not the row title, which begins after the
+checkbox. Upcoming's date headers were already correct and Today now matches
+them. Both screens are the same list with different grouping rules, and they
+should not look like two systems.
+
+There is one section header component. If two appear with the same name, the
+second is a stale library duplicate; do not pick it.
 
 Do not re-derive the internal padding of `TaskRow` or the app bar. Those
 components own their own spacing.
@@ -271,12 +325,12 @@ The move is not animated: the row simply appears in its new position.
 | --- | --- |
 | Tap checkbox | Toggles completion immediately |
 | Tap row body | Opens task details |
-| Long press | Opens the task actions menu |
+| Long press | Nothing, since D-023 |
 | Swipe | Nothing |
 
 Completing and opening stay separate, as specified in `task-row.md`.
 
-The row's `onClick` opens `TaskDetailsSheet`, a `ModalBottomSheet` editing the
+The row's `onClick` opens Task Details, the full screen editing the
 the fields a task carries about itself: title, notes, scheduled date, due
 date, and estimated duration. It must not navigate, and there is no details
 screen or back stack.
@@ -351,8 +405,8 @@ Requirements:
 - no fixed row heights anywhere on the screen
 - the checkbox keeps its 48dp touch target and its content description
 - each row exposes two nodes to TalkBack: the checkbox, and the row itself
-- the row's long press carries an `onLongClickLabel`, so the actions menu is
-  announced and offered as an action rather than left as an undiscoverable
+- the row's tap carries a click label, so it is announced as "open task
+  details" rather than as an undiscoverable
   gesture
 - completion is legible without color, through the checkbox state and the
   strikethrough
@@ -394,14 +448,30 @@ the screen: the app bar, the collection, the spacing, and the FAB together.
 
 # Sections
 
-Today's ordering has always had three bands: scheduled for today, then overdue,
-then completed. They are now labelled.
+Four bands, in this order, per D-012:
 
-The first band carries no label. At the top of the Today screen, today's work
-needs no announcement. "Overdue" and "Completed" each get a line of label text
-above their group, and nothing else: no divider, no container, no count, not
-collapsible. Each band rounds its own corners, so it reads as one collection
-rather than a slice of a longer one.
+    Overdue          past, and needs a decision
+    No time set      today, do it whenever
+    Later today      today, it will announce itself
+    Completed · N    a disclosure, collapsed by default
+
+Every band carries a label. Each is a line of text above its group, and nothing
+else: no divider, no container. Each band rounds its own corners, so it reads
+as one collection rather than a slice of a longer one. Rows inside "No time
+set" do not repeat the band's own words in their supporting line.
+
+Completed is the exception to "nothing else": it carries a count and it
+collapses, because a plain completed list grows through the day and pushes live
+work down the screen.
+
+**This replaces an earlier rule.** This section previously described three
+bands — scheduled for today, overdue, completed — with the first carrying no
+label, on the argument that "at the top of the Today screen, today's work needs
+no announcement", and with Completed neither counted nor collapsible. The band
+order changed, so the first band is no longer the one that needs no
+announcement, and the argument retires with the position. D-012 has the
+reasoning, including why the label is "No time set" rather than "Anytime
+today".
 
 The grouping is read from `TaskQueries.todaySections`, which cuts the list
 `todayTasks` already ordered at the points where the band changes. Concatenating
@@ -467,9 +537,9 @@ Built and working:
 - completion, stored as `completedAt` and persisted through the repository,
   with undo offered in a snackbar
 - the three-band ordering described above
-- soft deletion through the long-press actions menu, with undo offered in a
+- soft deletion from Task Details' overflow, with undo offered in a
   snackbar
-- starting Focus on a task from the long-press actions menu, described in
+- starting Focus from the Focus now card or from Task Details, described in
   `focus.md`
 - Task Details, editing title, notes, scheduled date, due date, and
   estimated duration, described in `task-details.md`

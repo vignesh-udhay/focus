@@ -47,12 +47,41 @@ screen. The bar is handed to screens and could have been withheld by one, but
 the rail is a sibling of the whole graph, so the two would behave differently
 if the decision were made in either place other than here.
 
+## The selected icon is filled, and the board disagrees on purpose
+
+Material's convention is a filled icon for the selected destination and an
+outlined one for the rest, with the indicator pill and the label weight
+carrying the rest of the signal. That is what the app does.
+
+**The Clean Slate board shows all three outlined, and that is not a mistake to
+copy.** The Material 3 Figma kit the board draws from has 141 icons and no
+filled calendar, under `today`, `calendar`, `event` or `date`. Today is the
+default destination, so it is the one icon that could not be filled, and two
+filled out of three reads as a defect rather than a system. Outlined-consistent
+was the correct choice for the board given what it could reach.
+
+`res/drawable` is not limited that way. It already holds `ic_today_filled` and
+`ic_inbox_filled`, so the app can do what Material asks.
+
+This is therefore a deliberate divergence: the app is filled-when-selected, the
+board is outlined, and the board is the one that is constrained. Do not
+"correct" the code to match a frame. If a filled calendar ever reaches the kit,
+update the board and delete this section.
+
+`ic_upcoming_filled` is the one asset the app still needs; until it exists the
+bar cannot be consistent either way.
+
 ---
 
 # The app-bar overflow
 
 Three dots at the end of the header row, on Today, Inbox and Upcoming, and
-nowhere else. It opens:
+nowhere else. It carries destinations, and that is what makes it navigation
+rather than a screen's own action menu. A room may still grow a menu of its own
+actions under the same glyph without contradicting this; Task Details is the
+screen that will, and its contents are undecided, so it currently has none.
+
+It opens:
 
 - Logbook
 - Reminder health
@@ -87,11 +116,16 @@ because nothing yet needs one.
 
 Routes are names rather than positions:
 
-    today  inbox  upcoming  logbook  reminder-health
+    today  inbox  upcoming  logbook  reminder-health  task-details/{id}
+
+**Task Details gained a route with D-018.** It was a `ModalBottomSheet` opened
+over whichever list the row was tapped on, and it is now a full screen, which
+makes it a destination rather than state. It is a room by the rule above: a back
+arrow, no navigation bar, and back returns to the list it was opened from.
 
 Focus has no route. It is a `ModalBottomSheet` over whichever screen asked for
-it, so it is state rather than a destination, and dismissing it is stopping the
-session.
+it, so it is state rather than a destination, and dismissing it pauses the
+session per D-015.
 
 The `anytime` and `someday` routes are gone. They were two routes over one
 screen, the same query with one constant changed. `docs/decisions.md` D-002

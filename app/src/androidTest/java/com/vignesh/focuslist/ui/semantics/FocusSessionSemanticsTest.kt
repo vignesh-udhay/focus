@@ -1,32 +1,45 @@
 package com.vignesh.focuslist.ui.semantics
 
 import android.Manifest
-import androidx.compose.material3.Text
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.waitUntilExactlyOneExists
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vignesh.focuslist.ui.focus.FocusSheet
+import com.vignesh.focuslist.ui.task.TaskListViewModel
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Focus's two states, and the promise that makes hiding the navigation safe.
+ * Focus's six states, and the promise D-015 rests on.
  *
- * Ready is a destination and keeps its navigation. Session is a mode and takes
- * it away. The whole design rests on that being reversible without guessing:
- * a user who started a session must be able to see the way out, and one whose
- * queue runs dry must get the navigation back without doing anything at all.
+ * `focus.md` names what this file has to cover: each state publishes its task
+ * title as a heading, names its clock control by the action rather than the
+ * glyph, carries its status line as text, and offers a visible way out.
+ * Completing ends the task. **Leaving pauses rather than stops**, which is the
+ * assertion that matters most here, because the failure it guards against is a
+ * silent one.
  *
  * Runs against a real view model over fake storage, so completing a task here
- * travels the production path and the queue advances for the real reason.
+ * travels the production path.
+ *
+ * **This file used to assert a queue**: a "Next:" footer, completing advancing
+ * to the following task without leaving, and an empty state when the queue ran
+ * dry. D-004 removed the queue and `focus.md` removed the empty state; none of
+ * those behaviours exist, and the assertions went with them.
  */
 @OptIn(ExperimentalTestApi::class)
 @RunWith(AndroidJUnit4::class)
@@ -36,140 +49,184 @@ class FocusSessionSemanticsTest {
     val rule = createComposeRule()
 
     /**
-     * A session with an estimate asks to post notifications, so the estimate
-     * can be announced when it is reached. Left ungranted, the system dialog
-     * opens over the screen and every assertion after it fails against a
-     * hierarchy that is no longer in front.
-     *
-     * The tests that pass without this are the ones whose task carries no
-     * estimate, which is why the split looked like a queue-length problem and
-     * was not.
+     * A session with an estimate asks to post notifications, so the estimate can
+     * be announced when it is reached. Left ungranted, the system dialog opens
+     * over the screen and every assertion after it fails against a hierarchy
+     * that is no longer in front.
      */
     @Before
     fun grantNotifications() {
         grantRuntimePermission(Manifest.permission.POST_NOTIFICATIONS)
     }
 
-    /**
-     * Composes the sheet with a session already running on [focusOn].
-     *
-     * That is the only way in now. Focus is opened by choosing a task, so there
-     * is no state in which the sheet is on screen and nothing has been started;
-     * the nav host keys its presence on the running session for exactly that
-     * reason.
-     */
-    private fun setFocus(
-        fontScale: Float,
-        dao: FakeTaskDao,
-        focusOn: String? = "1"
-    ) {
-        val viewModel = testViewModel(dao)
-        if (focusOn != null) viewModel.beginFocus(focusOn)
-
-        rule.setFocuslistContent(fontScale) {
-            FocusSheet(viewModel = viewModel)
-        }
-    }
-
-    private fun withQueue() = FakeTaskDao(
+    private fun withEstimate() = FakeTaskDao(
         listOf(
             testTask(
                 id = "1",
                 title = FIRST,
                 scheduledDate = TestToday,
                 estimatedDurationMinutes = 45
-            ),
-            testTask(id = "2", title = SECOND, scheduledDate = TestToday)
+            )
         )
     )
 
-    private fun withOneTask() = FakeTaskDao(
+    private fun withoutEstimate() = FakeTaskDao(
         listOf(testTask(id = "1", title = FIRST, scheduledDate = TestToday))
     )
 
-    // What the sheet opens on
+    /**
+     * Composes the sheet on a state, and hands back the view model so a test can
+     * assert what leaving actually did.
+     *
+     * [start] is what puts the session in one of the six states: Ready is a
+     * chosen task with no clock, and the rest are reached by driving the same
+     * controls the user would.
+     */
+    private fun setFocus(
+        fontScale: Float,
+        dao: FakeTaskDao,
+        start: (TaskListViewModel) -> Unit
+    ): TaskListViewModel {
+        val viewModel = testViewModel(dao)
+        start(viewModel)
 
-    private fun assertOpensOnTheChosenTaskWithItsEstimate(fontScale: Float) {
-        setFocus(fontScale, withQueue())
+        rule.setFocuslistContent(fontScale) {
+            FocusSheet(viewModel = viewModel)
+        }
 
-        rule.waitUntilExactlyOneExists(hasText(FIRST), TIMEOUT_MILLIS)
-        // The estimate Today already shows. A screen about doing the work
-        // should not be the one place the size of it is withheld.
-        rule.onNodeWithText(ESTIMATE).assertIsDisplayed()
-        rule.onNodeWithText(COMPLETE).assertIsDisplayed()
+        return viewModel
     }
 
-    @Test
-    fun opensOnTheChosenTaskWithItsEstimate_at100() =
-        assertOpensOnTheChosenTaskWithItsEstimate(FontScale100)
+    private fun ready(dao: FakeTaskDao, fontScale: Float = FontScale100) =
+        setFocus(fontScale, dao) { model -> model.openFocus("1") }
 
-    @Test
-    fun opensOnTheChosenTaskWithItsEstimate_at200() =
-        assertOpensOnTheChosenTaskWithItsEstimate(FontScale200)
+    private fun running(dao: FakeTaskDao, fontScale: Float = FontScale100) =
+        setFocus(fontScale, dao) { model -> model.beginFocus("1") }
 
-    /** The chosen one, not the head of the queue. That is the whole point. */
-    @Test
-    fun opensOnTheTaskThatWasChosen_notTheHeadOfTheQueue() {
-        setFocus(FontScale100, withQueue(), focusOn = "2")
+    private fun paused(dao: FakeTaskDao, fontScale: Float = FontScale100) =
+        setFocus(fontScale, dao) { model -> model.beginFocus("1"); model.pauseFocusSession() }
 
-        rule.waitUntilExactlyOneExists(hasText(SECOND), TIMEOUT_MILLIS)
-    }
-
-    @Test
-    fun namesWhatComesNext() {
-        setFocus(FontScale100, withQueue())
-
-        rule.waitUntilExactlyOneExists(hasText(NEXT_SECOND), TIMEOUT_MILLIS)
-    }
-
-    @Test
-    fun saysNothingAboutNextWhenNothingFollows() {
-        setFocus(FontScale100, withOneTask())
-
-        rule.waitUntilExactlyOneExists(hasText(FIRST), TIMEOUT_MILLIS)
-        rule.onAllNodes(hasText(NEXT_PREFIX, substring = true)).assertCountEquals(0)
-    }
-
-    // The queue running through
-
-    @Test
-    fun completing_advancesWithoutLeavingTheSheet() {
-        setFocus(FontScale100, withQueue())
-        rule.waitUntilExactlyOneExists(hasText(FIRST), TIMEOUT_MILLIS)
-
-        rule.onNodeWithText(COMPLETE).performClick()
-
-        // The next task, still in the sheet. This is the behaviour that decided
-        // the design: Focus is somewhere you keep working, not a drawer that
-        // closes when one task is done.
-        rule.waitUntilExactlyOneExists(hasText(SECOND), TIMEOUT_MILLIS)
-        rule.onNodeWithText(COMPLETE).assertIsDisplayed()
-    }
+    // --- the six states -------------------------------------------------------
 
     /**
-     * Finishing the last one is the moment the user has most earned being told
-     * they are done, so the sheet stays and says so. It used to close itself,
-     * because a running session with nothing in it hid the navigation bar; a
-     * sheet hides nothing, so that reason went with the redesign.
+     * Every state names its clock control by what pressing it does. An icon
+     * carries no text, so a description reading "play" would describe the
+     * drawing rather than the action.
+     */
+    private fun assertStatesNameTheirControls(fontScale: Float) {
+        ready(withEstimate(), fontScale)
+        rule.waitUntilExactlyOneExists(hasText(FIRST), TIMEOUT_MILLIS)
+        rule.onNodeWithContentDescription(START).assertIsDisplayed()
+        rule.onNodeWithText(ESTIMATE_STATUS).assertIsDisplayed()
+        rule.onNodeWithText(COMPLETE).assertIsDisplayed()
+    }
+
+    @Test
+    fun readyNamesItsControls_at100() = assertStatesNameTheirControls(FontScale100)
+
+    @Test
+    fun readyNamesItsControls_at200() = assertStatesNameTheirControls(FontScale200)
+
+    @Test
+    fun runningOffersPauseAndTheEstimate() {
+        running(withEstimate())
+
+        rule.waitUntilExactlyOneExists(hasContentDescription(PAUSE), TIMEOUT_MILLIS)
+        rule.onNodeWithText(ESTIMATE_STATUS).assertIsDisplayed()
+        rule.onNodeWithText(COMPLETE).assertIsDisplayed()
+    }
+
+    @Test
+    fun pausedOffersResumeAndSaysWhatIsLeft() {
+        paused(withEstimate())
+
+        rule.waitUntilExactlyOneExists(hasContentDescription(RESUME), TIMEOUT_MILLIS)
+        // The budget, which is the question someone deciding whether to resume
+        // is actually asking. "Paused" on its own could not answer it.
+        rule.onNodeWithText(REMAINING).assertIsDisplayed()
+    }
+
+    @Test
+    fun anOpenEndedSessionSaysItHasNoLimit() {
+        running(withoutEstimate())
+
+        rule.waitUntilExactlyOneExists(hasText(NO_LIMIT), TIMEOUT_MILLIS)
+        rule.onNodeWithContentDescription(PAUSE).assertIsDisplayed()
+    }
+
+    @Test
+    fun anOpenEndedPausedSessionOffersResumeAndStillSaysNoLimit() {
+        paused(withoutEstimate())
+
+        rule.waitUntilExactlyOneExists(hasContentDescription(RESUME), TIMEOUT_MILLIS)
+        rule.onNodeWithText(NO_LIMIT).assertIsDisplayed()
+    }
+
+    /** Every state offers a visible way out, and it is never a close X. */
+    @Test
+    fun everyStateOffersAVisibleWayOut() {
+        running(withEstimate())
+
+        rule.waitUntilExactlyOneExists(hasContentDescription(DISMISS), TIMEOUT_MILLIS)
+    }
+
+    // --- D-015, which is the assertion that matters most ---------------------
+
+    /**
+     * **Leaving pauses. It never stops.**
+     *
+     * The failure this guards is silent: stopping when the user meant to pause
+     * loses the elapsed time with nothing that puts it back. Asserted against
+     * the view model rather than the screen, because what went wrong would go
+     * wrong behind the sheet closing.
      */
     @Test
-    fun anEmptiedQueue_showsTheEmptyStateWithoutClosing() {
-        setFocus(FontScale100, withOneTask())
+    fun leavingPausesRatherThanStopping() {
+        val model = running(withEstimate())
+        rule.waitUntilExactlyOneExists(hasContentDescription(PAUSE), TIMEOUT_MILLIS)
+
+        rule.onNodeWithContentDescription(DISMISS).performClick()
+        rule.waitForIdle()
+
+        val session = model.focusSession.value
+        assertNotNull("leaving discarded the session", session)
+        assertTrue("leaving left the clock running", session!!.isPaused)
+        // The sheet goes and the session does not, which is why the two are
+        // separate facts in the view model.
+        assertEquals(false, model.isFocusSheetOpen.value)
+        // And the task is still chosen, or the Focus now card would have nothing
+        // to point at and the paused session would be unreachable.
+        assertEquals("1", model.focusedTask.value?.id)
+    }
+
+    /** Completing ends the task and closes the sheet, rather than advancing. */
+    @Test
+    fun completingEndsFocus() {
+        val model = running(withEstimate())
         rule.waitUntilExactlyOneExists(hasText(FIRST), TIMEOUT_MILLIS)
 
         rule.onNodeWithText(COMPLETE).performClick()
+        rule.waitForIdle()
 
-        rule.waitUntilExactlyOneExists(hasText(EMPTY_HEADLINE), TIMEOUT_MILLIS)
+        assertEquals(false, model.isFocusSheetOpen.value)
+        // No next task. D-004 removed the queue, and there is nothing to advance
+        // through even when another task is scheduled for the same day.
+        rule.onAllNodesWithText(NEXT_PREFIX, substring = true).assertCountEquals(0)
     }
 
     private companion object {
         const val FIRST = "Review the quarterly budget"
-        const val SECOND = "Call the plumber about the leak"
-        const val ESTIMATE = "45 min"
         const val COMPLETE = "Complete"
+        const val START = "Start focus"
+        const val PAUSE = "Pause focus"
+        const val RESUME = "Resume focus"
+        const val DISMISS = "Put focus away"
+        const val ESTIMATE_STATUS = "45 min focus"
+        const val REMAINING = "45 min left"
+        const val NO_LIMIT = "No time limit"
+
+        /** The queue's old footer, asserted absent so it cannot come back. */
         const val NEXT_PREFIX = "Next: "
-        const val NEXT_SECOND = "Next: Call the plumber about the leak"
-        const val EMPTY_HEADLINE = "Nothing to focus on"
         const val TIMEOUT_MILLIS = 5_000L
     }
 }

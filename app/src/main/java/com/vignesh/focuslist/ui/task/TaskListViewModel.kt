@@ -6,6 +6,9 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.CreationExtras
+import com.vignesh.focuslist.core.domain.FocusNow
+import com.vignesh.focuslist.core.domain.FocusNowReason
+import com.vignesh.focuslist.core.domain.FocusSession
 import com.vignesh.focuslist.core.domain.Recurrence
 import com.vignesh.focuslist.core.domain.nextRecurringInstance
 import com.vignesh.focuslist.core.domain.Task
@@ -13,6 +16,7 @@ import com.vignesh.focuslist.core.domain.TaskCompletion
 import com.vignesh.focuslist.core.time.CurrentDay
 import com.vignesh.focuslist.core.time.SystemCurrentDay
 import com.vignesh.focuslist.core.domain.completedTasks as queryCompletedTasks
+import com.vignesh.focuslist.core.domain.focusNow as queryFocusNow
 import com.vignesh.focuslist.core.domain.inboxTasks as queryInboxTasks
 import com.vignesh.focuslist.core.domain.todayTasks as queryTodayTasks
 import com.vignesh.focuslist.core.domain.upcomingTasks as queryUpcomingTasks
@@ -31,6 +35,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -127,6 +132,26 @@ class TaskListViewModel(
         combine(repository.observeTasks(), currentDay.today) { tasks, day ->
             queryTodayTasks(tasks, day)
         }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
+                initialValue = emptyList()
+            )
+
+    /**
+     * Every task the repository holds, deleted ones excluded by the DAO.
+     *
+     * The one flow that is not a view. Task Details is reached by id from any
+     * list, so it cannot read the list it was opened from: a task rescheduled
+     * off Today while its details are open would stop being found and the
+     * screen would close on an edit the user just made.
+     *
+     * No query wraps it, because there is no filtering to do. Adding one that
+     * merely copied the list would be a view in the `TaskQueries.kt` sense
+     * without being a view of anything.
+     */
+    val allTasks: StateFlow<List<Task>> =
+        repository.observeTasks()
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
@@ -236,22 +261,27 @@ class TaskListViewModel(
     fun beginFocus(id: String) {
         focusTask(id)
         restartFocusClock()
+        _isFocusSheetOpen.value = true
     }
 
-    private val _focusSessionStartedAt = MutableStateFlow(
-        savedState.get<Long>(FocusSessionStartedAtKey)?.let(Instant::ofEpochMilli)
-    )
+    private val _focusSession = MutableStateFlow(restoreFocusSession())
 
     /**
-     * When the running session began, or null while none is running.
+     * The session being worked, or null while none has been started.
      *
-     * A moment rather than a running total, so progress can be worked out from
-     * the clock whenever anyone asks. Kept in [SavedStateHandle] so a session
-     * survives the process being killed while the user was away in another
-     * app, which over a forty-five minute estimate is a normal thing to happen
-     * rather than an edge case.
+     * A moment and a banked duration rather than a running total, so progress
+     * can be worked out from the clock whenever anyone asks. Kept in
+     * [SavedStateHandle] so a session survives the process being killed while
+     * the user was away in another app, which over a forty-five minute estimate
+     * is a normal thing to happen rather than an edge case.
+     *
+     * `docs/decisions.md` D-013 replaced the bare start instant this used to
+     * be. A session that can be paused needs three more things than a start:
+     * what earlier legs added up to, whether the clock is moving, and how far
+     * the estimate has been extended. [FocusSession] holds all four and does
+     * the arithmetic.
      */
-    val focusSessionStartedAt: StateFlow<Instant?> = _focusSessionStartedAt.asStateFlow()
+    val focusSession: StateFlow<FocusSession?> = _focusSession.asStateFlow()
 
     /**
      * Whether the user is working, as opposed to looking at what to work on.
@@ -270,63 +300,277 @@ class TaskListViewModel(
      * killed while the user was away in another app, which over a
      * forty-five-minute estimate is ordinary rather than an edge case.
      */
-    val isFocusSessionActive: StateFlow<Boolean> =
-        _focusSessionStartedAt
-            .map { startedAt -> startedAt != null }
-            .stateIn(
-                scope = viewModelScope,
-                // Eagerly, not while subscribed: the navigation above the graph
-                // reads this to decide whether to draw itself, and a bar that
-                // reappeared whenever the flow went cold would flicker back
-                // into a running session.
-                started = SharingStarted.Eagerly,
-                initialValue = _focusSessionStartedAt.value != null
-            )
+    private val _isFocusSheetOpen = MutableStateFlow(false)
+
+    /**
+     * Whether the Focus sheet is on screen.
+     *
+     * **Separate from whether a session exists, and D-015 is why.** Leaving now
+     * pauses rather than stops, so a paused session outlives the sheet by
+     * design. If the sheet were still driven by the session, closing it would
+     * reopen it on the next frame.
+     *
+     * Not persisted. A process that died was not showing anything, and the
+     * paused session it left behind is reachable from the Focus now card, which
+     * is the whole point of D-015.
+     */
+    val isFocusSheetOpen: StateFlow<Boolean> = _isFocusSheetOpen.asStateFlow()
 
     /**
      * Starts working on whatever [focusedTask] currently is.
      *
      * Takes no task: choosing and starting are separate acts, and the caller
-     * that wants both does both.
+     * that wants both does both. This is what Ready's Start focus does.
      */
     fun startFocusSession() = restartFocusClock()
 
     /**
-     * Marks now as the moment work on the current task began.
+     * Stops the clock, keeping everything worked so far.
      *
-     * Also called when the session moves on to the next task, because the
-     * timestamp measures *this task* against *its* estimate, not the session
-     * against the first task's. Without the reset, finishing a forty-five
-     * minute task in ten and moving to a fifteen minute one would show the new
-     * task as already overrun before a second of it had been worked.
+     * The session stays and so does the task pointer, because a paused session
+     * is one the user can come back to, and the Focus now card is what points
+     * at it.
      */
-    private fun restartFocusClock() {
-        val startedAt = Instant.now()
-        _focusSessionStartedAt.value = startedAt
-        savedState[FocusSessionStartedAtKey] = startedAt.toEpochMilli()
+    fun pauseFocusSession() {
+        writeFocusSession(_focusSession.value?.paused(Instant.now()))
+    }
+
+    /** Starts the clock again, without counting the time spent paused. */
+    fun resumeFocusSession() {
+        writeFocusSession(_focusSession.value?.resumed(Instant.now()))
     }
 
     /**
-     * Stops working, returning Focus to a destination.
+     * Gives the session another five minutes, at the estimate.
      *
-     * Called on the way out by hand, and by the screen when the queue empties:
-     * a session with nothing left to do has ended whether or not it was
-     * stopped, and leaving the flag set would hide the navigation behind an
-     * empty state.
+     * On the session, never on the task. A task's estimate is the user's answer
+     * to how long the work takes, and one session running long is not a
+     * correction to it: extending must not quietly rewrite the number Today
+     * adds up and Task Details shows.
      */
-    fun stopFocusSession() {
-        _focusSessionStartedAt.value = null
-        savedState.remove<Long>(FocusSessionStartedAtKey)
+    fun extendFocusSession() {
+        writeFocusSession(_focusSession.value?.extended())
+    }
+
+    /**
+     * Marks now as the moment work on the current task began.
+     *
+     * A fresh session rather than a nudged one: nothing is carried from a
+     * previous task, because the clock measures *this task* against *its*
+     * estimate. Without the reset, finishing a forty-five minute task in ten
+     * and moving to a fifteen minute one would show the new task as already
+     * overrun before a second of it had been worked.
+     */
+    private fun restartFocusClock() {
+        writeFocusSession(FocusSession(startedAt = Instant.now()))
+    }
+
+    /**
+     * Leaving the Focus sheet, by the chevron, the scrim, the drag or back.
+     *
+     * **It pauses. It never stops.** That is `docs/decisions.md` D-015, and it
+     * supersedes D-013's clause that a running session did not survive leaving.
+     *
+     * The control cannot tell which of two intentions a tap carries. "I am
+     * finished with this" and "I need to look at something else for a minute"
+     * are both ordinary and arrive through the same button, so the question is
+     * not which is likelier but which mistake is cheaper to be wrong about.
+     * Stopping when the user meant to pause loses the elapsed time silently,
+     * with nothing that puts it back. Pausing when they meant to stop leaves one
+     * card on Today that they can ignore, and that completing the task clears.
+     * One failure is unrecoverable and invisible; the other costs a glance.
+     *
+     * D-013's principle is unchanged, not reversed: a session running with
+     * nothing on screen pointing at it is state the user cannot reach, and
+     * pausing on the way out means that situation never occurs.
+     *
+     * The alarm goes, because a paused clock has no moment for the estimate to
+     * be reached at and an alarm left pointing at one would fire while the user
+     * was deliberately not working. The `init` watcher below does that: pausing
+     * changes the session, which re-runs the announcement.
+     */
+    fun leaveFocusSheet() {
+        pauseFocusSession()
+        _isFocusSheetOpen.value = false
+    }
+
+    /**
+     * Completing the task from inside Focus.
+     *
+     * The same write every list makes, so finishing here is exactly as undoable
+     * as finishing anywhere else and the offer follows the user to Today.
+     * Completing closes the sheet, because the screen has nothing left to be
+     * about; undoing puts the task back on the list and does not reopen Focus.
+     */
+    fun completeFromFocus(id: String) {
+        toggleComplete(id)
+        endFocus()
+    }
+
+    /**
+     * Ends Focus outright: no session, no chosen task, no sheet.
+     *
+     * Not a control the user has. D-015 removed the one that stopped a session,
+     * and stopping was only ever pausing and not resuming. This is for the two
+     * cases where there is nothing to come back to: the task was completed, or
+     * it was deleted from somewhere else while the sheet was open. Pausing is
+     * safe because something is waiting; here nothing is.
+     */
+    fun endFocus() {
+        writeFocusSession(null)
         alarms.cancel()
-        // The pointer goes too. It used to survive, harmlessly, because Focus
-        // was a destination the user had to navigate to and the stale choice
-        // was simply what they found there next time. Now the running flag is
-        // what puts the sheet on screen, so a pointer left behind would be a
-        // choice nobody made, waiting to be reopened.
         _focusedTaskId.value = null
+        _isFocusSheetOpen.value = false
+    }
+
+    /** One place that writes the session, so the flow and the saved state agree. */
+    private fun writeFocusSession(session: FocusSession?) {
+        _focusSession.value = session
+
+        if (session == null) {
+            savedState.remove<Long>(FocusSessionStartedAtKey)
+            savedState.remove<Long>(FocusSessionPausedAtKey)
+            savedState.remove<Int>(FocusSessionExtraKey)
+        } else {
+            savedState[FocusSessionStartedAtKey] = session.startedAt.toEpochMilli()
+            savedState[FocusSessionPausedAtKey] = session.pausedAt?.toEpochMilli()
+            savedState[FocusSessionExtraKey] = session.extraMinutes
+        }
+    }
+
+    /**
+     * The session as it was before the process died, or null if there was none.
+     *
+     * The origin is what says a session existed at all; the pause is absent for
+     * a running one, which is the same shape the value has in memory.
+     */
+    private fun restoreFocusSession(): FocusSession? {
+        val startedAt = savedState.get<Long>(FocusSessionStartedAtKey) ?: return null
+
+        return FocusSession(
+            startedAt = Instant.ofEpochMilli(startedAt),
+            pausedAt = savedState.get<Long>(FocusSessionPausedAtKey)?.let(Instant::ofEpochMilli),
+            extraMinutes = savedState.get<Int>(FocusSessionExtraKey) ?: 0
+        )
+    }
+
+    /**
+     * The task the Focus now card holds, or null when nothing qualifies.
+     *
+     * `docs/decisions.md` D-012. The rule is a pure function in `core/domain`;
+     * this only supplies it with the three things it cannot read for itself:
+     * the stored tasks, the current day, and which task a paused session is on.
+     *
+     * **It reads every task, not Today's list.** A paused session's task need
+     * not be scheduled for today: a task focused from Inbox and paused is still
+     * the thing the user was doing, and sending them back to find it would be
+     * the app losing their place.
+     *
+     * The clock is read at collection time rather than injected, unlike
+     * [today]. Two of the three reasons turn on the time of day, and `CurrentDay`
+     * is a day: it emits on a date change and nothing finer. What that costs is
+     * that a reminder passing does not re-run the rule on its own; the card
+     * appears the next time anything else emits, which in practice is the next
+     * write or the next time the screen is opened. Making it exact would mean a
+     * timer per reminder on the screen the app opens to, and the reminder itself
+     * is what is responsible for interrupting the user. The card is where the
+     * task goes afterwards.
+     */
+    val focusNow: StateFlow<FocusNow?> =
+        combine(
+            repository.observeTasks(),
+            currentDay.today,
+            _focusSession,
+            _focusedTaskId
+        ) { tasks, day, session, focusedId ->
+            queryFocusNow(
+                tasks = tasks,
+                today = day,
+                now = LocalDateTime.now(),
+                // Only a *paused* session earns the card's strongest reason. A
+                // running one is already on screen in the sheet, and a card
+                // pointing at it would be the app telling the user to go where
+                // they already are.
+                pausedTaskId = focusedId?.takeIf { session?.isPaused == true }
+            )
+        }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
+                initialValue = null
+            )
+
+    /**
+     * Opening Focus from the card.
+     *
+     * Two behaviours behind one action, and the card's label says which is
+     * which. A paused session resumes, because the user pressed Resume and
+     * making them press it again inside the sheet would be a confirmation of a
+     * confirmation. Anything else chooses the task without starting a clock,
+     * which lands the sheet on Ready.
+     *
+     * **Ready is why this is not `beginFocus`.** `focus.md` has a task row skip
+     * Ready on the grounds that picking one task out of a list is the deciding
+     * already done. The card is the opposite case: the *app* picked, and Ready
+     * is where the user agrees with the choice before the clock runs. That is
+     * also the entry Ready lost when Focus left the navigation bar in Phase 3,
+     * which is what left D-013's sixth state unreachable.
+     */
+    fun openFocusFromCard() {
+        val card = focusNow.value ?: return
+
+        if (card.reason == FocusNowReason.ResumePaused) {
+            // The card's button already read Resume, so the user has pressed it.
+            // Making them press play inside the sheet would be a confirmation of
+            // a confirmation.
+            focusTask(card.task.id)
+            _isFocusSheetOpen.value = true
+            resumeFocusSession()
+            return
+        }
+
+        openFocus(card.task.id)
+    }
+
+    /**
+     * Opens Focus on [id] in Ready: chosen, with no clock running.
+     *
+     * Any session left over from another task goes, because the clock measures
+     * this task against *its* estimate. Without that, picking up a fifteen
+     * minute task after forty minutes on another would open already overrun.
+     */
+    fun openFocus(id: String) {
+        focusTask(id)
+        writeFocusSession(null)
+        _isFocusSheetOpen.value = true
     }
 
     init {
+        // The sheet is open on a task that no longer exists.
+        //
+        // `focus.md`: a session whose task is finished or gone has ended,
+        // whether or not it was stopped, and it is the one case D-015's pausing
+        // does not cover — pausing is safe because there is something to come
+        // back to, and here there is not.
+        //
+        // Watched against the stored stream rather than against `focusedTask`,
+        // because that flow starts on a placeholder and reading the placeholder
+        // as "gone" would close the sheet on the way in. The repository only
+        // emits once it has really read.
+        viewModelScope.launch {
+            combine(
+                _isFocusSheetOpen,
+                _focusedTaskId,
+                repository.observeTasks()
+            ) { isOpen, chosen, tasks ->
+                isOpen && chosen != null && tasks.none { task ->
+                    task.id == chosen && !task.isDeleted && !task.isCompleted
+                }
+            }
+                .distinctUntilChanged()
+                .collect { isGone -> if (isGone) endFocus() }
+        }
+
         // A session with nothing left to work on has ended, whether or not it
         // was stopped. Leaving it running would hide the navigation behind an
         // empty screen, which is the trap the mode is meant to avoid.
@@ -338,8 +582,8 @@ class TaskListViewModel(
         // loaded yet": entering Focus would stop the session it was entered
         // for. The repository only emits once it has really read.
         viewModelScope.launch {
-            _focusSessionStartedAt
-                .map { startedAt -> startedAt != null }
+            _focusSession
+                .map { session -> session != null }
                 // On the boolean, so restarting the clock for a new task does
                 // not tear down and rebuild the very collection that noticed.
                 .distinctUntilChanged()
@@ -352,10 +596,17 @@ class TaskListViewModel(
                         // second copy of the resolution. Two rules for "which
                         // task is Focus on" is how the alarm ends up announcing
                         // a task the user is not looking at.
-                        focusedTask
+                        //
+                        // Paired with the session, because since D-013 the
+                        // moment the estimate is reached is no longer fixed
+                        // when the session starts: pausing removes it, resuming
+                        // pushes it out by however long the user was away, and
+                        // +5 min moves it deliberately. An alarm placed once at
+                        // the start would fire in the middle of a pause.
+                        combine(focusedTask, _focusSession) { task, session -> task to session }
                     }
                 }
-                .collect { task ->
+                .collect { (task, session) ->
                     if (task == null) {
                         // The task finishing no longer ends the session. It
                         // used to, because a session with nothing in it hid the
@@ -382,7 +633,7 @@ class TaskListViewModel(
                     // the queue gone that branch fired a second restart a few
                     // hundred microseconds after the first, so the estimate was
                     // scheduled against a start time that nothing else held.
-                    announce(task)
+                    announce(task, session)
                 }
         }
     }
@@ -393,18 +644,15 @@ class TaskListViewModel(
      * A task with no estimate has no moment to announce, and a task already
      * past its estimate has had it: scheduling in the past would fire at once
      * and tell the user something they worked out by looking at the clock.
+     *
+     * A paused session has no moment either, and [FocusSession.estimateReachedAt]
+     * is where all three of those answers live, so the arithmetic stays testable
+     * without a device and this function only obeys.
      */
-    private fun announce(task: Task) {
-        val startedAt = _focusSessionStartedAt.value
-        val minutes = task.estimatedDurationMinutes
+    private fun announce(task: Task, session: FocusSession?) {
+        val reachedAt = session?.estimateReachedAt(Instant.now(), task.estimatedDurationMinutes)
 
-        if (startedAt == null || minutes == null || minutes <= 0) {
-            alarms.cancel()
-            return
-        }
-
-        val reachedAt = startedAt.plusSeconds(minutes.toLong() * SecondsPerMinute)
-        if (!reachedAt.isAfter(Instant.now())) {
+        if (reachedAt == null) {
             alarms.cancel()
             return
         }
@@ -424,7 +672,14 @@ class TaskListViewModel(
      * false so the user can finish typing, and closes it on a true rather than
      * waiting on the write, which is local and fast.
      */
-    fun createTask(title: String, scheduledDate: LocalDate?): Boolean {
+    fun createTask(
+        title: String,
+        scheduledDate: LocalDate?,
+        // A moment to be interrupted at, or null for a task that never speaks
+        // up. Quick Add supplies one when the title ended in a time, per
+        // `docs/decisions.md` D-011; everything else passes null.
+        reminderAt: LocalDateTime? = null
+    ): Boolean {
         val trimmed = title.trim()
         if (trimmed.isEmpty()) return false
 
@@ -434,10 +689,17 @@ class TaskListViewModel(
                     id = UUID.randomUUID().toString(),
                     title = trimmed,
                     createdAt = Instant.now(),
-                    scheduledDate = scheduledDate
+                    scheduledDate = scheduledDate,
+                    reminderAt = reminderAt
                 )
             )
         }
+
+        // A promise has been made and stored, and nothing here knows whether
+        // the app is allowed to keep it. The same flag every other reminder
+        // write raises, so a capture that set one is checked exactly as a
+        // reminder set from Task Details is.
+        if (reminderAt != null) _reminderJustSet.value = true
 
         return true
     }
@@ -751,9 +1013,18 @@ class TaskListViewModel(
 
     private companion object {
 
-        /** Where a running session's start is kept across process death. */
+        /**
+         * Where a session is kept across process death.
+         *
+         * Three keys, one per value. Pausing moves the origin rather than
+         * starting a tally, so it needs none of its own beyond the moment the
+         * clock stopped, which is what a stopped clock reads from instead of
+         * the current time. The extension is explicit; the field's own KDoc has
+         * the bug that says why it cannot move the origin too.
+         */
         const val FocusSessionStartedAtKey = "focus.session.startedAt"
+        const val FocusSessionPausedAtKey = "focus.session.pausedAt"
+        const val FocusSessionExtraKey = "focus.session.extraMinutes"
         const val STOP_TIMEOUT_MILLIS = 5_000L
-        const val SecondsPerMinute = 60L
     }
 }

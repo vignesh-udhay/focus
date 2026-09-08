@@ -1,7 +1,6 @@
 package com.vignesh.focuslist.ui.today
 
 import android.content.res.Configuration
-import android.text.format.DateFormat
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -18,7 +17,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,8 +26,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -41,11 +37,12 @@ import com.vignesh.focuslist.core.design.FocuslistDimensions
 import com.vignesh.focuslist.core.design.FocuslistMotion
 import com.vignesh.focuslist.core.design.FocuslistSpacing
 import com.vignesh.focuslist.core.design.focuslistContentGutter
+import com.vignesh.focuslist.core.domain.FocusNow
+import com.vignesh.focuslist.core.domain.FocusNowReason
 import com.vignesh.focuslist.core.domain.Task
 import com.vignesh.focuslist.core.domain.TodayBand
 import com.vignesh.focuslist.core.domain.TodaySection
 import com.vignesh.focuslist.core.domain.todaySections
-import com.vignesh.focuslist.core.domain.todayPlannedMinutes
 import com.vignesh.focuslist.core.domain.todayTasks
 import com.vignesh.focuslist.ui.component.AddTaskFab
 import com.vignesh.focuslist.ui.component.DurationLabel
@@ -56,13 +53,11 @@ import com.vignesh.focuslist.ui.component.TaskListRow
 import com.vignesh.focuslist.ui.component.durationLabel
 import com.vignesh.focuslist.ui.component.UndoSnackbarHost
 import com.vignesh.focuslist.ui.task.QuickAddSheet
-import com.vignesh.focuslist.ui.task.TaskDetailsSheetHost
 import com.vignesh.focuslist.ui.task.TaskListViewModel
 import com.vignesh.focuslist.ui.task.UndoSnackbarEffect
 import com.vignesh.focuslist.ui.theme.FocuslistTheme
 import java.time.Instant
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
 /**
  * Today, the default task view.
@@ -73,6 +68,9 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun TodayScreen(
     viewModel: TaskListViewModel,
+    // Tapping a row opens Task Details, which is a destination since D-018
+    // rather than a sheet this screen hosts. The route is the host's to know.
+    onOpenTask: (String) -> Unit,
     modifier: Modifier = Modifier,
     bottomBar: @Composable () -> Unit = {},
     onOpenFocus: () -> Unit = {},
@@ -83,11 +81,12 @@ fun TodayScreen(
 ) {
     val tasks by viewModel.todayTasks.collectAsStateWithLifecycle()
     val today by viewModel.today.collectAsStateWithLifecycle()
+    val focusNow by viewModel.focusNow.collectAsStateWithLifecycle()
+    val focusSession by viewModel.focusSession.collectAsStateWithLifecycle()
 
     // Screen state, not app state: opening Quick Add here says nothing about
     // whether Inbox has its own sheet open.
     var isQuickAddVisible by rememberSaveable { mutableStateOf(false) }
-    var openTaskId by rememberSaveable { mutableStateOf<String?>(null) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     UndoSnackbarEffect(viewModel = viewModel, snackbarHostState = snackbarHostState)
@@ -95,8 +94,17 @@ fun TodayScreen(
     TodayContent(
         tasks = tasks,
         today = today,
+        focusNow = focusNow,
+        // Read once here rather than inside the card, so the card stays a
+        // stateless thing that renders what it is handed. A paused session is
+        // stopped, so this value does not move and needs no ticking.
+        pausedRemainingMinutes = focusNow?.takeIf { card ->
+            card.reason == FocusNowReason.ResumePaused
+        }?.let { card ->
+            focusSession?.remaining(Instant.now(), card.task.estimatedDurationMinutes)?.toMinutes()
+        },
         onToggleComplete = viewModel::toggleComplete,
-        onOpenTask = { id -> openTaskId = id },
+        onOpenTask = onOpenTask,
         onDelete = viewModel::deleteTask,
         onReschedule = viewModel::rescheduleTask,
         // Choose the task, then move to Focus. Focus is on the task that was
@@ -110,6 +118,17 @@ fun TodayScreen(
             viewModel.beginFocus(id)
             onOpenFocus()
         },
+        // The card's action, which is labelled for the state it opens.
+        //
+        // A paused session resumes and the sheet shows it running. Everything
+        // else lands on Ready, where the user presses Start focus. That
+        // difference is the point: a task the user picked out of a list has had
+        // the deciding done, and `focus.md` skips Ready for it, but a task the
+        // *app* picked has not. Ready is where the user agrees with the card.
+        onFocusNow = {
+            viewModel.openFocusFromCard()
+            onOpenFocus()
+        },
         onAddTask = { isQuickAddVisible = true },
         modifier = modifier,
         snackbarHostState = snackbarHostState,
@@ -117,13 +136,6 @@ fun TodayScreen(
         overflow = overflow
     )
 
-    TaskDetailsSheetHost(
-        openTaskId = openTaskId,
-        tasks = tasks,
-        today = today,
-        viewModel = viewModel,
-        onDismiss = { openTaskId = null }
-    )
 
     if (isQuickAddVisible) {
         QuickAddSheet(
@@ -136,9 +148,14 @@ fun TodayScreen(
                 // Read at save time, so a task captured after midnight gets
                 // the new day rather than the one the screen was built on. A
                 // blank title captures nothing and leaves the sheet open.
+                val day = parsed.date ?: viewModel.today.value
                 val captured = viewModel.createTask(
                     title = parsed.title,
-                    scheduledDate = parsed.date ?: viewModel.today.value
+                    scheduledDate = day,
+                    // A trailing time sets a reminder, per D-011. It lands on
+                    // the day the task is being saved to, so a time with no day
+                    // of its own is a reminder today.
+                    reminderAt = parsed.reminderAt(day)
                 )
                 if (captured) isQuickAddVisible = false
             }
@@ -163,22 +180,20 @@ fun TodayScreen(
 private fun TodayContent(
     tasks: List<Task>,
     today: LocalDate,
+    focusNow: FocusNow?,
+    pausedRemainingMinutes: Long? = null,
     onToggleComplete: (String) -> Unit,
     onOpenTask: (String) -> Unit,
     onDelete: (String) -> Unit,
     onReschedule: (String, LocalDate?) -> Unit,
     onFocusTask: (String) -> Unit,
+    onFocusNow: () -> Unit = {},
     onAddTask: () -> Unit,
     modifier: Modifier = Modifier,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     bottomBar: @Composable () -> Unit = {},
     overflow: @Composable RowScope.() -> Unit = {}
 ) {
-    // The large title collapses into a small bar as the list moves under it.
-    // A pinned behaviour would hold all 152dp of it in place, which spends a
-    // sixth of the screen on a word the user just tapped to get to.
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-
     // The collection runs away from the page rather than sitting a step above
     // it: toward white in light, toward black in dark. The page is the tinted
     // ground and the list is the thing on it, which is the relationship the
@@ -189,7 +204,16 @@ private fun TodayContent(
 
     // The bands todayTasks already sorted into. Reading them here, rather than
     // re-deriving the rule, keeps the ordering owned by TaskQueries.
-    val sections = todaySections(tasks, today)
+    //
+    // The card's task leaves its band, so it is never on screen twice. That is
+    // done in the query rather than here, because a screen that filtered the
+    // list it was handed would be a second place the ordering is decided.
+    val sections = todaySections(tasks, today, promotedTaskId = focusNow?.task?.id)
+
+    // Collapsed by default, per D-012, and screen state rather than app state:
+    // whether the user opened Completed on Today says nothing about anything
+    // else. Saveable, so it survives a rotation.
+    var isCompletedExpanded by rememberSaveable { mutableStateOf(false) }
 
     // Zero on a phone. On a wide window it is what keeps the collection in a
     // column instead of letting it run the width of the screen.
@@ -199,16 +223,14 @@ private fun TodayContent(
     listState.HoldViewportAcross(sections)
 
     Scaffold(
-        modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface,
         snackbarHost = { UndoSnackbarHost(snackbarHostState) },
         bottomBar = bottomBar,
         topBar = {
             FocuslistTopAppBar(
                 actions = overflow,
-                title = stringResource(R.string.today_title),
-                subtitle = { TodaySubtitle(today = today, tasks = tasks) },
-                scrollBehavior = scrollBehavior
+                title = stringResource(R.string.today_title)
             )
         },
         floatingActionButton = {
@@ -221,7 +243,11 @@ private fun TodayContent(
             )
         }
     ) { innerPadding ->
-        if (tasks.isEmpty()) {
+        // Empty means nothing at all, card included. A screen holding a Focus
+        // now card and nothing else is not empty, and telling the user there is
+        // nothing scheduled while a task sits above the words would be the two
+        // halves of the screen disagreeing.
+        if (tasks.isEmpty() && focusNow == null) {
             TaskListEmptyState(
                 headline = stringResource(R.string.today_empty_headline),
                 supporting = stringResource(R.string.today_empty_supporting),
@@ -241,11 +267,54 @@ private fun TodayContent(
                 ),
                 verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
             ) {
+                if (focusNow != null) {
+                    item(key = "focus-now") {
+                        FocusNowCard(
+                            focusNow = focusNow,
+                            today = today,
+                            onToggleComplete = { onToggleComplete(focusNow.task.id) },
+                            onOpenFocus = onFocusNow,
+                            pausedRemainingMinutes = pausedRemainingMinutes,
+                            // The card arrives and leaves on `reveal`, which is
+                            // what that token is for and what it had no user of
+                            // until now. Not a container transform out of the
+                            // row: the card is not that row relocated, it is a
+                            // different component that happens to be about the
+                            // same task, and `expressive-motion.md` allows the
+                            // app exactly one shape morph, which Focus has.
+                            modifier = Modifier.animateItem(
+                                fadeInSpec = FocuslistMotion.reveal(),
+                                placementSpec = FocuslistMotion.reveal(),
+                                fadeOutSpec = FocuslistMotion.reveal()
+                            )
+                        )
+                    }
+                }
+
                 sections.forEach { section ->
-                    section.labelRes?.let { labelRes ->
+                    val isCompleted = section.band == TodayBand.COMPLETED
+
+                    if (isCompleted) {
+                        item(key = "label-" + section.band.name) {
+                            CompletedDisclosure(
+                                count = section.tasks.size,
+                                expanded = isCompletedExpanded,
+                                onToggle = { isCompletedExpanded = !isCompletedExpanded },
+                                modifier = Modifier.animateItem(
+                                    placementSpec = FocuslistMotion.listChange()
+                                )
+                            )
+                        }
+
+                        // The band collapses, so its rows are simply not
+                        // emitted. The disclosure gets `reveal` through the
+                        // rows arriving and leaving, and everything below moves
+                        // on `listChange` as it always does.
+                        if (!isCompletedExpanded) return@forEach
+                    } else {
                         item(key = "label-" + section.band.name) {
                             SectionLabel(
-                                text = stringResource(labelRes),
+                                text = stringResource(section.labelRes),
                                 modifier = Modifier.animateItem(
                                     placementSpec = FocuslistMotion.listChange()
                                 )
@@ -270,12 +339,6 @@ private fun TodayContent(
                             colors = taskColors,
                             onToggleComplete = { onToggleComplete(task.id) },
                             onOpen = { onOpenTask(task.id) },
-                            onDelete = { onDelete(task.id) },
-                            onReschedule = { date -> onReschedule(task.id, date) },
-                            // Today is the only list that offers this: the queue
-                            // is derived from Today, so nowhere else can start
-                            // Focus without inventing a reason the task belongs.
-                            onFocus = { onFocusTask(task.id) },
                             // A completed task travelling to its band is the
                             // movement that makes the ordering legible.
                             modifier = Modifier.animateItem(
@@ -336,86 +399,24 @@ private fun LazyListState.HoldViewportAcross(sections: List<TodaySection>) {
 }
 
 /**
- * The line under the Today title: the date, and what is still on the plate.
+ * What a band is called.
  *
- * The date is the anchor. "Today" alone does not say which day it is, and a
- * task list is one of the few screens where that matters.
+ * Every band carries one since D-012. The first band used to carry none, on the
+ * argument that "at the top of the Today screen, today's work needs no
+ * announcement"; the band order changed, so the first band is no longer the one
+ * that needs no announcement and the argument retired with the position.
  *
- * Two facts on one line, told apart by where they sit rather than by drawing a
- * container around one of them. The total was briefly given a tinted pill; it
- * read as decoration, which `PRODUCT.md` rules out, and alignment separates the
- * two just as well for nothing.
- *
- * The total is not a score: nothing accumulates, nothing is compared, and a day
- * with no estimates simply shows no total.
+ * Completed is absent here because it is not a plain label: it counts and it
+ * collapses, and `CompletedDisclosure` draws it.
  */
-@Composable
-private fun TodaySubtitle(today: LocalDate, tasks: List<Task>) {
-    val planned = todayPlannedMinutes(tasks, today)
-
-    Row(
-        // Lines the total up with the right edge of the task collection. The
-        // app bar's own end inset is smaller than its start inset, so without
-        // this the total overhangs the rows. See the token for the measurement.
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(end = FocuslistDimensions.AppBarTrailingTextAlignment),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(text = today.format(rememberSubtitleDateFormat()))
-
-        if (planned != null) {
-            val duration = durationLabel(planned)
-            val description =
-                stringResource(R.string.today_planned_description, duration.spoken)
-
-            // The compact form is what fits beside a date. It is not a
-            // sentence, so the spoken form rides along as a description; the
-            // total appears nowhere else.
-            Text(
-                text = stringResource(R.string.today_planned, duration.text),
-                modifier = Modifier.semantics { contentDescription = description }
-            )
-        }
-    }
-}
-
-/**
- * The subtitle's date, abbreviated.
- *
- * "Wed, Sep 2" rather than "Wednesday, September 2". The long form spent most of
- * the line on two words the user is not reading; the short form says the same
- * thing and leaves the width to the total at the other end.
- *
- * The year is left out. It is noise on a screen about today.
- *
- * Built from a skeleton rather than a literal pattern, because field order is
- * not universal: `getBestDateTimePattern` returns the arrangement the locale
- * actually uses for a weekday, a month and a day, which a hardcoded
- * "EEE, MMM d" would get wrong everywhere it differs.
- */
-@Composable
-private fun rememberSubtitleDateFormat(): DateTimeFormatter {
-    val locale = LocalConfiguration.current.locales[0]
-
-    return remember(locale) {
-        DateTimeFormatter.ofPattern(
-            DateFormat.getBestDateTimePattern(locale, SubtitleDateSkeleton),
-            locale
-        )
-    }
-}
-
-/** Weekday, month, day: the three fields the subtitle shows. */
-private const val SubtitleDateSkeleton = "EEEMMMd"
-
-
-/** What a band is called, or null for the band that begins the screen. */
-private val TodaySection.labelRes: Int?
-    @StringRes get() = when (band) {
-        TodayBand.SCHEDULED -> null
+@get:StringRes
+private val TodaySection.labelRes: Int
+    get() = when (band) {
         TodayBand.OVERDUE -> R.string.today_section_overdue
+        TodayBand.NO_TIME_SET -> R.string.today_section_no_time_set
+        TodayBand.LATER_TODAY -> R.string.today_section_later_today
+        // Drawn by CompletedDisclosure, which never asks for this. Named rather
+        // than thrown, so a future band added above cannot crash the screen.
         TodayBand.COMPLETED -> R.string.today_section_completed
     }
 
@@ -488,6 +489,7 @@ private fun TodayScreenPreview() {
         TodayContent(
             tasks = todayTasks(sampleTodayTasks(), today),
             today = today,
+            focusNow = FocusNow(sampleTodayTasks()[0], FocusNowReason.NoTimeToday),
             onToggleComplete = {},
             onOpenTask = {},
             onDelete = {},
@@ -506,6 +508,7 @@ private fun TodayScreenEmptyPreview() {
         TodayContent(
             tasks = emptyList(),
             today = LocalDate.now(),
+            focusNow = null,
             onToggleComplete = {},
             onOpenTask = {},
             onDelete = {},
@@ -524,6 +527,7 @@ private fun TodayScreenLargeFontPreview() {
         TodayContent(
             tasks = todayTasks(sampleTodayTasks(), today),
             today = today,
+            focusNow = FocusNow(sampleTodayTasks()[0], FocusNowReason.NoTimeToday),
             onToggleComplete = {},
             onOpenTask = {},
             onDelete = {},

@@ -21,9 +21,12 @@ import androidx.navigation.compose.rememberNavController
 import com.vignesh.focuslist.FocuslistApplication
 import com.vignesh.focuslist.core.design.LocalContentWidth
 import com.vignesh.focuslist.core.design.focuslistUsesNavigationRail
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import com.vignesh.focuslist.ui.focus.FocusSheet
 import com.vignesh.focuslist.ui.inbox.InboxScreen
 import com.vignesh.focuslist.ui.logbook.LogbookScreen
+import com.vignesh.focuslist.ui.task.TaskDetailsScreen
 import com.vignesh.focuslist.ui.health.ReminderHealthScreen
 import com.vignesh.focuslist.ui.health.ReminderHealthViewModel
 import com.vignesh.focuslist.ui.reminder.ReminderPermissionGate
@@ -58,11 +61,11 @@ fun FocuslistNavHost(
     // offer five ways.
     val viewModel = taskListViewModel()
 
-    // A running Focus session takes the navigation away in both presentations.
-    // The bar is handed to the screens and could have been withheld inside
-    // one, but the rail is a sibling of the whole graph, so the decision has
-    // to be made out here for the two to behave alike.
-    val isFocusSession by viewModel.isFocusSessionActive.collectAsStateWithLifecycle()
+    // Whether the Focus sheet is on screen, which since D-015 is a different
+    // question from whether a session exists: leaving pauses rather than stops,
+    // so a paused session outlives the sheet and driving the sheet off the
+    // session would reopen it on the next frame.
+    val isFocusOpen by viewModel.isFocusSheetOpen.collectAsStateWithLifecycle()
 
     // One navigation model, two presentations. Which one is on screen is the
     // only thing this decides; the graph, the destinations and the back stack
@@ -98,6 +101,9 @@ fun FocuslistNavHost(
             composable(FocuslistRoutes.TODAY) {
                 TodayScreen(
                     viewModel = viewModel,
+                    onOpenTask = { id ->
+                        navController.navigate(FocuslistRoutes.taskDetails(id))
+                    },
                     bottomBar = navigationBar,
                     overflow = overflow,
                     // Nothing to navigate to any more. Choosing a task is what
@@ -110,6 +116,9 @@ fun FocuslistNavHost(
             composable(FocuslistRoutes.INBOX) {
                 InboxScreen(
                     viewModel = viewModel,
+                    onOpenTask = { id ->
+                        navController.navigate(FocuslistRoutes.taskDetails(id))
+                    },
                     bottomBar = navigationBar,
                     overflow = overflow
                 )
@@ -118,15 +127,44 @@ fun FocuslistNavHost(
             composable(FocuslistRoutes.UPCOMING) {
                 UpcomingScreen(
                     viewModel = viewModel,
+                    onOpenTask = { id ->
+                        navController.navigate(FocuslistRoutes.taskDetails(id))
+                    },
                     bottomBar = navigationBar,
                     overflow = overflow
+                )
+            }
+
+            // A room: back arrow, no bottom bar, and back returns to the list
+            // the row was tapped on, which the back stack does without help.
+            composable(
+                route = FocuslistRoutes.TASK_DETAILS,
+                arguments = listOf(navArgument(FocuslistRoutes.TASK_ID_ARG) {
+                    type = NavType.StringType
+                })
+            ) { entry ->
+                TaskDetailsScreen(
+                    taskId = entry.arguments?.getString(FocuslistRoutes.TASK_ID_ARG).orEmpty(),
+                    viewModel = viewModel,
+                    onBack = navController::popBackStack,
+                    // Starting a session from here leaves the screen: Focus is
+                    // a sheet over a list, and leaving it on top of Task
+                    // Details would return the user to an edit screen they
+                    // finished with.
+                    onOpenFocus = { navController.popBackStack() }
                 )
             }
 
             composable(FocuslistRoutes.LOGBOOK) {
                 // No bottom bar, like Reminder health. Both are reached from the
                 // overflow and left by the arrow.
-                LogbookScreen(viewModel = viewModel, onBack = navController::popBackStack)
+                LogbookScreen(
+                    viewModel = viewModel,
+                    onOpenTask = { id ->
+                        navController.navigate(FocuslistRoutes.taskDetails(id))
+                    },
+                    onBack = navController::popBackStack
+                )
             }
 
             // No bottom bar. It is a screen about the app rather than a place
@@ -169,15 +207,16 @@ fun FocuslistNavHost(
 
     // Focus sits beside the graph rather than in it, and owns no back stack
     // entry. It is a mode over whatever the user was looking at, not a place
-    // they navigated to, and the running session is the whole of what decides
-    // whether it is on screen: start one anywhere and it appears; stop it, by
-    // dismissing or by finishing, and it goes.
+    // they navigated to: open it anywhere and it appears over that screen.
     //
-    // Neither the bar nor the rail is hidden for it any more. The scrim covers
-    // them, which is the honest version of what the old Ready state was
-    // arguing about: a mode that draws over the navigation has not taken it
-    // away.
-    if (isFocusSession) {
+    // What closes it is leaving, which pauses, or completing the task, which
+    // ends it. Neither destroys the choice of task silently; D-015 has the
+    // reasoning and `TaskListViewModel` holds both.
+    //
+    // Neither the bar nor the rail is hidden for it. The scrim covers them,
+    // which is the honest version of what the old Ready state was arguing
+    // about: a mode that draws over the navigation has not taken it away.
+    if (isFocusOpen) {
         FocusSheet(viewModel = viewModel)
     }
 

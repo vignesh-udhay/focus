@@ -111,13 +111,6 @@ internal fun hasClickLabel(label: String): SemanticsMatcher =
             node.config[SemanticsActions.OnClick].label == label
     }
 
-/** Matches a node whose long-press action is announced as [label]. */
-internal fun hasLongClickLabel(label: String): SemanticsMatcher =
-    SemanticsMatcher("long click action labelled '$label'") { node ->
-        node.config.contains(SemanticsActions.OnLongClick) &&
-            node.config[SemanticsActions.OnLongClick].label == label
-    }
-
 /** Matches a node that publishes a live region, at [mode]. */
 internal fun hasLiveRegion(mode: androidx.compose.ui.semantics.LiveRegionMode): SemanticsMatcher =
     SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, mode)
@@ -267,13 +260,3 @@ internal class RecordingFocusAlarms : FocusAlarms {
     }
 }
 
-/**
- * Invokes the long-press action the way an accessibility service does.
- *
- * A synthesised gesture would prove a finger works. Firing the semantics action
- * proves the action is exposed to TalkBack and Switch Access, which is the
- * contract this package is about, and is the only route a user who cannot
- * long-press has.
- */
-internal fun SemanticsNodeInteraction.performAccessibilityLongClick(): SemanticsNodeInteraction =
-    performSemanticsAction(SemanticsActions.OnLongClick)

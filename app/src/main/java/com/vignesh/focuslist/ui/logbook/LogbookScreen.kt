@@ -14,7 +14,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -22,7 +21,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -37,7 +35,6 @@ import com.vignesh.focuslist.ui.component.FocuslistTopAppBar
 import com.vignesh.focuslist.ui.component.TaskListEmptyState
 import com.vignesh.focuslist.ui.component.TaskListRow
 import com.vignesh.focuslist.ui.component.UndoSnackbarHost
-import com.vignesh.focuslist.ui.task.TaskDetailsSheetHost
 import com.vignesh.focuslist.ui.task.TaskListViewModel
 import com.vignesh.focuslist.ui.task.UndoSnackbarEffect
 import com.vignesh.focuslist.ui.theme.FocuslistTheme
@@ -60,6 +57,9 @@ import java.time.LocalDate
 @Composable
 fun LogbookScreen(
     viewModel: TaskListViewModel,
+    // Tapping a row opens Task Details, which is a destination since D-018
+    // rather than a sheet this screen hosts. The route is the host's to know.
+    onOpenTask: (String) -> Unit,
     modifier: Modifier = Modifier,
     // No bottom bar. Logbook is reached from the app-bar overflow and left by
     // the back arrow, so a bar with none of its three items selected would
@@ -69,7 +69,6 @@ fun LogbookScreen(
     val tasks by viewModel.completedTasks.collectAsStateWithLifecycle()
     val today by viewModel.today.collectAsStateWithLifecycle()
 
-    var openTaskId by rememberSaveable { mutableStateOf<String?>(null) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     UndoSnackbarEffect(viewModel = viewModel, snackbarHostState = snackbarHostState)
@@ -78,20 +77,13 @@ fun LogbookScreen(
         tasks = tasks,
         today = today,
         onToggleComplete = viewModel::toggleComplete,
-        onOpenTask = { id -> openTaskId = id },
+        onOpenTask = onOpenTask,
         onDelete = viewModel::deleteTask,
         modifier = modifier,
         snackbarHostState = snackbarHostState,
         onBack = onBack
     )
 
-    TaskDetailsSheetHost(
-        openTaskId = openTaskId,
-        tasks = tasks,
-        today = today,
-        viewModel = viewModel,
-        onDismiss = { openTaskId = null }
-    )
 }
 
 /**
@@ -115,8 +107,6 @@ private fun LogbookContent(
     // Collapses as the list moves under it, as the other lists do. No
     // subtitle: the Logbook is not in the design, and a count of everything
     // ever finished is not a fact this screen is for.
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-
     val taskColors = ListItemDefaults.segmentedColors(
         containerColor = MaterialTheme.colorScheme.surfaceContainer
     )
@@ -124,7 +114,7 @@ private fun LogbookContent(
     val gutter = focuslistContentGutter()
 
     Scaffold(
-        modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface,
         snackbarHost = { UndoSnackbarHost(snackbarHostState) },
         topBar = {
@@ -137,8 +127,7 @@ private fun LogbookContent(
                         )
                     }
                 },
-                title = stringResource(R.string.logbook_title),
-                scrollBehavior = scrollBehavior
+                title = stringResource(R.string.logbook_title)
             )
         }
     ) { innerPadding ->
@@ -171,7 +160,6 @@ private fun LogbookContent(
                         colors = taskColors,
                         onToggleComplete = { onToggleComplete(task.id) },
                         onOpen = { onOpenTask(task.id) },
-                        onDelete = { onDelete(task.id) },
                         // Unchecking a row reopens the task, and it leaves the Logbook by
                         // moving rather than disappearing.
                         modifier = Modifier.animateItem(

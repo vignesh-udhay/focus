@@ -7,12 +7,23 @@
     <string name="today_empty_headline">Nothing scheduled for today</string>
     <string name="today_empty_supporting">Add a task when you are ready.</string>
     <string name="today_section_overdue">Overdue</string>
+    <string name="today_section_no_time_set">No time set</string>
+    <string name="today_section_later_today">Later today</string>
+    <!-- The Completed disclosure carries its count: "Completed \u00b7 2". -->
+    <string name="today_section_completed_count">Completed \u00b7 %1$d</string>
+    <string name="today_completed_expand">Show completed tasks</string>
+    <string name="today_completed_collapse">Hide completed tasks</string>
+    <!-- The Focus now card, per D-012. -->
+    <string name="today_focus_now">Focus now</string>
+    <string name="today_focus_now_focus">Focus</string>
+    <string name="today_focus_now_resume">Resume focus</string>
+    <string name="today_focus_now_paused">Paused</string>
+    <string name="today_focus_now_paused_remaining">Paused \u00b7 %1$d min remaining</string>
+    <string name="today_focus_now_no_time">Scheduled for today</string>
+    <string name="today_focus_now_scheduled_at">Scheduled for %1$s</string>
+    <string name="today_focus_now_was_due_at">Was due at %1$s</string>
+    <string name="today_focus_now_reason_and_estimate">%1$s \u00b7 %2$s</string>
     <string name="today_section_completed">Completed</string>
-
-    <!-- Today header. The date reads long-form; the pill carries the total
-         time planned for the day's outstanding work. -->
-    <string name="today_planned">%1$s planned</string>
-    <string name="today_planned_description">%1$s planned today</string>
 
     <!-- Compact durations, for places where a total sits beside other text.
          Spoken forms exist because "3h 20m" read aloud is not a sentence. -->
@@ -37,10 +48,29 @@
     <string name="nav_more">More</string>
     <string name="focus_title">Focus</string>
     <string name="focus_complete">Complete</string>
-    <string name="focus_empty_headline">Nothing to focus on</string>
-    <string name="focus_empty_supporting">Pick a task on Today to focus on it.</string>
-    <string name="focus_start">Start</string>
-    <string name="focus_stop">Stop focusing</string>
+    <!--
+      The clock control is an icon in every state, so its description names the
+      action rather than the glyph. focus.md: "never the glyph".
+    -->
+    <string name="focus_start">Start focus</string>
+    <string name="focus_pause">Pause focus</string>
+    <string name="focus_resume">Resume focus</string>
+    <string name="focus_extend">+%1$d min</string>
+    <!-- Chevron down, not a close X. Per D-015 it pauses and discards nothing. -->
+    <string name="focus_dismiss">Put focus away</string>
+    <!--
+      The status line carries only what the controls cannot say. The button
+      already reads Pause or Resume, so naming the state here would say it
+      twice; what is left is the budget, and the one moment with no control to
+      announce it.
+    -->
+    <string name="focus_status_estimate">%1$d min focus</string>
+    <string name="focus_status_remaining">%1$d min left</string>
+    <string name="focus_status_estimate_reached">Estimate reached</string>
+    <string name="focus_status_no_limit">No time limit</string>
+    <!-- The readout is digits, so it carries a spoken form for TalkBack. -->
+    <string name="focus_readout_remaining">%1$s remaining</string>
+    <string name="focus_readout_elapsed">%1$s elapsed</string>
     <string name="focus_estimate_minutes">%1$d min</string>
     <string name="focus_estimate_reached_title">Estimated time is up</string>
     <string name="focus_channel_name">Focus sessions</string>
@@ -54,47 +84,84 @@
     <string name="upcoming_title">Upcoming</string>
     <string name="upcoming_empty_headline">Nothing scheduled ahead</string>
     <string name="upcoming_empty_supporting">Tasks scheduled for a later day appear here.</string>
+    <!-- Task Details, rebuilt to D-018: a screen of picker rows, no Save. -->
     <string name="task_details_heading">Task details</string>
+    <!-- The Task Details overflow. Holds Delete and nothing else, per D-022. -->
+    <string name="task_details_more">Task actions</string>
+    <string name="task_details_back">Back</string>
     <string name="task_details_title_label">Title</string>
     <string name="task_details_notes_label">Notes</string>
-    <string name="task_details_due_label">Due</string>
-    <string name="task_details_date_hint">Today, next Friday, 4 September</string>
-    <string name="task_details_date_error">Not a date Focuslist understands</string>
-    <string name="task_details_pick_date">Pick a date from a calendar</string>
-    <string name="task_details_duration_label">Estimated duration</string>
-    <string name="task_details_duration_suffix">min</string>
-    <string name="task_details_duration_error">Enter a positive number of minutes</string>
-    <string name="task_details_recurrence_label">Repeats</string>
-    <string name="task_recurrence_none">Never</string>
+    <string name="task_details_notes_placeholder">Add notes</string>
+    <string name="task_plan">Plan</string>
+    <!-- Announced as one action, so a row reads as label, value and a control. -->
+    <string name="task_plan_row_action">%1$s, %2$s</string>
+    <string name="task_start_focus">Start focus</string>
+
+    <!-- The five Plan rows. -->
+    <string name="task_scheduled">Scheduled</string>
+    <string name="task_due_date">Due date</string>
+    <string name="task_due_date_supporting">Sets a deadline without moving the task.</string>
+    <string name="task_reminder">Reminder</string>
+    <string name="task_duration">Duration</string>
+    <string name="task_repeat">Repeat</string>
+
+    <!-- Row values. An unset value reads like any other; see task-details.md. -->
+    <string name="task_value_none">None</string>
+
+    <!-- The date sheets. Both are the same shape; D-018 fixes the presets. -->
+    <string name="task_date_none">No date</string>
+    <string name="task_date_no_due">No due date</string>
+    <string name="task_date_today">Today</string>
+    <string name="task_date_tomorrow">Tomorrow</string>
+    <!-- The coming Saturday. D-018 fixes the meaning; it is not in the parser. -->
+    <string name="task_date_this_weekend">This weekend</string>
+    <!-- The coming Friday, likewise. -->
+    <string name="task_date_end_of_week">End of week</string>
+    <string name="task_date_choose">Choose a date</string>
+
+    <!-- The duration sheet. -->
+    <string name="task_duration_none">None</string>
+    <string name="task_duration_custom">Custom</string>
+    <string name="task_duration_custom_title">Custom duration</string>
+    <string name="task_duration_custom_supporting">Enter a duration in hours and minutes.</string>
+    <string name="task_duration_hours">Hours</string>
+    <string name="task_duration_minutes_label">Minutes</string>
+    <string name="task_duration_done">Done</string>
+
+    <!--
+      The Repeat row picks one of Recurrence's four periods or none. The board's
+      editor, with an interval and a weekday set and an end condition, is Phase 4
+      per D-019 and is deliberately not built.
+    -->
+    <string name="task_repeat_never">Doesn\'t repeat</string>
+    <!--
+      The period names are TaskListRow's, reused rather than duplicated: a row
+      and this sheet naming the same recurrence differently is a drift with
+      nothing holding it together.
+    -->
     <string name="task_recurrence_daily">Daily</string>
     <string name="task_recurrence_weekly">Weekly</string>
     <string name="task_recurrence_monthly">Monthly</string>
     <string name="task_recurrence_yearly">Yearly</string>
-    <string name="task_details_clear_due">Clear due date</string>
-    <string name="task_details_clear_duration">Clear estimated duration</string>
-    <string name="task_schedule_heading">Schedule</string>
-    <string name="task_schedule_done">Done</string>
-    <string name="task_schedule_add_due">Add due date</string>
-    <string name="task_schedule_back">Back to task details</string>
-    <string name="task_schedule_no_date">No date</string>
-    <string name="task_details_cancel">Cancel</string>
+    <string name="task_repeat_selected">Selected</string>
+
+    <!-- The reminder dialog, which board frame 6 draws and D-018 does not change. -->
     <string name="task_reminder_at">Remind me at</string>
-    <string name="task_reminder_none">Reminder not set</string>
     <!-- The day and time a reminder is set for, as "Today, 9:00". -->
     <string name="task_reminder_when">%1$s, %2$s</string>
-    <!-- The row on task details, once a reminder is set. -->
-    <string name="task_reminder_summary">Reminder %1$s</string>
     <string name="task_reminder_clear">Clear</string>
-    <string name="task_details_save">Save</string>
     <string name="quick_add_title_label">New task</string>
     <string name="quick_add_save">Add task</string>
     <string name="quick_add_placeholder">Try \"Call the plumber tomorrow\"</string>
     <string name="quick_add_scheduled_for">Scheduled for %1$s</string>
+    <!--
+      D-011's first state. The line says something even when nothing parsed,
+      because it is the channel a screen reader gets the outcome from.
+    -->
+    <string name="quick_add_saved_to_today">Saved to Today</string>
+    <string name="quick_add_reminder">Reminder %1$s at %2$s</string>
+    <string name="quick_add_reminder_dismiss">Remove reminder</string>
 
-    <plurals name="inbox_waiting">
-        <item quantity="one">%1$d item waiting to process</item>
-        <item quantity="other">%1$d items waiting to process</item>
-    </plurals>
     <plurals name="duration_spoken_minutes">
         <item quantity="one">%1$d minute</item>
         <item quantity="other">%1$d minutes</item>
@@ -122,15 +189,17 @@
     <string name="logbook_back">Back</string>
     <string name="reminder_health_checking_label">Checking reminder health…</string>
     <string name="reminder_health_checking_body">Checking notification access, exact alarms, and battery restrictions.</string>
-    <string name="reminder_health_ready_label">READY</string>
+    <string name="reminder_health_ready_label">Ready</string>
     <string name="reminder_health_ready_title">Reminders are healthy</string>
     <string name="reminder_health_ready_body">Exact reminders can currently be delivered.</string>
-    <string name="reminder_health_action_label">ACTION NEEDED</string>
+    <string name="reminder_health_action_label">Action needed</string>
+    <!-- A risk the app inferred rather than a refusal it was told about. D-021. -->
+    <string name="reminder_health_caution_label">Worth checking</string>
     <string name="reminder_health_no_notifications_title">Focuslist cannot show notifications</string>
     <string name="reminder_health_no_notifications_body">A reminder will fire and nothing will appear.</string>
     <string name="reminder_health_no_exact_title">Reminders may arrive late</string>
     <string name="reminder_health_no_exact_body">Focuslist has not been allowed to schedule alarms for an exact time.</string>
-    <string name="reminder_health_missed_label">MISSED REMINDER</string>
+    <string name="reminder_health_missed_label">Missed reminder</string>
     <string name="reminder_health_missed_title">A reminder arrived %1$s late</string>
     <string name="reminder_health_missed_silent_title">A reminder arrived and said nothing</string>
     <!-- "Take medication, due 3:30 PM. Arrived 4:11 PM." -->
@@ -157,7 +226,7 @@
     <string name="reminder_restriction_protected_apps">Protected apps</string>
     <string name="reminder_restriction_may_block">May block background alarms</string>
     <string name="reminder_restriction_action_title">%1$s may put Focuslist to sleep</string>
-    <string name="reminder_restriction_action_body">%1$s can delay reminders.</string>
+    <string name="reminder_restriction_action_body">%1$s can delay reminders. Focuslist cannot tell whether it is on.</string>
     <string name="reminder_test_scheduled_title">Test reminder scheduled</string>
     <string name="reminder_test_scheduled_body">You can close the app. Focuslist will notify you in 30 seconds.</string>
     <string name="reminder_test_scheduled_done">Done</string>

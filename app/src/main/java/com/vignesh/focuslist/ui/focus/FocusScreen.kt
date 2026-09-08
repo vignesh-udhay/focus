@@ -5,38 +5,32 @@ import android.content.res.Configuration
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetValue
-import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.toPath
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -55,61 +49,55 @@ import androidx.compose.ui.graphics.Matrix
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.min
 import androidx.graphics.shapes.Morph
-import androidx.graphics.shapes.RoundedPolygon
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vignesh.focuslist.R
+import com.vignesh.focuslist.core.design.FocuslistDimensions
 import com.vignesh.focuslist.core.design.FocuslistMotion
 import com.vignesh.focuslist.core.design.FocuslistSpacing
-import com.vignesh.focuslist.core.design.focuslistContentGutter
 import com.vignesh.focuslist.core.design.focuslistMotionEnabled
+import com.vignesh.focuslist.core.domain.FocusSession
+import com.vignesh.focuslist.core.domain.FocusState
 import com.vignesh.focuslist.core.domain.Task
-import com.vignesh.focuslist.core.domain.focusElapsedPhase
-import com.vignesh.focuslist.core.domain.focusProgress
+import com.vignesh.focuslist.core.domain.focusReadout
+import com.vignesh.focuslist.core.domain.focusStateOf
+import com.vignesh.focuslist.core.domain.isClockRunning
 import com.vignesh.focuslist.core.notification.FocusSessionVisibility
 import com.vignesh.focuslist.core.notification.canPostNotifications
-import com.vignesh.focuslist.ui.component.TaskListEmptyState
 import com.vignesh.focuslist.ui.component.UndoSnackbarHost
 import com.vignesh.focuslist.ui.task.TaskListViewModel
 import com.vignesh.focuslist.ui.task.UndoSnackbarEffect
 import com.vignesh.focuslist.ui.theme.FocuslistTheme
 import kotlinx.coroutines.delay
-import kotlin.math.floor
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
-import androidx.compose.foundation.shape.RoundedCornerShape
 
 /**
  * Focus, the execution mode.
  *
- * Two states over one destination, and one continuous piece of motion between
- * them. Ready is a place: the task, and a control to begin. Session is a mode:
- * the navigation goes, and what is left is the task, the action that finishes
- * it, and a quiet line saying what follows.
+ * One surface with six states, opened as a sheet over the screen that asked for
+ * it. `focus.md` holds the design; `docs/decisions.md` D-013, D-014 and D-015
+ * hold the decisions behind it.
  *
- * The control the user presses is the thing that becomes the session. Start is
- * a pill; the session is a shape; pressing Start grows the one into the other.
- * That is Material's container transform, and taking it here rather than the
- * scale-and-fade that used to be here is also a correction: M3 says Android
- * avoids scale on enter and exit because it implies an elevation change the
- * system does not have.
+ * Top to bottom: the task title, the shape with the remaining time inside it,
+ * one status line, and one row of two controls.
  *
- * One task, and only the one the user picked. Completing or deleting it ends
- * the session where the task ended, rather than moving the user on to
- * something they did not choose.
+ * **Leaving never destroys anything.** D-015: the chevron and the back gesture
+ * both pause. The control cannot tell "I am finished with this" from "I need to
+ * look at something else for a minute", and of the two mistakes, stopping when
+ * the user meant to pause is the unrecoverable and invisible one.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -118,107 +106,119 @@ fun FocusSheet(
     modifier: Modifier = Modifier
 ) {
     val task by viewModel.focusedTask.collectAsStateWithLifecycle()
-    val startedAt by viewModel.focusSessionStartedAt.collectAsStateWithLifecycle()
+    val session by viewModel.focusSession.collectAsStateWithLifecycle()
 
     // The sheet carries its own, because the screen it opened over is behind a
     // scrim and a bar shown down there would be invisible. Both effects watch
     // the one app-wide offer, so the copy still running underneath cannot
-    // disagree with this one: whichever resolves first clears `pendingUndo`,
-    // and the other is cancelled by the same change.
+    // disagree with this one.
     val snackbarHostState = remember { SnackbarHostState() }
     UndoSnackbarEffect(viewModel = viewModel, snackbarHostState = snackbarHostState)
 
+    // Nothing to draw yet, or nothing left to draw. Either way this composable
+    // does not decide which: **every exposed flow begins on a placeholder before
+    // storage has answered**, and a screen reading that placeholder cannot tell
+    // "the task is gone" from "not loaded yet". Ending Focus here closed the
+    // sheet on the way in, which broke Ready, the one entry that has nothing
+    // else to hold it open. `FocusSessionSemanticsTest` caught it.
+    //
+    // The task actually being gone is watched in `TaskListViewModel` against
+    // `repository.observeTasks()`, which only emits once it has really read.
+    // `focus.md` names that as the rule and this is the mistake it warns about.
+    val current = task ?: return
+
     ModalBottomSheet(
-        // Dismissing is stopping. There is no way to leave the sheet and keep a
-        // session running, which is deliberate: a session with nothing on
-        // screen pointing at it would be state the user cannot see or reach.
-        // Backgrounding the app is a different thing and does not stop it,
-        // which is what the estimate notification exists for.
-        onDismissRequest = viewModel::stopFocusSession,
+        // Pauses. Covers the chevron, the scrim, the drag and the back gesture,
+        // because ModalBottomSheet routes all four here, and D-015 wants the
+        // same non-destructive answer from every one of them.
+        onDismissRequest = viewModel::leaveFocusSheet,
         sheetState = rememberBottomSheetState(
             initialValue = SheetValue.Hidden,
-            // Full height or gone. A half-open Focus would be a list of one
-            // task peeking over the screen it was trying to replace.
+            // Full height or gone. A half-open Focus would be one task peeking
+            // over the screen it was trying to replace.
             enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)
         ),
         modifier = modifier
     ) {
         FocusSheetContent(
-            task = task,
-            startedAt = startedAt,
-            // The same write every list makes, so finishing a task here is as
-            // undoable as finishing it anywhere else. It is also what advances
-            // the queue: completing takes the task out, the chosen id stops
-            // matching, and `focusedTask` falls through to the next one.
-            onComplete = { id -> viewModel.toggleComplete(id) },
+            task = current,
+            session = session,
+            onComplete = { viewModel.completeFromFocus(current.id) },
+            onStart = viewModel::startFocusSession,
+            onPause = viewModel::pauseFocusSession,
+            onResume = viewModel::resumeFocusSession,
+            onExtend = viewModel::extendFocusSession,
+            onDismiss = viewModel::leaveFocusSheet,
             snackbarHostState = snackbarHostState
         )
     }
 }
 
 /**
- * What the sheet holds: one task, or the fact that there are none left.
+ * What the sheet holds: one task, being worked on.
  *
- * Stateless. It renders the task it is handed and reports completing.
+ * Stateless, and the preview and semantics seam.
  *
- * There is no top app bar and no name anywhere on it. A sheet the user opened
- * by choosing a task does not need to introduce itself, and a heading reading
- * "Focus" would be the screen naming itself instead of naming the work.
+ * The column is centred in the content area rather than pinned under the app
+ * bar. This is a single-purpose mode screen with one column on it, and hanging
+ * that column from the top left the lower half of the screen empty for no
+ * reason.
  */
 @Composable
 private fun FocusSheetContent(
-    task: Task?,
-    startedAt: Instant?,
-    onComplete: (String) -> Unit,
+    task: Task,
+    session: FocusSession?,
+    onComplete: () -> Unit,
+    onStart: () -> Unit,
+    onPause: () -> Unit,
+    onResume: () -> Unit,
+    onExtend: () -> Unit,
+    onDismiss: () -> Unit,
     snackbarHostState: SnackbarHostState,
     modifier: Modifier = Modifier
 ) {
-    // The transition between having a task and having none is decoration in
-    // the strict sense, and a user who asked for no motion gets the next state
-    // directly. The shape inside the session is not covered by this: how far
-    // the session has run is information, and holding it still would withhold
-    // an answer.
-    val animate = focuslistMotionEnabled()
+    val paneTitleText = stringResource(R.string.focus_title)
 
-    // Read here rather than inside transitionSpec, which is not a composable
-    // scope. An effects spec, because a fade changes no bounds.
-    val fadeSpec = FocuslistMotion.stateColor<Float>()
+    // Where the session has got to, resampled while the clock runs. One sample
+    // feeds the digits, the status line and the shape, so they cannot disagree
+    // about which second it is: a countdown reaching zero and the state becoming
+    // EstimateReached are the same event, and sampling them apart is how a
+    // screen ends up offering Pause under a readout of 00:00.
+    val reading = rememberFocusReading(session, task.estimatedDurationMinutes)
 
-    Box(modifier = modifier.fillMaxSize()) {
-        AnimatedContent(
-            targetState = task,
-            contentKey = { it == null },
-            transitionSpec = {
-                if (!animate) {
-                    EnterTransition.None togetherWith ExitTransition.None
-                } else {
-                    fadeIn(animationSpec = fadeSpec) togetherWith
-                        fadeOut(animationSpec = fadeSpec)
-                }
-            },
-            label = "focus content"
-        ) { current ->
-            if (current == null) {
-                // The task is finished, or gone, or was never chosen. One
-                // state for all three, because from here they are the same
-                // fact: there is nothing to work on.
-                //
-                // The sheet stays open on it rather than closing itself. A
-                // sheet that vanished would have answered by disappearing,
-                // and finishing the thing you sat down to do is the moment
-                // worth marking.
-                TaskListEmptyState(
-                    headline = stringResource(R.string.focus_empty_headline),
-                    supporting = stringResource(R.string.focus_empty_supporting)
-                )
-            } else {
-                FocusTask(
-                    task = current,
-                    startedAt = startedAt,
-                    animate = animate,
-                    onComplete = { onComplete(current.id) }
-                )
-            }
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            // The screen names itself to a screen reader and to nothing else.
+            // While the app bar carried a centred "Focus" the screen had two
+            // centred headings stacked, and the upper one named the app instead
+            // of the work.
+            .semantics { paneTitle = paneTitleText }
+    ) {
+        FocusDismissButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopStart))
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .widthIn(max = FocuslistDimensions.FocusColumnWidth)
+                .padding(horizontal = FocuslistSpacing.md),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(FocuslistDimensions.FocusColumnGap)
+        ) {
+            FocusTaskTitle(title = task.title)
+
+            FocusShape(readout = reading.readout, running = reading.state.isClockRunning)
+
+            FocusStatusLine(reading = reading, estimateMinutes = task.estimatedDurationMinutes)
+
+            FocusActions(
+                state = reading.state,
+                onComplete = onComplete,
+                onStart = onStart,
+                onPause = onPause,
+                onResume = onResume,
+                onExtend = onExtend
+            )
         }
 
         UndoSnackbarHost(
@@ -226,225 +226,175 @@ private fun FocusSheetContent(
             modifier = Modifier.align(Alignment.BottomCenter)
         )
     }
-}
 
-/**
- * One task, being worked on.
- *
- * There is only one state now. The sheet is entered by choosing a task, so it
- * opens already running, and the Ready half this screen used to carry — a task
- * sitting still with a control to begin — has no reason to exist. What used to
- * justify it was hiding the navigation bar honestly; a sheet leaves the bar
- * where it is, behind the scrim, and needs no justifying.
- */
-@Composable
-private fun FocusTask(
-    task: Task,
-    startedAt: Instant?,
-    animate: Boolean,
-    onComplete: () -> Unit
-) {
-    if (startedAt != null) {
+    // Only a running session is on screen for the notification's purposes, and
+    // only a running one has a moment to announce.
+    if (reading.state.isClockRunning) {
         TrackSessionVisibility()
     }
 
     // Asked once the sheet has arrived rather than as it composes. The
-    // permission dialog is a system window and opens over whatever is on
-    // screen, so requesting it on the way in put a prompt over the sheet's own
-    // entrance on the very first session a user ever ran.
+    // permission dialog is a system window and opens over whatever is on screen,
+    // so requesting it on the way in put a prompt over the sheet's own entrance
+    // on the very first session a user ever ran.
     AskToNotifyOnce(
         hasEstimate = task.estimatedDurationMinutes != null,
-        enabled = startedAt != null
+        enabled = reading.state.isClockRunning
     )
+}
 
-    // Where the session has got to. Not a transition, and so not governed by
-    // the reduced-motion setting: it is a value derived from the clock.
-    val shapeProgress = rememberShapeProgress(
-        startedAt = startedAt,
-        estimatedDurationMinutes = task.estimatedDurationMinutes,
-        animate = animate
-    )
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        FocusShape(
-            task = task,
-            progress = { shapeProgress.value },
-            onComplete = onComplete,
-            modifier = Modifier
-                .align(Alignment.Center)
-                .padding(horizontal = focuslistContentGutter())
-                .padding(horizontal = FocuslistSpacing.lg)
+/**
+ * The way out: a chevron down, at the start of the bar, and nothing else there.
+ *
+ * **A chevron rather than a close X, and that is D-015 showing through.** The
+ * control pauses and hands the session to the Focus now card, so it discards
+ * nothing. An X claims the thing is finished; a chevron says it has been put
+ * away, which is what actually happens, and where it went is on the screen
+ * underneath. It also agrees with the gesture: a bottom sheet is dismissed by
+ * dragging down, and the control in the corner should not mean something
+ * different from the drag that does the same job.
+ */
+@Composable
+private fun FocusDismissButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    IconButton(
+        onClick = onClick,
+        modifier = modifier
+            .padding(FocuslistSpacing.xs)
+            .size(FocuslistDimensions.TouchTargetMin)
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_expand_more),
+            contentDescription = stringResource(R.string.focus_dismiss)
         )
     }
 }
 
 /**
- * The shape, the task inside it, and the action beneath.
+ * The task, and the largest thing on the screen.
  *
- * The shape is drawn rather than clipped to. A [androidx.compose.ui.graphics.Shape]
- * would have to be a new object on every frame to change, which puts the work
- * in layout; drawing reads the animated value in the draw phase, where a
- * changed value costs one redraw of one node and nothing is remeasured. That
- * matters because the shape carries on advancing for as long as the task's
- * estimate lasts, and a session left running is not paying to relayout a
- * screen once a second.
+ * Above the shape rather than inside it, which D-014 settles with arithmetic
+ * rather than taste: a cookie yields about 70% of its box as usable area, so
+ * four lines at 200% font scale would need a 514dp square on a 412dp screen.
+ * Outside it the title has the full column width and the four-line cap holds at
+ * every font scale.
  *
- * It used to be a container transform as well, growing out of a button. The
- * sheet's own entrance replaced that: one motion instead of two, and the shape
- * is simply there when the sheet arrives.
+ * `onSurface`, not `onPrimaryContainer`. It sits on the background now that it
+ * is outside the shape, and only the digits take the container's role. The two
+ * are close in the fallback palette, so getting this wrong stays invisible until
+ * a dynamic scheme pulls them apart.
  */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun FocusShape(
-    task: Task,
-    progress: () -> Float,
-    onComplete: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    // Keyed on whether there is an estimate rather than on the list itself. The
-    // list is rebuilt on every recomposition and only compares equal because
-    // `MaterialShapes` memoises its polygons; keying on the thing that actually
-    // varies does not depend on that.
-    val determinate = task.estimatedDurationMinutes != null
-    val shapes = sessionShapes(determinate)
-    val ringMorphs = remember(determinate) {
-        shapes.indices.map { Morph(shapes[it], shapes[(it + 1) % shapes.size]) }
-    }
-    val path = remember { Path() }
-
-    val containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-    val titleColor = MaterialTheme.colorScheme.primary
-
-    BoxWithConstraints(modifier = modifier.wrapContentSize()) {
-        // Capped, so a tablet gets a shape and not a billboard, and bounded by
-        // the window so a narrow phone is not overflowed.
-        val side = min(maxWidth, SessionShapeMaxSize)
-
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(
-                modifier = Modifier
-                    .size(side)
-                    .drawBehind {
-                        drawFocusShape(
-                            phase = progress(),
-                            determinate = determinate,
-                            ringMorphs = ringMorphs,
-                            path = path,
-                            color = containerColor,
-                            bounds = Rect(0f, 0f, size.width, size.height)
-                        )
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                FocusTaskTitle(
-                    task = task,
-                    color = titleColor,
-                    modifier = Modifier.padding(FocuslistSpacing.lg)
-                )
-            }
-
-            Spacer(Modifier.height(FocuslistSpacing.lg))
-
-            FocusCompleteButton(onClick = onComplete)
-        }
-    }
+private fun FocusTaskTitle(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.headlineMediumEmphasized,
+        color = MaterialTheme.colorScheme.onSurface,
+        textAlign = TextAlign.Center,
+        maxLines = TitleMaxLines,
+        // Ellipsis rather than clipping: a title that ends in a marker says it
+        // was shortened, where one that stops mid-word says the screen is
+        // broken. The full title is one tap away in Task Details.
+        overflow = TextOverflow.Ellipsis,
+        // The work is what this screen is about, so it is the heading a screen
+        // reader lands on, in every state.
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics { heading() }
+    )
 }
 
 /**
- * The action the session is for.
+ * The shape, and the time inside it.
  *
- * A real [Button] rather than a drawn one with a click listener, so the ripple,
- * the state layers, the focus indication and the button role all come from
- * Material rather than being approximated here.
+ * `Cookie4Sided` at rest and `Cookie12Sided` while running, morphing between the
+ * two on a state change and not moving in between. **What it says is whether the
+ * clock is running.** That is the whole of it, and it is D-014.
  *
- * It used to travel, stretching from beside a play button into the middle as
- * the session opened, and to change tone on the way. Both belonged to a Ready
- * state that no longer exists: the sheet opens already running, so there is one
- * action here and it has always been in the middle. What survives from that
- * work is the corner and the pressed morph.
+ * It used to be a progress indicator, walking from a circle to a clover across
+ * the estimate. Once D-013 put a readable number on the screen, the shape and
+ * the digits measured the same quantity and the shape was the worse of the two
+ * at it: it cannot be read to a value and it publishes nothing to a screen
+ * reader. A second channel that says what the first says, less well, is
+ * decoration, and `expressive-motion.md` bans decoration.
+ *
+ * Drawn rather than clipped to. A `Shape` would have to be a new object to
+ * change, which puts the work in layout; drawing reads the morph in the draw
+ * phase, where a changed value costs one redraw of one node.
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun FocusCompleteButton(onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        shapes = ButtonDefaults.shapes(shape = ActionShape),
-        contentPadding = ButtonDefaults.contentPaddingFor(ActionSlotHeight),
-        // A floor rather than a fixed height. Pinned at exactly the medium
-        // height, a label at 200% font scale was cut through the middle of its
-        // letters; the button is allowed to grow to hold its own text.
-        modifier = Modifier.heightIn(min = ActionSlotHeight)
+private fun FocusShape(readout: String, running: Boolean) {
+    // Rest to running, and the animated value walks between them. Built once:
+    // the two shapes are constants, so nothing here depends on `MaterialShapes`
+    // memoising its polygons.
+    val morph = remember { Morph(MaterialShapes.Cookie4Sided, MaterialShapes.Cookie12Sided) }
+    val path = remember { Path() }
+
+    val containerColor = MaterialTheme.colorScheme.primaryContainer
+    val extension = rememberShapeExtension(running)
+
+    Box(
+        modifier = Modifier
+            .size(FocuslistDimensions.FocusShapeSize)
+            .drawBehind {
+                drawFocusShape(
+                    morph = morph,
+                    progress = extension.value,
+                    path = path,
+                    color = containerColor,
+                    bounds = Rect(0f, 0f, size.width, size.height)
+                )
+            },
+        contentAlignment = Alignment.Center
     ) {
         Text(
-            text = stringResource(R.string.focus_complete),
-            style = ButtonDefaults.textStyleFor(ActionSlotHeight),
+            text = readout,
+            // Headline Small, not the Display Large the board drew first. The
+            // largest object on a screen built to stop clock-watching should not
+            // be the clock; the task is.
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
             maxLines = 1
         )
     }
 }
 
 /**
- * The ring of shapes a session walks, and which way round it walks it.
+ * How far the shape has travelled between its two forms.
  *
- * A task with an estimate gets two shapes and runs them once, from the busy one
- * to the circle: the task is at its most complicated when it starts and
- * resolves as the estimate is used up. A task without one gets a ring of six
- * and walks round it forever, arriving nowhere.
+ * Zero is 4-sided and one is 12-sided. On `focusSession`, which is the app's
+ * only sanctioned shape morph and is much cheaper than it was: two shapes rather
+ * than a walk through many, and a state change rather than a tick, so nothing on
+ * this screen animates while a session is merely running.
  *
- * This is Material's own distinction rather than a private vocabulary. Its
- * loading indicator ships two shape lists, a pair for the determinate case and
- * a sequence of seven for the indeterminate one, and encodes known against
- * unknown duration by the *kind* of motion rather than by what any one shape
- * means. That matters, because the shape principles say in as many words that
- * shape is versatile and not semantic: no single form here stands for
- * anything, and swapping the ring for another set of shapes would change how
- * the screen looks and nothing about what it says.
- *
- * Both rings deliberately begin at the circle, which is the shape the
- * container transform ends at, so a session continues straight out of the
- * growth with nothing in between. None of these are the elongated shapes:
- * `Pill` and `Oval` normalise into a unit box, so a square draw would stretch
- * them back into ovals.
+ * Under reduced motion it snaps. Nothing is withheld by that, because the state
+ * the shape expresses is in the button's label and in the status line either
+ * way.
  */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-private fun sessionShapes(hasEstimate: Boolean): List<RoundedPolygon> =
-    if (hasEstimate) {
-        listOf(MaterialShapes.Circle, MaterialShapes.Clover8Leaf)
-    } else {
-        listOf(
-            MaterialShapes.Circle,
-            MaterialShapes.Square,
-            MaterialShapes.Cookie4Sided,
-            MaterialShapes.Pentagon,
-            MaterialShapes.SoftBurst,
-            MaterialShapes.Gem
-        )
+@Composable
+private fun rememberShapeExtension(running: Boolean): Animatable<Float, AnimationVector1D> {
+    val animate = focuslistMotionEnabled()
+    val target = if (running) 1f else 0f
+    val extension = remember { Animatable(target) }
+    val spec = FocuslistMotion.focusSession<Float>()
+
+    LaunchedEffect(target, animate) {
+        if (animate) extension.animateTo(target, spec) else extension.snapTo(target)
     }
 
-/**
- * Draws the shape at whatever point of its ring the session has reached.
- *
- * There is one way of drawing it now. It used to be two, meeting at a circle,
- * because the shape had to grow out of a button first; the sheet's own entrance
- * does that job, so the rounded-rectangle half and the interpolation it needed
- * are gone.
- */
+    return extension
+}
+
+/** Draws the morph at [progress], scaled onto [bounds]. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 private fun DrawScope.drawFocusShape(
-    phase: Float,
-    determinate: Boolean,
-    ringMorphs: List<Morph>,
+    morph: Morph,
+    progress: Float,
     path: Path,
     color: Color,
     bounds: Rect
 ) {
-    // One segment per pair of neighbours. The determinate ring is walked once
-    // and stops at its last shape; the indeterminate one wraps, and its final
-    // segment morphs back into the shape it began at, so the seam cannot be
-    // seen.
-    val segments = if (determinate) ringMorphs.size - 1 else ringMorphs.size
-    val walked = (phase.coerceIn(0f, 1f) * segments).coerceIn(0f, segments.toFloat())
-    val index = floor(walked).toInt().coerceIn(0, segments - 1)
-    ringMorphs[index].toPath(progress = walked - index, path = path)
+    morph.toPath(progress = progress.coerceIn(0f, 1f), path = path)
 
     // The polygons are normalised, so the path arrives in a unit box and has to
     // be scaled to the rectangle and recentred on it, exactly as the Material
@@ -455,84 +405,215 @@ private fun DrawScope.drawFocusShape(
 }
 
 /**
- * Where the shape stands, as a value that can be sprung to rather than only
- * jumped to.
+ * The one line under the shape.
  *
- * An [Animatable] rather than a plain state, because the shape has to move on
- * its own in two places the clock does not account for. A session that ends
- * unwinds to the circle instead of snapping, so what shrinks back into the
- * button is the shape that grew out of it. And a session that moves on to the
- * next task springs back to the circle, which is the reset the user sees when
- * one task gives way to another: the clock has genuinely restarted, and this
- * is the shape saying so.
+ * **It carries only what the controls cannot say.** The button already reads
+ * Pause or Resume, so putting the state in text here would say it twice. What is
+ * left is the budget, and the one moment that has no control to announce it.
  *
- * Reading `value` inside a draw block records the read in the draw phase, so a
- * new value costs one redraw and nothing is recomposed or remeasured.
- *
- * Sampled, not accumulated: each tick asks the clock what time it is and works
- * the value out again, so a session frozen while the user was in another app
- * comes back where it actually is rather than where it was left.
+ * Ready and Running read the same line, deliberately. What tells them apart is
+ * the shape, the icon on the button, and the digits moving.
  */
 @Composable
-private fun rememberShapeProgress(
-    startedAt: Instant?,
-    estimatedDurationMinutes: Int?,
-    animate: Boolean
-): Animatable<Float, AnimationVector1D> {
-    val shapeProgress = remember { Animatable(0f) }
-    val spec = FocuslistMotion.focusSession<Float>()
+private fun FocusStatusLine(reading: FocusReading, estimateMinutes: Int?) {
+    val text = when (reading.state) {
+        FocusState.Ready, FocusState.Running ->
+            stringResource(R.string.focus_status_estimate, estimateMinutes ?: 0)
 
-    LaunchedEffect(startedAt, estimatedDurationMinutes, animate) {
-        if (startedAt == null) {
-            if (animate) shapeProgress.animateTo(0f, spec) else shapeProgress.snapTo(0f)
-            return@LaunchedEffect
-        }
+        FocusState.Paused -> stringResource(
+            R.string.focus_status_remaining,
+            // Rounded up, so a session with forty seconds left says one minute
+            // rather than nought. Nought minutes left on a clock that has not
+            // reached its estimate is a lie the floor would tell every time the
+            // last minute was paused in.
+            ((reading.remainingMinutes ?: 0L) + 1L).toInt()
+        )
 
-        val first = shapeValue(startedAt, estimatedDurationMinutes)
-        if (animate) shapeProgress.animateTo(first, spec) else shapeProgress.snapTo(first)
+        FocusState.EstimateReached -> stringResource(R.string.focus_status_estimate_reached)
 
-        while (true) {
-            delay(ProgressTickMillis)
-            val current = shapeValue(startedAt, estimatedDurationMinutes)
-            shapeProgress.snapTo(current)
-            // An estimate that is used up has nothing left to say, so the
-            // ticking stops. A session with no estimate never arrives
-            // anywhere, so it keeps going for as long as the session does.
-            if (estimatedDurationMinutes != null && current >= 1f) return@LaunchedEffect
-        }
+        FocusState.OpenEnded, FocusState.OpenEndedPaused ->
+            stringResource(R.string.focus_status_no_limit)
     }
 
-    return shapeProgress
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center
+    )
 }
 
 /**
- * What the shape should read, from whichever of the two clocks applies.
+ * The two controls, and which two they are.
  *
- * With an estimate the value is a fraction of it, and arriving means the
- * estimate is used up. Without one there is nothing to be a fraction of, and
- * the value cycles instead: it says the session is running and nothing more.
- * The two are separate functions in the domain because they mean different
- * things, and the screen picking between them here is the whole of the
- * difference.
+ * Complete is in all six states, because finishing is the thing this screen is
+ * for and it must never be more than one tap away. What changes is the control
+ * beside it.
+ *
+ * **The clock control is an icon button, and that is a width decision.** Holding
+ * no text it does not grow with the font scale: at 200% two worded buttons come
+ * to roughly 223dp and 198dp and overflow the 364dp row, while a circle and one
+ * word come to about 282dp.
+ *
+ * Estimate reached is the only state with no clock control, since there is no
+ * clock left to control. It carries two worded buttons, and Complete is the
+ * primary there: a timer running out is more often the moment work is finished
+ * than the moment it needs extending, and the control that reads as the default
+ * should be the likelier one.
  */
-private fun shapeValue(startedAt: Instant, estimatedDurationMinutes: Int?): Float {
-    val now = Instant.now()
-    return focusProgress(startedAt, now, estimatedDurationMinutes)
-        ?: focusElapsedPhase(startedAt, now)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun FocusActions(
+    state: FocusState,
+    onComplete: () -> Unit,
+    onStart: () -> Unit,
+    onPause: () -> Unit,
+    onResume: () -> Unit,
+    onExtend: () -> Unit
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(FocuslistSpacing.sm)) {
+        if (state == FocusState.EstimateReached) {
+            FocusWordedButton(
+                text = stringResource(R.string.focus_complete),
+                primary = true,
+                onClick = onComplete
+            )
+            FocusWordedButton(
+                text = stringResource(R.string.focus_extend, FocusSession.ExtensionMinutes),
+                primary = false,
+                onClick = onExtend
+            )
+            return@Row
+        }
+
+        val icon: Int
+        val label: Int
+        val onClock: () -> Unit
+
+        when (state) {
+            FocusState.Ready -> {
+                icon = R.drawable.ic_play_arrow
+                label = R.string.focus_start
+                onClock = onStart
+            }
+
+            FocusState.Running, FocusState.OpenEnded -> {
+                icon = R.drawable.ic_pause
+                label = R.string.focus_pause
+                onClock = onPause
+            }
+
+            else -> {
+                icon = R.drawable.ic_play_arrow
+                label = R.string.focus_resume
+                onClock = onResume
+            }
+        }
+
+        FilledIconButton(
+            onClick = onClock,
+            modifier = Modifier.size(FocuslistDimensions.FocusControlSize)
+        ) {
+            Icon(
+                painter = painterResource(icon),
+                // Named for the action, never for the glyph. A screen reader
+                // announcing "play" would describe the drawing rather than what
+                // pressing it does.
+                contentDescription = stringResource(label)
+            )
+        }
+
+        FocusWordedButton(
+            text = stringResource(R.string.focus_complete),
+            primary = false,
+            onClick = onComplete
+        )
+    }
+}
+
+/**
+ * One worded control in the action row.
+ *
+ * Complete is tonal in every state but Estimate reached, because it is the
+ * second of two actions. A real [Button] rather than a drawn one, so the ripple,
+ * the state layers, the focus indication and the button role all come from
+ * Material.
+ */
+@Composable
+private fun FocusWordedButton(text: String, primary: Boolean, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        colors =
+            if (primary) ButtonDefaults.buttonColors() else ButtonDefaults.filledTonalButtonColors(),
+        // A floor rather than a fixed height. Pinned at exactly the control
+        // height, a label at 200% font scale was cut through the middle of its
+        // letters; the button is allowed to grow to hold its own text.
+        modifier = Modifier.heightIn(min = FocuslistDimensions.FocusControlSize)
+    ) {
+        Text(text = text, maxLines = 1)
+    }
+}
+
+/** One sampling of the session's clock: what it reads, and what state that is. */
+private data class FocusReading(
+    val readout: String,
+    val state: FocusState,
+    val remainingMinutes: Long?
+)
+
+/**
+ * The clock, resampled while it runs.
+ *
+ * Held in composition state rather than read in the draw phase, unlike the
+ * shape. The shape is a path that can be redrawn for nothing; text has to be
+ * measured and laid out, so it is recomposed once a second and no faster.
+ *
+ * A stopped clock has one reading and the first sample already took it, so both
+ * paused states and Ready never tick. Together with the shape only moving on a
+ * state change, that is what makes `focus.md`'s claim true that the screen goes
+ * idle: nothing here spends a frame to say what it said last frame.
+ */
+@Composable
+private fun rememberFocusReading(
+    session: FocusSession?,
+    estimateMinutes: Int?
+): FocusReading {
+    fun sample(): FocusReading {
+        val now = Instant.now()
+
+        return FocusReading(
+            readout = focusReadout(session, estimateMinutes, now),
+            state = focusStateOf(session, estimateMinutes, now),
+            remainingMinutes = session?.remaining(now, estimateMinutes)?.toMinutes()
+        )
+    }
+
+    var reading by remember(session, estimateMinutes) { mutableStateOf(sample()) }
+
+    LaunchedEffect(session, estimateMinutes) {
+        if (session == null || session.isPaused) return@LaunchedEffect
+
+        while (true) {
+            delay(ReadoutTickMillis)
+            reading = sample()
+        }
+    }
+
+    return reading
 }
 
 /**
  * Reports whether the session is actually in front of the user.
  *
- * Composition is not enough to answer that. Pressing home stops the activity
- * but leaves the composition standing, so a flag set on entering composition
- * and cleared on leaving it stays true the whole time the user is in another
- * app, which is precisely when the notification is supposed to fire. The
- * lifecycle is what knows the difference.
+ * Composition is not enough to answer that. Pressing home stops the activity but
+ * leaves the composition standing, so a flag set on entering composition and
+ * cleared on leaving it stays true the whole time the user is in another app,
+ * which is precisely when the notification is supposed to fire. The lifecycle is
+ * what knows the difference.
  *
  * Started rather than resumed, so a session sitting behind a permission dialog
- * still counts as on screen: the shape is visible, and the announcement would
- * be telling the user something they can see.
+ * still counts as on screen: the shape is visible, and the announcement would be
+ * telling the user something they can see.
  */
 @Composable
 private fun TrackSessionVisibility() {
@@ -547,42 +628,21 @@ private fun TrackSessionVisibility() {
             }
         }
 
-        // The observer only reports transitions, and this usually composes
-        // into an already-started activity, so the current state has to be
-        // read once on the way in.
-        FocusSessionVisibility.isSessionOnScreen =
-            owner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
-
         owner.lifecycle.addObserver(observer)
 
         onDispose {
             owner.lifecycle.removeObserver(observer)
-            // Leaving the session, not leaving the app: whatever happens next,
-            // there is no session on screen to be redundant with.
             FocusSessionVisibility.isSessionOnScreen = false
         }
     }
 }
 
 /**
- * Asks for notification permission, at the first moment there is anything to
- * notify about.
+ * Asks for notification permission the first time it could matter.
  *
- * Not at launch, and not on a task with no estimate. `POST_NOTIFICATIONS` is
- * a question the user can only answer well in context, and the context is a
- * session that has a moment to announce. Asked once per process: Android stops
- * showing the dialog after a refusal, and asking again would be the app
- * pestering a system that has already stopped listening.
- *
- * Refusal costs nothing on screen. The shape still shows progress; the user
- * simply is not told when they are elsewhere, which is what they said.
- *
- * [enabled] is what holds it back until the session has actually arrived. The
- * dialog is a system window drawn over everything, and asking as the session
- * composed put it on top of the container transform every time: the first
- * Start a user ever pressed was the one run of the animation they never got to
- * see. Waiting costs nothing, because the moment being announced is minutes
- * away.
+ * The first session on a task that has an estimate is the first moment the app
+ * has anything to notify about, which is the only context in which the question
+ * can be answered well. Never at launch.
  */
 @Composable
 private fun AskToNotifyOnce(hasEstimate: Boolean, enabled: Boolean) {
@@ -590,146 +650,111 @@ private fun AskToNotifyOnce(hasEstimate: Boolean, enabled: Boolean) {
 
     val context = LocalContext.current
     var asked by rememberSaveable { mutableStateOf(false) }
-
     val request = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { asked = true }
+    ) { }
 
-    LaunchedEffect(enabled, hasEstimate, asked) {
-        if (enabled && !asked && hasEstimate && !context.canPostNotifications()) {
-            asked = true
-            request.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
+    LaunchedEffect(hasEstimate, enabled, asked) {
+        if (!enabled || !hasEstimate || asked) return@LaunchedEffect
+        if (context.canPostNotifications()) return@LaunchedEffect
+
+        asked = true
+        request.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 }
 
-/**
- * The task, and how long it was reckoned to take.
- *
- * The estimate is shown wherever the task is. Today already carries it, and a
- * screen about doing the work that dropped the one number describing its size
- * would be throwing away what the user already said.
- *
- * Capped at four lines in both states, which is what the shape's square holds
- * at the largest system font scale. The cap applies in Ready too, even though
- * there is no shape there yet: the square is reserved in both states, and a
- * title that overran it in Ready would collide with the Start button and then
- * be cut anyway the moment the session began.
- */
-@Composable
-private fun FocusTaskTitle(
-    task: Task,
-    color: Color,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier.wrapContentSize(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = task.title,
-            // The strongest emphasized treatment in the app. This is the one
-            // screen showing one thing.
-            style = MaterialTheme.typography.headlineMediumEmphasized,
-            color = color,
-            textAlign = TextAlign.Center,
-            maxLines = TitleMaxLines,
-            // Ellipsis rather than clipping: a title that ends in a marker
-            // says it was shortened, where one that stops mid-word says the
-            // screen is broken.
-            overflow = TextOverflow.Ellipsis,
-            // The task is what this screen is about, so it is the heading a
-            // screen reader should land on.
-            modifier = Modifier.semantics { heading() }
-        )
+/** How often the readout moves. A second, which `mm:ss` needs and no more. */
+private const val ReadoutTickMillis = 1_000L
 
-        task.estimatedDurationMinutes?.let { minutes ->
-            Text(
-                text = stringResource(R.string.focus_estimate_minutes, minutes),
-                style = MaterialTheme.typography.bodyLarge,
-                color = color,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = FocuslistSpacing.xs)
-            )
-        }
-    }
-}
-
-/**
- * How often the shape is asked to move.
- *
- * A second is far finer than the eye needs across an estimate measured in
- * minutes, and still cheap: one redraw of one node, and nothing recomposed.
- */
-private const val ProgressTickMillis = 1_000L
-
-/** What the shape's square holds at the largest system font scale. */
+/** What the column holds at the largest system font scale. D-014 has the working. */
 private const val TitleMaxLines = 4
 
-/** The shape stops growing here, so a wide window gets a shape, not a wall. */
-private val SessionShapeMaxSize = 320.dp
-
-/**
- * Material's medium button, which is the size the action slot is.
- *
- * The design draws it at 84dp, which is not one of Material's five button
- * heights. Medium is the one that survives 200% font scale with room to spare;
- * large, at 96dp, is a fixed box that a label at that scale has to fit inside.
- */
-private val ActionSlotHeight = ButtonDefaults.MediumContainerHeight
-
-/**
- * The resting corner of both action buttons.
- *
- * Rounded rather than fully round, which is what tells them apart from the
- * container: play's fill is the circle-to-be and reads as one thing, while the
- * two buttons read as a pair of controls.
- */
-private val ActionShape = RoundedCornerShape(20.dp)
-
-/**
- * A fixed timestamp for the sample fixture, so previews stay deterministic
- * rather than shifting with the clock.
- */
 private val SampleTimestamp: Instant = Instant.parse("2026-01-01T09:00:00Z")
 
 private val SampleTask = Task(
     id = "sample-focus",
-    title = "Review the quarterly budget",
+    title = "Refine landing page hero",
     createdAt = SampleTimestamp,
     scheduledDate = LocalDate.of(2026, 1, 1),
     estimatedDurationMinutes = 45
 )
 
-/** Half an hour into a forty-five minute estimate, so the preview shows a morph mid-way. */
-private val PreviewSessionStart: Instant = Instant.now().minusSeconds(30 * 60)
+/** Thirty seconds in, so the running preview reads 44:30 rather than 45:00. */
+private val PreviewStart: Instant = Instant.now().minusSeconds(30)
 
-
-@Preview(name = "Session", showBackground = true)
-@Preview(name = "Session dark", showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
-private fun FocusSessionPreview() {
-    FocuslistTheme {
+private fun FocusStatePreview(task: Task, session: FocusSession?) {
+    FocuslistTheme(dynamicColor = false) {
         FocusSheetContent(
-            task = SampleTask,
-            startedAt = PreviewSessionStart,
+            task = task,
+            session = session,
             onComplete = {},
+            onStart = {},
+            onPause = {},
+            onResume = {},
+            onExtend = {},
+            onDismiss = {},
             snackbarHostState = SnackbarHostState()
         )
     }
 }
 
-/** The queue emptying while the sheet is open, which is where the user is told. */
-@Preview(name = "Empty", showBackground = true)
-@Preview(name = "Empty dark", showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(name = "Focus ready", showBackground = true, heightDp = 720)
 @Composable
-private fun FocusEmptyPreview() {
-    FocuslistTheme {
-        FocusSheetContent(
-            task = null,
-            startedAt = null,
-            onComplete = {},
-            snackbarHostState = SnackbarHostState()
-        )
-    }
-}
+private fun FocusReadyPreview() = FocusStatePreview(SampleTask, null)
+
+@Preview(name = "Focus running", showBackground = true, heightDp = 720)
+@Preview(
+    name = "Focus running dark",
+    showBackground = true,
+    heightDp = 720,
+    uiMode = Configuration.UI_MODE_NIGHT_YES
+)
+@Composable
+private fun FocusRunningPreview() =
+    FocusStatePreview(SampleTask, FocusSession(startedAt = PreviewStart))
+
+@Preview(name = "Focus paused", showBackground = true, heightDp = 720)
+@Composable
+private fun FocusPausedPreview() = FocusStatePreview(
+    SampleTask,
+    FocusSession(
+        startedAt = PreviewStart.minus(Duration.ofMinutes(12).plusSeconds(12)),
+        pausedAt = PreviewStart
+    )
+)
+
+@Preview(name = "Focus estimate reached", showBackground = true, heightDp = 720)
+@Composable
+private fun FocusEstimateReachedPreview() = FocusStatePreview(
+    SampleTask,
+    FocusSession(startedAt = Instant.now().minus(Duration.ofMinutes(60)))
+)
+
+@Preview(name = "Focus open-ended", showBackground = true, heightDp = 720)
+@Composable
+private fun FocusOpenEndedPreview() = FocusStatePreview(
+    SampleTask.copy(estimatedDurationMinutes = null),
+    FocusSession(startedAt = Instant.now().minus(Duration.ofMinutes(12).plusSeconds(43)))
+)
+
+@Preview(name = "Focus open-ended paused", showBackground = true, heightDp = 720)
+@Composable
+private fun FocusOpenEndedPausedPreview() = FocusStatePreview(
+    SampleTask.copy(estimatedDurationMinutes = null),
+    FocusSession(
+        startedAt = PreviewStart.minus(Duration.ofMinutes(12).plusSeconds(43)),
+        pausedAt = PreviewStart
+    )
+)
+
+/** 200%, with a four-line title, which is where the row and the cap are tested. */
+@Preview(name = "Focus running large font", showBackground = true, heightDp = 900, fontScale = 2f)
+@Composable
+private fun FocusLargeFontPreview() = FocusStatePreview(
+    SampleTask.copy(
+        title = "Refine the landing page hero, the pricing table and the footer " +
+            "before the review on Thursday morning"
+    ),
+    FocusSession(startedAt = PreviewStart)
+)

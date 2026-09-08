@@ -213,21 +213,18 @@ Tapping the task opens the task details/editing interface.
 This is the segment's own `onClick`. Tapping the completion control must not
 open details.
 
-## Long press
+## Long press does nothing
 
-Long press opens the actions a task supports beyond completing and opening it.
-On Today that is a menu with a single item, Delete.
+`docs/decisions.md` D-023 removed the row's actions menu, and the long press that
+opened it went with it. A row answers a tap and its checkbox, and nothing else.
 
-Normal task management must not require it. Completing a task stays one tap on
-the checkbox, and opening it stays one tap on the row. Long press carries the
-less common and more consequential actions, and the caller decides what those
-are: `TaskRow` takes an optional `onLongClick`, and a row with nothing extra to
-offer leaves it null.
-
-Whenever `onLongClick` is set, set `onLongClickLabel` with it. The label is
-what exposes the action to accessibility services, so TalkBack announces it and
-offers it rather than leaving it a gesture a user cannot discover. An
-unlabelled long press is not an acceptable way to reach an action.
+`TaskRow` still takes an optional `onLongClick`, unused by every caller. If one
+ever sets it, set `onLongClickLabel` with it: the label is what exposes the
+action to accessibility services, so TalkBack announces and offers it rather than
+leaving a gesture a user cannot discover. An unlabelled long press is not an
+acceptable way to reach an action, and that rule is why the menu needed a visible
+button in the first place, which is what made it worth removing once Task Details
+could carry the actions instead.
 
 ---
 

@@ -5,22 +5,27 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.waitUntilExactlyOneExists
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.vignesh.focuslist.core.domain.TitleWithDate
+import com.vignesh.focuslist.core.domain.CapturedTask
 import com.vignesh.focuslist.ui.task.QuickAddSheet
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.time.LocalDate
+import java.time.LocalTime
 
 /**
  * Quick Add's accessibility contract.
@@ -46,7 +51,7 @@ class QuickAddSemanticsTest {
     private fun setSheet(
         fontScale: Float,
         onDismiss: () -> Unit = {},
-        onSave: (TitleWithDate) -> Unit = {}
+        onSave: (CapturedTask) -> Unit = {}
     ) {
         rule.setFocuslistContent(fontScale) {
             QuickAddSheet(today = TODAY, onDismiss = onDismiss, onSave = onSave)
@@ -88,7 +93,7 @@ class QuickAddSemanticsTest {
     fun save_isRefusedWithoutATitle_at200() = assertSaveIsRefusedWithoutATitle(FontScale200)
 
     private fun assertTypingEnablesSave(fontScale: Float) {
-        val saved = mutableListOf<TitleWithDate>()
+        val saved = mutableListOf<CapturedTask>()
         setSheet(fontScale, onSave = { parsed -> saved += parsed })
 
         rule.onNodeWithText(FIELD_LABEL).performTextInput(TITLE)
@@ -97,7 +102,10 @@ class QuickAddSemanticsTest {
         rule.onNodeWithText(SAVE).assertIsEnabled()
         rule.onNodeWithText(SAVE).performClick()
 
-        assertEquals(listOf(TitleWithDate(TITLE, null, null)), saved)
+        val captured = saved.single()
+        assertEquals(TITLE, captured.title)
+        assertNull(captured.date)
+        assertNull(captured.time)
     }
 
     @Test
@@ -125,16 +133,116 @@ class QuickAddSemanticsTest {
 
     @Test
     fun aDay_isTakenOffTheTitleOnSave() {
-        val saved = mutableListOf<TitleWithDate>()
+        val saved = mutableListOf<CapturedTask>()
         setSheet(FontScale100, onSave = { parsed -> saved += parsed })
 
         rule.onNodeWithText(FIELD_LABEL).performTextInput(DATED_TITLE)
         rule.onNodeWithText(SAVE).performClick()
 
-        assertEquals(
-            listOf(TitleWithDate(TITLE, TODAY.plusDays(1), TITLE.length + 1)),
-            saved
-        )
+        assertEquals(1, saved.size)
+        assertEquals(TITLE, saved.single().title)
+        assertEquals(TODAY.plusDays(1), saved.single().date)
+        // No time was typed, so no reminder is promised.
+        assertNull(saved.single().time)
+    }
+
+    // --- D-011: the time, and the chip that can take it back -----------------
+
+    /**
+     * A trailing time sets a reminder, and the chip is where it is named. The
+     * chip is the reminder's only presence in text, so this is what a screen
+     * reader has to be able to read the promise from.
+     */
+    private fun assertATimeIsNamedByAChip(fontScale: Float) {
+        setSheet(fontScale)
+
+        rule.onNodeWithText(FIELD_LABEL).performTextInput(TIMED_TITLE)
+
+        rule.waitUntilExactlyOneExists(hasContentDescription(REMINDER_DISMISS), TIMEOUT_MILLIS)
+        rule.onNodeWithContentDescription(REMINDER_DISMISS).assertIsDisplayed()
+        // The day still has its own line. The two facts are separate and the
+        // line never becomes the reminder's only description.
+        rule.onNodeWithText(SCHEDULED_FOR_TOMORROW).assertIsDisplayed()
+    }
+
+    @Test
+    fun aTime_isNamedByAChip_at100() = assertATimeIsNamedByAChip(FontScale100)
+
+    @Test
+    fun aTime_isNamedByAChip_at200() = assertATimeIsNamedByAChip(FontScale200)
+
+    @Test
+    fun aTime_becomesAReminderOnSave() {
+        val saved = mutableListOf<CapturedTask>()
+        setSheet(FontScale100, onSave = { parsed -> saved += parsed })
+
+        rule.onNodeWithText(FIELD_LABEL).performTextInput(TIMED_TITLE)
+        rule.waitUntilExactlyOneExists(hasContentDescription(REMINDER_DISMISS), TIMEOUT_MILLIS)
+        rule.onNodeWithText(SAVE).performClick()
+
+        val captured = saved.single()
+        assertEquals(TITLE, captured.title)
+        assertEquals(TODAY.plusDays(1), captured.date)
+        assertEquals(LocalTime.of(15, 0), captured.time)
+        assertEquals(TODAY.plusDays(1).atTime(15, 0), captured.reminderAt(TODAY))
+    }
+
+    /**
+     * **Dismissing has to drop the reminder and keep the day**, which is the
+     * asymmetry D-011 argues for: a wrong day is quiet and cheap and is
+     * corrected by typing, and a wrong reminder is a broken promise in either
+     * direction, so only the reminder gets a control.
+     */
+    @Test
+    fun dismissingTheChip_dropsTheReminderAndKeepsTheDay() {
+        val saved = mutableListOf<CapturedTask>()
+        setSheet(FontScale100, onSave = { parsed -> saved += parsed })
+
+        rule.onNodeWithText(FIELD_LABEL).performTextInput(TIMED_TITLE)
+        rule.waitUntilExactlyOneExists(hasContentDescription(REMINDER_DISMISS), TIMEOUT_MILLIS)
+        rule.onNodeWithContentDescription(REMINDER_DISMISS).performClick()
+
+        // The chip goes with the reminder it named.
+        rule.waitUntilExactlyOneExists(hasText(SCHEDULED_FOR_TOMORROW), TIMEOUT_MILLIS)
+        rule.onAllNodesWithContentDescription(REMINDER_DISMISS).assertCountEquals(0)
+
+        rule.onNodeWithText(SAVE).performClick()
+
+        val captured = saved.single()
+        assertNull(captured.time)
+        assertNull(captured.reminderAt(TODAY))
+        assertEquals(TODAY.plusDays(1), captured.date)
+    }
+
+    /**
+     * A dismissal cannot outlive the text it was about. Typing again is a new
+     * parse and a new promise, and suppressing it would withhold a reminder the
+     * user never declined.
+     */
+    @Test
+    fun typingAgainAfterDismissing_bringsTheReminderBack() {
+        setSheet(FontScale100)
+
+        rule.onNodeWithText(FIELD_LABEL).performTextInput(TIMED_TITLE)
+        rule.waitUntilExactlyOneExists(hasContentDescription(REMINDER_DISMISS), TIMEOUT_MILLIS)
+        rule.onNodeWithContentDescription(REMINDER_DISMISS).performClick()
+        rule.waitUntilExactlyOneExists(hasText(SCHEDULED_FOR_TOMORROW), TIMEOUT_MILLIS)
+
+        // Retyping the same trailing time, which is a fresh promise.
+        rule.onNodeWithText(FIELD_LABEL).performTextInput(" at 4pm")
+
+        rule.waitUntilExactlyOneExists(hasContentDescription(REMINDER_DISMISS), TIMEOUT_MILLIS)
+    }
+
+    /** Nothing understood still says where the task will land. */
+    @Test
+    fun aPlainTitle_saysWhereItWillBeSaved() {
+        setSheet(FontScale100)
+
+        rule.onNodeWithText(FIELD_LABEL).performTextInput(TITLE)
+
+        rule.waitUntilExactlyOneExists(hasText(SAVED_TO_TODAY), TIMEOUT_MILLIS)
+        rule.onAllNodesWithContentDescription(REMINDER_DISMISS).assertCountEquals(0)
     }
 
     @Test
@@ -149,12 +257,35 @@ class QuickAddSemanticsTest {
         rule.onAllNodesWithText(SCHEDULED_FOR_TOMORROW).assertCountEquals(0)
     }
 
+    /** And the same for a title that is nothing but a day and a time. */
+    @Test
+    fun aTitleThatIsOnlyADayAndATime_promisesNothing() {
+        setSheet(FontScale100)
+
+        rule.onNodeWithText(FIELD_LABEL).performTextInput("tomorrow at 3pm")
+
+        rule.onNodeWithText(SAVE).assertIsEnabled()
+        rule.onAllNodesWithContentDescription(REMINDER_DISMISS).assertCountEquals(0)
+        rule.onAllNodesWithText(SCHEDULED_FOR_TOMORROW).assertCountEquals(0)
+    }
+
     private companion object {
         const val FIELD_LABEL = "New task"
         const val SAVE = "Add task"
         const val TITLE = "Buy milk"
         const val DATED_TITLE = "Buy milk tomorrow"
+        const val TIMED_TITLE = "Buy milk tomorrow at 3pm"
         const val SCHEDULED_FOR_TOMORROW = "Scheduled for Tomorrow"
+        const val SAVED_TO_TODAY = "Saved to Today"
+
+        /**
+         * The chip is found by its dismiss action rather than by its label.
+         * The label names the time through the reader's own locale, so
+         * asserting it would fail on a device set to a 24-hour clock and would
+         * be testing `DateTimeFormatter` rather than this screen. What the chip
+         * promises is asserted through `onSave` instead, where it is a value.
+         */
+        const val REMINDER_DISMISS = "Remove reminder"
         const val TIMEOUT_MILLIS = 5_000L
 
         /** Fixed, so "tomorrow" is a known date rather than whatever today is. */

@@ -6,6 +6,14 @@ and why the line falls where it does.
 `PRODUCT.md` lists "Natural-language date parsing" as a V1 feature and says
 nothing further about it. Everything below is a decision, not a requirement.
 
+**Partly superseded by D-011.** This document excludes times of day from the
+vocabulary and says "tomorrow at 3pm" must be refused rather than filed. D-011
+reverses that for Quick Add: a trailing time is now read and sets a reminder.
+The reason given here for the exclusion, that "a task carries a day and no
+time", stopped being true when Phase 1 shipped reminders. Everything else below
+still stands, including the trailing-run rule, the rejection behaviour and the
+vocabulary for days.
+
 ---
 
 # Where it applies
@@ -55,8 +63,20 @@ Matching is case-insensitive, folded with `Locale.ROOT`. Commas are dropped and
 runs of whitespace collapsed. Month names are accepted in full or as their
 first three letters, in either order relative to the day.
 
-Deliberately absent: `next week`, `yesterday`, numeric dates, times of day, and
-any unit larger than a week.
+Deliberately absent: `next week`, `yesterday`, numeric dates, and any unit
+larger than a week.
+
+**A preset button is allowed to offer what this list refuses**, and Task Details
+does. `next week` is excluded because English does not agree on which week it
+means, which is an argument about ambiguous text rather than about the concept.
+A button carries one defined meaning and so does not inherit the ambiguity.
+D-018 records the rule and fixes the meaning of the two presets that are not in
+this vocabulary: `This weekend` is the coming Saturday and `End of week` is the
+coming Friday.
+
+Times of day were on this list and are not any more; see D-011. A trailing time
+is read in Quick Add and sets a reminder, which is shown as a dismissible chip
+rather than applied silently.
 
 ---
 

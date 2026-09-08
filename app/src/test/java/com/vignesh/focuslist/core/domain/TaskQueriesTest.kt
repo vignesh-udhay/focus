@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 class TaskQueriesTest {
 
@@ -17,17 +18,28 @@ class TaskQueriesTest {
         scheduledDate: LocalDate? = null,
         completedAt: Instant? = null,
         deletedAt: Instant? = null,
-        createdAt: Instant = timestamp
+        createdAt: Instant = timestamp,
+        // What tells No time set from Later today. A task with a time will
+        // announce itself; a task without one is only ever done because the
+        // user looked.
+        reminderAt: LocalDateTime? = null
     ) = Task(
         id = id,
         title = "Task $id",
         createdAt = createdAt,
         scheduledDate = scheduledDate,
+        reminderAt = reminderAt,
         completedAt = completedAt,
         deletedAt = deletedAt
     )
 
     private fun ids(tasks: List<Task>) = tasks.map { it.id }
+
+    private fun todayAt(hour: Int, minute: Int): LocalDateTime =
+        LocalDateTime.of(today, java.time.LocalTime.of(hour, minute))
+
+    private fun yesterdayAt(hour: Int, minute: Int): LocalDateTime =
+        LocalDateTime.of(yesterday, java.time.LocalTime.of(hour, minute))
 
     // Today
 
@@ -81,19 +93,28 @@ class TaskQueriesTest {
             task(id = "c", scheduledDate = yesterday)
         )
 
-        assertEquals(listOf("a", "c"), ids(todayTasks(tasks, today)))
+        // Overdue leads since D-012, so "c" comes before "a".
+        assertEquals(listOf("c", "a"), ids(todayTasks(tasks, today)))
     }
 
     // Today ordering
 
     @Test
-    fun `today puts scheduled tasks before overdue ones`() {
+    /**
+     * **This assertion is the reverse of what it used to be, and D-012 is why.**
+     * The bands are a timeline and past reads before present. More than that, an
+     * overdue task is the one thing on this screen that represents the product's
+     * defining failure, a reminder that fired and was not acted on, and placing
+     * it below work scheduled for later in the day says the opposite of what
+     * `PRODUCT.md` says about reliability.
+     */
+    fun `today puts overdue tasks before ones scheduled for today`() {
         val tasks = listOf(
-            task(id = "overdue", scheduledDate = yesterday),
-            task(id = "today", scheduledDate = today)
+            task(id = "today", scheduledDate = today),
+            task(id = "overdue", scheduledDate = yesterday)
         )
 
-        assertEquals(listOf("today", "overdue"), ids(todayTasks(tasks, today)))
+        assertEquals(listOf("overdue", "today"), ids(todayTasks(tasks, today)))
     }
 
     @Test
@@ -107,14 +128,18 @@ class TaskQueriesTest {
     }
 
     @Test
-    fun `today orders scheduled then overdue then completed`() {
+    fun `today orders overdue then untimed then timed then completed`() {
         val tasks = listOf(
             task(id = "done", scheduledDate = today, completedAt = timestamp),
-            task(id = "overdue", scheduledDate = yesterday),
-            task(id = "today", scheduledDate = today)
+            task(id = "timed", scheduledDate = today, reminderAt = todayAt(18, 0)),
+            task(id = "untimed", scheduledDate = today),
+            task(id = "overdue", scheduledDate = yesterday)
         )
 
-        assertEquals(listOf("today", "overdue", "done"), ids(todayTasks(tasks, today)))
+        assertEquals(
+            listOf("overdue", "untimed", "timed", "done"),
+            ids(todayTasks(tasks, today))
+        )
     }
 
     @Test
@@ -159,7 +184,7 @@ class TaskQueriesTest {
             task(id = "today", scheduledDate = today)
         )
 
-        assertEquals(listOf("today", "overdue", "completedOverdue"), ids(todayTasks(tasks, today)))
+        assertEquals(listOf("overdue", "today", "completedOverdue"), ids(todayTasks(tasks, today)))
     }
 
     @Test
@@ -176,9 +201,9 @@ class TaskQueriesTest {
     @Test
     fun `an already ordered list is left alone`() {
         val tasks = listOf(
-            task(id = "a", scheduledDate = today),
+            task(id = "a", scheduledDate = yesterday),
             task(id = "b", scheduledDate = today),
-            task(id = "c", scheduledDate = yesterday),
+            task(id = "c", scheduledDate = today),
             task(id = "d", scheduledDate = today, completedAt = timestamp)
         )
 
@@ -190,8 +215,8 @@ class TaskQueriesTest {
         // Ids descend while the correct order ascends, so any sort by id or by
         // the derived title would produce the reverse.
         val tasks = listOf(
-            task(id = "zzz", scheduledDate = today),
-            task(id = "mmm", scheduledDate = yesterday),
+            task(id = "zzz", scheduledDate = yesterday),
+            task(id = "mmm", scheduledDate = today),
             task(id = "aaa", scheduledDate = today, completedAt = timestamp)
         )
 
@@ -208,7 +233,7 @@ class TaskQueriesTest {
             task(id = "deletedOverdue", scheduledDate = yesterday, deletedAt = timestamp)
         )
 
-        assertEquals(listOf("today", "overdue"), ids(todayTasks(tasks, today)))
+        assertEquals(listOf("overdue", "today"), ids(todayTasks(tasks, today)))
     }
 
     @Test
@@ -531,23 +556,60 @@ class TaskQueriesTest {
 
     // Today sections
 
+    /**
+     * D-012's four bands, in D-012's order. Overdue is first because the bands
+     * are a timeline and past reads before present, and because an overdue task
+     * is the product's defining failure and must not sit below work scheduled
+     * for later in the day.
+     */
     @Test
-    fun `sections split today into its bands in order`() {
+    fun `sections split today into its four bands in order`() {
         val tasks = listOf(
-            task(id = "overdue", scheduledDate = yesterday),
             task(id = "done", scheduledDate = today, completedAt = timestamp),
-            task(id = "now", scheduledDate = today)
+            task(id = "timed", scheduledDate = today, reminderAt = todayAt(18, 0)),
+            task(id = "overdue", scheduledDate = yesterday),
+            task(id = "untimed", scheduledDate = today)
         )
 
         val sections = todaySections(tasks, today)
 
         assertEquals(
-            listOf(TodayBand.SCHEDULED, TodayBand.OVERDUE, TodayBand.COMPLETED),
+            listOf(
+                TodayBand.OVERDUE,
+                TodayBand.NO_TIME_SET,
+                TodayBand.LATER_TODAY,
+                TodayBand.COMPLETED
+            ),
             sections.map { it.band }
         )
-        assertEquals(listOf("now"), ids(sections[0].tasks))
-        assertEquals(listOf("overdue"), ids(sections[1].tasks))
-        assertEquals(listOf("done"), ids(sections[2].tasks))
+        assertEquals(listOf("overdue"), ids(sections[0].tasks))
+        assertEquals(listOf("untimed"), ids(sections[1].tasks))
+        assertEquals(listOf("timed"), ids(sections[2].tasks))
+        assertEquals(listOf("done"), ids(sections[3].tasks))
+    }
+
+    /** An overdue task carrying a reminder is still overdue, not Later today. */
+    @Test
+    fun `an overdue task with a reminder stays overdue`() {
+        val tasks = listOf(
+            task(id = "a", scheduledDate = yesterday, reminderAt = yesterdayAt(9, 0))
+        )
+
+        assertEquals(listOf(TodayBand.OVERDUE), todaySections(tasks, today).map { it.band })
+    }
+
+    /** Completion is checked before scheduling, so a finished task always sinks. */
+    @Test
+    fun `a completed task sinks whatever band it came from`() {
+        val tasks = listOf(
+            task(id = "a", scheduledDate = yesterday, completedAt = timestamp),
+            task(id = "b", scheduledDate = today, reminderAt = todayAt(18, 0), completedAt = timestamp)
+        )
+
+        val sections = todaySections(tasks, today)
+
+        assertEquals(listOf(TodayBand.COMPLETED), sections.map { it.band })
+        assertEquals(listOf("a", "b"), ids(sections.single().tasks))
     }
 
     @Test
@@ -576,7 +638,7 @@ class TaskQueriesTest {
 
         val sections = todaySections(tasks, today)
 
-        assertEquals(listOf(TodayBand.SCHEDULED), sections.map { it.band })
+        assertEquals(listOf(TodayBand.NO_TIME_SET), sections.map { it.band })
         assertEquals(listOf("a", "b"), ids(sections.single().tasks))
     }
 
@@ -596,16 +658,23 @@ class TaskQueriesTest {
 
         val sections = todaySections(tasks, today)
 
-        assertEquals(listOf(TodayBand.SCHEDULED, TodayBand.OVERDUE), sections.map { it.band })
-        assertEquals(listOf("now1", "now2"), ids(sections[0].tasks))
-        assertEquals(listOf("old1", "old2"), ids(sections[1].tasks))
+        assertEquals(listOf(TodayBand.OVERDUE, TodayBand.NO_TIME_SET), sections.map { it.band })
+        assertEquals(listOf("old1", "old2"), ids(sections[0].tasks))
+        assertEquals(listOf("now1", "now2"), ids(sections[1].tasks))
     }
 
     @Test
     fun `a band is named for every task it holds`() {
         assertEquals(
-            TodayBand.SCHEDULED,
+            TodayBand.NO_TIME_SET,
             todayBandOf(task(id = "a", scheduledDate = today), today)
+        )
+        assertEquals(
+            TodayBand.LATER_TODAY,
+            todayBandOf(
+                task(id = "a", scheduledDate = today, reminderAt = todayAt(18, 0)),
+                today
+            )
         )
         assertEquals(
             TodayBand.OVERDUE,

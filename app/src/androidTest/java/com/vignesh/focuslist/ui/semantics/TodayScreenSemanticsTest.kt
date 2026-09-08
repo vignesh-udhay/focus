@@ -44,7 +44,7 @@ class TodayScreenSemanticsTest {
         val viewModel = testViewModel(dao)
 
         rule.setFocuslistContent(fontScale) {
-            TodayScreen(viewModel = viewModel)
+            TodayScreen(viewModel = viewModel, onOpenTask = {})
         }
     }
 
@@ -143,6 +143,14 @@ class TodayScreenSemanticsTest {
     fun completion_announcesItselfPolitely_at200() =
         assertCompletionAnnouncesItselfPolitely(FontScale200)
 
+    /**
+     * Completing and taking it back.
+     *
+     * The completed task is opened before it is asserted on, because D-012 made
+     * Completed a disclosure that is collapsed by default: a plain completed
+     * list grows through the day and pushes live work down the screen. The row
+     * exists either way, and this is the screen agreeing that it does.
+     */
     private fun assertUndoReopensTheTask(fontScale: Float) {
         setToday(fontScale, withOneTask())
 
@@ -150,6 +158,17 @@ class TodayScreenSemanticsTest {
         rule.onNodeWithContentDescription(MARK_COMPLETE).performClick()
 
         rule.waitUntilExactlyOneExists(hasText(UNDO), TIMEOUT_MILLIS)
+
+        // The band arrives collapsed, carrying its count.
+        rule.waitUntilExactlyOneExists(hasText(COMPLETED_ONE), TIMEOUT_MILLIS)
+        // Clicked by its words. The header carries an onClick *label*, which
+        // names the action to a screen reader; the text is what is on screen.
+        rule.onNodeWithText(COMPLETED_ONE).performClick()
+
+        rule.waitUntilExactlyOneExists(
+            hasContentDescriptionExactly(MARK_INCOMPLETE),
+            TIMEOUT_MILLIS
+        )
         rule.onNodeWithContentDescription(MARK_INCOMPLETE).assertIsOn()
 
         rule.onNodeWithText(UNDO).performClick()
@@ -174,6 +193,9 @@ class TodayScreenSemanticsTest {
         const val UNDO = "Undo"
         const val MARK_COMPLETE = "Mark \"$TITLE\" complete"
         const val MARK_INCOMPLETE = "Mark \"$TITLE\" not complete"
+
+        /** D-012's Completed disclosure, which carries a count and collapses. */
+        const val COMPLETED_ONE = "Completed · 1"
         const val TIMEOUT_MILLIS = 5_000L
     }
 }
