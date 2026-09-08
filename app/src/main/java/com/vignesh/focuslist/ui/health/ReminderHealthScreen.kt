@@ -19,15 +19,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.ListItemShapes
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,6 +58,7 @@ import com.vignesh.focuslist.core.notification.displayManufacturer
 import com.vignesh.focuslist.core.notification.openAppSettings
 import com.vignesh.focuslist.core.notification.openBackgroundWorkSettings
 import com.vignesh.focuslist.core.notification.resolvableScreens
+import com.vignesh.focuslist.ui.component.FocuslistTopAppBar
 import com.vignesh.focuslist.ui.component.durationLabel
 import java.time.Duration
 import java.time.Instant
@@ -75,7 +76,6 @@ import java.util.Date
  * answer it does not compute, which is what keeps the rule that a recorded
  * failure outranks a granted permission in one testable place.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReminderHealthScreen(
     viewModel: ReminderHealthViewModel,
@@ -97,8 +97,8 @@ fun ReminderHealthScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.reminder_health_title)) },
+            FocuslistTopAppBar(
+                title = stringResource(R.string.reminder_health_title),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -122,8 +122,33 @@ fun ReminderHealthScreen(
         ) {
             Headline(state, health?.restriction)
 
-            health?.checks?.forEach { (check, checkState) ->
-                CheckRow(check = check, state = checkState, restriction = health?.restriction)
+            // One connected collection, like every other list in the app, with
+            // Material's own segmented shapes and gap rather than three loose
+            // cards. They were `FocuslistSpacing.sm` apart and separately
+            // rounded, which read as three unrelated things rather than one
+            // report. Do not hand-roll the radii; `PlanRow` carried its own copy
+            // of them briefly and that was the same mistake.
+            val checks = health?.checks.orEmpty()
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+                // The headline grows with its copy and the rows do not, so the
+                // gap between them is stated here rather than left to the
+                // column's own spacing. A longer body has already eaten it once
+                // and overlapped the first row by 8dp.
+                modifier = Modifier.padding(top = HeadlineToChecksGap)
+            ) {
+                checks.forEachIndexed { index, (check, checkState) ->
+                    CheckRow(
+                        check = check,
+                        state = checkState,
+                        restriction = health?.restriction,
+                        shapes = ListItemDefaults.segmentedShapes(
+                            index = index,
+                            count = checks.size
+                        )
+                    )
+                }
             }
 
             // Absent while checking rather than disabled. A button that cannot
@@ -170,9 +195,22 @@ fun ReminderHealthScreen(
  */
 @Composable
 private fun Headline(state: ReminderHealthState, restriction: DeviceRestriction?) {
+    // **The app colours what it knows**, which is D-021 in one line. Error is
+    // for what happened and for what the app was told; the inferred restriction
+    // gets the ordinary surface, because a guess gets words and a mark, not a
+    // tint.
     val (container, content) = when (state) {
         is ReminderHealthState.Missed, is ReminderHealthState.ActionNeeded ->
             MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer
+
+        // Neutral, and deliberately not a third colour. Tertiary was tried and
+        // rejected on the render: this palette puts `tertiaryContainer` at
+        // #FFD7E3 and `errorContainer` at #FFD8D6, one step apart in green, so
+        // the caution and the error were indistinguishable. `reminder-health.md`
+        // records that, and that the palette has three usable container
+        // families rather than five.
+        is ReminderHealthState.WorthChecking ->
+            MaterialTheme.colorScheme.surfaceContainerHigh to MaterialTheme.colorScheme.onSurface
 
         else ->
             MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer
@@ -229,16 +267,39 @@ private fun Headline(state: ReminderHealthState, restriction: DeviceRestriction?
     }
 }
 
-/** One of the three things that has to be true, and whether it is. */
+/**
+ * One of the three things that has to be true, and whether it is.
+ *
+ * **The whole row carries the state, not a badge inside it.** `Blocked` takes
+ * the error container, because the app was refused and can say so. `Warning` and
+ * `Ok` take the ordinary row surface, because in both cases there is nothing the
+ * app has measured going wrong.
+ *
+ * The row is not interactive and carries no pressed or focused state: it
+ * reports, it does not navigate. `SegmentedListItem` is used for its shape and
+ * colour rather than for a click it never takes.
+ */
 @Composable
 private fun CheckRow(
     check: HealthCheck,
     state: CheckState,
-    restriction: DeviceRestriction?
+    restriction: DeviceRestriction?,
+    shapes: ListItemShapes
 ) {
+    val container = when (state) {
+        CheckState.Blocked -> MaterialTheme.colorScheme.errorContainer
+        CheckState.Warning, CheckState.Ok -> MaterialTheme.colorScheme.surfaceContainerHigh
+    }
+
+    val content = when (state) {
+        CheckState.Blocked -> MaterialTheme.colorScheme.onErrorContainer
+        CheckState.Warning, CheckState.Ok -> MaterialTheme.colorScheme.onSurface
+    }
+
     Surface(
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        shape = MaterialTheme.shapes.large,
+        color = container,
+        contentColor = content,
+        shape = shapes.shape,
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -246,7 +307,7 @@ private fun CheckRow(
             horizontalArrangement = Arrangement.spacedBy(FocuslistSpacing.sm),
             modifier = Modifier.padding(FocuslistSpacing.sm)
         ) {
-            Badge(state)
+            StatusGlyph(state = state, onContainer = content)
 
             Column {
                 Text(
@@ -257,7 +318,10 @@ private fun CheckRow(
                 Text(
                     text = stringResource(check.detail(state, restriction)),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    // Follows the row rather than naming `onSurfaceVariant`,
+                    // which on an error container would be the one piece of
+                    // text on the row not reading against its own background.
+                    color = content.copy(alpha = SupportingTextAlpha)
                 )
             }
         }
@@ -265,39 +329,50 @@ private fun CheckRow(
 }
 
 /**
- * A tick or a warning, in a circle.
+ * A tick, a question mark or an exclamation, in a 40dp slot and nothing else.
  *
- * The badge is the only thing on the row a person scanning will read, so it
- * carries the state on its own rather than relying on the text beside it.
+ * **There is no container behind it**, and removing one is the point. Each row
+ * used to carry a 40dp badge, and it was never doing consistent work: on a
+ * `Blocked` row the badge took the error container and so did the row, so the
+ * circle was invisible in the one state that matters most. Three stacked circles
+ * also compete with the text they annotate, and a container inside a container
+ * is the thing this design system keeps removing.
+ *
+ * The glyph carries the colour instead, and the exclamation reads more strongly
+ * for it than it did behind a badge of its own row's colour.
+ *
+ * The mark is the second channel on top of the words. "May block background
+ * alarms" and "Not allowed" already differ in text; this is what a person
+ * scanning sees first.
  */
 @Composable
-private fun Badge(state: CheckState) {
-    val container = when (state) {
-        CheckState.Ok -> MaterialTheme.colorScheme.primaryContainer
-        else -> MaterialTheme.colorScheme.errorContainer
-    }
-
-    Surface(
-        color = container,
-        shape = MaterialTheme.shapes.extraLarge,
-        modifier = Modifier.size(BadgeSize)
+private fun StatusGlyph(state: CheckState, onContainer: Color) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.size(GlyphSlotSize)
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            if (state == CheckState.Ok) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_check),
-                    // The row's own text says what passed.
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(BadgeIconSize)
-                )
-            } else {
-                Text(
-                    text = WarningMark,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onErrorContainer
-                )
-            }
+        when (state) {
+            CheckState.Ok -> Icon(
+                painter = painterResource(R.drawable.ic_check),
+                // The row's own text says what passed.
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(GlyphIconSize)
+            )
+
+            // A question mark, because the app is asking rather than telling.
+            CheckState.Warning -> Text(
+                text = WarningMark,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            // An exclamation, on the error container the row already carries.
+            CheckState.Blocked -> Text(
+                text = BlockedMark,
+                style = MaterialTheme.typography.titleMedium,
+                color = onContainer
+            )
         }
     }
 }
@@ -376,6 +451,7 @@ private val ReminderHealthState.label: Int
         ReminderHealthState.Checking -> R.string.reminder_health_checking_label
         ReminderHealthState.Ready -> R.string.reminder_health_ready_label
         is ReminderHealthState.ActionNeeded -> R.string.reminder_health_action_label
+        is ReminderHealthState.WorthChecking -> R.string.reminder_health_caution_label
         is ReminderHealthState.Missed -> R.string.reminder_health_missed_label
     }
 
@@ -407,6 +483,20 @@ private fun stateTitle(state: ReminderHealthState): String = when (state) {
             stringResource(R.string.reminder_restriction_action_title, displayManufacturer())
     }
 
+    // The same sentence `ActionNeeded` says for the same cause. What differs
+    // between the two states is the certainty, and the certainty is carried by
+    // the body and the colour rather than by a second title.
+    is ReminderHealthState.WorthChecking -> when (state.cause) {
+        HealthCheck.Notifications ->
+            stringResource(R.string.reminder_health_no_notifications_title)
+
+        HealthCheck.ExactAlarms ->
+            stringResource(R.string.reminder_health_no_exact_title)
+
+        HealthCheck.BackgroundWork ->
+            stringResource(R.string.reminder_restriction_action_title, displayManufacturer())
+    }
+
     is ReminderHealthState.Missed ->
         if (state.delivery.lateness >= Duration.ofMinutes(1)) {
             stringResource(
@@ -427,6 +517,22 @@ private fun stateBody(state: ReminderHealthState, restriction: DeviceRestriction
         ReminderHealthState.Ready -> stringResource(R.string.reminder_health_ready_body)
 
         is ReminderHealthState.ActionNeeded -> when (state.cause) {
+            HealthCheck.Notifications ->
+                stringResource(R.string.reminder_health_no_notifications_body)
+
+            HealthCheck.ExactAlarms ->
+                stringResource(R.string.reminder_health_no_exact_body)
+
+            HealthCheck.BackgroundWork -> stringResource(
+                R.string.reminder_restriction_action_body,
+                stringResource(restriction?.label ?: R.string.reminder_health_check_background)
+            )
+        }
+
+        // The honest sentence: the feature can delay reminders, and the app
+        // cannot tell whether it is on. `reminder_restriction_action_body`
+        // already says exactly that.
+        is ReminderHealthState.WorthChecking -> when (state.cause) {
             HealthCheck.Notifications ->
                 stringResource(R.string.reminder_health_no_notifications_body)
 
@@ -515,11 +621,40 @@ private fun Context.openExactAlarmSettings() {
 private fun Context.formatTime(at: Instant): String =
     DateFormat.getTimeFormat(this).format(Date.from(at))
 
-private val BadgeSize = 40.dp
+/**
+ * The leading slot the status glyph sits in.
+ *
+ * It is a slot, not a badge. `reminder-health.md`: the glyph sits directly in a
+ * 40dp leading slot, which keeps the tick, the question mark and the exclamation
+ * on one axis without drawing a circle behind them.
+ */
+private val GlyphSlotSize = 40.dp
 
-private val BadgeIconSize = 24.dp
+private val GlyphIconSize = 24.dp
 
 private val IndicatorSize = 24.dp
 
 /** Drawn rather than iconised, so the row needs no second asset. */
-private const val WarningMark = "!"
+/** A question mark, because the app is asking rather than telling. */
+private const val WarningMark = "?"
+
+/** An exclamation, for the state the app was actually told about. */
+private const val BlockedMark = "!"
+
+/**
+ * The gap between the headline card and the check group.
+ *
+ * Stated rather than left to the column's spacing, because the headline grows
+ * with its copy and the rows do not: a longer body has already eaten this gap
+ * once and overlapped the first row by 8dp.
+ */
+private val HeadlineToChecksGap = 12.dp
+
+/**
+ * How much the supporting line steps back from its row's own content colour.
+ *
+ * An alpha rather than `onSurfaceVariant`, because the row's colour changes with
+ * its state: on an error container `onSurfaceVariant` would be the one piece of
+ * text on the row not reading against its own background.
+ */
+private const val SupportingTextAlpha = 0.75f

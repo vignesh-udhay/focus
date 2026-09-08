@@ -601,3 +601,746 @@ to go stale, on the day someone runs it on such a phone.
 settings, or Android adding one. `ACTION_REQUEST_SCHEDULE_EXACT_ALARM` is
 precedent that the platform will sometimes standardise a setting once enough
 apps need it.
+
+---
+
+## D-011. Quick Add reads a time as well as a day, and names the reminder it inferred
+
+**Decision.** Quick Add's field parses a trailing time of day alongside the
+trailing day. A day sets the scheduled date. A time sets a reminder.
+
+Three states, and the sheet is still one field and one action:
+
+- **Nothing understood.** The supporting line says where the task will be
+  saved, and nothing is marked.
+- **A day understood.** The trailing run the parser took is marked in the field
+  as it is typed, and the supporting line names the day and the destination.
+- **A day and a time understood.** As above, plus one dismissible Reminder
+  chip. Dismissing it drops the reminder and unmarks those words in the field,
+  so they stay in the title and the text and the outcome cannot disagree.
+
+The day gets no chip. It is corrected by typing, as it always was. No duration
+is ever inferred.
+
+**Why a time is read at all.** `date-parsing.md` put times of day deliberately
+outside the vocabulary and named "tomorrow at 3pm" as the string to refuse. Its
+reason was stated plainly: "A task carries a day and no time, so accepting the
+day and dropping the hour would tell the user their 3pm was understood when
+nothing about it was stored."
+
+That premise is no longer true, and it stopped being true when Phase 1 shipped.
+`PRODUCT.md` defines a reminder as "a promise that the app will interrupt the
+user at a specific moment", lists it in V1 scope, and says a reminder is
+independent of a scheduled date. A time now has somewhere to live. The rule
+outlived the reason it was written for.
+
+**Why the reminder is applied rather than offered.** The alternative was to
+detect the time and offer it, requiring a tap before anything is promised. That
+feels safer and optimises against the cheaper mistake. `PRODUCT.md` ranks the
+two the other way: "A reminder that does not fire is a bug of the highest
+severity in this product. Higher than a crash: a crash is visible, a missed
+reminder is not."
+
+A reminder set when it was not wanted costs one interruption, and it is visible
+and fixable in seconds. A reminder not set when it was expected costs the thing
+being missed, silently. The core promise is "if you write it down here, you
+will be told", so the default has to be to be told.
+
+**Why only the reminder gets a control.** A wrong day is quiet and cheap: the
+task turns up on the wrong day and gets moved. A wrong reminder is a broken
+promise in either direction. Giving both a dismiss control would spend
+interface on the low-stakes half and imply the two are the same kind of thing.
+
+**What this does not reopen.** `expressive-components.md` declined a row of
+Today / Tomorrow / No date chips on Quick Add, because "they would be a second
+way to set a date alongside the one the field already has, and the two would
+need a precedence rule the user cannot see". That objection is kept, and it is
+exactly why the day still has no chip.
+
+The Reminder chip is not a second way to set anything. Nothing else in the
+sheet sets a reminder, and dismissing it edits the same marked run the field
+already owns, so there is one mechanism rather than two competing ones. The
+earlier design failed this test: it left the field reading "tomorrow at 6"
+while the task saved without a reminder.
+
+**What was removed getting here.** The board proposed a 30 minute duration
+beside the day and the time. It is gone. It is not in the typed text, so it was
+never parse feedback; `PRODUCT.md` scopes natural-language *date* parsing; and
+a silent default estimate would erase the no-estimate state that `focus.md`
+designs for deliberately, where a session counts up, is never offered
+plus-five, and carries its own shape.
+
+**What is unchanged.** Only a trailing run is considered, so "Ship the Monday
+report" is untouched. Nothing is guessed: what does not parse stays in the
+title. The supporting line always carries the outcome in text, because colour
+cannot be announced to a screen reader and a rewrite the user cannot see is one
+they cannot correct.
+
+**What would reverse this.** Users reporting reminders they did not ask for.
+The failure to watch is someone noting when they intend to do a thing and being
+interrupted for it. If that erodes trust in the notification itself, then
+offering rather than applying is the fallback, and it is a small change: the
+chip already exists and would simply start unselected.
+
+---
+
+## D-012. Today is a Focus now card above four ordered bands
+
+**Decision.** Today opens with a card holding at most one task and saying in a
+line why that task. Below it the list splits into four labelled bands, in this
+order:
+
+    Overdue          past, and needs a decision
+    No time set      today, do it whenever
+    Later today      today, it will announce itself
+    Completed · N    a disclosure, collapsed by default
+
+The card appears only when a task is actionable now, and only for one of three
+stated reasons: a paused focus session waiting to be resumed, a reminder time
+that has arrived and passed, or a task scheduled for today carrying no time.
+Where several qualify, the reason decides first, then the earliest time, then
+the order Today already shows. The promoted task leaves its band, so it is
+never on screen twice. When nothing qualifies the card is absent and the list
+begins at its first band.
+
+**Why the card.** `PRODUCT.md` opens Today with "What should I do now?" and
+asks that Today make the answer obvious within seconds. An unlabelled run of
+rows does not answer it; it leaves the user to work it out. The card is the
+first thing in this app that answers the question the screen exists for.
+
+**This is not the Focus queue D-004 removed.** The queue was a ranking with
+nothing to say why its head was its head, and completing the head advanced to
+the next one. This card states its reason on screen, and completing its task
+re-runs the rule rather than advancing: usually the card then disappears. It
+cannot chain, because there is nothing to chain through. Focus still works on
+one task and there is still no queue.
+
+**Why "No time set" and not "Anytime today".** D-002 cut Anytime, and its
+reasoning was that Inbox / Today / Upcoming / Anytime / Someday is GTD
+vocabulary that a broad Android audience does not arrive trained in. The word
+has since been removed from the routes, the storage enums and the row menu.
+Reintroducing it as a band label, for a different meaning, invites exactly the
+confusion D-002 was written to prevent. "No time set" is plain English, says
+what the band contains, and is already the app's own wording for a task
+without a time.
+
+Rows inside that band do not repeat it. A row reading "No time set" under a
+band reading "No time set" is the label twice.
+
+**Why Overdue is first.** The bands are a timeline, and past, present, future
+is the order a timeline reads in. More than that: an overdue task is the one
+thing on this screen that represents the product's defining failure, a reminder
+that fired and was not acted on. Placing it below work scheduled for later in
+the day says the opposite of what `PRODUCT.md` says about reliability. It also
+needs a decision — do it, move it, drop it — and a band placed last is a band
+that rots.
+
+The counter-argument, that opening on overdue work is a guilt list, is real and
+was weighed. The card sits above all of it, so the screen still opens on what
+to do rather than on what was missed.
+
+**What this supersedes.** `docs/design/today-screen.md` § Sections describes
+three bands, the first unlabelled because "today's work needs no announcement",
+and a Completed section that is "not collapsible" and carries no count. All
+three change here. The first band is now labelled because it is no longer
+first, so the argument for leaving it bare retires with the position. Completed
+becomes a collapsed disclosure with a count because a plain completed list
+grows all day and pushes live work down the screen; the count keeps the day's
+progress visible without spending rows on it.
+
+**A dependency worth naming.** The card's first and strongest reason is
+"resume paused focus", and that presumes Focus has a session that can be paused
+and that survives leaving the sheet. Focus has neither. `focus.md` describes two
+states, Ready and a running Session, and its Out of scope list names "a pause, a
+resume, or a session history". D-004 froze Focus on top of that. D-013 changes
+both. Until it is built, two of the card's three reasons stand on their own and
+the first cannot fire.
+
+**What would reverse this.** Users reporting that the card picks the wrong
+task often enough that they stop trusting it. The failure to watch for is the
+card feeling arbitrary despite the reason line, which would mean the reason is
+not doing the work it was put there to do.
+
+---
+
+## D-013. Focus gains pause and resume, superseding D-004's freeze
+
+**Decision.** Focus stops being frozen. It gains a pause, a resume, an
+extension when the estimate is reached, and the paused counterpart of both the
+timed and the open-ended session. Six states:
+
+    Ready              45:00   45 min focus               Start focus · Complete
+    Running            44:37   45 min focus               Pause · Complete
+    Paused             32:18   Paused · 32 min remaining  Resume · Complete
+    Estimate reached   00:00   Estimate reached           Complete · +5 min
+    Open-ended         12:43   Elapsed time · No limit    Pause · Complete
+    Open-ended paused  12:43   Paused · No time limit     Resume · Complete
+
+A paused session survives leaving the Focus sheet. A running one still does not.
+
+At the estimate, Complete is the primary and +5 min the secondary. A timer
+running out is more often the moment work is finished than the moment it needs
+extending, and the control that reads as the default should be the likelier one.
+
+**Why now, and what is not met.** D-004 named its own reversal conditions: "1.0
+shipping, reminders being genuinely reliable, and a wish to keep building."
+Reminders are measured rather than hoped for, across three manufacturers, and
+D-009 stands. **1.0 has not shipped.** One of the three conditions is unmet, and
+this entry is being written rather than the change being quietly made for
+exactly that reason.
+
+The argument that carries it is D-012. The Focus now card's first and strongest
+reason is "resume paused focus", and there is currently nothing to resume.
+Building the card without this ships two of its three reasons and leaves the
+most useful one as a comment.
+
+D-004's real content was sequencing, not that Focus was wrong: "further
+investment in it is investment not going into reminders." That argument is
+spent. Phases 1 and 2 are complete, the reliability work is measured, and the
+thing being built now is Today.
+
+**This also supersedes `focus.md`'s Out of scope list**, which names "a pause, a
+resume, or a session history". The pause and the resume come back. Session
+history does not, and nothing here asks for it: no log of past sessions, no
+totals, no streaks. `PRODUCT.md` principle 7 rules those out, and the Logbook
+already records completed work.
+
+**A paused session outliving the sheet is the part to be careful about.** The
+existing rule is that a session running with nothing on screen pointing at it is
+state the user can neither see nor reach, which is why leaving stops it. That
+reasoning survives for a running session and does not survive for a paused one:
+the Focus now card is the thing pointing at it, in the user's line of sight, on
+the screen the app opens to. The card is what makes leaving a paused session
+safe, which is why the two arrive together rather than one at a time.
+
+**What this does not reopen.** Not the queue, which D-004 also removed and D-012
+declines to rebuild. Not Focus as a navigation destination; it stays a sheet
+over the screen that asked for it. Not the store listing, which still does not
+lead with Focus.
+
+**What would reverse this.** Time spent here showing up as reminder work not
+done. The check is `ROADMAP.md`: if Phase 4 slips while Focus grows, this was
+the wrong call and D-004 was right about sequencing after all.
+
+---
+
+## D-014. The Focus shape says whether the session is running, not how far it has run
+
+**Decision.** The session shape is `Cookie4Sided` at rest and `Cookie12Sided`
+while running. It morphs between them on state change, on `focusSession`, and
+does not move in between. Pause returns it to 4-sided; resume takes it back to
+12. Open-ended sessions follow the same rule, because it makes no reference to
+an estimate.
+
+The remaining time stays on screen as digits, at Headline Small rather than
+Display Large. The task title leaves the shape and becomes a heading above it,
+capped at four lines. The shape holds the digits alone.
+
+    Ready              4-sided    45:00    45 min focus
+    Running           12-sided    44:37    45 min focus
+    Paused             4-sided    32:18    32 min left
+    Estimate reached  12-sided    00:00    Estimate reached
+    Open-ended        12-sided    12:43    No time limit
+    Open-ended paused  4-sided    12:43    No time limit
+
+**What this supersedes.** `focus.md`'s entire morph design: the determinate walk
+from `Circle` to `Clover8Leaf` against the estimate, the six-shape ring for
+sessions without one, the twenty-minute cycle, and the rule that the shape must
+be unreadable as a gauge. Also `expressive-motion.md`'s statement that the app's
+one permitted shape morph is the one carrying progress. The morph survives; what
+it says changes.
+
+**Why.** D-013 put a readable value on this screen and did not say what that
+left the shape doing. Two things then measured the same quantity, and the shape
+was the worse of the two at it: it cannot be read to a number, it publishes
+nothing to a screen reader, and the board had already frozen it at full
+extension in all six states without recording that. A second progress channel
+that is strictly worse than the first is not a second channel, it is decoration,
+and `expressive-motion.md` bans decoration.
+
+Saying whether the clock is moving is a different job, and one the shape is
+good at. It is the question a glance at this screen asks, the digits answer it
+only by being watched for a second, and principle 7 rules out anything that
+invites that watching.
+
+**Why the number shrinks and the title leaves the shape.** Display Large made
+the countdown the largest object on a screen whose stated purpose is to stop
+clock-watching, and left the task title smaller than the number. Principle 2
+puts the work first.
+
+The title moves out because it does not fit inside. A cookie yields about 70% of
+its box as usable area, so four lines at 200% font scale needs a 514dp square on
+a 412dp screen, and three lines needs 411dp with nothing left for margins.
+Anything inside the shape is capped at two lines, and the 240dp column there
+fills at 24 characters. Outside it the title has the full 380dp width and the
+four-line cap holds at every font scale.
+
+This costs `focus.md`'s line that the title is "the fixed thing the session
+forms around". That argument was built for the container transform, where play
+grew into a shape around stationary words. The board draws no container
+transform, Ready already shows the shape, and the morph design it belonged to is
+the one being replaced here.
+
+**What this costs.** The app's shape work stops being a progress indicator,
+which was the more distinctive idea. It is also, on the board's own evidence,
+the one that was never drawn.
+
+**What would reverse this.** Users unable to tell a paused session from a
+running one at a glance. The check is whether the shape reads as a state at all,
+which needs watching on a device.
+
+---
+
+## D-015. Leaving the Focus sheet pauses the session rather than stopping it
+
+**Decision.** The close control and the back gesture both pause a running
+session. Neither stops it. Nothing is discarded by leaving, in any state.
+
+**What this supersedes.** D-013's clause that "a paused session survives leaving
+the Focus sheet. A running one still does not." Also `focus.md`'s hand-written
+back handler, which existed only to stop the session on back.
+
+**Why.** The control cannot tell which of two intentions a tap carries. "I am
+finished with this" and "I need to look at something else for a minute" are both
+ordinary, and they arrive through the same button. So the question is not which
+one is more likely, it is which mistake is cheaper to be wrong about.
+
+Stopping when the user meant to pause loses the elapsed time and the sense of
+progress with it, silently, with nothing that puts it back. Pausing when the
+user meant to stop leaves one card on Today that they can ignore, and that
+completing the task clears. One failure is unrecoverable and invisible; the
+other is visible and costs a glance. This is the same ranking `CLAUDE.md` makes
+when it puts a missed reminder above a crash: the silent loss is the worse one.
+
+**Why this is not D-013 reversed.** D-013's reasoning was that a session running
+with nothing on screen pointing at it is state the user can neither see nor
+reach, which is what made leaving unsafe. Pausing on close means that situation
+never occurs. The principle is unchanged; only the conclusion moves, because the
+principle now points the other way.
+
+**What it costs.** There is no longer a control that stops a session outright.
+Stopping was only ever pausing and not resuming, and the task itself is still
+one tap from Complete, so nothing is unreachable. A user who abandons a session
+leaves a paused one in the Focus now card until they finish the task or start
+another. That is clutter, and it is the price.
+
+**What would reverse this.** Paused sessions accumulating in the Focus now card
+and reading as nagging rather than as a way back in. The check is whether anyone
+resumes them.
+
+---
+
+## D-016. The Logbook groups by day
+
+**Decision.** The Logbook keeps its day headings. Completed tasks are grouped
+under the day they were finished, newest day first, and the ordering inside a
+group stays `completedAt` descending.
+
+**What this supersedes.** `logbook.md`'s Out of scope list, which names
+"grouping by day, week, or month".
+
+**Why.** The Logbook is ordered by completion time and nothing on the screen
+says so. A reader cannot tell whether the twelfth row is from yesterday or from
+March, which makes the one ordering decision this screen makes invisible. Day
+headings are the cheapest possible fix: they add no data, because `completedAt`
+is already the sort key, and no new field, query or state.
+
+**Why the original entry did not mean this.** The out-of-scope list is about
+keeping a scoreboard out, and the document says so in its own words: the last
+two items matter most, `PRODUCT.md` rules out streaks and productivity scores,
+"and a list of finished work is exactly where those would try to creep in. The
+Logbook is a record, not a scoreboard." A date divider is not a scoreboard. It
+counts nothing, compares nothing across days, and says nothing about how much
+was done. Grouping was swept into that list alongside the statistics it was
+written to exclude.
+
+**Where the line still is.** No count beside a day heading, which is the obvious
+next step and is the step that turns a record into a scoreboard. No week or
+month grouping, no calendar, no "you finished 12 tasks this week". A heading
+says when, and only when.
+
+**What would reverse this.** A count appearing next to a day, or the headings
+being used as an argument for a summary above them. That is the failure mode,
+and it is the reason the previous entry existed.
+
+---
+
+## D-017. Today's header carries the date and nothing else
+
+**Decision.** The pill carrying the total time still planned is removed from
+Today's header. The subtitle is the date, alone, and the date is written in
+full: "Thursday, October 24" rather than "Thu, Oct 24".
+
+`todayPlannedMinutes` goes with it. The pill was its only caller.
+
+**Why this entry exists at all.** The pill was removed from the design some time
+ago and appears on no board frame. `today-screen.md` recorded the removal and
+then said, twice, that it had no entry here and should have one "before anything
+else is built on top of it". Today's four bands and the Focus now card were then
+built on top of it. This is that entry, written late.
+
+**Why the pill goes.** It is a number nobody asked for, on the screen
+`PRODUCT.md` says should make one answer obvious within seconds. "2h planned"
+does not help anyone choose a task: it is the sum of a set of estimates, most
+tasks carry none, and the total changes when work is rescheduled rather than
+when it is done. The Focus now card now answers "what should I do now" directly,
+which is the job the pill was gesturing at and failing to do.
+
+It also brushes against principle 7. A running total of outstanding work, sitting
+under the screen's title all day, is the shape of a productivity score even when
+nothing is compared to anything. The reward is getting the work done.
+
+**Why the date grows back to its full form.** The abbreviation existed to make
+room for the pill. `TodayScreen` said so: "the long form spent most of the line
+on two words the user is not reading; the short form says the same thing and
+leaves the width to the total at the other end." There is no total at the other
+end any more, so the constraint is gone and the board's own form — the full
+weekday and the full month — is what the header shows. The year stays out; it is
+noise on a screen about today.
+
+**What this does not change.** The bar is still `LargeFlexibleTopAppBar` at its
+default 152dp, still collapsing to 64dp as the list moves. `today-screen.md`
+argued the tall bar on two things, the date and the pill, and noted that losing
+the pill left the case resting on the date alone and "thinner than when the case
+was made". It still holds: the date is genuinely unavailable elsewhere on the
+screen, and the bar gives its height back the moment anyone scrolls. If the
+opening view ever needs protecting, that section already says this is the first
+place to look.
+
+**What would reverse this.** Users asking how much is left in their day, often
+enough and unprompted. The answer then is probably not a pill in the header,
+because that is where it just failed; it is a number somewhere a person goes
+looking for it rather than one that follows them around.
+
+---
+
+## D-018. Task Details is a picker-driven screen, and commits as you go
+
+**Decision.** Task Details is a full screen reached from a task row, not a
+bottom sheet. The title and the notes are editable in place at the top. The
+scheduled date, due date, reminder, duration and repeat are rows that open a
+sheet of presets and a picker. There is no typed date entry on this screen, and
+there is no Save: every control writes when it is chosen.
+
+**What this supersedes.** `task-details.md` in most of its particulars: the
+sheet, the draft held until Save, the date text fields, the parser confirmation
+line underneath them, and Save being disabled while a field is unusable. Also
+its "Out of scope" line naming recurrence and reminders, which contradicted its
+own list of the six fields it edits and contradicted `PRODUCT.md`, which names
+recurrence among a task's properties.
+
+**Why.** Capture by typing, edit by picking. D-011 put the parsing effort at
+capture, where speed is everything and the user is already at a keyboard. On an
+edit screen the user has arrived deliberately to change one thing, and a preset
+or a calendar is faster and unambiguous where a sentence has to be parsed and
+then confirmed back. It is also the more Android-conventional shape and the more
+discoverable one: a row showing `Due date  None` says what can be set, and an
+empty text field does not.
+
+**What it costs, and this is not small.** `TaskDetailsSheet.kt` is about 950
+working lines built to the superseded design, and it goes. So does a real safety
+property: the draft meant dismissing left the task exactly as it was, and
+immediate commit has no equivalent. The mitigation is that each write is one
+field, made by one deliberate choice, and reversible by reopening the same row.
+That is weaker than a draft and it is the price of the model.
+
+**A preset may offer what the parser refuses.** `date-parsing.md` excludes
+`next week` from the vocabulary because English does not agree on which week it
+means. A button does not have that problem: it carries one defined meaning.
+So the two vocabularies are allowed to differ, and the reason is that a button
+resolves the ambiguity that made the phrase unparseable.
+
+Two presets need their meaning fixed, because neither is in the parser and
+neither is self-evident:
+
+    This weekend    the coming Saturday
+    End of week     the coming Friday
+
+`Next week` was on the board and was dropped anyway. It was the one preset the
+parser excludes by name, and its cell was needed for the clear option.
+
+**Both date sheets are the same shape:** the clear option first, then three day
+presets in a 2x2 grid, then a full-width Choose a date. Scheduled had no clear
+option at all, which meant a task could not be returned to the Inbox from here.
+
+**Unset values are not styled differently**, and the question comes up every
+time someone reads the screen. `None` and `Doesn't repeat` are values the user
+chose or accepted, not gaps. Dimming them would make the screen read as a form
+with blanks to fill, which principle 3 contradicts by saying a task needs only a
+title, and which principle 4 calls task administration. The only quieter token
+available also fails AA at 14sp.
+
+**What would reverse this.** Users losing work to a control they did not mean to
+touch. The draft is the thing being given up, so that is where the failure will
+show.
+
+---
+
+## D-019. The Repeat editor is designed now and built in Phase 4
+
+**Decision.** The nine Repeat frames on the board are a Phase 4 design. They are
+not built against the current `Recurrence`, which stays a four-value enum:
+`DAILY`, `WEEKLY`, `MONTHLY`, `YEARLY`.
+
+**Why this needs saying.** `Recurrence.kt` does not merely lack an interval, a
+weekday set, an end date and an occurrence count. It excludes them, in writing:
+"the smallest reading of it: four fixed periods, and no interval, no weekday
+set, no end date, and no occurrence count ... each of the others is a column and
+a control that can be added later without changing what is here."
+
+The board designs all four of them. Read as an instruction to build, that is a
+schema change and a rule engine arriving through a Figma frame, which is exactly
+what the drift guard exists to catch.
+
+**Designing ahead is allowed; building ahead is not.** `CLAUDE.md` says a task
+from a later phase is a task for later. It says nothing against knowing what the
+later phase looks like, and the design is more useful drawn than imagined. The
+line is that no part of it enters the code until Phase 4 is the current phase.
+
+**What has to be true before it is built.** The four fields become columns, and
+`nextOccurrence` becomes a rule evaluator rather than a period step. The KDoc's
+claim that each can be added "without changing what is here" should be checked
+rather than trusted at that point, because an end date and an occurrence count
+both need to know how many occurrences have already happened, and nothing
+records that today.
+
+**What would reverse this.** Nothing needs to. When Phase 4 begins this stops
+being a deferral and becomes the specification.
+
+---
+
+## D-020. Today's header goes back to the compact bar, and loses the date
+
+**Decision.** Today, Inbox and Upcoming use a compact 64dp top app bar with the
+destination name as its title and no subtitle. `LargeFlexibleTopAppBar` goes.
+The date comes off Today.
+
+**What this supersedes.** `today-screen.md`'s "Top app bar" section entirely,
+including the reversal it records, and D-017's closing clause that the bar "is
+still `LargeFlexibleTopAppBar` at its default 152dp".
+
+**Why.** The tall bar was never justified by the title. `today-screen.md` is
+explicit that the argument it overturned was "right **about a title**", and
+overturned it only because "the header now carries information rather than a
+label". D-017 then removed the planned-minutes pill and narrowed the case to the
+date alone, calling it "thinner than when the case was made".
+
+Removing the date removes the last of it. What is left is the situation the
+original rule described and refused:
+
+> A tall header would spend the most valuable part of the screen restating a
+> label the user already knows, and it would push the first tasks down out of
+> the opening view. Task visibility wins over header prominence.
+
+That reasoning was never withdrawn. It was suspended while the header held
+something the screen did not otherwise say. It does not any more, so it applies
+again, and this entry is the suspension ending rather than a new idea.
+
+**What it buys.** 88dp on the opening view, roughly one and a bit task rows, on
+the screen `PRODUCT.md` calls the centre of the app and asks to answer one
+question within seconds. `today-screen.md` names this route itself: "go back to
+the compact bar and find another home for the date."
+
+**Why the title stays the destination name.** Making the date the title was
+considered. It puts the size on the information and reads well, but this header
+also serves Inbox and Upcoming, whose titles are their names and which have no
+date to substitute, so it would use one component two ways. An app bar title
+echoing a navigation bar label is also ordinary on Android; what was wrong was
+spending 36sp on it, not saying it at all.
+
+**Why the date is not rehomed.** Nothing on Today needs it. The bands are
+relative (Overdue, No time set, Later today) and so is the Focus now card. The
+date was pleasant rather than load-bearing, and no band, row or card is harder
+to read without it.
+
+**The collapsed header component goes with it.** A pinned 64dp bar has nothing
+to collapse to. `Focuslist / Screen header — Collapsed` existed for the tall
+bar's scrolled state and has no job now.
+
+**What would reverse this.** Users asking what the date is, or misreading a
+relative label because they had lost track of the day. The answer then is the
+date as Today's title in the compact bar, not the tall bar coming back: the
+height was never what made the date useful.
+
+---
+
+## D-021. A risk the app inferred does not look like a refusal it was told about
+
+**Decision.** `CheckState.Warning` gets its own treatment, distinct from
+`Blocked`. A device whose only problem is an inferred manufacturer restriction
+no longer reads "Action needed" in error colours.
+
+    Missed          a delivery went wrong          error
+    Action needed   a check is Blocked             error
+    Worth checking  only Warnings, none Blocked    neutral
+    Ready           all three Ok                   primary
+
+The check row gains the same three-way split: `Ok`, `Warning`, `Blocked`, where
+`Warning` takes the ordinary row surface and `Blocked` keeps the error
+container.
+
+**Corrected on the render: neutral, not tertiary.** This entry said tertiary,
+and the section below still argues for it. It does not survive contact with the
+palette: `tertiaryContainer` is `#FFD7E3` and `errorContainer` is `#FFD8D6`, one
+step apart in green, so the caution and the error were indistinguishable on
+screen. `reminder-health.md` records the finding and the wider lesson, which is
+that this palette has three usable container families rather than five. The
+decision below is unchanged in everything but the colour: a guess still gets its
+own treatment, and that treatment is the absence of a tint.
+
+The body of a Warning says what the app cannot know:
+
+    Sleep standby can delay reminders.
+    Focuslist cannot tell whether it is on.
+
+**Why.** `CheckState` already made this distinction and the screen threw it
+away. `Badge()` branched on `Ok` against not-`Ok`, so a feature the app is
+guessing at rendered exactly like a permission the user had explicitly refused.
+
+That is not a small population. `DeviceRestriction` is inferred from
+`Build.MANUFACTURER` and never measured, because none of these features is
+visible to any API. So every OnePlus, OPPO, Realme, Xiaomi, Redmi, POCO,
+Samsung, Huawei and Honor user saw a permanent red "Action needed" from first
+launch, on a phone where nothing might be wrong at all.
+
+**A reliability screen that is always red teaches people to ignore it.** That is
+the failure this app can least afford, because `PRODUCT.md` principle 1 puts a
+missed reminder above a crash, and the whole value of this screen is that the
+user believes it when it finally says something.
+
+**Why not stay silent instead.** Waiting for a real miss before mentioning the
+restriction was considered and rejected. It is the more honest position and it
+accepts a missed reminder as the price of learning, which principle 1 forbids.
+The warning has to be pre-emptive; it just has to be accurate about its own
+certainty.
+
+**Why tertiary, and why it did not survive.** The app already uses `tertiary`
+for an overdue date, chosen there because the colour is a second cue on top of a
+distinction that is already textual. The same reasoning holds here: "May block
+background alarms" and "Not allowed" already differ in words, and the colour
+only has to stop contradicting them.
+
+What did not hold is that `tertiary` reads as a third colour in this palette. It
+does not, against `error`. So the second cue is the glyph — a question mark
+rather than an exclamation — and the tint is simply absent, which says the same
+thing more plainly: the app colours what it knows.
+
+**What stays loud.** A refused permission is still an error, because the app was
+told. A late delivery is still an error, because it happened. The escalation
+exists, so a user who ignores a tertiary caution and then misses a reminder gets
+the red screen they should.
+
+**What would reverse this.** Users on affected devices ignoring the caution and
+missing reminders because of it. The check is whether anyone opens the
+restriction settings from that state.
+
+---
+
+## D-022. Task Details can delete, from an overflow rather than a button
+
+**Decision.** Task Details gains an app-bar overflow holding one item: Delete,
+labelled, in `error`. The checkbox beside the title stays a checkbox.
+
+**What this supersedes.** The Known gap in `task-details.md`, which recorded the
+overflow as drawn on the board and unspecified in code. Also the last of the
+superseded document's "completion and deletion are deliberately absent": D-018
+brought completion back and left deletion out.
+
+**Why deletion belongs here.** The screen exists for deciding about one task, and
+deciding a task is not worth doing is one of the outcomes. Deletion was reachable
+only from the row's long-press menu, so the screen that is entirely about a task
+was the one place you could not throw it away. That is a detour back to a list to
+act on something already in front of you.
+
+**Why not an icon button.** Three reasons, and the second is already written
+down.
+
+An unlabelled trash icon is the least legible form of the most destructive
+action, and every other Delete in this app is a labelled menu item.
+
+`expressive-components.md` decided the principle for the row menu: "Focus first
+where it is offered, then Delete. Constructive before destructive, so the thumb
+does not land on Delete." An icon in the app bar puts Delete one tap from Back,
+in the corner a thumb reaches for when leaving. That is the same mistake in a
+different place.
+
+And the bar's trailing slot is the overflow on Today, Inbox and Upcoming. A
+different control there would make one slot mean two things.
+
+**Why not a button beside Start focus.** Same thumb argument, and it would give a
+rare one-way action the same weight as the screen's primary. Three actions,
+three weights: Start focus is full-width because it is the payoff, completion is
+a checkbox, Delete is a menu item because it is rare and terminal.
+
+**Why the checkbox stays a checkbox.** Completion is reversible state, not a
+one-way action, and only a checkbox says so. Unticking is how a task is reopened
+from the Logbook. A "Mark done" button would have to become "Mark not done" on a
+completed task, which is a button impersonating a toggle. It also keeps
+completion identical on every row, in the Logbook and here.
+
+**No confirmation dialog.** Deletion is a soft delete raising the same single
+undo offer every list raises, and the screen already hosts the snackbar and
+already leaves when its task disappears. A dialog would be a second question
+after a reversible answer.
+
+**One item in a menu is enough.** It buys one tap of protection without a dialog,
+and `navigation.md` already allows it: the app-bar overflow carries destinations
+on the three primary screens, and a room may carry its own action menu under the
+same glyph.
+
+**What would reverse this.** Accidental deletions. The check is whether the undo
+offer is being used from this screen more than from the lists.
+
+---
+
+## D-023. The task row loses its actions menu
+
+**Decision.** The task row is a checkbox, a title, a metadata line and a
+duration, and tapping it opens Task Details. The trailing actions button, the
+long-press menu, and the `onDelete`, `onFocus` and `onReschedule` callbacks all
+go. That is the anatomy the board has always drawn.
+
+**What this supersedes.** `expressive-components.md`'s Task row anatomy and its
+Task actions menu section, including the reversal that added the button. Also
+`focus.md`'s second way into Focus.
+
+**Why: the reversal's premise was removed by three later decisions.**
+`expressive-components.md` justified the button like this:
+
+> Delete and Focus live only in the actions menu, **Task Details deliberately
+> excludes both**, and long press was the only way to reach them. `PRODUCT.md`
+> says the UI must not depend exclusively on gestures.
+
+D-018 gave Task Details a Start focus. D-022 gave it Delete. Its Plan rows give
+it rescheduling. Task Details excludes none of them any more, so the gesture the
+button existed to back up no longer carries anything alone. The button outlived
+its reason without anyone going back to check.
+
+**The menu had also become a worse duplicate.** It offered Today, Tomorrow and
+Pick a date; the Scheduled sheet offers No date, Today, Tomorrow, This weekend
+and Choose a date, on a screen that also holds the due date, the reminder, the
+duration, the repeat, Start focus and Delete. The menu is a subset that cannot
+clear a date.
+
+**Rescheduling is administration, and it was the most visible thing on every
+row.** `PRODUCT.md` principle 4 says the app should encourage execution rather
+than task administration, and three of the menu's five items were rescheduling.
+A permanent trailing button gave that the most prominent position on every line
+of every list. `expressive-components.md` recorded the price in width: adding it
+"pushed two of five seeded titles onto a second line until the screen margin was
+returned to `md`".
+
+**What it costs, plainly.** Rescheduling from a list goes from two taps to
+three, and rows lose long press entirely. Nothing becomes unreachable; several
+things get one tap further away. That is the trade, and it is being made on
+purpose rather than absorbed quietly.
+
+**One simplification falls out.** `focus.md` had three entries, and the row
+long-press was the one that started a session directly, "because picking one
+task out of a list and choosing Focus on it is the deciding already done". With
+it gone, every entry lands on Ready and the user presses play. The special case
+disappears and Ready stops being reachable by only some routes.
+
+**What would reverse this.** Rescheduling from a list proving too slow in real
+use. The answer then is a bottom sheet on long press, which is what Material's
+compact guidance points at for a five-item menu, not this button coming back.

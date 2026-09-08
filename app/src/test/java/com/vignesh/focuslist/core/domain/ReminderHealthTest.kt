@@ -1,7 +1,9 @@
 package com.vignesh.focuslist.core.domain
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Duration
 import java.time.Instant
@@ -106,6 +108,11 @@ class ReminderHealthTest {
             everythingWrong.state
         )
         assertEquals(HealthCheck.Notifications, everythingWrong.firstFailing)
+        assertEquals(HealthCheck.Notifications, everythingWrong.firstBlocked)
+        // The restriction is still a guess and is still reported as one, even
+        // on a screen already showing an error. Certainty is a property of the
+        // check, not of the headline above it.
+        assertEquals(HealthCheck.BackgroundWork, everythingWrong.firstWarning)
     }
 
     @Test
@@ -124,16 +131,84 @@ class ReminderHealthTest {
         assertNull(health().firstFailing)
     }
 
+    /**
+     * **`docs/decisions.md` D-021.** A device that merely *has* a sleep feature
+     * is worth checking, not an emergency. The app infers the feature from
+     * `Build.MANUFACTURER` and has measured nothing, so it says so and does not
+     * borrow the colours of a refusal it was actually told about.
+     *
+     * This assertion used to read `ActionNeeded`, which meant every OnePlus,
+     * OPPO, Realme, Xiaomi, Redmi, POCO, Samsung, Huawei and Honor user saw a
+     * permanent red screen from first launch on a phone where nothing might be
+     * wrong.
+     */
     @Test
-    fun `a device that can delay alarms needs action before one is delayed`() {
-        // The point of Warning, and the whole of Phase 2. The app cannot see
-        // whether the manufacturer's sleep feature is switched on, only that
-        // this device has one, and saying so before a reminder is missed beats
-        // explaining it afterwards.
+    fun `a device that can delay alarms is worth checking, not an emergency`() {
         assertEquals(
-            ReminderHealthState.ActionNeeded(HealthCheck.BackgroundWork),
+            ReminderHealthState.WorthChecking(HealthCheck.BackgroundWork),
             health(restriction = DeviceRestriction.SleepStandby).state
         )
+    }
+
+    /**
+     * It still warns rather than staying silent. Waiting for a real miss is the
+     * more honest position and accepts a missed reminder as the price of
+     * learning, which `PRODUCT.md` principle 1 forbids.
+     */
+    @Test
+    fun `a warning is still raised before anything is missed`() {
+        val state = health(restriction = DeviceRestriction.SleepStandby).state
+
+        assertNotEquals(ReminderHealthState.Ready, state)
+    }
+
+    /**
+     * A refusal outranks a guess, whatever the guess is about. The app was told
+     * about one and inferred the other.
+     */
+    @Test
+    fun `a blocked check outranks an inferred restriction`() {
+        assertEquals(
+            ReminderHealthState.ActionNeeded(HealthCheck.ExactAlarms),
+            health(
+                exactAlarms = CheckState.Blocked,
+                restriction = DeviceRestriction.SleepStandby
+            ).state
+        )
+    }
+
+    /** And a delivery that actually went wrong outranks both. */
+    @Test
+    fun `a recorded late delivery outranks a blocked check and a restriction`() {
+        val state = health(
+            notifications = CheckState.Blocked,
+            restriction = DeviceRestriction.SleepStandby,
+            deliveries = listOf(delivery("a", lateBy = Duration.ofMinutes(4)))
+        ).state
+
+        assertTrue(state is ReminderHealthState.Missed)
+    }
+
+    /**
+     * The worst-cost ordering survives the split, on both halves. `checks` is
+     * ordered by what a failure costs, and both readers walk it in that order.
+     */
+    @Test
+    fun `the split keeps the worst-cost ordering`() {
+        val bothBlocked = health(
+            notifications = CheckState.Blocked,
+            exactAlarms = CheckState.Blocked
+        )
+
+        assertEquals(HealthCheck.Notifications, bothBlocked.firstBlocked)
+
+        // Nothing blocked, so the blocked reader has nothing and the warning
+        // reader answers instead.
+        val onlyWarning = health(restriction = DeviceRestriction.SleepStandby)
+
+        assertNull(onlyWarning.firstBlocked)
+        assertEquals(HealthCheck.BackgroundWork, onlyWarning.firstWarning)
+        assertEquals(HealthCheck.BackgroundWork, onlyWarning.firstFailing)
     }
 
     @Test

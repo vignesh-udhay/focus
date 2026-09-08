@@ -47,28 +47,74 @@ data class ReminderHealth(
     /**
      * What the screen leads with.
      *
-     * A missed reminder outranks a failing check, even though a failing check
-     * is usually its cause. The user experienced the late reminder; the
-     * permission is the explanation, and it is still on screen underneath.
-     * Leading with the explanation would be the app talking about itself.
+     * Ordered by certainty, which is `docs/decisions.md` D-021's whole point.
+     * A missed reminder outranks everything, because it happened. A refused
+     * permission comes next, because the app was told. An inferred restriction
+     * comes last, because the app guessed.
+     *
+     * A missed reminder outranks a failing check even though a failing check is
+     * usually its cause. The user experienced the late reminder; the permission
+     * is the explanation, and it is still on screen underneath. Leading with the
+     * explanation would be the app talking about itself.
+     *
+     * **`ActionNeeded` used to fire for any non-`Ok` check**, which meant a
+     * `Warning` the app inferred from `Build.MANUFACTURER` rendered exactly like
+     * a `Blocked` permission the user had explicitly refused. Because that
+     * inference is by manufacturer, every OnePlus, OPPO, Realme, Xiaomi, Redmi,
+     * POCO, Samsung, Huawei and Honor user saw a permanent red "Action needed"
+     * from first launch, on a phone where nothing might be wrong. A reliability
+     * screen that is always red teaches people to ignore it, which is the one
+     * thing this screen cannot afford.
      */
     val state: ReminderHealthState
         get() = when {
             latestConcern != null -> ReminderHealthState.Missed(latestConcern)
-            firstFailing != null -> ReminderHealthState.ActionNeeded(firstFailing!!)
+            firstBlocked != null -> ReminderHealthState.ActionNeeded(firstBlocked!!)
+            firstWarning != null -> ReminderHealthState.WorthChecking(firstWarning!!)
             else -> ReminderHealthState.Ready
         }
 
     /**
-     * The check to talk about, worst first, or null when all three pass.
+     * The worst check the app was refused outright, or null when none was.
      *
      * Ordered by what a failure costs rather than by how the screen lays them
      * out. Blocked notifications mean nothing appears at all; a refused exact
-     * alarm means it appears late; a manufacturer feature means it might. One
-     * screen, one sentence, one button, all naming the same thing.
+     * alarm means it appears late. One screen, one sentence, one button, all
+     * naming the same thing.
+     */
+    val firstBlocked: HealthCheck?
+        get() = firstMatching(CheckState.Blocked)
+
+    /**
+     * The worst check the app merely suspects, or null when it suspects none.
+     *
+     * The same worst-cost ordering, and it applies here for the same reason: the
+     * screen says one sentence and offers one button, so it has to choose which
+     * risk to name when more than one is present.
+     */
+    val firstWarning: HealthCheck?
+        get() = firstMatching(CheckState.Warning)
+
+    /**
+     * The first check in [checks] whose state is [wanted].
+     *
+     * [checks] is already in worst-cost order, so first is worst. That ordering
+     * is deliberate and is documented on [firstBlocked]; both readers depend on
+     * it, which is why they share this rather than each walking the list with
+     * their own predicate.
+     */
+    private fun firstMatching(wanted: CheckState): HealthCheck? =
+        checks.firstOrNull { (_, state) -> state == wanted }?.first
+
+    /**
+     * The check to talk about, worst first, or null when all three pass.
+     *
+     * Kept because it is the honest answer to "is anything wrong at all", which
+     * is a different question from which headline to draw. It no longer decides
+     * the headline: D-021 split that by certainty and [state] is where it lives.
      */
     val firstFailing: HealthCheck?
-        get() = checks.firstOrNull { (_, state) -> state != CheckState.Ok }?.first
+        get() = firstBlocked ?: firstWarning
 }
 
 /** One thing that has to hold for a reminder to arrive. */
@@ -109,7 +155,7 @@ enum class CheckState {
     Blocked
 }
 
-/** What the health screen says, and which of its four frames it draws. */
+/** What the health screen says, and which of its five frames it draws. */
 sealed interface ReminderHealthState {
 
     /** Nothing has been read yet. `reminder/Health Checking`. */
@@ -129,6 +175,26 @@ sealed interface ReminderHealthState {
      * had refused.
      */
     data class ActionNeeded(val cause: HealthCheck) : ReminderHealthState
+
+    /**
+     * Something the app suspects but has never measured.
+     *
+     * `docs/decisions.md` D-021. A manufacturer power feature is inferred from
+     * `Build.MANUFACTURER` and is visible to no API, so the app knows the device
+     * *has* it and cannot tell whether it is switched on. This is the state that
+     * says so, and it is deliberately not an error: the app colours what it
+     * knows.
+     *
+     * It still warns rather than staying silent. Waiting for a real miss before
+     * mentioning the restriction is the more honest position and it accepts a
+     * missed reminder as the price of learning, which `PRODUCT.md` principle 1
+     * forbids. The warning is pre-emptive; it just has to be accurate about its
+     * own certainty.
+     *
+     * Carries its cause for the same reason [ActionNeeded] does: the three fail
+     * differently and one sentence has to name the right one.
+     */
+    data class WorthChecking(val cause: HealthCheck) : ReminderHealthState
 
     /** A reminder actually went wrong. `reminder/Health Missed`. */
     data class Missed(val delivery: ReminderDelivery) : ReminderHealthState
