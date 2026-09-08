@@ -250,7 +250,9 @@ From most to least prominent:
 3. task metadata, `bodySmall`, supplied by `TaskRow`
 
 The empty state sits outside that hierarchy and uses `titleMedium` with a
-`bodyMedium` supporting line.
+`bodyMedium` supporting line, above them the sleeping dachshund that says why
+the screen is empty. `expressive-components.md` owns the variant, its colour
+roles, and why the headline did not follow the board up to Title Large.
 
 Every style comes from `FocuslistTypography`. Do not define new text styles
 for this screen.
@@ -325,26 +327,39 @@ The move is not animated: the row simply appears in its new position.
 | --- | --- |
 | Tap checkbox | Toggles completion immediately |
 | Tap row body | Opens task details |
+| Tap Focus now card body | Opens task details |
+| Tap the card's own button | Opens Focus |
 | Long press | Nothing, since D-023 |
 | Swipe | Nothing |
 
 Completing and opening stay separate, as specified in `task-row.md`.
 
-The row's `onClick` opens Task Details, the full screen editing the
-the fields a task carries about itself: title, notes, scheduled date, due
-date, and estimated duration. It must not navigate, and there is no details
-screen or back stack.
+**The card had no entry here at all until it needed one**, and that is how a
+behaviour decided in a code comment turns into a defect report: the card took no
+click, on the argument that a clickable container behind two controls is a
+target whose edges the user cannot see. D-012 removes the promoted task from the
+bands, so that left its details unreachable from Today. The card's body opens the
+task now, with the same `Open task details` label the rows carry.
 
-The sheet holds a draft, so dismissing writes nothing. Save goes through
-`TaskListViewModel.editTask`, which reads the stored task fresh and copies only
-those five fields, leaving `id`, `createdAt`, `completedAt`, and `deletedAt`
-untouched: editing can never complete, reopen, delete, or restore a task. A
-task edited out of Today leaves the list through the ordinary query, with no
-snackbar and nothing to undo.
+The row's `onClick` opens Task Details, the full screen editing the fields a
+task carries about itself: title, notes, scheduled date, due date, estimated
+duration, and how often it repeats. It is a destination on
+`task-details/{taskId}`, so opening one is a navigation and back returns here.
 
-`TodayScreen` tracks the open task by id and reads the task back out of the
-list, so a task deleted from under an open sheet simply stops being found and
-the sheet closes with it.
+**This paragraph used to say the opposite**, that Task Details "must not
+navigate, and there is no details screen or back stack", and described a sheet
+holding a draft that Save committed. D-018 replaced all of that: the screen
+commits as you go and there is no Save. `task-details.md` carries the current
+description.
+
+Editing goes through `TaskListViewModel.editTask`, which reads the stored task
+fresh and copies only the editable fields, leaving `id`, `createdAt`,
+`completedAt`, and `deletedAt` untouched: editing can never complete, reopen,
+delete, or restore a task. A task edited out of Today leaves the list through
+the ordinary query, with no snackbar and nothing to undo.
+
+Task Details reads the task back out of the list by id, so a task deleted from
+under it simply stops being found and the screen pops.
 
 Long press opens a `DropdownMenu` anchored to the row, holding one item:
 Delete. Whether that menu is open is transient state of one row and stays in
@@ -531,8 +546,8 @@ graph is arranged is described in `navigation.md`, not here.
 
 Built and working:
 
-- the compact pinned app bar, the segmented collection, the empty state, and
-  the extended FAB
+- the compact pinned app bar, the segmented collection, the illustrated empty
+  state, and the extended FAB
 - Quick Add, creating a task scheduled for today
 - completion, stored as `completedAt` and persisted through the repository,
   with undo offered in a snackbar

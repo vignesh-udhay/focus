@@ -6,6 +6,8 @@ import com.vignesh.focuslist.core.notification.FocusAlarms
 import com.vignesh.focuslist.core.domain.FocusNowReason
 import com.vignesh.focuslist.core.domain.FocusSession
 import com.vignesh.focuslist.core.domain.Recurrence
+import com.vignesh.focuslist.core.domain.RecurrenceUnit
+import com.vignesh.focuslist.data.local.toDomain
 import com.vignesh.focuslist.core.domain.Task
 import com.vignesh.focuslist.core.domain.upcomingTasks
 import com.vignesh.focuslist.core.time.CurrentDay
@@ -1297,9 +1299,14 @@ class TaskListViewModelTest {
     private fun storedReminder(id: String): LocalDateTime? =
         dao.emissions.value.firstOrNull { it.id == id }?.reminderAt
 
-    /** The rule the row currently holds, for the same reason as the note. */
+    /**
+     * The rule the row currently holds, for the same reason as the note.
+     *
+     * Read back through `toDomain` since D-027, because a rule is five columns
+     * now and the one named `recurrence` is only its period.
+     */
     private fun storedRecurrence(id: String): Recurrence? =
-        dao.emissions.value.firstOrNull { it.id == id }?.recurrence
+        dao.emissions.value.firstOrNull { it.id == id }?.toDomain()?.recurrence
 
     /** Waits for the edit to reach the DAO and reads it back as a domain task. */
     private fun awaitEdited(id: String): Task = runBlocking {
@@ -3442,7 +3449,7 @@ class TaskListViewModelTest {
 
     @Test
     fun completingARecurringTaskStartsTheNextOccurrence() {
-        store(task("chore", scheduledDate = today, recurrence = Recurrence.DAILY))
+        store(task("chore", scheduledDate = today, recurrence = Recurrence(RecurrenceUnit.DAILY)))
         val model = viewModel()
         visible(model, 1)
 
@@ -3451,13 +3458,13 @@ class TaskListViewModelTest {
         val next = awaitInsert()
         assertEquals("Task chore", next.title)
         assertEquals(tomorrow, next.scheduledDate)
-        assertEquals(Recurrence.DAILY, next.recurrence)
+        assertEquals(Recurrence(RecurrenceUnit.DAILY), next.toDomain().recurrence)
         assertNull(next.completedAt)
     }
 
     @Test
     fun theNextOccurrenceIsANewTaskRatherThanTheSameOneMoved() {
-        store(task("chore", scheduledDate = today, recurrence = Recurrence.DAILY))
+        store(task("chore", scheduledDate = today, recurrence = Recurrence(RecurrenceUnit.DAILY)))
         val model = viewModel()
         visible(model, 1)
 
@@ -3472,7 +3479,7 @@ class TaskListViewModelTest {
 
     @Test
     fun theNextOccurrenceRecordsWhichOneItCameFrom() {
-        store(task("chore", scheduledDate = today, recurrence = Recurrence.DAILY))
+        store(task("chore", scheduledDate = today, recurrence = Recurrence(RecurrenceUnit.DAILY)))
         val model = viewModel()
         visible(model, 1)
 
@@ -3483,7 +3490,7 @@ class TaskListViewModelTest {
 
     @Test
     fun reopeningARecurringTaskByHandTakesTheSpawnedOccurrenceBackWithIt() {
-        store(task("chore", scheduledDate = today, recurrence = Recurrence.DAILY))
+        store(task("chore", scheduledDate = today, recurrence = Recurrence(RecurrenceUnit.DAILY)))
         val model = viewModel()
         visible(model, 1)
 
@@ -3507,8 +3514,8 @@ class TaskListViewModelTest {
     @Test
     fun reopeningLeavesASpawnTheUserHasAlreadyFinished() {
         store(
-            task("chore", scheduledDate = today, recurrence = Recurrence.DAILY),
-            task("spawn", scheduledDate = tomorrow, recurrence = Recurrence.DAILY)
+            task("chore", scheduledDate = today, recurrence = Recurrence(RecurrenceUnit.DAILY)),
+            task("spawn", scheduledDate = tomorrow, recurrence = Recurrence(RecurrenceUnit.DAILY))
                 .copy(spawnedFromId = "chore", completedAt = completedAt)
         )
         val model = viewModel()
@@ -3526,7 +3533,7 @@ class TaskListViewModelTest {
 
     @Test
     fun undoingACompletionTakesTheSpawnedOccurrenceBackWithIt() {
-        store(task("chore", scheduledDate = today, recurrence = Recurrence.DAILY))
+        store(task("chore", scheduledDate = today, recurrence = Recurrence(RecurrenceUnit.DAILY)))
         val model = viewModel()
         visible(model, 1)
 
@@ -3549,7 +3556,7 @@ class TaskListViewModelTest {
             task(
                 "chore",
                 scheduledDate = today,
-                recurrence = Recurrence.DAILY,
+                recurrence = Recurrence(RecurrenceUnit.DAILY),
                 completedAt = completedAt
             )
         )
@@ -3576,11 +3583,11 @@ class TaskListViewModelTest {
             scheduledDate = today,
             dueDate = null,
             estimatedDurationMinutes = null,
-            recurrence = Recurrence.WEEKLY,
+            recurrence = Recurrence(RecurrenceUnit.WEEKLY),
             reminderAt = null
         )
 
-        assertEquals(Recurrence.WEEKLY, awaitUpdate().recurrence)
+        assertEquals(Recurrence(RecurrenceUnit.WEEKLY), awaitUpdate().toDomain().recurrence)
     }
 
     // Rescheduling

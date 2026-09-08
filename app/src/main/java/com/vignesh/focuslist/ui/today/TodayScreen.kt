@@ -50,6 +50,7 @@ import com.vignesh.focuslist.ui.component.FocuslistTopAppBar
 import com.vignesh.focuslist.ui.component.TaskListEmptyState
 import com.vignesh.focuslist.ui.component.SectionLabel
 import com.vignesh.focuslist.ui.component.TaskListRow
+import com.vignesh.focuslist.ui.component.TodayMascot
 import com.vignesh.focuslist.ui.component.durationLabel
 import com.vignesh.focuslist.ui.component.UndoSnackbarHost
 import com.vignesh.focuslist.ui.task.QuickAddSheet
@@ -58,6 +59,7 @@ import com.vignesh.focuslist.ui.task.UndoSnackbarEffect
 import com.vignesh.focuslist.ui.theme.FocuslistTheme
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 /**
  * Today, the default task view.
@@ -154,8 +156,13 @@ fun TodayScreen(
                     scheduledDate = day,
                     // A trailing time sets a reminder, per D-011. It lands on
                     // the day the task is being saved to, so a time with no day
-                    // of its own is a reminder today.
-                    reminderAt = parsed.reminderAt(day)
+                    // of its own is a reminder today, or tomorrow when today's
+                    // has gone by: D-030 resolves it forward rather than
+                    // capturing a moment that can only ring at once.
+                    //
+                    // The clock is read here for the same reason the day above
+                    // is, and from the same instant it is compared against.
+                    reminderAt = parsed.reminderAt(day, LocalDateTime.now())
                 )
                 if (captured) isQuickAddVisible = false
             }
@@ -251,7 +258,8 @@ private fun TodayContent(
             TaskListEmptyState(
                 headline = stringResource(R.string.today_empty_headline),
                 supporting = stringResource(R.string.today_empty_supporting),
-                modifier = Modifier.padding(innerPadding)
+                modifier = Modifier.padding(innerPadding),
+                illustration = { TodayMascot() }
             )
         } else {
             LazyColumn(
@@ -274,6 +282,7 @@ private fun TodayContent(
                             today = today,
                             onToggleComplete = { onToggleComplete(focusNow.task.id) },
                             onOpenFocus = onFocusNow,
+                            onOpen = { onOpenTask(focusNow.task.id) },
                             pausedRemainingMinutes = pausedRemainingMinutes,
                             // The card arrives and leaves on `reveal`, which is
                             // what that token is for and what it had no user of
@@ -337,6 +346,14 @@ private fun TodayContent(
                                 count = section.tasks.size
                             ),
                             colors = taskColors,
+                            // The heading already fixes the day for every band
+                            // but this one: No time set and Later today are
+                            // both today, and Completed is whenever it was.
+                            // Overdue is the exception, because its tasks come
+                            // from various past days and the date is the whole
+                            // reason the row is there. It is also what makes
+                            // overdue readable without relying on the colour.
+                            showDate = section.band == TodayBand.OVERDUE,
                             onToggleComplete = { onToggleComplete(task.id) },
                             onOpen = { onOpenTask(task.id) },
                             // A completed task travelling to its band is the

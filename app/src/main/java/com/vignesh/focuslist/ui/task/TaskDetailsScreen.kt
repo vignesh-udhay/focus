@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -16,8 +19,10 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
@@ -34,6 +39,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -43,11 +50,13 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vignesh.focuslist.R
+import com.vignesh.focuslist.ui.component.FocuslistMenuShape
 import com.vignesh.focuslist.core.design.FocuslistDimensions
 import com.vignesh.focuslist.core.design.FocuslistSpacing
 import com.vignesh.focuslist.core.design.focuslistContentGutter
 import com.vignesh.focuslist.core.domain.Recurrence
 import com.vignesh.focuslist.core.domain.Task
+import com.vignesh.focuslist.core.text.recurrenceSummary
 import com.vignesh.focuslist.ui.component.FocuslistTopAppBar
 import com.vignesh.focuslist.ui.component.PlanRow
 import com.vignesh.focuslist.ui.component.PlanRowGroup
@@ -221,12 +230,32 @@ private fun TaskDetailsContent(
                 onOpenSheet = { sheet -> openSheet = sheet }
             )
 
+            // **The glyph is what stops this reading as a Done button.** Every
+            // other full-width button at the foot of a surface in this app
+            // commits and leaves: Done in the custom-duration state, Save
+            // repeat, Doesn't repeat. This one enters a mode instead, and
+            // wearing their treatment it was pressed by people meaning to
+            // close the screen. D-018 sharpens that trap by removing Save, so
+            // a lone filled pill at the bottom has no other reading available.
+            //
+            // The app already draws the line, and this was on the wrong side
+            // of it: text alone commits the surface, an icon beside the label
+            // says the button does something else. `Choose a date` is the
+            // precedent. The play glyph is Focus's own, so the control that
+            // starts a session looks the same in both places.
             Button(
                 onClick = onStartFocus,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = FocuslistDimensions.FocusControlSize)
+                    .heightIn(min = FocuslistDimensions.ActionHeight)
             ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_play_arrow),
+                    // The label beside it already names the action.
+                    contentDescription = null,
+                    modifier = Modifier.size(ButtonDefaults.IconSize)
+                )
+                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
                 Text(stringResource(R.string.task_start_focus))
             }
         }
@@ -269,11 +298,33 @@ private fun IdentityRegion(task: Task, onToggleComplete: () -> Unit, onEdit: (Ta
             task.title
         )
 
+        // **The checkbox marks the title's first line, so the two centre on
+        // each other.** The glyph sits at the middle of its 48dp target; the
+        // title's first line is one `headlineSmall` line tall. Top-aligning the
+        // two lines up the boxes rather than the things inside them, and the
+        // title sat 8dp low against the mark that refers to it.
+        //
+        // Measured rather than nudged by a constant, because which of the two
+        // is taller changes with the font scale: at 100% the line is 32dp and
+        // the title needs pushing down, at 200% it is 64dp and the checkbox
+        // does. A hardcoded 8dp is right once and wrong after that.
+        val lineCentre = with(LocalDensity.current) {
+            MaterialTheme.typography.headlineSmall.lineHeight.toDp() / 2
+        }
+
+        // Where the title's first line actually sits: the field's own vertical
+        // inset, then half a line. The inset is Material's and stays, because
+        // this `TextField` overload takes no `contentPadding` to override it.
+        val titleCentre = TextFieldVerticalInset + lineCentre
+        val checkboxTop = (titleCentre - FocuslistDimensions.TouchTargetMin / 2)
+            .coerceAtLeast(0.dp)
+
         Row(verticalAlignment = Alignment.Top) {
             Checkbox(
                 checked = task.isCompleted,
                 onCheckedChange = { onToggleComplete() },
                 modifier = Modifier
+                    .padding(top = checkboxTop)
                     .sizeIn(
                         minWidth = FocuslistDimensions.TouchTargetMin,
                         minHeight = FocuslistDimensions.TouchTargetMin
@@ -284,9 +335,19 @@ private fun IdentityRegion(task: Task, onToggleComplete: () -> Unit, onEdit: (Ta
             TitleField(task = task, onEdit = onEdit)
         }
 
-        NotesField(task = task, onEdit = onEdit)
+        // Indented to the title rather than the screen edge: the notes belong
+        // to the task the title names, and starting them further left made the
+        // two read as separate blocks with the checkbox pointing at neither.
+        NotesField(
+            task = task,
+            onEdit = onEdit,
+            modifier = Modifier.padding(start = FocuslistDimensions.TouchTargetMin)
+        )
     }
 }
+
+/** Material's own vertical inset on a `TextField` drawn without a label. */
+private val TextFieldVerticalInset = 16.dp
 
 /**
  * The title: the screen's heading and its primary input at once.
@@ -345,7 +406,7 @@ private fun TitleField(task: Task, onEdit: (Task) -> Unit) {
  * than two that look identical on screen.
  */
 @Composable
-private fun NotesField(task: Task, onEdit: (Task) -> Unit) {
+private fun NotesField(task: Task, onEdit: (Task) -> Unit, modifier: Modifier = Modifier) {
     var draft by rememberSaveable(task.id) { mutableStateOf(task.notes.orEmpty()) }
 
     TextField(
@@ -364,7 +425,7 @@ private fun NotesField(task: Task, onEdit: (Task) -> Unit) {
                 overflow = TextOverflow.Ellipsis
             )
         },
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .onFocusChanged { state ->
                 if (state.isFocused) return@onFocusChanged
@@ -464,7 +525,12 @@ internal enum class PlanSheet {
         DURATION -> task.estimatedDurationMinutes?.let { minutes -> durationLabel(minutes).text }
             ?: stringResource(R.string.task_value_none)
 
-        REPEAT -> stringResource(recurrenceLabel(task.recurrence))
+        // The rule written out, which since D-027 can be "Every 2 weeks" or
+        // "Mon, Wed, Fri" and not only one of four adjectives. When it stops is
+        // deliberately absent; board frame 18 leaves it out and the sheet is
+        // where a horizon belongs.
+        REPEAT -> task.recurrence?.let { rule -> recurrenceSummary(rule, today) }
+            ?: stringResource(R.string.task_repeat_never)
     }
 }
 
@@ -515,13 +581,23 @@ private fun PlanSheetHost(
             onDismiss = onDismiss
         )
 
-        PlanSheet.REMINDER -> ReminderDialog(
+        PlanSheet.REMINDER -> ReminderSheet(
             reminderAt = task.reminderAt,
-            // The day comes from the task: the day it is scheduled for, or
-            // today when it has none. Storage holds a full date and time and
-            // `PRODUCT.md` keeps a reminder independent of a scheduled date,
-            // but nothing on this dialog moves it off that day.
-            day = task.reminderAt?.toLocalDate() ?: task.scheduledDate ?: today,
+            // Where the dialog opens, not where it is stuck. D-030 gave it a
+            // day of its own, so this is a first suggestion rather than the
+            // answer, and `PRODUCT.md`'s independence of a scheduled date is
+            // something the control can finally express.
+            //
+            // A scheduled date still ahead is the useful default: a task
+            // planned for Friday usually wants announcing on Friday. One
+            // already past is not, and it is dropped rather than resolved
+            // forward, so the dialog opens on a day the user recognises
+            // instead of on an arithmetic result. That fallback is what forced
+            // every reminder on an overdue task into the past.
+            defaultDay = task.reminderAt?.toLocalDate()
+                ?: task.scheduledDate?.takeIf { date -> !date.isBefore(today) }
+                ?: today,
+            today = today,
             onSet = { at -> onEdit(task.copy(reminderAt = at)) },
             onClear = { onEdit(task.copy(reminderAt = null)) },
             onDismiss = onDismiss
@@ -535,6 +611,7 @@ private fun PlanSheetHost(
 
         PlanSheet.REPEAT -> RepeatSheet(
             selected = task.recurrence,
+            today = today,
             onPick = { recurrence -> onEdit(task.copy(recurrence = recurrence)) },
             onDismiss = onDismiss
         )
@@ -563,7 +640,11 @@ private fun TaskDetailsOverflow(onDelete: () -> Unit) {
         )
     }
 
-    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = { expanded = false },
+        shape = FocuslistMenuShape
+    ) {
         DropdownMenuItem(
             text = {
                 Text(
@@ -574,6 +655,17 @@ private fun TaskDetailsOverflow(onDelete: () -> Unit) {
             onClick = {
                 expanded = false
                 onDelete()
+            },
+            // After the label, as Material's own menu draws it, and in `error`
+            // like the word. Colour is the second cue on both halves; the word
+            // still says it first.
+            trailingIcon = {
+                Icon(
+                    painter = painterResource(R.drawable.ic_delete),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(MenuDefaults.TrailingIconSize)
+                )
             }
         )
     }

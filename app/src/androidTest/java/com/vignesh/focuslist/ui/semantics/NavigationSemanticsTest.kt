@@ -1,11 +1,13 @@
 package com.vignesh.focuslist.ui.semantics
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -119,9 +121,9 @@ class NavigationSemanticsTest {
     /**
      * On an overflow destination, nothing in the bar claims to be current.
      *
-     * Logbook and Reminder health are rooms rather than places, and they are
-     * why those screens hide the bar entirely. If one ever shows it, this says
-     * what the user would see: three items, none of them where they are.
+     * Logbook, Settings and Reminder health are rooms rather than places, so
+     * those screens hide the bar entirely. If one ever shows it, this says what
+     * the user would see: three items, none of them where they are.
      */
     private fun assertNothingIsSelectedOnAnOverflowRoute(fontScale: Float) {
         setBar(fontScale, currentRoute = FocuslistRoutes.LOGBOOK)
@@ -176,6 +178,7 @@ class NavigationSemanticsTest {
         OVERFLOW_LABELS.forEach { label ->
             rule.onNodeWithText(label).assertIsDisplayed()
         }
+        rule.onAllNodesWithText(REMINDER_HEALTH).assertCountEquals(0)
 
         rule.onNodeWithText(LOGBOOK).performClick()
 
@@ -197,6 +200,7 @@ class NavigationSemanticsTest {
         const val MORE = "More"
         const val LOGBOOK = "Logbook"
         const val REMINDER_HEALTH = "Reminder health"
+        const val SETTINGS = "Settings"
 
         /**
          * The three `PRODUCT.md` names, in the order the board shows them.
@@ -206,7 +210,7 @@ class NavigationSemanticsTest {
          */
         val DESTINATION_LABELS = listOf(TODAY, INBOX, UPCOMING)
 
-        /** Settings joins this when it exists. */
-        val OVERFLOW_LABELS = listOf(LOGBOOK, REMINDER_HEALTH)
+        /** Reminder health has one permanent entry, inside Settings. */
+        val OVERFLOW_LABELS = listOf(LOGBOOK, SETTINGS)
     }
 }

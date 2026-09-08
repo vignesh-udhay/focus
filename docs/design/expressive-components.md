@@ -40,9 +40,44 @@ collection structure: `ListItemDefaults.segmentedShapes(index, count)`,
 
 ## Why the board builds its rows rather than instancing the kit
 
-[FD] The four row components on the board — Task row, Plan row, Settings
-navigation row, Settings toggle row — are built from primitives. Only the leaf
-atoms come from the M3 kit: the checkbox, the radio button, the chevron.
+[FD] The five row components on the board — Task row, Plan row, Settings
+navigation row, Settings toggle row, Choice radio row — are built from
+primitives. Only the leaf atoms come from the M3 kit: the checkbox, the radio
+button, the chevron.
+
+[IMPL] The radio row joined them late. It had two variants and no Position, flat
+0dp corners, a `Surface` fill and a 0dp group gap, while the code's `ChoiceRow`
+composes `SegmentedListItem` with `segmentedShapes` and `PlanRowGroup`. It now
+carries Position as the other four do, with its corners on
+`Segmented/Radius outer` and `Segmented/Radius inner`, its groups on
+`Segmented/Gap`, and 16dp of content inset.
+
+[IMPL] **The two states do not share a fill.** Selected is `Secondary Container`
+with an `On Secondary Container` label; unselected is `Surface Container Low`.
+The board drew both alike, which was the real divergence: in code the two come
+from different fields. `ListItemColors` carries `containerColor` and
+`selectedContainerColor` separately, and `planRowColors()` overrides only the
+first, so the selected row keeps Material's default of `secondaryContainer`.
+
+[IMPL] **The selected row is also rounded on all four corners**, whatever its
+position in the group. `ListItemShapes` carries `selectedShape` separately from
+`shape`, and the segmented default resolves it to `CornerLarge`, so a selected
+row detaches from its neighbours instead of staying welded to them. Only
+unselected rows take the 16/4 first-middle-last treatment.
+
+[FD] Unselected rows therefore paint the same tone as the sheet beneath them,
+because a modal sheet's own container is `surfaceContainerLow` too. That is not
+a defect. The selected row is the one carrying information, and it lifts; the
+rest are quiet, which is what a single-choice list should look like.
+
+[FD] Worth recording how this was nearly got wrong. Reading the board's sheet
+fill and the board's row fill, finding both `Surface Container Low`, and
+concluding the container never shows is circular: it tests the drawing against
+itself. The emulator showed a tinted selected row immediately. Check a rendered
+state before calling a colour a no-op.
+
+[FD] The theme chooser is unaffected. Its rows strip the fill locally, which is
+what a radio list in an alert dialog should do, and the board keeps that.
 
 This is written down because "why isn't this a kit instance" is a reasonable
 question with a non-obvious answer, and guessing at it once already produced a
@@ -292,7 +327,7 @@ already grouped under their own day headings.
 ## The overflow is the only action
 
 [FD] On Today, Inbox and Upcoming, and nowhere else. A standard icon button
-rather than a filled one, opening Logbook, Reminder health and Settings.
+rather than a filled one, opening Logbook and Settings.
 `navigation.md` holds the rule: reaching the other lists is the navigation bar's
 job, and the overflow carries what the navigation bar does not.
 
@@ -431,8 +466,84 @@ then a centred headline and supporting line.
 [FD] An earlier version of this section ended "No illustration, no icon, no
 action button". All three have since arrived and the section did not keep up.
 The component carries an icon container; the board has an illustrated variant per
-screen carrying the mascot, drawn but not yet exported; and the error tone is
-paired with an action.
+screen carrying the mascot; and the error tone is paired with an action.
+
+## The illustrated variant
+
+[IMPL] `TaskListEmptyState` takes an optional `illustration` slot, drawn above
+the headline with `lg` beneath it, which is the gap all three board variants
+draw. The three lists pass their mascot; the Logbook passes nothing and is the
+same component without one.
+
+[FD] One mascot per screen, and each says why its own screen is empty rather
+than decorating the absence. It is the same dachshund in every pose, which is
+the point: a different animal per screen would read as three products.
+
+| Screen | Pose | Board node | Frame |
+| --- | --- | --- | --- |
+| Today | asleep, because nothing is scheduled | `879:6016` | 280x102 |
+| Inbox | leaning out from behind a blank card | `883:6049` | 240x146 |
+| Upcoming | sitting up watching a ball, because something is coming | `879:6029` | 180x167 |
+
+[FD] The frames differ because the poses do, and the component does not
+normalise them. A sleeping dog is wide and flat, a sitting one is tall, and
+forcing both into one box would either crop the sitting dog or strand the
+sleeping one in empty space.
+
+[FD] **The Logbook has no mascot, and that is the board's position rather than
+an omission.** The component has three variants and the Logbook is not among
+them. The mascots explain lists that are empty; the Logbook is a room, and its
+empty state says a record has not started rather than that a list ran out. The
+illustration sheet's "All done" pose is the obvious candidate if this is ever
+revisited, but its meaning is "you are caught up", which is not what "Nothing
+completed yet" says. Adding one means drawing it into the component first, so
+it is exported the same way as the other three rather than drawn twice.
+
+[FD] **The mascot is decorative to a screen reader.** It draws the fact the
+headline states, and the headline is the heading TalkBack lands on, so
+describing the drawing as well would put that fact in the path twice.
+`illustration_isNotAnnounced` holds it.
+
+[IMPL] Each mascot is an `ImageVector` built in Kotlin, not a vector drawable.
+Their three fills are colour roles rather than ink, and a drawable can neither
+read the Compose colour scheme nor take three colours from one tint. Every pose
+uses the same three, which is what keeps them from drifting apart:
+
+| Tone | Role | What it draws |
+| --- | --- | --- |
+| pale | `primaryFixed` | the ground shadow, and whatever the dog is with: the card, the ball |
+| body | `primaryFixedDim` | the animal itself, and the Z's |
+| detail | `onPrimaryFixedVariant` | ear, tail, paws, nose, eye |
+
+[FD] Fixed roles, which is what `Color.kt` set them for. They hold one value in
+light and dark, so there is one artwork rather than a light one and a dark one
+to keep in step, and a device palette replaces all three together under dynamic
+colour.
+
+[IMPL] `MascotImage` owns all of that, plus the sizing. Each pose file is its
+frame, its builder, and its exported path data, and nothing else.
+
+[FD] **The pale tone keeps its fixed role, and it is not symmetric.** At
+`primaryFixed` it sits 8.0 L* below the page in light and 83.8 above it in dark,
+so the faintest part of a drawing in light is the brightest in dark. That reads
+correctly for the card and the ball, which are objects, and less so for the
+ground shadow. Binding the shadow to `surfaceContainerHighest` instead was tried
+and reverted: that holds the light rendering exactly, both roles being 89.9
+against a page at 97.9, and brings dark back to 15.9. Whoever revisits this
+should measure that pair rather than re-deriving it.
+
+[FD] **The mascot gives way before the copy does.** It is 102dp tall in a column
+that does not scroll, so it is capped at its drawn width and shrinks on a window
+narrower than that. At 200% font scale the two lines stay on screen, which
+`EmptyStateSemanticsTest` asserts at both scales.
+
+[FD] The headline stays `titleMediumEmphasized` in the illustrated variant. The
+board draws it at Title Large Emphasized, which is the size and weight the app
+bar uses, and on an otherwise empty screen that puts two identical headings
+240dp apart with neither leading. The mascot is already what draws the eye. If
+the board is ever right about this, the type table in
+`expressive-design-system.md` is what has to change first, since it names the
+three places emphasis is allowed.
 
 [FD] Two tones. `Neutral` explains an empty collection. `Error` explains a read
 that failed, and is the only one that takes a button beside it: a separate M3
@@ -466,7 +577,7 @@ and swapped to a filled `schedule`, which rendered a near-black disc on a pink
 container while the other two were dark red outlines.
 
 [FD] The copy is plain. An empty list is not an achievement, and nothing here
-congratulates the user or decorates the absence.
+congratulates the user.
 
 ## Error copy says what did not happen
 
@@ -636,15 +747,118 @@ way, and it is the one thing from the two-page design worth carrying forward.
 preceded this one. D-018 rewrote how a reminder is reached, not what setting one
 is, and it is the one control the board still draws exactly as it was.
 
-[FD] The Repeat sheet offers `Recurrence`'s four periods and none, and nothing
-else. The board's editor with an interval, a weekday set and an end condition is
-Phase 4 per D-019.
+[IMPL] A Plan row is one `Row` inside `SegmentedListItem`'s content slot, not a
+headline with a trailing slot. `ListItem` measures trailing content first and
+gives the headline the remainder, so a long value ate the row: with every weekday
+selected, the Repeat label measured 139px at 100% and was not displayed at all at
+200%, leaving a row with a value and no name. The label is measured first now and
+the value takes what is left, which is the right way round because the label is
+one of five fixed strings and the value is the unbounded one.
+
+[FD] `PlanRowSemanticsTest` guards it by rendering the same label beside a short
+value and a long one and asserting the two widths match. It reads the *unmerged*
+tree, and that is the whole probe: `SegmentedListItem` merges its descendants, so
+the default tree answers both lookups with the same row node. The first version
+measured the row twice and passed against the layout it was written to catch,
+which is D-026's warning arriving a second time.
+
+[IMPL] The Repeat sheet is the board's editor, built under D-027: three panes in
+one `ModalBottomSheet`, with Every and Ends behind a back arrow. This said it
+offered four periods and nothing else, which was true while D-019 held the editor
+back.
+
+[IMPL] It carries a summary line under its title, in the Due date sheet's
+supporting-text treatment: `bodyMedium` on `onSurfaceVariant`, directly under the
+headline. That slot is this app's supporting-text slot and the summary has taken
+it, which leaves the footnote above Save as a note about what committing does
+rather than as supporting text. The two are not interchangeable: the summary
+reflows as the rule changes, so it cannot sit above the primary action without
+moving it under the user's thumb.
+
+[FD] It is the one sheet on Task Details with a Save, and the exception is
+argued rather than assumed. Every other row sets one field from one choice, so
+writing on the tap is the whole interaction; a rule is four fields that only mean
+something together, and writing each tap would put half-built rules on the task.
+
+[FD] The weekday chips are `FilterChip`s at
+`FocuslistDimensions.WeekdayChipSize`, sized rather than left to their labels.
+Seven at their natural width came to 1002px inside a 992px column on a 1080px
+screen, so the last day wrapped to a line of its own at the default font scale.
+48dp is the board's own number and `SpaceBetween` spends the remainder, so the
+row keeps its seven columns; the height is a floor, so a letter at 200% makes its
+chip taller rather than being cut.
+
+[FD] A chip given a fixed width must be told to centre its label.
+`ChipArrangement` places the first child at x = 0 and leaves the slack on the
+right, which is correct for a chip sized by its content and wrong for one sized
+by us. Pass `horizontalArrangement = Arrangement.Center`. Measured before the
+fix, the letters sat 5px left of centre for M and W and 10px for T, F and S: half
+the leftover space, so the narrower the glyph the worse it looked.
+
+[FD] The last selected day does not come off, which the board asks for in the
+name of the frame that holds them. Nothing happens when it is tapped, rather than
+an error or a disabled chip: a greyed-out chip would say the day was unavailable
+when it is the one that is chosen.
+
+[FD] **`FilterChip` is the classic Material component here, not the expressive
+one, and that is deliberate.** `Chip.kt` contains no reference to Expressive. The
+expressive control for picking several from a short set is the connected button
+group below, and the board does not draw one: its weekday node is seven separate
+48dp instances, while the modal sheet, the app bar and Save repeat in the same
+frame are all named as `M3` instances. `ButtonGroup` would also overflow a day
+into a dropdown when it ran out of room, which is insurance for durations and a
+missing Saturday here.
 
 ---
 
 # Inputs
 
-[IMPL] `OutlinedTextField` throughout.
+[IMPL] `TextField` throughout: the filled variant, per D-025. This said
+`OutlinedTextField`, which was a note about which component was in use rather
+than an argument for it.
+
+[IMPL] **No active indicator, and the large corner on all four sides.**
+Material's filled field ships a 1dp rule under it and a top-rounded,
+bottom-square container. Both are gone, through one shared
+`focuslistFieldColors()` and `FocuslistFieldShape` in
+`ui/component/FieldStyle.kt`, read by all four fields that draw a container:
+Quick Add, the repeat interval and occurrences, and the custom-duration Hours
+and Minutes.
+
+[IMPL] The shape is `MaterialTheme.shapes.large` rather than a written 16dp, so
+the field cannot drift from the rows: `ListItemDefaults.segmentedShapes`
+resolves `CornerLarge`, which is the same value, and D-008 leaves the corner
+scale to the theme rather than restating it per component.
+
+[FD] The error indicator is deliberately kept. The rule is removed as
+decoration, and in the error state it stops being decoration: it is the cue
+Material pairs with the error colour and the supporting text. A line that
+appears only when something is wrong earns its place; one that is always there
+does not.
+
+[FD] This sits inside D-025 rather than against it. That entry argued for a
+*tinted container*, and the argument holds: every other surface in the app is
+one. The underline and the flat bottom edge came along with the component and
+were never argued for by anyone. Nothing else in Focuslist has a rule line, and
+nothing else is rounded on two corners only, so the field was the one piece
+still speaking Material 2.
+
+[FD] 16dp rather than fully round, and the reason is D-025's own reversal
+condition: "a filled container reading as a chip or a button somewhere it sits
+beside real ones. The place to watch is Quick Add, where the field sits above a
+filled Add task button." A pill-shaped field walks into exactly that. 16dp is
+`Segmented/Radius outer`, so the field matches the row families and stays
+clearly not-a-button.
+
+[FD] Task Details' title and notes are unaffected. They already paint the
+container out entirely, so there is no corner or indicator to correct.
+
+[FD] The rule is narrower than "filled everywhere", and worth stating precisely:
+**a field that draws a container draws a filled one.** Task Details' title and
+notes draw none. They are the same component with its container painted out,
+because D-018 makes the title the screen's heading and its primary input at
+once, and a container around it makes the top of that screen read as a summary
+card.
 
 [FD] A field's own controls go in its trailing slot, not beside it. The
 component centres trailing content on the input line, so it stays aligned at
@@ -778,45 +992,231 @@ somewhere to disagree.
 
 ---
 
-# Dialogs
+# Menus
 
-[IMPL] `DatePickerDialog` is the only dialog in the app.
+[IMPL] Two, both `DropdownMenu`: the app-bar overflow on Today, Inbox and
+Upcoming, and Task Details' overflow holding Delete. `MenuDefaults.containerColor`
+is `surfaceContainer` and both take it, because both are the same component and
+cannot have two container colours.
 
-[FD] Keep it that way. `PRODUCT.md` says to avoid confirmation dialogs for
-low-risk reversible actions, and undo covers those instead.
+[IMPL] **The corner is overridden.** `MenuDefaults.shape` resolves
+`CornerExtraSmall`, 4dp, and both menus pass `FocuslistMenuShape` instead, which
+is the theme's large corner. Everything the app draws on a surface is on that
+corner already: rows, cards, fields. A 4dp menu was the last square thing left
+and read as a component borrowed from another app. The board had drawn 16 all
+along; the code was the side that was wrong.
+
+[IMPL] **Every item carries a glyph, and it sits after the label.** Logbook and
+Settings take their own symbols; Delete takes a bin. Sized by
+`MenuDefaults.TrailingIconSize`.
+
+[FD] That is where Material puts it. The spec's own example runs Revert, Delete,
+Settings, Help & feedback, each with its symbol right-aligned against the label,
+and this is the one component in the app whose icon goes on the right rather
+than the left.
+
+[FD] **These icons were briefly deleted outright, and that was wrong.** The
+argument was that a *leading* icon here echoed a navigation bar these
+destinations are not in, which `FocuslistNavigation.kt` says plainly by calling
+them rooms you go into and come back from. The premise held; the conclusion did
+not. The icons belonged in the other slot, not in the bin. Worth recording,
+because the reasoning read as sound and produced the wrong screen.
+
+[FD] Delete's glyph is `error`, like its word. Colour is the second cue on both
+halves and the word still says it first.
+
+[IMPL] Item anatomy: 48dp tall, label inset 12dp, glyph inset 12dp from the
+trailing edge, 8dp of padding above the first item and below the last.
+
+[IMPL] The board draws these glyphs from the same path data as the app's
+drawables rather than from kit instances, because the kit in this file exposes
+no delete, settings, notification or logbook symbol. Identical geometry by
+construction beats two drawings that agree today.
+
+[FD] **Not the segmented menu, though Material now offers one.**
+`MenuDefaults` exposes leading, middle, trailing and standalone item shapes and
+a Standard/Vibrant pair of group colours, and `DropdownMenuItem` takes a shape,
+so the expressive grouped treatment is buildable. It is for menus long enough
+to need grouping. Ours hold two items and one; segmenting them would give a
+transient popup more structure than the persistent lists behind it, and the
+same guidance caps groups at one or two and warns against menus that scroll.
+
+[FD] Revisit if a menu reaches five or six items, or genuinely needs two groups.
+Settings has since joined the overflow, making three, which is still not that.
 
 ---
 
-# Segmented controls
+# Dialogs
 
-[IMPL] `SingleChoiceSegmentedButtonRow` for recurrence. There are no tab rows
-left: the pair that carried Anytime and Someday went with those lists.
+[IMPL] Three, and each is a Material picker or an acknowledgement rather than a
+confirmation: `DatePickerDialog` behind both date sheets, `TimePickerDialog` for
+the reminder, and one `AlertDialog` on the health screen saying a test reminder
+has been scheduled.
 
-[FD] Segmented controls are for small, mutually exclusive, equally weighted
-choices. Three options is the practical limit.
+[FD] No dialog asks whether the user meant it. `PRODUCT.md` says to avoid
+confirmation dialogs for low-risk reversible actions, and undo covers those
+instead. The custom-duration dialog was the exception and is gone: it raised a
+second window over an open sheet and put a Done/Cancel confirm on a screen D-018
+had made commit-as-you-go. It is a state of that sheet now. See D-026.
 
-[FD] A segmented row must not overflow at large font scales, and must not
-truncate a label to avoid doing so.
+[FD] A dialog over a `ModalBottomSheet` is two windows, two scrims, and two
+things back could mean. Where a sheet needs a second step, the sheet changes
+what it shows and takes a back arrow.
 
-[IMPL] A segmented row scrolls sideways when it cannot fit. Its minimum width
-is the width of the field, so at ordinary font scales the three buttons divide
-that exactly as before and there is nothing to scroll. At 200% three labels no
-longer fit across a phone, and the row grows to the width its content needs
-rather than clipping an option out of reach.
+---
 
-[FD] Scrolling in preference to wrapping. Segmented buttons are joined, and
-their start, middle and end shapes only read as one control on one line;
-wrapping would break the shape into pieces that no longer look joined.
+# Worded action buttons
 
-[FD] This is ours, not Material's. The Material Components documentation for
-toggle button groups says nothing about what to do when labels do not fit, and
-the tabs documentation describes scrollable tabs without giving any rule for
-when to prefer them. Scrolling is the pattern Material *offers* for a row of
-choices that overflows; choosing it here is a Focuslist decision and should not
-be quoted as guidance.
+[IMPL] One height, `FocuslistDimensions.ActionHeight`, 56dp, read by Start
+focus on Task Details, Focus's worded button, both date sheets' Choose a date,
+the date presets, and Done in the custom-duration state.
 
-Nothing about the interaction changes: all three options stay selectable, the
-selected one keeps its check, and no label is ever truncated.
+[FD] A floor rather than a fixed height. Pinned exactly, a label at 200% font
+scale is cut through the middle of its letters, so the button grows to hold its
+own text.
+
+[FD] **56dp because 48dp is not a size in this system.** The expressive button
+scale runs 32, 40, 56, 96, 136, with nothing between 40 and 56. Three sheet
+buttons used to take their height from `TouchTargetMin`, which put them at
+48dp: an accessibility floor standing in for a size. Start focus reached
+instead for `FocusControlSize` and got the right number through a token named
+for another screen. Neither was a decision anyone made.
+
+[FD] It also fixes a proportion. A date preset is 176dp wide; at 48dp tall that
+is 3.7:1 and reads as a bar, at 56dp it is 3.1:1 and reads as a button.
+
+[FD] **The sheet's commit is the same size as the screen's.** Done and Start
+focus are never on screen together, so there is no hierarchy to protect between
+them, and both are the full-width filled commit of the surface they sit on.
+Giving the same role the same treatment is what lets "full-width filled pill at
+the bottom" mean one thing. The cost is about 24dp of sheet height, which is
+less of the task visible behind it.
+
+[FD] **A glyph says the button is not a commit.** Text alone at the foot of a
+surface means "this commits what you are looking at and leaves": Done in the
+custom-duration state, Save repeat, Doesn't repeat. An icon beside the label
+means the button does something else: Choose a date opens a picker, Start focus
+enters a mode.
+
+[FD] Start focus was on the wrong side of that line and was pressed by people
+meaning to close the screen. D-018 sharpens the trap by removing Save, so a lone
+filled pill at the bottom of Task Details has no other reading available, and
+the back arrow is a small target in the far corner while the pill sits where the
+thumb rests. It carries the play glyph now, Focus's own, so the control that
+starts a session looks the same in both places.
+
+[FD] **No Done button on Task Details, and the reason is worth keeping.** The
+screen commits as it goes, so a Done that only navigates would imply a commit
+boundary that does not exist, and worse imply that leaving by back might lose
+work. The exit that was wanted already exists as the system back gesture, which
+is in the thumb zone and needs no pixels. What was wrong was a button
+impersonating an exit, not a missing one.
+
+[FD] Not this: the duration segments, which are Material's `Size=Small` inside
+a connected group and sized by `toggleableItem`. A member of a group is not a
+worded action button.
+
+[IMPL] The Repeat sheets' eight footer buttons, Save repeat and the six Done
+buttons across the substates, were centred pills between 86dp and 134dp wide.
+They are full width now, like Done in the custom-duration state and Choose a
+date in the date sheets. A sheet's commit is the full-width thing at its foot.
+
+[FD] Making one full width takes three changes, not one. The footer has to stop
+hugging and centring, the instance has to fill, and the instance's own Content
+and State-layer have to fill as well: stretch only the outer box and the visible
+pill stays exactly as small as it was, which reads as the change having silently
+failed.
+
+---
+
+# Weekday chips
+
+[IMPL] Seven `FilterChip`s, 48dp wide with 48dp as a height floor, `CircleShape`,
+spread across the sheet by `SpaceBetween` so the six gaps take the remainder.
+Monday first. Selected is `secondaryContainer` with an `onSecondaryContainer`
+letter; unselected is transparent with a 1dp `outlineVariant` ring and an
+`onSurfaceVariant` letter.
+
+[FD] The board drew something else and has been corrected to the code: a 37x32
+kit toggle, a 100dp pill when unselected and a 12dp squircle when selected,
+filled `Primary` with an `On Primary` letter. Three differences at once, and the
+selected one was the loudest thing in the sheet.
+
+[IMPL] Built from primitives, like the five row families and for the same
+reason. The kit toggle would not resize: its inner content hugs its own label, so
+a 48dp square could not be imposed from outside without the frame snapping back.
+A frame, a radius and a centred letter answer it exactly.
+
+[FD] Every fill was bound to the kit's `Schemes/*` variables, which carry no
+Focuslist modes, so the chips would not have followed dark or wallpaper themes.
+The same leak found on two duration segments. Worth a sweep rather than another
+one-by-one fix.
+
+---
+
+# Clearing a repeat
+
+[IMPL] A full-width `TextButton` reading "Doesn't repeat", beneath Save repeat in
+the Repeat sheet's footer, `ActionHeight` tall like the button above it.
+
+[FD] Text rather than filled or outlined, because the footer holds two actions
+and only one of them is the commit. Weight says which: Save repeat is filled,
+clearing is a word.
+
+[FD] Offered only when there is a rule to clear. The code guards it on
+`canClear`, on the rule `DatePresets.kt` argues from: a control that can do
+nothing is one the user cannot tell worked.
+
+[FD] **No frame draws the state where it is absent.** All three Repeat main
+frames hold a rule, so the button shows on all three and its conditional half is
+undrawn.
+
+---
+
+# Connected button groups
+
+[IMPL] One, in the Duration sheet: `ButtonGroup` holding five `toggleableItem`s,
+None and the four presets. There are no tab rows left, the pair that carried
+Anytime and Someday went with those lists, and
+`SingleChoiceSegmentedButtonRow` went with a Repeat design that no longer
+exists. Repeat's Every and Ends substates are radio rows through
+`SegmentedListItem`'s selectable overload, because their labels run as long as
+"After occurrences" and a connected group wants short ones.
+
+[FD] A connected group is for a small set of mutually exclusive, equally
+weighted choices whose labels are short. Durations qualify: `None`, `15m`,
+`30m`, `45m`, `1h`.
+
+[FD] A row of choices must not overflow at large font scales, and must not
+truncate a label to avoid doing so. This is the rule; what follows is how it is
+kept.
+
+[IMPL] `ButtonGroup` moves what does not fit into a menu behind
+`ButtonGroupDefaults.OverflowIndicator`. Every option stays selectable, the
+selected one keeps its state, and no label is ever cut.
+
+[IMPL] Measured once, it never has to: all five duration presets stay laid out
+inside 380dp from 100% to 200% font scale. Nothing guards that number, so
+re-measure before relying on it. And measure *bounds*, not presence, because
+overflowed options stay in the semantics tree with only their bounds changed,
+so counting them reports success at any width. D-026 records this.
+
+[FD] **This replaced a hand-rolled row that had no answer for running out of
+room.** Five equal-weight `Button`s with `maxLines = 1` and no overflow set
+could only clip. The exact scale at which it started was calculated rather than
+observed, and the calculation was wrong in its details; the structural point did
+not depend on it.
+
+[FD] An earlier version of this section reached for sideways scrolling instead,
+and said so as a Focuslist decision rather than Material guidance, because
+Material's toggle-button-group documentation gave no rule for labels that do not
+fit. Material has since answered it in the component. Overflow to a menu is
+better than scrolling for the same reason a menu beats a scroll anywhere: the
+indicator is visible, where off-screen content is not.
+
+[FD] The shapes come from `toggleableItem`'s own default content, so the
+leading, middle and trailing corners that make five buttons read as one control
+are Material's rather than a `when` on the index. Do not hand-roll them back.
 
 ---
 

@@ -81,12 +81,14 @@ rather than a screen's own action menu. A room may still grow a menu of its own
 actions under the same glyph without contradicting this; Task Details is the
 screen that will, and its contents are undecided, so it currently has none.
 
-It opens:
+It opens, as labels with no icons:
 
 - Logbook
-- Reminder health
+- Settings
 
-`PRODUCT.md` also places Settings here. It joins the menu when it exists.
+Reminder health is the first row inside Settings rather than a second route in
+this menu. D-029 records why the duplicate was removed. `settings.md` describes
+the seven board frames and D-024 closes the list at four rows.
 
 Not on the screens it opens, because each of those already has a back arrow
 and offering a way in from inside would be a loop.
@@ -99,8 +101,9 @@ places.
 
 # Rooms, not places
 
-Logbook and Reminder health are reached from the overflow, draw a back arrow,
-and show no navigation bar. They are rooms you go into and come back from.
+Logbook and Settings are reached from the overflow, draw a back arrow, and show
+no navigation bar. Reminder health is the room behind Settings' first row and
+follows the same back-stack rule.
 
 This is the rule the top app bar enforces: a screen wears either the bar and
 an overflow, or a back arrow and no bar. Never both. A back arrow and a bottom
@@ -137,7 +140,8 @@ removed the concept and schema version 9 removed the column behind it.
 
 Back is the navigation back stack's own behavior, not a hand-written one.
 
-- from Logbook or Reminder health, back returns to the list it was opened from
+- from Logbook or Settings, back returns to the list it was opened from
+- from Reminder health opened through Settings, back returns to Settings
 - from Inbox or Upcoming, back returns to Today
 - from Today, back leaves the app
 
@@ -178,7 +182,6 @@ repositories.
 
 Not part of navigation yet:
 
-- Settings
 - a navigation drawer, or adaptive navigation beyond the existing rail
 - deep links, nested graphs, and custom transitions
 - predictive back tuning beyond the framework default

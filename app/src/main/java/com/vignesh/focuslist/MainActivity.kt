@@ -4,6 +4,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.vignesh.focuslist.core.design.ThemePreference
 import com.vignesh.focuslist.ui.navigation.FocuslistNavHost
 import com.vignesh.focuslist.ui.theme.FocuslistTheme
 
@@ -25,7 +29,19 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            FocuslistTheme {
+            val focuslist = application as FocuslistApplication
+            val preferences by focuslist.preferences.state.collectAsStateWithLifecycle()
+            val systemDark = isSystemInDarkTheme()
+            val darkTheme = when (preferences.theme) {
+                ThemePreference.System -> systemDark
+                ThemePreference.Light -> false
+                ThemePreference.Dark -> true
+            }
+
+            FocuslistTheme(
+                darkTheme = darkTheme,
+                dynamicColor = preferences.dynamicColor
+            ) {
                 FocuslistNavHost()
             }
         }

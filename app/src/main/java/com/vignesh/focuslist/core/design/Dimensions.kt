@@ -77,13 +77,56 @@ object FocuslistDimensions {
     val FocusShapeSize = 180.dp
 
     /**
-     * The height of both controls in Focus's action row.
+     * The height of a worded action button, anywhere in the app.
      *
-     * A floor for the worded button, which is allowed to grow to hold its label
-     * at large font scales, and a fixed square for the clock control, because
-     * roundness is what keeps it from growing with the text at all.
+     * A floor rather than a fixed height: pinned exactly, a label at 200% font
+     * scale is cut through the middle of its letters, so the button is allowed
+     * to grow to hold its own text.
+     *
+     * 56dp is Material's Medium button, and the expressive scale runs 32, 40,
+     * 56, 96, 136 with nothing between 40 and 56. Three sheet buttons used to
+     * read [TouchTargetMin] for their height, which put them at 48dp: not a
+     * size in this system at all, but an accessibility floor standing in for
+     * one. Start focus reached instead for the Focus screen's own control size
+     * and got the right number through the wrong token. This is the token they
+     * were both looking for.
+     */
+    val ActionHeight = 56.dp
+
+    /**
+     * The side of Focus's square clock control.
+     *
+     * Fixed rather than a floor, because roundness is what keeps it from
+     * growing with the text at all. The worded button beside it is
+     * [ActionHeight], which is the same 56dp described as what it is.
      */
     val FocusControlSize = 56.dp
+
+    /**
+     * The side of one weekday chip in the Repeat editor.
+     *
+     * Named rather than left to the component, because seven chips at their
+     * natural width do not fit one line. Measured on a 1080px emulator they came
+     * to 1002px inside a 992px content column, so the seventh day wrapped to a
+     * row of its own at the default font scale.
+     *
+     * 48dp is the board's own number: its node is called "Weekday selector / 7
+     * equal 48dp targets", and seven of them come to 336dp inside the sheet's
+     * 364dp with the remainder spent as the gaps between.
+     *
+     * **Not [TouchTargetMin], which is the same number and a different thing.**
+     * That is a floor every interactive element has to clear, and three sheet
+     * buttons once read it for their height and landed on a measurement nothing
+     * had chosen. This is a size the design names, which happens to agree with
+     * the floor.
+     *
+     * Applied as a fixed width and a minimum height, and the asymmetry is the
+     * point. Fixing both would make a true circle and clip the letter at large
+     * font scales, which `expressive-components.md` forbids outright; a floor
+     * lets the chip grow downward to hold its own text while the row keeps its
+     * seven columns.
+     */
+    val WeekdayChipSize = 48.dp
 
     /**
      * Vertical space a list reserves below its last row when the screen has a

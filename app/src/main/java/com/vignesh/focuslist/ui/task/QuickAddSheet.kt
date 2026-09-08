@@ -11,7 +11,7 @@ import androidx.compose.material3.InputChip
 import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextField
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetState
@@ -40,11 +40,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.foundation.text.KeyboardOptions
 import com.vignesh.focuslist.R
+import com.vignesh.focuslist.ui.component.focuslistFieldColors
+import com.vignesh.focuslist.ui.component.FocuslistFieldShape
 import com.vignesh.focuslist.core.design.FocuslistSpacing
 import com.vignesh.focuslist.core.domain.CapturedTask
 import com.vignesh.focuslist.core.domain.splitTrailingCapture
 import com.vignesh.focuslist.ui.component.scheduledDateLabel
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
@@ -139,8 +142,16 @@ fun QuickAddSheet(
                 .padding(horizontal = FocuslistSpacing.md)
                 .padding(bottom = FocuslistSpacing.lg)
         ) {
-            OutlinedTextField(
+            // Filled, per D-025. Every other surface in the app is a tinted
+            // container on a plain page, and the outlined field was the one
+            // component asking to be read by its border instead.
+            //
+            // The indicator and the two-corner container are dropped in
+            // `focuslistFieldColors`, which says why.
+            TextField(
                 value = title,
+                colors = focuslistFieldColors(),
+                shape = FocuslistFieldShape,
                 onValueChange = { typed ->
                     title = typed
                     // A new parse is a new reminder, so an old dismissal has
@@ -256,7 +267,11 @@ private fun ReminderChip(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val at = parsed.reminderAt(today) ?: return
+    // The clock rather than a parameter, because this label has to say where
+    // the reminder actually lands: D-030 resolves a time that has gone by to
+    // tomorrow, and a chip still reading "Today" would be the disagreement
+    // between the chip and the saved value that D-011 exists to prevent.
+    val at = parsed.reminderAt(today, LocalDateTime.now()) ?: return
     val time = at.toLocalTime().format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
     val label = stringResource(
         R.string.quick_add_reminder,

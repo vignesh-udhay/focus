@@ -2,7 +2,8 @@ package com.vignesh.focuslist.data.local
 
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
-import com.vignesh.focuslist.core.domain.Recurrence
+import com.vignesh.focuslist.core.domain.RecurrenceUnit
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 
@@ -51,7 +52,9 @@ private data class SeedTask(
     val title: String,
     val scheduledDate: LocalDate? = null,
     val estimatedDurationMinutes: Int? = null,
-    val recurrence: Recurrence? = null,
+    val recurrence: RecurrenceUnit? = null,
+    val recurrenceInterval: Int? = null,
+    val weekdays: Set<DayOfWeek> = emptySet(),
     val completedAt: Instant? = null
 )
 
@@ -79,7 +82,17 @@ private fun seedTasks(today: LocalDate): List<SeedTask> = listOf(
     SeedTask(
         title = "Pay the rent",
         scheduledDate = today.withDayOfMonth(28),
-        recurrence = Recurrence.MONTHLY
+        recurrence = RecurrenceUnit.MONTHLY
+    ),
+    // A weekday rule, so the seed can show the one thing D-027 added that the
+    // four periods could never express. Without it the editor has to be driven
+    // by hand before it can be looked at.
+    SeedTask(
+        title = "Team standup",
+        scheduledDate = today,
+        estimatedDurationMinutes = 15,
+        recurrence = RecurrenceUnit.WEEKLY,
+        weekdays = setOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY)
     ),
     SeedTask(
         title = "Submit the expense report",
@@ -100,15 +113,22 @@ private fun SeedTask.asRow(index: Int, createdAt: Long): Array<Any?> = arrayOf(
     null,
     estimatedDurationMinutes,
     recurrence?.name,
+    recurrenceInterval,
+    weekdays.takeIf { it.isNotEmpty() }
+        ?.sortedBy(DayOfWeek::getValue)
+        ?.joinToString(",", transform = DayOfWeek::name),
     completedAt?.toEpochMilli(),
     null
 )
 
+// The columns not named here take their declared defaults, which is what
+// `occurrenceNumber` wants: a seeded task is the first of its series.
 private const val InsertTask =
     "INSERT INTO tasks (id, title, notes, createdAt, scheduledDate, " +
-        "dueDate, estimatedDurationMinutes, recurrence, completedAt, deletedAt) " +
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        "dueDate, estimatedDurationMinutes, recurrence, recurrenceInterval, " +
+        "recurrenceWeekdays, completedAt, deletedAt) " +
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
 private const val MillisPerMinute = 60_000L
 
-private val seedTaskCount = seedTasks(LocalDate.EPOCH).size
+private val seedTaskCount = seedTasks(LocalDate.ofEpochDay(0)).size

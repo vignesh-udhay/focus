@@ -30,6 +30,9 @@ import com.vignesh.focuslist.ui.task.TaskDetailsScreen
 import com.vignesh.focuslist.ui.health.ReminderHealthScreen
 import com.vignesh.focuslist.ui.health.ReminderHealthViewModel
 import com.vignesh.focuslist.ui.reminder.ReminderPermissionGate
+import com.vignesh.focuslist.ui.settings.BackupScreen
+import com.vignesh.focuslist.ui.settings.BackupViewModel
+import com.vignesh.focuslist.ui.settings.SettingsScreen
 import com.vignesh.focuslist.ui.task.TaskListViewModel
 import com.vignesh.focuslist.ui.today.TodayScreen
 import com.vignesh.focuslist.ui.upcoming.UpcomingScreen
@@ -156,8 +159,8 @@ fun FocuslistNavHost(
             }
 
             composable(FocuslistRoutes.LOGBOOK) {
-                // No bottom bar, like Reminder health. Both are reached from the
-                // overflow and left by the arrow.
+                // No bottom bar. Logbook is reached from the overflow and left
+                // by the arrow.
                 LogbookScreen(
                     viewModel = viewModel,
                     onOpenTask = { id ->
@@ -167,14 +170,41 @@ fun FocuslistNavHost(
                 )
             }
 
-            // No bottom bar. It is a screen about the app rather than a place
-            // among the lists, and the frame draws a back arrow instead.
+            // No bottom bar. Reminder health is the room behind Settings'
+            // first row, and the frame draws a back arrow instead.
             composable(FocuslistRoutes.REMINDER_HEALTH) {
                 ReminderHealthScreen(
                     viewModel = viewModel(
                         factory = ReminderHealthViewModel.Factory(
                             deliveries = application.reminderDeliveryRepository,
                             checks = application.reminderHealthChecks
+                        )
+                    ),
+                    onBack = navController::popBackStack
+                )
+            }
+
+            composable(FocuslistRoutes.SETTINGS) {
+                val preferences by application.preferences.state.collectAsStateWithLifecycle()
+
+                SettingsScreen(
+                    preferences = preferences,
+                    onDynamicColorChange = application.preferences::setDynamicColor,
+                    onThemeChange = application.preferences::setTheme,
+                    onOpenReminderHealth = {
+                        navController.navigate(FocuslistRoutes.REMINDER_HEALTH)
+                    },
+                    onOpenBackup = { navController.navigate(FocuslistRoutes.BACKUP) },
+                    onBack = navController::popBackStack
+                )
+            }
+
+            composable(FocuslistRoutes.BACKUP) {
+                BackupScreen(
+                    viewModel = viewModel(
+                        factory = BackupViewModel.Factory(
+                            repository = application.backupRepository,
+                            contentResolver = application.contentResolver
                         )
                     ),
                     onBack = navController::popBackStack

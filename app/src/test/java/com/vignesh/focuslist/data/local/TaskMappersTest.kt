@@ -2,6 +2,7 @@ package com.vignesh.focuslist.data.local
 
 import com.vignesh.focuslist.core.domain.Task
 import com.vignesh.focuslist.core.domain.Recurrence
+import com.vignesh.focuslist.core.domain.RecurrenceUnit
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -29,7 +30,7 @@ class TaskMappersTest {
         reminderAt = reminderAt,
         reminderDeliveredAt = deliveredAt,
         estimatedDurationMinutes = 45,
-        recurrence = Recurrence.WEEKLY,
+        recurrence = Recurrence(RecurrenceUnit.WEEKLY),
         spawnedFromId = "task-0",
         completedAt = completedAt,
         deletedAt = deletedAt
@@ -45,7 +46,12 @@ class TaskMappersTest {
         reminderAt = reminderAt,
         reminderDeliveredAt = deliveredAt,
         estimatedDurationMinutes = 45,
-        recurrence = Recurrence.WEEKLY,
+        recurrence = RecurrenceUnit.WEEKLY,
+        recurrenceInterval = 1,
+        recurrenceWeekdays = emptySet(),
+        recurrenceEndDate = null,
+        recurrenceEndCount = null,
+        occurrenceNumber = 1,
         spawnedFromId = "task-0",
         completedAt = completedAt,
         deletedAt = deletedAt
@@ -69,7 +75,17 @@ class TaskMappersTest {
         // Neither of these was checked here before, which is how a column can
         // be added to one side of the mapping and quietly dropped on the way
         // across. "Field for field" now means it.
-        assertEquals(Recurrence.WEEKLY, entity.recurrence)
+        // The rule crosses as five columns since D-027, so "field for field"
+        // means all five. A weekly rule with no interval, no days and no end is
+        // still the rule the domain object holds, and each column has to say so
+        // on its own: dropping one here is exactly the failure this block was
+        // added to catch.
+        assertEquals(RecurrenceUnit.WEEKLY, entity.recurrence)
+        assertEquals(1, entity.recurrenceInterval)
+        assertEquals(emptySet<java.time.DayOfWeek>(), entity.recurrenceWeekdays)
+        assertNull(entity.recurrenceEndDate)
+        assertNull(entity.recurrenceEndCount)
+        assertEquals(1, entity.occurrenceNumber)
         assertEquals("task-0", entity.spawnedFromId)
         assertEquals(completedAt, entity.completedAt)
         assertEquals(deletedAt, entity.deletedAt)
@@ -94,7 +110,7 @@ class TaskMappersTest {
         assertEquals(reminderAt, task.reminderAt)
         assertEquals(deliveredAt, task.reminderDeliveredAt)
         assertEquals(45, task.estimatedDurationMinutes)
-        assertEquals(Recurrence.WEEKLY, task.recurrence)
+        assertEquals(Recurrence(RecurrenceUnit.WEEKLY), task.recurrence)
         assertEquals("task-0", task.spawnedFromId)
         assertEquals(completedAt, task.completedAt)
         assertEquals(deletedAt, task.deletedAt)

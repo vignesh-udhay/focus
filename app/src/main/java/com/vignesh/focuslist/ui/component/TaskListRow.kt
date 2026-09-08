@@ -5,8 +5,12 @@ import androidx.compose.material3.ListItemShapes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import com.vignesh.focuslist.R
-import com.vignesh.focuslist.core.domain.Recurrence
+import com.vignesh.focuslist.core.text.recurrenceSummary
 import com.vignesh.focuslist.core.domain.Task
 import java.time.LocalDate
 
@@ -58,6 +62,34 @@ internal fun TaskListRow(
         modifier = modifier,
         colors = colors,
         metadata = taskMetadata(task = task, today = today, showDate = showDate),
+        // **The estimate sits at the end of the row, not in the metadata line.**
+        // Date and repeat both answer *when*; a duration answers *how much*, and
+        // folding a number into a comma-list of words means reading a sentence
+        // to get it out again. In its own right-aligned column the estimates
+        // form a scannable strip, which is how "I have twenty minutes, what
+        // fits" gets answered, and that is `PRODUCT.md` principle 2's question
+        // almost word for word.
+        //
+        // Absent on most tasks, and that costs nothing: an estimate is optional
+        // per principle 3, and an empty trailing slot simply leaves the title
+        // more room. It also shortens a supporting line that was carrying up to
+        // three segments and their separators.
+        trailingContent = task.estimatedDurationMinutes?.let { minutes ->
+            {
+                // Through `durationLabel`, so the row reads 45m and 1h 30m like
+                // Task Details and the Duration sheet. It used to format its own
+                // `%1$d min` and was the one place in the app wording a duration
+                // differently, which is the thing that helper exists to stop:
+                // a 90 minute task read "90 min" here and "1h 30m" everywhere.
+                val label = durationLabel(minutes)
+                Text(
+                    text = label.text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.semantics { contentDescription = label.spoken }
+                )
+            }
+        },
         // A day that has already passed. The date text already says so on its
         // own; the colour is the second cue on top of it.
         isOverdue = task.scheduledDate?.isBefore(today) == true && !task.isCompleted
@@ -77,31 +109,36 @@ private fun taskMetadata(
     showDate: Boolean
 ): List<String> {
     val segments = mutableListOf<String>()
+    val isOverdue = task.scheduledDate?.isBefore(today) == true && !task.isCompleted
 
-    // Omitted where a section heading already names the day. Upcoming groups by
-    // date, so repeating it on every row would say the same thing twice and
-    // spend width the duration and the project need.
-    if (showDate) {
-        task.scheduledDate?.let { segments += scheduledDateLabel(it, today) }
+    // **First, because it is the one that will interrupt you.** `PRODUCT.md`
+    // principle 1 makes the reminder the product, and `TodayBand.LATER_TODAY`
+    // promises a task there "will announce itself" without saying when. The row
+    // is where that gets answered.
+    //
+    // Suppressed on an overdue task, whose reminder has already fired: "6:00 PM"
+    // on a row from last Tuesday describes nothing that is going to happen. It
+    // also keeps the date first on exactly the rows where being overdue is the
+    // point, which is what `metadataText` colours.
+    if (!isOverdue) {
+        task.reminderAt?.let { at ->
+            segments += at.toLocalTime().format(rememberTimeFormat())
+        }
     }
 
-    task.estimatedDurationMinutes?.let { minutes ->
-        segments += stringResource(R.string.task_duration_minutes, minutes)
+    // Omitted where a section heading already names the day. Upcoming groups by
+    // date and Today by band, so repeating it on every row would say the same
+    // thing twice.
+    if (showDate) {
+        task.scheduledDate?.let { segments += scheduledDateLabel(it, today) }
     }
 
     // Last, because it says something about the task's future rather than
     // about the occurrence in front of the user. It earns a place at all
     // because completing a repeating task does something a one-off does not,
     // and the row is the only warning before the tap.
-    task.recurrence?.let { segments += stringResource(it.labelRes) }
+    task.recurrence?.let { segments += recurrenceSummary(it, today) }
 
     return segments
 }
 
-private val Recurrence.labelRes: Int
-    get() = when (this) {
-        Recurrence.DAILY -> R.string.task_recurrence_daily
-        Recurrence.WEEKLY -> R.string.task_recurrence_weekly
-        Recurrence.MONTHLY -> R.string.task_recurrence_monthly
-        Recurrence.YEARLY -> R.string.task_recurrence_yearly
-    }

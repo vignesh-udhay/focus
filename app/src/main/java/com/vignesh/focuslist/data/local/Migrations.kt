@@ -20,6 +20,7 @@ import androidx.room.migration.Migration
  * Version 7: adds `reminder_deliveries`.
  * Version 8: adds `scheduledAheadMs` to reminder deliveries.
  * Version 9: removes the obsolete task `placement` column.
+ * Version 10: gives a recurrence rule an interval, a weekday set and an end.
  */
 
 /**
@@ -195,6 +196,40 @@ val MIGRATION_8_9 = Migration(8, 9) { database ->
     database.execSQL("ALTER TABLE tasks_new RENAME TO tasks")
 }
 
+/**
+ * Version 10 turns a recurrence period into a recurrence rule.
+ *
+ * `docs/decisions.md` D-027 is the entry, and D-019 before it is what this
+ * supersedes. Five appended columns and not one row rewritten, which is the
+ * shape every migration before version 9 used and the reason the `recurrence`
+ * column keeps both its name and its four stored values: `DAILY` still means
+ * daily, and an install that has been repeating a task since version 3 carries
+ * on repeating it.
+ *
+ * Four of the five are nullable and undefaulted, and null is the honest reading
+ * of each. No interval means every period, which is what every existing rule
+ * does. No weekdays means the day the task is anchored to. Neither end column
+ * set means the series never ends, which is the only thing recurrence has been
+ * able to say until now.
+ *
+ * `occurrenceNumber` is the exception, at `NOT NULL DEFAULT 1`, because a
+ * position in a series has no null. One is the conservative reading rather than
+ * a guess: a task that has already come back six times has no record of the
+ * six, and an "after ten" rule set on it today should give ten more rather than
+ * four. Inventing the six would be the app vouching for a past it did not
+ * observe, which is the same rule version 7 followed when it declined to
+ * backfill delivery history.
+ */
+val MIGRATION_9_10 = Migration(9, 10) { database ->
+    database.execSQL("ALTER TABLE tasks ADD COLUMN recurrenceInterval INTEGER")
+    database.execSQL("ALTER TABLE tasks ADD COLUMN recurrenceWeekdays TEXT")
+    database.execSQL("ALTER TABLE tasks ADD COLUMN recurrenceEndDate INTEGER")
+    database.execSQL("ALTER TABLE tasks ADD COLUMN recurrenceEndCount INTEGER")
+    database.execSQL(
+        "ALTER TABLE tasks ADD COLUMN occurrenceNumber INTEGER NOT NULL DEFAULT 1"
+    )
+}
+
 /** Every migration, in order, for the builder and the migration test. */
 val FocuslistMigrations = arrayOf(
     MIGRATION_1_2,
@@ -204,5 +239,6 @@ val FocuslistMigrations = arrayOf(
     MIGRATION_5_6,
     MIGRATION_6_7,
     MIGRATION_7_8,
-    MIGRATION_8_9
+    MIGRATION_8_9,
+    MIGRATION_9_10
 )

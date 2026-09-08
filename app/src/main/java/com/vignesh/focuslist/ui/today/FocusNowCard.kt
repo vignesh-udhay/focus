@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import com.vignesh.focuslist.R
@@ -60,6 +61,7 @@ fun FocusNowCard(
     today: LocalDate,
     onToggleComplete: () -> Unit,
     onOpenFocus: () -> Unit,
+    onOpen: () -> Unit,
     modifier: Modifier = Modifier,
     // What is left of a paused session, for the one reason that has a session
     // behind it. Null for the other two, which have nothing running.
@@ -67,16 +69,35 @@ fun FocusNowCard(
 ) {
     val toggleDescription =
         stringResource(R.string.task_row_mark_complete, focusNow.task.title)
+    val openDescription = stringResource(R.string.task_open)
 
     Card(
+        // **The card opens the task, and it used to not.** The comment here read
+        // "the card is not itself a button ... a clickable container behind two
+        // controls is a third target the user cannot see the edges of", which is
+        // a fair worry and answers the wrong question.
+        //
+        // D-012 takes the promoted task out of the bands below, so it is on this
+        // screen exactly once. A card that could not be opened made that one
+        // task's details unreachable from Today altogether: not in a band, not
+        // in Upcoming, which holds later days, not in Inbox, which holds undated
+        // work. The task the screen is built around was the only one that could
+        // not be edited without first completing or rescheduling it.
+        //
+        // The overlapping-target worry is answered by the arrangement every task
+        // row already uses: the children take their own clicks and the body
+        // takes the rest. This is that, with a button on the end of it.
+        onClick = onOpen,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
         ),
-        // The card is not itself a button. Its action is, and the checkbox is,
-        // and a clickable container behind two controls is a third target the
-        // user cannot see the edges of.
-        modifier = modifier.fillMaxWidth()
+        modifier = modifier
+            .fillMaxWidth()
+            // Named, because "what should I do now" answered by an unlabelled
+            // clickable card tells a screen reader nothing about what tapping it
+            // does. The same string the task rows use, since it is the same act.
+            .semantics { onClick(label = openDescription, action = null) }
     ) {
         Column(modifier = Modifier.padding(FocuslistSpacing.md)) {
             Text(
@@ -250,6 +271,7 @@ private fun FocusNowPausedPreview() {
             today = LocalDate.of(2026, 1, 1),
             onToggleComplete = {},
             onOpenFocus = {},
+            onOpen = {},
             modifier = Modifier.padding(FocuslistSpacing.md),
             pausedRemainingMinutes = 17
         )
@@ -271,6 +293,7 @@ private fun FocusNowReminderPreview() {
             today = LocalDate.of(2026, 1, 1),
             onToggleComplete = {},
             onOpenFocus = {},
+            onOpen = {},
             modifier = Modifier.padding(FocuslistSpacing.md)
         )
     }
@@ -293,6 +316,7 @@ private fun FocusNowNoTimePreview() {
             today = LocalDate.of(2026, 1, 1),
             onToggleComplete = {},
             onOpenFocus = {},
+            onOpen = {},
             modifier = Modifier.padding(FocuslistSpacing.md)
         )
     }

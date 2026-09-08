@@ -2,7 +2,9 @@ package com.vignesh.focuslist.ui.component
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -20,7 +22,13 @@ import com.vignesh.focuslist.core.design.focuslistContentGutter
  *
  * Material 3 has no empty-state component, so it is a centered column of two
  * lines. The copy is plain: an empty list is not an achievement, and nothing
- * here congratulates the user or decorates the absence with an illustration.
+ * here congratulates the user.
+ *
+ * [illustration] is the screen's mascot, and only some screens have one. It
+ * sits above the headline and is not a decoration of the absence: each mascot
+ * says why its own screen is empty, which is the same thing the headline says.
+ * A screen without one is not a lesser empty state, it is a screen whose mascot
+ * has not been drawn yet.
  *
  * Optically centred rather than geometrically. Text sitting on the exact
  * middle of a screen reads as slightly low, so the column is lifted by a
@@ -33,7 +41,8 @@ import com.vignesh.focuslist.core.design.focuslistContentGutter
 internal fun TaskListEmptyState(
     headline: String,
     supporting: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    illustration: (@Composable () -> Unit)? = null
 ) {
     Column(
         modifier = modifier
@@ -44,6 +53,11 @@ internal fun TaskListEmptyState(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        if (illustration != null) {
+            illustration()
+            Spacer(Modifier.height(FocuslistSpacing.lg))
+        }
+
         Text(
             text = headline,
             style = MaterialTheme.typography.titleMediumEmphasized,

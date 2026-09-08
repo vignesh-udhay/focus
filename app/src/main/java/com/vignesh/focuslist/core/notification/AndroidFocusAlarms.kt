@@ -8,7 +8,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
 import com.vignesh.focuslist.MainActivity
@@ -117,7 +116,7 @@ class FocusEstimateReceiver : BroadcastReceiver() {
             .setCategory(androidx.core.app.NotificationCompat.CATEGORY_REMINDER)
             .build()
 
-        NotificationManagerCompat.from(context).notify(EstimateNotificationId, notification)
+        context.notifyIfAllowed(EstimateNotificationId, notification)
     }
 
     companion object {

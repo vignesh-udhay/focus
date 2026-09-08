@@ -18,7 +18,97 @@ clear:
 
 The task row should be fast to scan and fast to interact with.
 
+
 ---
+
+# The estimate sits at the end, not in the metadata line
+
+`[✓] Title` over its metadata, and the duration right-aligned against them.
+
+**Because it answers a different question.** The scheduled date and the repeat
+both say *when*; a duration says *how much*. Folded into one middot-separated
+line, getting the number out means reading a sentence. In its own column the
+estimates line up, and a list you can run your eye down answers "I have twenty
+minutes, what fits" — which is `PRODUCT.md` principle 2's question nearly word
+for word.
+
+**It shares the title's baseline, not the row's middle.** `ListItem` centres its
+trailing slot, which lines the estimate up with nothing: on a 72dp row the
+title's centre is 27dp and the row's is 36dp, so the number floated between the
+two lines and the column wobbled against the titles beside it. `alignByBaseline`
+on both puts them on one line, which is the table idiom and the strongest way to
+say the number belongs to that title.
+
+It reads from the type rather than from a constant, so it holds at every font
+scale, and it takes the *first* baseline, so a title wrapping to two lines does
+not drag the estimate down with it. That last part is what decides it: centring
+is stable only while rows are uniform, and these rows grow. Material's own
+`ListItem` already switches its trailing slot to the top for three-line items,
+so "centre when short, anchor when tall" is the platform's rule and this
+generalises it.
+
+**Absent on most tasks, and that costs nothing.** An estimate is optional per
+principle 3, so the column is often empty; an empty trailing slot just leaves
+the title more room, which is the right trade for a title-first product. It also
+shortens a supporting line that was carrying up to three segments.
+
+**Not an action.** D-023 removed the trailing *button* because it gave
+rescheduling the most prominent position on every line. A duration is
+information and cannot be tapped, so that argument does not carry over.
+
+**Worded by `durationLabel`**, so the row reads `45m` and `1h 30m` like Task
+Details, the Duration sheet and the Plan row. The row used to format its own
+`%1$d min` and was the single place in the app wording a duration differently: a
+90-minute task read "90 min" here and "1h 30m" everywhere else. That string is
+retired.
+
+---
+
+# What the metadata line says
+
+`Today`, `Tomorrow`, or the date, then the repeat. Nothing else.
+
+**Not "Scheduled today".** The board drew that, and the word "Scheduled" repeats
+on every row while earning nothing. On Today the band heading already names the
+day, so it would be the third telling of one fact.
+
+**An overdue row shows a past date, and the colour is the second cue.**
+`expressive-design-system.md` settles both halves: `tertiary` rather than
+`error`, because nothing failed and a day passed; and readable without colour at
+all, because an overdue task shows a date where a current one reads "Today".
+
+**The reminder time comes first, and the date often does not come at all.**
+`PRODUCT.md` principle 1 makes the reminder the product, and `TodayBand`
+promises a task under Later today "will announce itself" without saying when.
+The row is where that gets answered, so it leads. The board had drawn a time on
+thirteen rows and the code rendered none.
+
+The date is omitted wherever a heading already fixes the day: Upcoming groups by
+date, and on Today only the Overdue band shows one, because its tasks come from
+various past days. Everywhere else the row was repeating its own heading. One
+rule: the row says what its heading does not.
+
+**An overdue row shows no time.** Its reminder has already fired, so "6:00 PM"
+on a row from last Tuesday describes nothing that is going to happen. That also
+keeps the date first on exactly the rows where being overdue is the point, which
+is the segment the overdue colour lands on.
+
+**A year only when the date is not in the current one.** One rule, every date
+the app writes: rows, Plan rows, section headings and a recurrence horizon.
+Always showing it puts a "2026" on a task scheduled next Tuesday, which is noise
+on every row; never showing it makes a repeat ending next August
+indistinguishable from one that ended last August. `scheduledDateLabel` used to
+carry a year through `FormatStyle.MEDIUM` while `sectionDateLabel` never did, so
+two dates a thumb apart on Upcoming were formatted by different rules.
+
+The row and the heading keep different shapes, which is not the same question: a
+heading names a day and leads with the weekday, a row names a date and does not.
+
+**Not "Was due Tuesday", which the board drew on eight frames.** It names the
+wrong field — the row carries the *scheduled* date, and this screen keeps
+scheduled and due apart deliberately — and weekday naming is what
+`scheduledDateLabel` refuses beyond two days, on the grounds that a weekday then
+stops being easier to place than the date.
 
 # Design Principles
 

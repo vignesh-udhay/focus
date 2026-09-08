@@ -5,6 +5,7 @@ import android.content.pm.ApplicationInfo
 import androidx.room.Room
 import com.vignesh.focuslist.data.local.FocuslistDatabase
 import com.vignesh.focuslist.data.local.FocuslistMigrations
+import com.vignesh.focuslist.data.local.FocuslistPreferences
 import com.vignesh.focuslist.data.local.debugSeedCallback
 import com.vignesh.focuslist.core.notification.AndroidFocusAlarms
 import com.vignesh.focuslist.core.notification.AndroidReminderAlarms
@@ -15,6 +16,7 @@ import com.vignesh.focuslist.core.notification.ReminderHealthChecks
 import com.vignesh.focuslist.core.notification.ReminderScheduler
 import com.vignesh.focuslist.core.time.SystemCurrentDay
 import com.vignesh.focuslist.data.repository.ReminderDeliveryRepository
+import com.vignesh.focuslist.data.repository.BackupRepository
 import com.vignesh.focuslist.data.repository.TaskRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -57,6 +59,14 @@ class FocuslistApplication : Application() {
     }
 
     val taskRepository: TaskRepository by lazy { TaskRepository(database.taskDao()) }
+
+    /** The two persisted appearance choices, observed directly by the theme. */
+    val preferences: FocuslistPreferences by lazy { FocuslistPreferences(this) }
+
+    /** User-controlled JSON continuity, kept separate from Android cloud backup. */
+    val backupRepository: BackupRepository by lazy {
+        BackupRepository(database.backupDao(), preferences)
+    }
 
     /**
      * What the app actually delivered, as opposed to what it intended to.

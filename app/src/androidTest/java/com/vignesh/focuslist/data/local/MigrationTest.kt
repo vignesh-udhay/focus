@@ -7,6 +7,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.vignesh.focuslist.core.domain.Recurrence
+import com.vignesh.focuslist.core.domain.RecurrenceEnd
+import com.vignesh.focuslist.core.domain.RecurrenceUnit
 import com.vignesh.focuslist.core.domain.Task
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -248,7 +251,8 @@ class MigrationTest {
             MIGRATION_5_6,
             MIGRATION_6_7,
             MIGRATION_7_8,
-            MIGRATION_8_9
+            MIGRATION_8_9,
+            MIGRATION_9_10
         ).use { database ->
             database.query(
                 "SELECT notes, recurrence, spawnedFromId, reminderAt FROM tasks WHERE id = ?",
@@ -484,7 +488,8 @@ class MigrationTest {
             TEST_DB,
             LatestVersion,
             true,
-            MIGRATION_8_9
+            MIGRATION_8_9,
+            MIGRATION_9_10
         ).use { database ->
             database.query(
                 """
@@ -530,12 +535,122 @@ class MigrationTest {
                         "recurrence",
                         "spawnedFromId",
                         "completedAt",
-                        "deletedAt"
+                        "deletedAt",
+                        // Appended by version 10, so they come after the columns
+                        // version 9 rebuilt the table with. Order is not a thing
+                        // Room validates, but it is a thing this list asserts,
+                        // and appending is what the migration does.
+                        "recurrenceInterval",
+                        "recurrenceWeekdays",
+                        "recurrenceEndDate",
+                        "recurrenceEndCount",
+                        "occurrenceNumber"
                     ),
                     columns
                 )
             }
         }
+    }
+
+    /**
+     * Version 10 gives a rule its new properties without changing any rule.
+     *
+     * `docs/decisions.md` D-027 turns the `recurrence` column from the whole
+     * rule into its period, and the thing that has to be true is that no row
+     * moves: a task repeating weekly since version 3 still repeats weekly, and
+     * reads back as a rule with an interval of one, no weekdays and no end.
+     *
+     * Asserted twice over, in SQL and then through the DAO, because the columns
+     * being right and the mapper reading them right are two separate ways for
+     * this to be wrong.
+     */
+    @Test
+    fun versionNineGainsAnIntervalAndAnEndWithoutMovingARule() {
+        helper.createDatabase(TEST_DB, 9).use { database ->
+            database.execSQL(
+                """
+                INSERT INTO tasks (
+                    id, title, notes, createdAt, scheduledDate, dueDate,
+                    reminderAt, reminderDeliveredAt, estimatedDurationMinutes,
+                    recurrence, spawnedFromId, completedAt, deletedAt
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """.trimIndent(),
+                arrayOf<Any?>(
+                    "repeating-v9",
+                    "Pay the rent",
+                    null,
+                    createdAt.toEpochMilli(),
+                    scheduled.toEpochDay(),
+                    null,
+                    null,
+                    null,
+                    null,
+                    "WEEKLY",
+                    null,
+                    null,
+                    null
+                )
+            )
+        }
+
+        helper.runMigrationsAndValidate(
+            TEST_DB,
+            LatestVersion,
+            true,
+            MIGRATION_9_10
+        ).use { database ->
+            database.query(
+                """
+                SELECT recurrence, recurrenceInterval, recurrenceWeekdays,
+                       recurrenceEndDate, recurrenceEndCount, occurrenceNumber
+                FROM tasks WHERE id = ?
+                """.trimIndent(),
+                arrayOf<Any?>("repeating-v9")
+            ).use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("WEEKLY", cursor.getString(0))
+                assertTrue(cursor.isNull(1))
+                assertTrue(cursor.isNull(2))
+                assertTrue(cursor.isNull(3))
+                assertTrue(cursor.isNull(4))
+                // The one column with a default, because a position in a series
+                // has no null. One is the conservative reading: an "after ten"
+                // rule set on this task tomorrow gets ten more occurrences and
+                // not four, because nothing here knows how many it has had.
+                assertEquals(1, cursor.getInt(5))
+            }
+        }
+
+        val task = openAndReadTasks().single { it.id == "repeating-v9" }
+
+        assertEquals(Recurrence(RecurrenceUnit.WEEKLY), task.recurrence)
+        assertEquals(1, task.recurrence?.interval)
+        assertEquals(emptySet<java.time.DayOfWeek>(), task.recurrence?.weekdays)
+        assertEquals(RecurrenceEnd.Never, task.recurrence?.end)
+        assertEquals(1, task.occurrenceNumber)
+    }
+
+    /**
+     * The migrated file, read back through the production database class.
+     *
+     * Room validates the identity hash on open, so calling this at all proves
+     * the migrated schema and the entity agree; what comes back proves the
+     * mapper agrees with both.
+     */
+    private fun openAndReadTasks(): List<Task> {
+        val database = Room.databaseBuilder(
+            ApplicationProvider.getApplicationContext<Context>(),
+            FocuslistDatabase::class.java,
+            TEST_DB
+        )
+            .addMigrations(*FocuslistMigrations)
+            .build()
+
+        helper.closeWhenFinished(database)
+
+        return runBlocking { database.taskDao().observeTasks().first() }
+            .map { entity -> entity.toDomain() }
     }
 
     /**
@@ -550,18 +665,7 @@ class MigrationTest {
         seedVersion1()
         migrate().close()
 
-        val database = Room.databaseBuilder(
-            ApplicationProvider.getApplicationContext<Context>(),
-            FocuslistDatabase::class.java,
-            TEST_DB
-        )
-            .addMigrations(*FocuslistMigrations)
-            .build()
-
-        helper.closeWhenFinished(database)
-
-        val tasks: List<Task> = runBlocking { database.taskDao().observeTasks().first() }
-            .map { entity -> entity.toDomain() }
+        val tasks: List<Task> = openAndReadTasks()
 
         // Oldest first, which is the order the DAO now guarantees.
         assertEquals(listOf("scheduled", "bare", "done"), tasks.map { it.id })
@@ -587,6 +691,6 @@ class MigrationTest {
         const val TEST_DB = "migration-test.db"
 
         /** The schema every migration in this test is aimed at. */
-        const val LatestVersion = 9
+        const val LatestVersion = 10
     }
 }

@@ -32,6 +32,7 @@ import com.vignesh.focuslist.core.domain.Task
 import com.vignesh.focuslist.core.domain.inboxTasks
 import com.vignesh.focuslist.ui.component.AddTaskFab
 import com.vignesh.focuslist.ui.component.FocuslistTopAppBar
+import com.vignesh.focuslist.ui.component.InboxMascot
 import com.vignesh.focuslist.ui.component.TaskListEmptyState
 import com.vignesh.focuslist.ui.component.TaskListRow
 import com.vignesh.focuslist.ui.component.UndoSnackbarHost
@@ -41,6 +42,7 @@ import com.vignesh.focuslist.ui.task.UndoSnackbarEffect
 import com.vignesh.focuslist.ui.theme.FocuslistTheme
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 /**
  * Inbox: everything outstanding without a scheduled date.
@@ -103,7 +105,7 @@ fun InboxScreen(
                     // Inbox has none to give. Today is the honest default:
                     // a reminder is independent of a scheduled date, so the
                     // task stays in Inbox and still speaks up this afternoon.
-                    reminderAt = parsed.reminderAt(viewModel.today.value)
+                    reminderAt = parsed.reminderAt(viewModel.today.value, LocalDateTime.now())
                 )
                 if (captured) isQuickAddVisible = false
             }
@@ -168,7 +170,8 @@ private fun InboxContent(
             TaskListEmptyState(
                 headline = stringResource(R.string.inbox_empty_headline),
                 supporting = stringResource(R.string.inbox_empty_supporting),
-                modifier = Modifier.padding(innerPadding)
+                modifier = Modifier.padding(innerPadding),
+                illustration = { InboxMascot() }
             )
         } else {
             LazyColumn(

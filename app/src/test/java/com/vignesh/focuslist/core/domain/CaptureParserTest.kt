@@ -5,6 +5,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 
 /**
@@ -20,6 +21,11 @@ class CaptureParserTest {
 
     private val today: LocalDate = LocalDate.of(2026, 9, 8)
     private val tomorrow: LocalDate = today.plusDays(1)
+
+    // Nine in the morning, so every 3pm below is still ahead and D-030's
+    // forward resolution has nothing to do. The tests that want it to act
+    // pass their own later clock, which is what makes them readable.
+    private val morning: LocalDateTime = today.atTime(9, 0)
 
     private fun capture(text: String) = splitTrailingCapture(text, today)
 
@@ -43,7 +49,7 @@ class CaptureParserTest {
         assertEquals("Call the plumber", result.title)
         assertEquals(tomorrow, result.date)
         assertNull(result.time)
-        assertNull(result.reminderAt(today))
+        assertNull(result.reminderAt(today, morning))
     }
 
     @Test
@@ -53,7 +59,7 @@ class CaptureParserTest {
         assertEquals("Call the plumber", result.title)
         assertEquals(tomorrow, result.date)
         assertEquals(LocalTime.of(15, 0), result.time)
-        assertEquals(tomorrow.atTime(15, 0), result.reminderAt(today))
+        assertEquals(tomorrow.atTime(15, 0), result.reminderAt(today, morning))
     }
 
     /**
@@ -66,7 +72,7 @@ class CaptureParserTest {
 
         assertEquals("Call the dentist", result.title)
         assertNull(result.date)
-        assertEquals(today.atTime(15, 0), result.reminderAt(today))
+        assertEquals(today.atTime(15, 0), result.reminderAt(today, morning))
     }
 
     // --- the mark, which is what the field colours ---------------------------
@@ -111,7 +117,7 @@ class CaptureParserTest {
         val dismissed = capture(text).withoutReminder()
 
         assertNull(dismissed.time)
-        assertNull(dismissed.reminderAt(today))
+        assertNull(dismissed.reminderAt(today, morning))
         // The day survives, because only the reminder has a control.
         assertEquals(tomorrow, dismissed.date)
         assertEquals("Call the plumber", dismissed.title)
@@ -245,5 +251,63 @@ class CaptureParserTest {
     fun caseDoesNotMatter() {
         assertEquals(LocalTime.of(15, 0), parseTimeOfDay("3PM"))
         assertEquals(LocalTime.of(9, 0), parseTimeOfDay("At 9AM"))
+    }
+
+    // --- D-030: a reminder never resolves into the past -----------------------
+
+    /**
+     * The defect this fixes, at the door nobody was looking at.
+     *
+     * "at 3pm" typed at 4pm used to capture a reminder for an hour ago, which
+     * the scheduler then clamped to now and rang at once. `date-parsing.md`
+     * already promises no supported input resolves to the past; that promise
+     * covered the day and not the time riding on it.
+     */
+    @Test
+    fun aTimeAlreadyGoneTodayResolvesToTomorrow() {
+        val result = capture("Call the dentist at 3pm")
+
+        assertEquals(
+            tomorrow.atTime(15, 0),
+            result.reminderAt(today, today.atTime(16, 0))
+        )
+    }
+
+    /** And is left alone while it is still ahead, which is the common case. */
+    @Test
+    fun aTimeStillAheadTodayStaysToday() {
+        val result = capture("Call the dentist at 3pm")
+
+        assertEquals(
+            today.atTime(15, 0),
+            result.reminderAt(today, today.atTime(14, 59))
+        )
+    }
+
+    /**
+     * Naming the day does not exempt it, because the words name the task's day
+     * and a reminder is independent of it. The Reminder chip reads the resolved
+     * day, so a capture that moved says "Tomorrow" before it is saved.
+     */
+    @Test
+    fun anExplicitTodayWithATimeAlreadyGoneAlsoResolvesForward() {
+        val result = capture("Call the dentist today at 3pm")
+
+        assertEquals(today, result.date)
+        assertEquals(
+            tomorrow.atTime(15, 0),
+            result.reminderAt(today, today.atTime(16, 0))
+        )
+    }
+
+    /** A day of its own that is already ahead is untouched whatever the hour. */
+    @Test
+    fun aNamedFutureDayIsNeverMoved() {
+        val result = capture("Call the plumber tomorrow at 3pm")
+
+        assertEquals(
+            tomorrow.atTime(15, 0),
+            result.reminderAt(today, today.atTime(23, 59))
+        )
     }
 }

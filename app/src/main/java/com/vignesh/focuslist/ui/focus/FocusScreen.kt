@@ -548,7 +548,7 @@ private fun FocusWordedButton(text: String, primary: Boolean, onClick: () -> Uni
         // A floor rather than a fixed height. Pinned at exactly the control
         // height, a label at 200% font scale was cut through the middle of its
         // letters; the button is allowed to grow to hold its own text.
-        modifier = Modifier.heightIn(min = FocuslistDimensions.FocusControlSize)
+        modifier = Modifier.heightIn(min = FocuslistDimensions.ActionHeight)
     ) {
         Text(text = text, maxLines = 1)
     }

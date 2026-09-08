@@ -23,9 +23,10 @@ Compose, Lifecycle, Room. Adding to it needs a reason, per `AGENTS.md`.
     core/design       design tokens: color, spacing, dimensions, motion, layout
     core/domain       task model and pure business rules
     core/notification alarm seam and its Android implementation
+    core/text         resource-backed wording shared by screens and notifications
     core/time         current-day seam and its Android implementation
-    data/local        Room: entity, DAO, converters, migrations, mappers
-    data/repository   TaskRepository
+    data/local        Room plus the two-value SharedPreferences store
+    data/repository   task, reminder-delivery, and backup repositories/codecs
     ui/component      shared composables
     ui/<screen>       one package per screen
     ui/navigation     routes and the NavHost
@@ -34,15 +35,24 @@ Compose, Lifecycle, Room. Adding to it needs a reason, per `AGENTS.md`.
 `core` knows nothing about Android UI. `ui` knows nothing about Room.
 `data` knows nothing about composables.
 
+`core/text` exists because of that first rule. `DateLabel` and `DurationLabel`
+sit in `ui/component` and are only ever read by a screen. Naming a recurrence
+rule is not: the reminder notification names one too, and `core/notification`
+cannot import `ui`. Nothing in `core` does, and one shared formatter was not
+worth being the first. Anything with the same shape, wording that a screen and a
+notification must agree on, belongs here.
+
 ## Composition root
 
-`FocuslistApplication` owns four things for the life of the process:
+`FocuslistApplication` owns the small set of process-scoped services:
 
 - `database`, a Room database, created lazily so nothing touches disk until a
   task is asked for
 - `taskRepository`, wrapping the DAO
 - `currentDay`, a `SystemCurrentDay` that listens for date-change broadcasts
 - `focusAlarms`, an `AndroidFocusAlarms`
+- `preferences`, the observable dynamic-colour and theme choices
+- `backupRepository`, coordinating versioned JSON with Room and preferences
 
 It is deliberately not a service locator. It holds these and nothing else. If
 something new needs process scope, adding it here is correct; adding a
@@ -110,7 +120,8 @@ Compose Navigation. Routes are string constants in `FocuslistRoutes`, named
 rather than positional, so a route survives screens being reordered.
 
 Destinations are split into primary, which appear in the navigation bar, and
-secondary, reachable through More.
+rooms. Logbook and Settings are reached through More; Reminder health is reached
+through Settings.
 
 Focus is a sheet rather than a destination, which matches `PRODUCT.md`
 treating it as a mode rather than a place. `FocuslistNavHost` opens
@@ -120,14 +131,12 @@ The Anytime and Someday routes were removed at Phase 3 along with the
 placement axis they read. `docs/decisions.md` D-002 has the reason and
 `docs/design/storage.md` has the migration.
 
-**The bar and `PRODUCT.md` do not yet agree.** `TopLevelDestinations` holds
-Today and Inbox; Upcoming is still a `SecondaryDestination` behind More,
-alongside Logbook and Reminder health. `PRODUCT.md` and the Clean Slate board
-both put Upcoming in the bar and everything else in an app-bar overflow. That
-is remaining Phase 3 work, not a decision to revisit.
+`TopLevelDestinations` holds Today, Inbox and Upcoming, matching `PRODUCT.md`.
+The app-bar overflow holds Logbook and Settings. Reminder health keeps its own
+route but has one permanent entry, Settings' first row, under D-029.
 
-`SecondaryRoutes` is derived from the `SecondaryDestinations` list rather than
-written out again, so adding or removing a More entry is one edit.
+The overflow destinations are one list rather than being written out at each
+anchor, so adding or removing a More entry is one edit.
 
 ## Testing
 

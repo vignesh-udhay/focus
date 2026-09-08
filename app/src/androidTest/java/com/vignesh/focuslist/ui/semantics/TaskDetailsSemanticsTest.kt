@@ -5,7 +5,11 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -15,6 +19,7 @@ import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.waitUntilExactlyOneExists
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vignesh.focuslist.core.domain.Recurrence
+import com.vignesh.focuslist.core.domain.RecurrenceUnit
 import com.vignesh.focuslist.ui.task.TaskDetailsScreen
 import com.vignesh.focuslist.ui.task.TaskListViewModel
 import org.junit.Assert.assertEquals
@@ -94,6 +99,12 @@ class TaskDetailsSemanticsTest {
      * travels the same path the screen reads and sees domain tasks rather than
      * entities.
      */
+    /** What the task holds right now, with no waiting. */
+    private fun currentTask(
+        viewModel: TaskListViewModel
+    ): com.vignesh.focuslist.core.domain.Task =
+        viewModel.allTasks.value.single { it.id == TASK_ID }
+
     private fun awaitTask(
         viewModel: TaskListViewModel,
         predicate: (com.vignesh.focuslist.core.domain.Task) -> Boolean
@@ -231,25 +242,105 @@ class TaskDetailsSemanticsTest {
     }
 
     /**
-     * The Repeat row picks one of `Recurrence`'s four periods or none. The
-     * board's editor, with an interval and a weekday set and an end condition,
-     * is Phase 4 per D-019 and is deliberately absent.
+     * The Repeat editor, which `docs/decisions.md` D-027 built and D-019 had
+     * deferred. This test used to assert the opposite, that none of Every, Days
+     * or Ends appeared; the assertion is inverted rather than deleted, because
+     * the three names are exactly what tells the two designs apart.
      */
     @Test
-    fun repeatPicksAPeriodAndOffersNoEditor() {
+    fun repeatOffersTheEditorTheBoardDraws() {
+        setScreen(dao = withTask())
+
+        rule.onNodeWithText(REPEAT).performClick()
+        rule.waitUntilExactlyOneExists(hasText(EVERY), TIMEOUT_MILLIS)
+
+        listOf(EVERY, DAYS, ENDS, SAVE_REPEAT).forEach { present ->
+            rule.onNodeWithText(present).assertExists()
+        }
+    }
+
+    /**
+     * **Nothing is written until Save**, which is the one place Task Details
+     * departs from D-018's commit-as-you-go rule and the sheet's own KDoc says
+     * why: a rule is four fields that only mean something together, so writing
+     * each tap would put half-built rules on the task.
+     */
+    @Test
+    fun aWeekdayIsNotWrittenUntilSaveIsPressed() {
         val viewModel = setScreen(dao = withTask())
 
         rule.onNodeWithText(REPEAT).performClick()
-        rule.waitUntilExactlyOneExists(hasText(WEEKLY), TIMEOUT_MILLIS)
+        rule.waitUntilExactlyOneExists(hasText(DAYS), TIMEOUT_MILLIS)
+        rule.onNodeWithContentDescription(WEDNESDAY).performClick()
 
-        // None of the Phase 4 editor is here.
-        listOf(EVERY, DAYS, ENDS).forEach { absent ->
-            rule.onAllNodesWithText(absent).assertCountEquals(0)
+        // Still nothing, one tap in.
+        assertNull(currentTask(viewModel).recurrence)
+
+        rule.onNodeWithText(SAVE_REPEAT).performClick()
+
+        awaitTask(viewModel) { task ->
+            task.recurrence?.weekdays == setOf(java.time.DayOfWeek.WEDNESDAY)
         }
-
-        rule.onNodeWithText(WEEKLY).performClick()
-        awaitTask(viewModel) { task -> task.recurrence == Recurrence.WEEKLY }
     }
+
+    /**
+     * **The last selected day does not come off.** The board's weekday frame is
+     * named "require >=1 selected day", and D-027 enforces it by nothing
+     * happening rather than by an error: there is no failure to report, only a
+     * state the rule cannot be in.
+     *
+     * The second tap is the assertion. Without the guard it clears the set, and
+     * Save writes a weekly rule that names no day.
+     */
+    @Test
+    fun theLastWeekdayCannotBeDeselected() {
+        val viewModel = setScreen(dao = withTask())
+
+        rule.onNodeWithText(REPEAT).performClick()
+        rule.waitUntilExactlyOneExists(hasText(DAYS), TIMEOUT_MILLIS)
+
+        rule.onNodeWithContentDescription(WEDNESDAY).performClick()
+        rule.onNodeWithContentDescription(WEDNESDAY).performClick()
+
+        rule.onNodeWithText(SAVE_REPEAT).performClick()
+
+        awaitTask(viewModel) { task ->
+            task.recurrence?.weekdays == setOf(java.time.DayOfWeek.WEDNESDAY)
+        }
+    }
+
+    /**
+     * The board draws no way to stop a task repeating, and D-027 adds one. A
+     * task with no rule is not offered it, because a control that can do nothing
+     * is one the user cannot tell worked.
+     */
+    @Test
+    fun clearingIsOfferedOnlyWhileTheTaskRepeats() {
+        val viewModel = setScreen(
+            dao = withTask(recurrence = Recurrence(RecurrenceUnit.WEEKLY))
+        )
+
+        rule.onNodeWithText(REPEAT).performClick()
+        rule.waitUntilExactlyOneExists(hasText(EVERY), TIMEOUT_MILLIS)
+        rule.onAllNodes(clearRepeatAction).assertCountEquals(1)
+
+        rule.onAllNodes(clearRepeatAction).onFirst().performClick()
+        awaitTask(viewModel) { task -> task.recurrence == null }
+
+        rule.onNodeWithText(REPEAT).performClick()
+        rule.waitUntilExactlyOneExists(hasText(EVERY), TIMEOUT_MILLIS)
+        rule.onAllNodes(clearRepeatAction).assertCountEquals(0)
+    }
+
+    /**
+     * The clear action, told apart from the Plan row behind the sheet.
+     *
+     * Once the rule is gone the row reads "Repeat  Doesn't repeat", so text
+     * alone matches either. The button carries `Role.Button` and the row does
+     * not, which is the only thing that separates them.
+     */
+    private val clearRepeatAction =
+        hasText(NO_REPEAT) and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button)
 
     // --- the identity fields -------------------------------------------------
 
@@ -361,10 +452,20 @@ class TaskDetailsSemanticsTest {
         const val DURATION_45 = "45m"
         const val DURATION_30 = "30m"
 
-        /** The Phase 4 editor D-019 defers. None of it may appear. */
+        /** The Repeat editor D-027 built. */
         const val EVERY = "Every"
         const val DAYS = "Days"
         const val ENDS = "Ends"
+        const val SAVE_REPEAT = "Save repeat"
+
+        /**
+         * A weekday chip, by its spoken name rather than its label.
+         *
+         * The label is one letter and two pairs of days share theirs, so the
+         * chips carry their full name as a content description and this is the
+         * only way to name one unambiguously.
+         */
+        const val WEDNESDAY = "Wednesday"
 
         const val MARK_COMPLETE = "Mark \"$TITLE\" complete"
         const val TIMEOUT_MILLIS = 5_000L

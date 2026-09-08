@@ -3,6 +3,8 @@ package com.vignesh.focuslist.ui.component
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
@@ -78,35 +80,49 @@ internal fun PlanRow(
         // the same rule every task row follows.
         modifier = modifier
             .heightIn(min = PlanRowMinHeight)
-            .semantics { onClick(label = description, action = null) },
-        trailingContent = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(FocuslistSpacing.xs)
-            ) {
-                Text(
-                    text = value,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.End
-                )
-
-                Icon(
-                    painter = painterResource(R.drawable.ic_chevron_forward),
-                    // The row already carries the action and its label.
-                    // Describing the chevron too would announce it twice.
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(PlanRowChevronSize)
-                )
-            }
-        }
+            .semantics { onClick(label = description, action = null) }
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        // **One row rather than a headline and a trailing slot**, and that is a
+        // bug fix rather than a tidy-up. `ListItem` measures its trailing
+        // content first and gives the headline whatever is left, so a long
+        // enough value takes the whole row: measured with all seven weekdays
+        // selected, the Repeat label held 139px at 100% and *disappeared from
+        // the semantics tree entirely* at 200%, leaving a row with a value and
+        // no name. Every row here was exposed to it, not just Repeat.
+        //
+        // The label is measured first and the value takes the remainder, which
+        // is the right way round because the label is one of five fixed strings
+        // and the value is the unbounded one. A long value now wraps inside its
+        // own share and the row grows, which is what the height floor below is
+        // for and what this row already promised to do.
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Spacer(Modifier.width(FocuslistSpacing.md))
+
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.End,
+                modifier = Modifier.weight(1f)
+            )
+
+            Spacer(Modifier.width(FocuslistSpacing.xs))
+
+            Icon(
+                painter = painterResource(R.drawable.ic_chevron_forward),
+                // The row already carries the action and its label. Describing
+                // the chevron too would announce it twice.
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(PlanRowChevronSize)
+            )
+        }
     }
 }
 

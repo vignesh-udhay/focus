@@ -62,6 +62,26 @@ not recur, was made by a person rather than spawned by finishing a recurring
 one, has no reminder, and cannot have had one announced. Nothing to backfill in
 any of them.
 
+Version 10 is four more of the same, plus one that is not. `docs/decisions.md`
+D-027 turns the `recurrence` column from the whole rule into its period and adds
+`recurrenceInterval`, `recurrenceWeekdays`, `recurrenceEndDate` and
+`recurrenceEndCount` beside it, all nullable and undefaulted, all reading as
+"the rule this app could already express". The column keeps its name and its
+four stored values, so no row is rewritten to mean what it already meant.
+
+`occurrenceNumber` is the one that is not, at `NOT NULL DEFAULT 1`, because a
+position in a series has no null. One is the conservative reading: a task that
+has come back six times has no record of the six, and an "after ten" rule set on
+it today should give ten more rather than four.
+
+**The default belongs on the entity as well as in the migration.** Declared only
+in the `ALTER TABLE`, the column Room creates on a fresh install has `NOT NULL`
+and nothing to fall back on, so any insert that does not name it fails. The debug
+seed is one such insert and it broke on the first fresh install after version 10.
+`@ColumnInfo(defaultValue = "1")` is what makes the created table and the
+migrated one agree, and it puts the default into the exported schema where
+`runMigrationsAndValidate` can compare the two.
+
 ## Version 9 is the exception, and the shape to copy next time
 
 It removes a column, and `ALTER TABLE ... DROP COLUMN` is not available here.
@@ -124,7 +144,10 @@ as the old app would have, runs the real migrations, validates the result
 against the exported schema for the current version, and reopens the file
 through `FocuslistDatabase`. It covers the three starting points that exist: a
 version-1 install, a version-2 one, and a fully populated version-8 row
-crossing the recreated table at version 9.
+crossing the recreated table at version 9. A version-9 row with a recurrence
+crosses version 10 as well, asserted in SQL and then read back through the DAO,
+because the columns being right and the mapper reading them right are two
+separate ways for that to be wrong.
 
 Those tests still contain the strings `INBOX`, `ANYTIME` and `SOMEDAY` after
 placement was removed from the app. That is the point of them. Old databases

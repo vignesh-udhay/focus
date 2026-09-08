@@ -3,6 +3,7 @@ package com.vignesh.focuslist.core.domain
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 
 /**
  * Which reminders are still owed to the user.
@@ -106,3 +107,44 @@ fun missedReminders(tasks: List<Task>, now: LocalDateTime): List<Task> =
  */
 fun reminderTrigger(reminderAt: LocalDateTime, zone: ZoneId, now: Instant): Instant =
     maxOf(reminderAt.atZone(zone).toInstant(), now)
+
+/**
+ * The same time of day, on the first day it is still ahead of [now].
+ *
+ * `docs/decisions.md` D-030. A reminder is a promise to interrupt the user
+ * later, so a moment that has already gone is not a reminder anyone can be
+ * given. Both places that build one route through here.
+ *
+ * **This is not a new rule.** `date-parsing.md` already promises that "no
+ * supported input ever resolves to the past" and `DateParserTest` walks a full
+ * year to defend it. That promise covers the day a title names. The time rides
+ * on a day supplied by the caller, which is how "at 3pm" typed at 4pm escaped
+ * it. Resolving forward is the existing rule reaching the other half of the
+ * parse: "next Tuesday" never means last Tuesday, so "at 3pm" must not mean
+ * three hours ago.
+ *
+ * **Strictly before, not at.** A reminder set for the current minute is kept
+ * rather than pushed a day out, which agrees with [missedReminders]: a reminder
+ * due at exactly now was owed, and it is delivered at once rather than being
+ * silently moved to tomorrow.
+ *
+ * Whole days, in local wall-clock terms, so an afternoon reminder stays in the
+ * afternoon across a daylight-saving change. That is what [LocalDateTime]
+ * arithmetic does and it is the reason the calculation is not done on
+ * [Instant]s.
+ *
+ * Not the place that decides whether a *deliberately* chosen past moment is
+ * allowed. This answers where a time of day lands; refusing an explicit past
+ * day is a question for the control that offered the calendar, and Task
+ * Details answers it there.
+ */
+fun nextReminderOccurrence(at: LocalDateTime, now: LocalDateTime): LocalDateTime {
+    if (!at.isBefore(now)) return at
+
+    // Land on today first, then step one more day if the time has already gone
+    // by. Two statements rather than a loop, because the answer is always one
+    // of these two and a loop would invite reading it as unbounded.
+    val alignedToToday = at.plusDays(ChronoUnit.DAYS.between(at.toLocalDate(), now.toLocalDate()))
+
+    return if (alignedToToday.isBefore(now)) alignedToToday.plusDays(1) else alignedToToday
+}

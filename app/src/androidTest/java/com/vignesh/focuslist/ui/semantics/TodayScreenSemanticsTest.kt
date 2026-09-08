@@ -1,6 +1,7 @@
 package com.vignesh.focuslist.ui.semantics
 
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
@@ -15,6 +16,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.waitUntilExactlyOneExists
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vignesh.focuslist.ui.today.TodayScreen
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -47,6 +49,56 @@ class TodayScreenSemanticsTest {
             TodayScreen(viewModel = viewModel, onOpenTask = {})
         }
     }
+
+    /**
+     * The Focus now card opens the task it is about.
+     *
+     * The card used to take no click at all, on the argument that a clickable
+     * container behind two controls is a target the user cannot see the edges
+     * of. What that missed is D-012: the promoted task leaves the bands below,
+     * so an unclickable card left the one task this screen is built around with
+     * no route to its details from Today at all.
+     *
+     * The task is scheduled for today with no reminder, which is D-012's third
+     * reason and the one that needs no clock.
+     */
+    private fun assertTheCardOpensItsTask(fontScale: Float) {
+        var opened: String? = null
+        val viewModel = testViewModel(withOneTask())
+
+        rule.setFocuslistContent(fontScale) {
+            TodayScreen(viewModel = viewModel, onOpenTask = { opened = it })
+        }
+
+        rule.waitUntilExactlyOneExists(hasText(TITLE), TIMEOUT_MILLIS)
+
+        // One match, which is the other half of the argument: the title is on
+        // this screen once, in the card, and nowhere in the list beneath it.
+        rule.onNodeWithText(TITLE).performClick()
+
+        assertEquals("1", opened)
+    }
+
+    @Test
+    fun focusNowCard_opensItsTask_at100() = assertTheCardOpensItsTask(FontScale100)
+
+    @Test
+    fun focusNowCard_opensItsTask_at200() = assertTheCardOpensItsTask(FontScale200)
+
+    /** And says what tapping it does, since it is not a control that looks like one. */
+    private fun assertTheCardNamesItsAction(fontScale: Float) {
+        setToday(fontScale, withOneTask())
+
+        rule.waitUntilExactlyOneExists(hasText(TITLE), TIMEOUT_MILLIS)
+        rule.onNodeWithText(TITLE)
+            .assert(hasClickLabel(OPEN_TASK))
+    }
+
+    @Test
+    fun focusNowCard_namesItsAction_at100() = assertTheCardNamesItsAction(FontScale100)
+
+    @Test
+    fun focusNowCard_namesItsAction_at200() = assertTheCardNamesItsAction(FontScale200)
 
     private fun withOneTask() = FakeTaskDao(
         listOf(testTask(id = "1", title = TITLE, scheduledDate = TestToday))
@@ -196,6 +248,9 @@ class TodayScreenSemanticsTest {
 
         /** D-012's Completed disclosure, which carries a count and collapses. */
         const val COMPLETED_ONE = "Completed · 1"
+
+        /** The same action label the task rows carry, because it is the same act. */
+        const val OPEN_TASK = "Open task details"
         const val TIMEOUT_MILLIS = 5_000L
     }
 }

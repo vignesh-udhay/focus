@@ -33,7 +33,6 @@
     <string name="duration_spoken_hours_minutes">%1$s %2$s</string>
     <string name="task_due_today">Today</string>
     <string name="task_due_tomorrow">Tomorrow</string>
-    <string name="task_duration_minutes">%1$d min</string>
     <string name="task_actions">Show task actions</string>
     <string name="task_open">Open task details</string>
     <string name="task_focus">Focus</string>
@@ -84,6 +83,40 @@
     <string name="upcoming_title">Upcoming</string>
     <string name="upcoming_empty_headline">Nothing scheduled ahead</string>
     <string name="upcoming_empty_supporting">Tasks scheduled for a later day appear here.</string>
+    <!-- Settings and local continuity, D-024 and D-028. -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_back">Back</string>
+    <string name="settings_section_reminders">Reminders</string>
+    <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_section_data">Data</string>
+    <string name="settings_reminder_health">Reminder health</string>
+    <string name="settings_reminder_health_supporting">Check exact reminder reliability</string>
+    <string name="settings_dynamic_color">Dynamic color</string>
+    <string name="settings_dynamic_color_supporting">Use colors from Android</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_system">System default</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_choose_theme">Choose theme</string>
+    <string name="settings_backup_restore">Backup &amp; restore</string>
+    <string name="settings_backup_restore_supporting">Export or restore a local file</string>
+
+    <string name="backup_title">Backup &amp; restore</string>
+    <string name="backup_back">Back</string>
+    <string name="backup_local_first">Your data stays\non this device</string>
+    <string name="backup_export_heading">Backup</string>
+    <string name="backup_export_description">Export tasks, reminders, recurrence, and settings.</string>
+    <string name="backup_export_action">Export backup</string>
+    <string name="backup_restore_heading">Restore</string>
+    <string name="backup_restore_description">Restore from a Focuslist backup file.</string>
+    <string name="backup_restore_action">Restore from file</string>
+    <string name="backup_restore_error_title">Couldn\'t restore this file</string>
+    <string name="backup_restore_error_body">The file may not be a Focuslist backup, or it may be damaged.</string>
+    <string name="backup_restore_error_choose_another">Choose another file</string>
+    <string name="backup_export_error_title">Couldn\'t export this backup</string>
+    <string name="backup_export_error_body">Focuslist couldn\'t write to this location.</string>
+    <string name="backup_export_error_choose_another">Choose another location</string>
+    <string name="backup_error_cancel">Cancel</string>
     <!-- Task Details, rebuilt to D-018: a screen of picker rows, no Save. -->
     <string name="task_details_heading">Task details</string>
     <!-- The Task Details overflow. Holds Delete and nothing else, per D-022. -->
@@ -123,33 +156,159 @@
     <string name="task_duration_none">None</string>
     <string name="task_duration_custom">Custom</string>
     <string name="task_duration_custom_title">Custom duration</string>
+    <string name="task_duration_custom_back">Back to duration presets</string>
     <string name="task_duration_custom_supporting">Enter a duration in hours and minutes.</string>
     <string name="task_duration_hours">Hours</string>
     <string name="task_duration_minutes_label">Minutes</string>
     <string name="task_duration_done">Done</string>
 
     <!--
-      The Repeat row picks one of Recurrence's four periods or none. The board's
-      editor, with an interval and a weekday set and an end condition, is Phase 4
-      per D-019 and is deliberately not built.
+      The Repeat editor, built under D-027. Three panes in one bottom sheet:
+      the rule, the Every substate, and the Ends substate.
     -->
     <string name="task_repeat_never">Doesn\'t repeat</string>
     <!--
       The period names are TaskListRow's, reused rather than duplicated: a row
       and this sheet naming the same recurrence differently is a drift with
-      nothing holding it together.
+      nothing holding it together. These are what a rule with an interval of one
+      and no weekdays is called.
     -->
     <string name="task_recurrence_daily">Daily</string>
     <string name="task_recurrence_weekly">Weekly</string>
     <string name="task_recurrence_monthly">Monthly</string>
     <string name="task_recurrence_yearly">Yearly</string>
-    <string name="task_repeat_selected">Selected</string>
+
+    <!--
+      An interval above one. Plurals rather than a format string, because the
+      one case is covered by the four names above and every other language
+      counts differently.
+    -->
+    <plurals name="task_repeat_every_days">
+        <item quantity="one">Every day</item>
+        <item quantity="other">Every %d days</item>
+    </plurals>
+    <plurals name="task_repeat_every_weeks">
+        <item quantity="one">Every week</item>
+        <item quantity="other">Every %d weeks</item>
+    </plurals>
+    <plurals name="task_repeat_every_months">
+        <item quantity="one">Every month</item>
+        <item quantity="other">Every %d months</item>
+    </plurals>
+    <plurals name="task_repeat_every_years">
+        <item quantity="one">Every year</item>
+        <item quantity="other">Every %d years</item>
+    </plurals>
+    <!--
+      The Every row's own value, which the board writes as "1 week" rather than
+      "Every week": the row is already labelled Every, and repeating the word in
+      its value would say it twice.
+    -->
+    <plurals name="task_repeat_count_days">
+        <item quantity="one">%d day</item>
+        <item quantity="other">%d days</item>
+    </plurals>
+    <plurals name="task_repeat_count_weeks">
+        <item quantity="one">%d week</item>
+        <item quantity="other">%d weeks</item>
+    </plurals>
+    <plurals name="task_repeat_count_months">
+        <item quantity="one">%d month</item>
+        <item quantity="other">%d months</item>
+    </plurals>
+    <plurals name="task_repeat_count_years">
+        <item quantity="one">%d year</item>
+        <item quantity="other">%d years</item>
+    </plurals>
+
+    <!--
+      Names for two weekday sets worth naming, from D-027. Which days they cover
+      is the locale's business and comes from ICU, not from these strings.
+
+      Two forms each, because English capitalises a standalone value and not a
+      phrase: the Plan row shows "Weekdays" on its own, and the sheet's subtitle
+      reads "Every week on weekdays". A language that does not make that
+      distinction can translate both the same way.
+    -->
+    <string name="task_repeat_weekdays">Weekdays</string>
+    <string name="task_repeat_weekdays_phrase">weekdays</string>
+    <string name="task_repeat_weekends">Weekends</string>
+    <string name="task_repeat_weekends_phrase">weekends</string>
+
+    <!-- A period and a weekday set together: "Every 2 weeks on Mon, Wed and Fri". -->
+    <string name="task_repeat_on_days">%1$s on %2$s</string>
+
+    <!--
+      The rule and its horizon, for the Repeat sheet's subtitle only. The rows
+      carry the shape and not when it stops; see RecurrenceStyle.
+    -->
+    <string name="task_repeat_with_end">%1$s, %2$s</string>
+    <string name="task_repeat_until">until %1$s</string>
+    <!--
+      A prepositional phrase, parallel with "until <date>" above it, because both
+      bound the series and the reader meets one or the other in the same slot.
+
+      "occurrences" rather than "times", which is the word the control that sets
+      this already uses, along with its help text and the sheet's own footnote.
+
+      Not "in total", which the data cannot promise: a task that crossed the
+      version 10 migration counts from one however many times it had already
+      come back, so "ten in total" would be a claim about a history the app
+      declined to invent. "for" bounds the span without saying where it started.
+    -->
+    <plurals name="task_repeat_for_occurrences">
+        <item quantity="one">for %d occurrence</item>
+        <item quantity="other">for %d occurrences</item>
+    </plurals>
+
+    <!-- The main pane. -->
+    <string name="task_repeat_every">Every</string>
+    <string name="task_repeat_days">Days</string>
+    <string name="task_repeat_ends">Ends</string>
+    <string name="task_repeat_save">Save repeat</string>
+    <string name="task_repeat_clear">Doesn\'t repeat</string>
+    <string name="task_repeat_footnote">Completing an occurrence creates the next one.</string>
+
+    <!-- The Every substate. -->
+    <string name="task_repeat_every_back">Back to the repeat rule</string>
+    <string name="task_repeat_interval">Interval</string>
+    <string name="task_repeat_unit_day">Day</string>
+    <string name="task_repeat_unit_week">Week</string>
+    <string name="task_repeat_unit_month">Month</string>
+    <string name="task_repeat_unit_year">Year</string>
+
+    <!-- The Ends substate. -->
+    <string name="task_repeat_ends_back">Back to the repeat rule</string>
+    <string name="task_repeat_ends_never">Never</string>
+    <string name="task_repeat_ends_on_date">On date</string>
+    <string name="task_repeat_ends_after">After occurrences</string>
+    <string name="task_repeat_ends_help">Choose when this repeating task stops.</string>
+    <string name="task_repeat_occurrences">Occurrences</string>
+    <string name="task_repeat_ends_after_help">The task stops after the selected number of occurrences.</string>
+    <string name="task_repeat_ends_after_value">After %1$d</string>
+    <string name="task_repeat_done">Done</string>
 
     <!-- The reminder dialog, which board frame 6 draws and D-018 does not change. -->
     <string name="task_reminder_at">Remind me at</string>
     <!-- The day and time a reminder is set for, as "Today, 9:00". -->
     <string name="task_reminder_when">%1$s, %2$s</string>
     <string name="task_reminder_clear">Clear</string>
+    <!--
+        Why the confirm button is disabled, per D-030. Reached only when the
+        user picked the day themselves; a day the dialog chose has already been
+        moved forward. It says what is wrong rather than what to do, because the
+        two day presets sitting above it already say what to do.
+    -->
+    <string name="task_reminder_past">That moment has already passed</string>
+    <!--
+        The reminder sheet's two rows, per D-030. "Day" rather than "Date"
+        because the value beside it reads Today or Tomorrow far more often than
+        it reads a date.
+    -->
+    <string name="task_reminder_day">Day</string>
+    <string name="task_reminder_time">Time</string>
+    <string name="task_reminder_save">Save reminder</string>
+    <string name="task_reminder_day_back">Back to the reminder</string>
     <string name="quick_add_title_label">New task</string>
     <string name="quick_add_save">Add task</string>
     <string name="quick_add_placeholder">Try \"Call the plumber tomorrow\"</string>
@@ -241,12 +400,13 @@
     <string name="reminder_snooze_one_hour">1 hour</string>
     <string name="reminder_snooze_this_evening">This evening</string>
     <string name="reminder_snooze_tomorrow">Tomorrow %1$s</string>
-    <!-- The notification says "Every day" where the details sheet says
-         "Daily". A notification is read at a glance, mid-task, and phrases
-         the repeat as the sentence it belongs to. -->
-    <string name="reminder_repeat_daily">Every day</string>
-    <string name="reminder_repeat_weekly">Every week</string>
-    <string name="reminder_repeat_monthly">Every month</string>
-    <string name="reminder_repeat_yearly">Every year</string>
+    <!--
+      The notification says "Every day" where the details screen says "Daily",
+      because a notification is read at a glance, mid-task, and phrases the
+      repeat as the sentence it belongs to. That distinction survives D-027; the
+      four strings that carried it do not. task_repeat_every_* already reads
+      "Every day" in its one case and also knows what to do with an interval and
+      a weekday set, so the notification asks it for the sentence form.
+    -->
     <string name="reminder_summary_separator">%1$s · %2$s</string>
 </resources>

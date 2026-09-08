@@ -206,7 +206,12 @@ class ReminderReceiver : BroadcastReceiver() {
                 }
 
                 context.ensureReminderChannel()
-                context.postReminder(task)
+                if (!context.postReminder(task)) {
+                    Log.w(LogTag, "Cannot post. Reminder permission changed for $taskId.")
+                    record(DeliveryOutcome.Suppressed)
+                    return@launch
+                }
+
                 record(DeliveryOutcome.Announced)
 
                 // Only after it was actually said. This is what stops the

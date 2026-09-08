@@ -18,7 +18,7 @@ class RecurrenceTest {
     fun `a daily task completed on the day it was due moves to the next day`() {
         assertEquals(
             date("2026-09-03"),
-            Recurrence.DAILY.nextOccurrence(anchor = date("2026-09-02"), after = date("2026-09-02"))
+            Recurrence(RecurrenceUnit.DAILY).nextOccurrence(anchor = date("2026-09-02"), after = date("2026-09-02"))
         )
     }
 
@@ -27,7 +27,7 @@ class RecurrenceTest {
         // Anchored on a Wednesday, so every occurrence is a Wednesday.
         assertEquals(
             date("2026-09-09"),
-            Recurrence.WEEKLY.nextOccurrence(anchor = date("2026-09-02"), after = date("2026-09-02"))
+            Recurrence(RecurrenceUnit.WEEKLY).nextOccurrence(anchor = date("2026-09-02"), after = date("2026-09-02"))
         )
     }
 
@@ -35,7 +35,7 @@ class RecurrenceTest {
     fun `a monthly task keeps its day of the month`() {
         assertEquals(
             date("2026-10-02"),
-            Recurrence.MONTHLY.nextOccurrence(anchor = date("2026-09-02"), after = date("2026-09-02"))
+            Recurrence(RecurrenceUnit.MONTHLY).nextOccurrence(anchor = date("2026-09-02"), after = date("2026-09-02"))
         )
     }
 
@@ -43,7 +43,7 @@ class RecurrenceTest {
     fun `a yearly task keeps its date`() {
         assertEquals(
             date("2027-09-02"),
-            Recurrence.YEARLY.nextOccurrence(anchor = date("2026-09-02"), after = date("2026-09-02"))
+            Recurrence(RecurrenceUnit.YEARLY).nextOccurrence(anchor = date("2026-09-02"), after = date("2026-09-02"))
         )
     }
 
@@ -55,7 +55,7 @@ class RecurrenceTest {
         // already passed, so the next one still to come is the 15th.
         assertEquals(
             date("2026-06-15"),
-            Recurrence.WEEKLY.nextOccurrence(anchor = date("2026-06-01"), after = date("2026-06-12"))
+            Recurrence(RecurrenceUnit.WEEKLY).nextOccurrence(anchor = date("2026-06-01"), after = date("2026-06-12"))
         )
     }
 
@@ -64,7 +64,7 @@ class RecurrenceTest {
         // One next occurrence, not seven copies of a task nobody did.
         assertEquals(
             date("2026-09-10"),
-            Recurrence.DAILY.nextOccurrence(anchor = date("2026-09-02"), after = date("2026-09-09"))
+            Recurrence(RecurrenceUnit.DAILY).nextOccurrence(anchor = date("2026-09-02"), after = date("2026-09-09"))
         )
     }
 
@@ -72,7 +72,7 @@ class RecurrenceTest {
     fun `finishing a monthly task months late lands on the next month still ahead`() {
         assertEquals(
             date("2027-01-15"),
-            Recurrence.MONTHLY.nextOccurrence(anchor = date("2026-09-15"), after = date("2026-12-20"))
+            Recurrence(RecurrenceUnit.MONTHLY).nextOccurrence(anchor = date("2026-09-15"), after = date("2026-12-20"))
         )
     }
 
@@ -80,7 +80,7 @@ class RecurrenceTest {
     fun `a rule anchored years ago still produces the next date`() {
         assertEquals(
             date("2026-09-03"),
-            Recurrence.DAILY.nextOccurrence(anchor = date("2019-01-01"), after = date("2026-09-02"))
+            Recurrence(RecurrenceUnit.DAILY).nextOccurrence(anchor = date("2019-01-01"), after = date("2026-09-02"))
         )
     }
 
@@ -92,7 +92,7 @@ class RecurrenceTest {
         // being finished is the 5th, so the next one is the 6th, not the 2nd.
         assertEquals(
             date("2026-09-06"),
-            Recurrence.DAILY.nextOccurrence(anchor = date("2026-09-05"), after = date("2026-09-01"))
+            Recurrence(RecurrenceUnit.DAILY).nextOccurrence(anchor = date("2026-09-05"), after = date("2026-09-01"))
         )
     }
 
@@ -102,12 +102,12 @@ class RecurrenceTest {
     fun `a monthly task on the 31st is clamped in a short month but not moved off the 31st`() {
         val anchor = date("2026-01-31")
 
-        val february = Recurrence.MONTHLY.nextOccurrence(anchor = anchor, after = date("2026-01-31"))
+        val february = Recurrence(RecurrenceUnit.MONTHLY).nextOccurrence(anchor = anchor, after = date("2026-01-31"))
         assertEquals(date("2026-02-28"), february)
 
         // Measured from the anchor rather than from February, so March is the
         // 31st again rather than the 28th.
-        val march = Recurrence.MONTHLY.nextOccurrence(anchor = anchor, after = february)
+        val march = Recurrence(RecurrenceUnit.MONTHLY).nextOccurrence(anchor = anchor, after = february)
         assertEquals(date("2026-03-31"), march)
     }
 
@@ -117,7 +117,7 @@ class RecurrenceTest {
         // after the 28th. The answer has to be March, not February again.
         assertEquals(
             date("2026-03-31"),
-            Recurrence.MONTHLY.nextOccurrence(anchor = date("2026-01-31"), after = date("2026-02-28"))
+            Recurrence(RecurrenceUnit.MONTHLY).nextOccurrence(anchor = date("2026-01-31"), after = date("2026-02-28"))
         )
     }
 
@@ -125,7 +125,7 @@ class RecurrenceTest {
     fun `a yearly task on the 29th of February lands on the 28th in an ordinary year`() {
         assertEquals(
             date("2025-02-28"),
-            Recurrence.YEARLY.nextOccurrence(anchor = date("2024-02-29"), after = date("2024-02-29"))
+            Recurrence(RecurrenceUnit.YEARLY).nextOccurrence(anchor = date("2024-02-29"), after = date("2024-02-29"))
         )
     }
 
@@ -140,7 +140,7 @@ class RecurrenceTest {
         notes = "The ones on the balcony",
         scheduledDate = date("2026-09-02"),
         estimatedDurationMinutes = 5,
-        recurrence = Recurrence.DAILY,
+        recurrence = Recurrence(RecurrenceUnit.DAILY),
         completedAt = createdAt
     )
 
@@ -218,14 +218,14 @@ class RecurrenceTest {
         assertEquals("The ones on the balcony", next.notes)
         assertEquals(5, next.estimatedDurationMinutes)
         // The rule above all, or the series would stop after one repeat.
-        assertEquals(Recurrence.DAILY, next.recurrence)
+        assertEquals(Recurrence(RecurrenceUnit.DAILY), next.recurrence)
     }
 
     @Test
     fun `a due date moves by as much as the scheduled date did`() {
         // Due three days after it is meant to be started, and still is.
         val task = chore.copy(
-            recurrence = Recurrence.WEEKLY,
+            recurrence = Recurrence(RecurrenceUnit.WEEKLY),
             scheduledDate = date("2026-09-02"),
             dueDate = date("2026-09-05")
         )
@@ -243,7 +243,7 @@ class RecurrenceTest {
 
     @Test
     fun `a recurring task that was never scheduled is anchored on the day it was completed`() {
-        val undated = chore.copy(scheduledDate = null, recurrence = Recurrence.WEEKLY)
+        val undated = chore.copy(scheduledDate = null, recurrence = Recurrence(RecurrenceUnit.WEEKLY))
 
         assertEquals(
             date("2026-09-09"),

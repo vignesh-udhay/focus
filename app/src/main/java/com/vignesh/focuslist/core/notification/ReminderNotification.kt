@@ -1,5 +1,6 @@
 package com.vignesh.focuslist.core.notification
 
+import android.app.Notification
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -9,11 +10,13 @@ import androidx.core.app.NotificationManagerCompat
 import com.vignesh.focuslist.MainActivity
 import com.vignesh.focuslist.R
 import com.vignesh.focuslist.core.domain.MorningHour
-import com.vignesh.focuslist.core.domain.Recurrence
+import com.vignesh.focuslist.core.text.RecurrenceStyle
+import com.vignesh.focuslist.core.text.recurrenceSummary
 import com.vignesh.focuslist.core.domain.SnoozeOption
 import com.vignesh.focuslist.core.domain.Task
 import com.vignesh.focuslist.core.domain.availableSnoozeOptions
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
@@ -34,7 +37,7 @@ import java.util.Date
  */
 
 /** The reminder, as `notify/Collapsed` and `notify/Expanded` draw it. */
-internal fun Context.postReminder(task: Task) {
+internal fun Context.postReminder(task: Task): Boolean {
     val summary = task.reminderSummary(this)
 
     val builder = reminderBuilder(task, summary)
@@ -57,7 +60,7 @@ internal fun Context.postReminder(task: Task) {
         )
     }
 
-    NotificationManagerCompat.from(this).notify(task.notificationId, builder.build())
+    return notifyIfAllowed(task.notificationId, builder.build())
 }
 
 /**
@@ -68,7 +71,7 @@ internal fun Context.postReminder(task: Task) {
  * asked here rather than assumed so the labels and the arithmetic cannot
  * disagree about what "this evening" means.
  */
-internal fun Context.postSnoozeOptions(task: Task, now: LocalDateTime) {
+internal fun Context.postSnoozeOptions(task: Task, now: LocalDateTime): Boolean {
     val builder = reminderBuilder(task, task.reminderSummary(this))
         .setSubText(getString(R.string.reminder_snooze_until))
 
@@ -80,7 +83,7 @@ internal fun Context.postSnoozeOptions(task: Task, now: LocalDateTime) {
         )
     }
 
-    NotificationManagerCompat.from(this).notify(task.notificationId, builder.build())
+    return notifyIfAllowed(task.notificationId, builder.build())
 }
 
 /**
@@ -95,7 +98,7 @@ internal fun Context.postSnoozeOptions(task: Task, now: LocalDateTime) {
  * the point of the test is that the user is looking at the phone when it
  * arrives, or at least at the notification.
  */
-internal fun Context.postTestReminder(arrivedAt: Instant) {
+internal fun Context.postTestReminder(arrivedAt: Instant): Boolean {
     val builder = NotificationCompat.Builder(this, ReminderChannelId)
         .setSmallIcon(R.drawable.ic_notifications)
         .setContentTitle(getString(R.string.reminder_test_title))
@@ -110,7 +113,25 @@ internal fun Context.postTestReminder(arrivedAt: Instant) {
         .setPriority(NotificationCompat.PRIORITY_HIGH)
         .setCategory(NotificationCompat.CATEGORY_REMINDER)
 
-    NotificationManagerCompat.from(this).notify(TestReminder.TaskId.notificationId, builder.build())
+    return notifyIfAllowed(TestReminder.TaskId.notificationId, builder.build())
+}
+
+/**
+ * Posts only while notification permission is available.
+ *
+ * The permission can be revoked after the check and before `notify`, so the
+ * platform call still has to handle [SecurityException]. Callers use the
+ * result when delivery history must distinguish announced from suppressed.
+ */
+internal fun Context.notifyIfAllowed(notificationId: Int, notification: Notification): Boolean {
+    if (!canPostNotifications()) return false
+
+    return try {
+        NotificationManagerCompat.from(this).notify(notificationId, notification)
+        true
+    } catch (_: SecurityException) {
+        false
+    }
 }
 
 /** Takes the reminder off screen once it has been dealt with. */
@@ -141,7 +162,17 @@ private fun Context.reminderBuilder(task: Task, summary: String) =
 private fun Task.reminderSummary(context: Context): String {
     val at = reminderAt ?: return ""
     val time = context.formatTime(at.toLocalTime())
-    val repeat = recurrence?.let { context.getString(it.reminderLabel) }
+    // Sentence form: "Every week" rather than "Weekly", which is how a line
+    // read at a glance mid-task should phrase itself. `strings.xml` used to
+    // carry a second set of four names for this; the plurals behind
+    // `recurrenceSummary` say the same thing and also know what to do with an
+    // interval and a weekday set, which four fixed names never could.
+    val repeat = recurrence?.let {
+        // A boundary, so reading the clock here is right: the formatter
+        // itself stays pure and is handed the day, like every query in
+        // `TaskQueries.kt`.
+        recurrenceSummary(context, it, LocalDate.now(), RecurrenceStyle.Sentence)
+    }
 
     return if (repeat == null) {
         time
@@ -154,14 +185,6 @@ private fun Context.formatTime(time: LocalTime): String {
     val moment = LocalDateTime.now().with(time).atZone(ZoneId.systemDefault()).toInstant()
     return android.text.format.DateFormat.getTimeFormat(this).format(Date.from(moment))
 }
-
-private val Recurrence.reminderLabel: Int
-    get() = when (this) {
-        Recurrence.DAILY -> R.string.reminder_repeat_daily
-        Recurrence.WEEKLY -> R.string.reminder_repeat_weekly
-        Recurrence.MONTHLY -> R.string.reminder_repeat_monthly
-        Recurrence.YEARLY -> R.string.reminder_repeat_yearly
-    }
 
 private fun Context.snoozeLabel(option: SnoozeOption): String = when (option) {
     SnoozeOption.TenMinutes -> getString(R.string.reminder_snooze_ten_minutes)

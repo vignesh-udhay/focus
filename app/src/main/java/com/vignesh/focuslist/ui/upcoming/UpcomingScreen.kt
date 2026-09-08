@@ -32,6 +32,7 @@ import com.vignesh.focuslist.core.domain.upcomingSections
 import com.vignesh.focuslist.core.domain.upcomingTasks
 import com.vignesh.focuslist.ui.component.FocuslistTopAppBar
 import com.vignesh.focuslist.ui.component.TaskListEmptyState
+import com.vignesh.focuslist.ui.component.UpcomingMascot
 import com.vignesh.focuslist.ui.component.SectionLabel
 import com.vignesh.focuslist.ui.component.TaskListRow
 import com.vignesh.focuslist.ui.component.sectionDateLabel
@@ -136,7 +137,8 @@ private fun UpcomingContent(
             TaskListEmptyState(
                 headline = stringResource(R.string.upcoming_empty_headline),
                 supporting = stringResource(R.string.upcoming_empty_supporting),
-                modifier = Modifier.padding(innerPadding)
+                modifier = Modifier.padding(innerPadding),
+                illustration = { UpcomingMascot() }
             )
         } else {
             LazyColumn(

@@ -52,6 +52,16 @@ import java.time.LocalDateTime
  * once. Completing a recurring task finishes that occurrence and starts the
  * next; the rule itself says nothing about which dates those are, and
  * `Recurrence.kt` derives them.
+ * @param occurrenceNumber where this task sits in its series, counting the
+ * first occurrence as one. Meaningless for a task that does not recur, which is
+ * why it defaults to one rather than to zero: every task is the first of
+ * itself.
+ *
+ * It exists because `RecurrenceEnd.AfterOccurrences` has to know how many have
+ * already happened, and `docs/decisions.md` D-019 was right that nothing
+ * recorded it. The chain of [spawnedFromId] links is not an answer: counting it
+ * costs a walk on every completion, and deleting any one copy breaks the count
+ * with nothing to say so. A stored position survives both.
  * @param completedAt when the task was completed, or null while it is
  * outstanding. Completion is recorded by setting this and undone by clearing
  * it.
@@ -69,6 +79,7 @@ data class Task(
     val reminderDeliveredAt: Instant? = null,
     val estimatedDurationMinutes: Int? = null,
     val recurrence: Recurrence? = null,
+    val occurrenceNumber: Int = 1,
     /**
      * The occurrence this one was created by finishing, for a recurring task.
      *

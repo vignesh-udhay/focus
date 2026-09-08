@@ -116,13 +116,16 @@ class TestReminderReceiver : BroadcastReceiver() {
 
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
-                val posted = context.canPostNotifications()
-
-                if (posted) {
+                val posted = if (context.canPostNotifications()) {
                     context.ensureReminderChannel()
-                    context.postTestReminder(arrivedWallAt)
+                    context.postTestReminder(arrivedWallAt).also { didPost ->
+                        if (!didPost) {
+                            Log.w(LogTag, "Test reminder permission changed before posting.")
+                        }
+                    }
                 } else {
                     Log.w(LogTag, "Cannot post. Test reminder fired and said nothing.")
+                    false
                 }
 
                 application.reminderDeliveryRepository.record(

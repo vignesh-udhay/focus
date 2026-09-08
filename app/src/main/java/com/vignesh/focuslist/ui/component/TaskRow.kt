@@ -3,6 +3,7 @@ package com.vignesh.focuslist.ui.component
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.material3.Checkbox
@@ -19,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -67,11 +69,13 @@ import com.vignesh.focuslist.ui.theme.FocuslistTheme
  * treatment; a collection may override the container color to sit against its
  * own background.
  * @param metadata optional supporting details, rendered below the title and
- * separated by a middot, for example "Today" and "45 min". When empty, no
+ * separated by a middot, for example "Today" and "Every week". When empty, no
  * supporting content is emitted and no vertical space is reserved for it.
- * @param trailingContent an optional control at the end of the row. Supplied by
- * `TaskListRow` as the actions menu's button; a row with no actions to offer
- * passes nothing and keeps the two-element anatomy.
+ * @param trailingContent optional content at the end of the row. `TaskListRow`
+ * puts the duration estimate here, where it reads as a column rather than as
+ * one more clause in a sentence; a task with no estimate passes nothing and the
+ * title takes the width. It carried the actions menu's button until D-023
+ * removed it, and nothing here is tappable now.
  * @param isOverdue whether the task's day has already passed. Colours the
  * first metadata segment with the tertiary role as a second cue. The date is
  * always that first segment when a task has one, so this needs no more than a
@@ -178,7 +182,6 @@ fun TaskRow(
                     .semantics { contentDescription = toggleDescription }
             )
         },
-        trailingContent = trailingContent,
         supportingContent = if (metadataText == null) {
             null
         } else {
@@ -192,18 +195,50 @@ fun TaskRow(
             }
         }
     ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyLarge,
-            color = titleColor,
-            // Strikethrough as well as colour, so completion survives a
-            // greyscale screen and colour blindness alike.
-            textDecoration = if (isCompleted) TextDecoration.LineThrough else null,
-            // Two lines, then stop. A long title must not be able to push the
-            // rest of the list around.
-            maxLines = TitleMaxLines,
-            overflow = TextOverflow.Ellipsis
-        )
+        // **The trailing content shares the title's line rather than the row's
+        // middle.** `ListItem` centres its trailing slot, which lines a duration
+        // up with nothing: on a two-line row the title's centre is 27dp and the
+        // row's is 36dp, so the estimate floated between the two lines and the
+        // column wobbled against the titles beside it.
+        //
+        // `alignByBaseline` on both puts them on one baseline, which is the
+        // table idiom and the strongest way to say the number belongs to that
+        // title. It reads from the type rather than from a constant, so it
+        // holds at every font scale, and it uses the *first* baseline, so a
+        // title that wraps to two lines does not drag the estimate down with
+        // it.
+        //
+        // Material's own `ListItem` switches its trailing slot to the top for
+        // three-line items, so "centre when short, anchor when tall" is the
+        // platform's rule already; this generalises it rather than departing
+        // from it.
+        Row(verticalAlignment = Alignment.Top) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = titleColor,
+                // Strikethrough as well as colour, so completion survives a
+                // greyscale screen and colour blindness alike.
+                textDecoration = if (isCompleted) TextDecoration.LineThrough else null,
+                // Two lines, then stop. A long title must not be able to push
+                // the rest of the list around.
+                maxLines = TitleMaxLines,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .weight(1f)
+                    .alignByBaseline()
+            )
+
+            trailingContent?.let { trailing ->
+                Row(
+                    modifier = Modifier
+                        .padding(start = FocuslistSpacing.xs)
+                        .alignByBaseline()
+                ) {
+                    trailing()
+                }
+            }
+        }
     }
 }
 
@@ -219,9 +254,11 @@ private const val CompletionPressScale = 0.8f
  * Returns null when there is nothing to say, so the row can omit its
  * supporting slot entirely rather than reserving empty space for it.
  *
- * Only the first segment takes the overdue colour. `taskMetadata` puts the date
- * first whenever a task has one, and the duration, which is never overdue,
- * after it.
+ * Only the first segment takes the overdue colour, and the date is always that
+ * segment on an overdue row: `taskMetadata` leads with the reminder time, and
+ * suppresses it precisely when the task is overdue, because a reminder that has
+ * already fired describes nothing still to come. So the two rules hold each
+ * other up rather than needing an index passed between them.
  */
 @Composable
 private fun metadataAnnotatedString(

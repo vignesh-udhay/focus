@@ -77,10 +77,21 @@ data class CapturedTask(
      * its own rides on [defaultDate], which is the day the capturing screen was
      * going to use anyway: Today captures for today, so "call the dentist at
      * 3pm" is a reminder this afternoon.
+     *
+     * **Unless this afternoon has been and gone.** D-030. Typed at 4pm, that
+     * same title used to capture a reminder for 3pm today, an hour in the past,
+     * which the scheduler then clamped to now and rang immediately. It resolves
+     * to 3pm tomorrow instead, through [nextReminderOccurrence], which is the
+     * rule `date-parsing.md` already applies to the day half of the parse.
+     *
+     * The day the parser named cannot itself be in the past, so the only moment
+     * this moves is one whose time of day has gone by. It is shown before it is
+     * saved: the Reminder chip reads the resolved day and time, so a capture
+     * that rolled says "Tomorrow" on the sheet the user is still looking at.
      */
-    fun reminderAt(defaultDate: LocalDate): LocalDateTime? {
+    fun reminderAt(defaultDate: LocalDate, now: LocalDateTime): LocalDateTime? {
         val at = time ?: return null
-        return LocalDateTime.of(date ?: defaultDate, at)
+        return nextReminderOccurrence(LocalDateTime.of(date ?: defaultDate, at), now)
     }
 
     /**

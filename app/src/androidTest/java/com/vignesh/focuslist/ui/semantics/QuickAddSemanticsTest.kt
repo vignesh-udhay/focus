@@ -184,7 +184,7 @@ class QuickAddSemanticsTest {
         assertEquals(TITLE, captured.title)
         assertEquals(TODAY.plusDays(1), captured.date)
         assertEquals(LocalTime.of(15, 0), captured.time)
-        assertEquals(TODAY.plusDays(1).atTime(15, 0), captured.reminderAt(TODAY))
+        assertEquals(TODAY.plusDays(1).atTime(15, 0), captured.reminderAt(TODAY, TODAY.atTime(9, 0)))
     }
 
     /**
@@ -210,7 +210,7 @@ class QuickAddSemanticsTest {
 
         val captured = saved.single()
         assertNull(captured.time)
-        assertNull(captured.reminderAt(TODAY))
+        assertNull(captured.reminderAt(TODAY, TODAY.atTime(9, 0)))
         assertEquals(TODAY.plusDays(1), captured.date)
     }
 

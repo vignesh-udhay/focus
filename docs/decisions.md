@@ -748,6 +748,24 @@ becomes a collapsed disclosure with a count because a plain completed list
 grows all day and pushes live work down the screen; the count keeps the day's
 progress visible without spending rows on it.
 
+**The card opens its task, and for a while it did not.** `FocusNowCard` carried
+a comment saying "the card is not itself a button ... a clickable container
+behind two controls is a third target the user cannot see the edges of". That is
+a fair worry about overlapping targets and it answers the wrong question.
+
+This entry takes the promoted task out of the bands below, so it is on Today
+exactly once. A card that took no click therefore left that one task's details
+unreachable from the screen entirely: not in a band, not in Upcoming, which
+holds later days, not in Inbox, which holds undated work. The task the screen is
+built around was the only one on it that could not be opened without first
+completing or rescheduling it. A rule that removes a row has to account for what
+the row could do.
+
+The overlapping-target worry is answered by the arrangement every task row
+already uses: the children take their own clicks and the body takes the rest.
+The card is that, with a button on the end. It carries the same
+`Open task details` action label the rows carry, because it is the same act.
+
 **A dependency worth naming.** The card's first and strongest reason is
 "resume paused focus", and that presumes Focus has a session that can be paused
 and that survives leaving the sheet. Focus has neither. `focus.md` describes two
@@ -1344,3 +1362,675 @@ disappears and Ready stops being reachable by only some routes.
 **What would reverse this.** Rescheduling from a list proving too slow in real
 use. The answer then is a bottom sheet on long press, which is what Material's
 compact guidance points at for a five-item menu, not this button coming back.
+
+---
+
+## D-024. Settings is four rows, and the list is closed
+
+**Decision.** Settings holds Reminder health, Dynamic color, Theme, and Backup &
+restore. Three sections, four rows. The list is closed by default, and adding to
+it needs an entry saying what the product declined to decide.
+
+**Why close a list nobody has added to yet.** Settings is where a task app goes
+to avoid choosing. Every other screen in this product has a document defending
+what it excludes, and this is the one screen where exclusions arrive one at a
+time, each individually reasonable, none of them ever removed. The drift guard in
+`CLAUDE.md` exists for exactly this shape of change, and it works by having
+written the answer down first.
+
+**A setting is a decision the product refused to make.** Applied to the four that
+stay, each is about the user's device or the user's data, and none is about how
+the app behaves:
+
+- Reminder health reports on the device.
+- Dynamic color and Theme are the device's appearance.
+- Backup & restore is the user's data.
+
+Nothing in the list changes what a task is, how a list is ordered, or when a
+reminder fires. That is the test a fifth row has to pass.
+
+**Four candidates are refused by name**, because each has a home already. A
+default reminder time reintroduces the times of day `date-parsing.md` keeps out
+of the vocabulary. Week start, date format and time format are Android's, and
+principle 5 says embrace the platform rather than re-ask. Sort order, grouping
+and density would undo `today-screen.md`'s bands and `task-row.md`'s anatomy.
+Notification sound, vibration and importance belong to the Android channel, and
+a second copy here would be two switches that can disagree about a reminder,
+which principle 1 makes the most expensive kind of bug in this product.
+
+**The theme chooser commits on selection.** A dialog of three radio rows, no
+Cancel and no OK. Same rule as D-018's pickers: the choice is instantly visible,
+instantly reversible, and a confirm step would only add a tap. A dialog rather
+than a destination, because three exclusive options needing no explanation is
+what an alert dialog is for, and a fourth room for three radio buttons would
+contradict principle 6.
+
+**What this costs.** A user who wants a default reminder time does not get one,
+and the answer is that they set the time on the task. A user who wants the app's
+sound to differ from the system channel's has to use the system channel. Both
+are real refusals rather than gaps waiting to be filled.
+
+**What would reverse this.** A row earning its place is one where the app cannot
+choose correctly for everyone and the wrong choice loses a reminder. That is a
+high bar on purpose. Aesthetic preference is not it.
+
+**What was fixed on the board while settling this.** The three section headings
+were 22sp Medium on `onSurface`, the app bar's own type, carrying no text style
+at all, so "Reminders" was as loud as "Settings" over a single row. They are
+`M3/title/small` on `onSurfaceVariant` now, matching Today, Upcoming and the
+`SectionLabel` the code already shares. Backup's two headings dropped 22 to 16,
+giving the page three sizes instead of two. All four modal scrims were wrong in
+opposite directions, the three theme frames binding `Scrim` at full opacity and
+the Restore Error frame using 30% on an unbound colour; all four are `Scrim` at
+Material's 32%. And the Restore Error frame had lost the entire Backup page
+behind its dialog, which the opaque scrim was hiding: it is rebuilt.
+
+**What is deliberately not shown.** `Settings — Dynamic color off` differs from
+the clean slate by one switch, and both are painted in the app's own `Light`
+scheme. Section 18 owns the wallpaper palettes across Today, Focus and the
+notification; drawing them again here would mean maintaining that story twice.
+
+**One thing the frames do not show, and it is the expensive part.** Both
+Appearance rows need persistence the app does not have. There is no DataStore
+and no SharedPreferences in `app/src/main`, and `FocuslistTheme` takes
+`darkTheme` and `dynamicColor` as parameters that nothing outside previews
+overrides. Phase 5's first bullet is a preferences store, and the screen after
+it.
+
+---
+
+## D-025. Text fields are filled, not outlined
+
+**Decision.** Every text field that draws a container draws the filled one.
+`OutlinedTextField` is replaced by `TextField` throughout.
+
+**What this supersedes.** `expressive-components.md`'s "`OutlinedTextField`
+throughout", which was an implementation note rather than an argued position: it
+recorded which component was in use and never said why that one.
+
+**What it does not touch.** Task Details' title and notes stay borderless. They
+are already the filled component with its container painted out, which D-018
+asks for in as many words: the title is the screen's heading and its primary
+input at once, and a container around it makes the top of the screen read as a
+summary card. Filled is the default for a field that announces itself as a
+field; those two deliberately do not.
+
+So the rule is narrower than "filled everywhere" and worth stating precisely:
+**a field that draws a container draws a filled one.** Two fields draw none.
+
+**Why filled.** It is Material's own default and the one the rest of this design
+system already agrees with. Every other surface in the app is a tinted container
+on a plain page — task rows, Plan rows, the Focus now card, the health check
+rows, the headline card — and an outlined field was the one component asking to
+be read by its border instead. Filled also gives the field a larger touch
+target's worth of visible affordance at no cost in height.
+
+The `[FD]` notes under Inputs are unaffected and all still hold: trailing
+controls go in the trailing slot, clear is an icon whose description names its
+field, every field carries a label, a constrained format carries a placeholder,
+errors use the Material error treatment plus supporting text, and a single-line
+placeholder is capped to one line.
+
+**What would reverse this.** A filled container reading as a chip or a button
+somewhere it sits beside real ones. The place to watch is Quick Add, where the
+field sits above a filled Add task button on the same sheet.
+
+---
+
+## D-026. The Duration sheet is a connected group, and Custom is a state of it
+
+**Decision.** The five duration choices are one `ButtonGroup`, not five `Button`s
+in a `Row`. Custom is a second state of the same bottom sheet behind a back
+arrow, not an `AlertDialog` raised over it. The Custom row shows the estimate
+when no preset holds it.
+
+**What this supersedes.** `expressive-components.md`'s Segmented controls
+section, which described `SingleChoiceSegmentedButtonRow` for a recurrence
+picker that no longer exists and settled the overflow question on sideways
+scrolling. Also its Dialogs section, which claimed `DatePickerDialog` was the
+only dialog in the app while there were four.
+
+**Why the group: the row it replaced was one label's growth from breaking a
+rule this document already had.** `expressive-components.md` says a row of
+choices "must not overflow at large font scales, and must not truncate a label
+to avoid doing so", and five equal-weight buttons with `maxLines = 1` and no
+overflow behaviour had nothing to do but clip. Whether it clipped at 175% or at
+200% was calculated, not observed, and the calculation was wrong in its details:
+it ignored that the overflow indicator takes width of its own. The structural
+point stands on its own. A control with no answer for running out of room is
+one label away from breaking the rule, and the rule was written down here before
+the control that broke it was built.
+
+`ButtonGroup` answers it in the component: what does not fit moves into a menu
+behind an indicator, so every option stays selectable and none is cut. That is a
+third answer alongside the scrolling the earlier section chose, and it is better
+for the reason a menu beats a scroll anywhere, the indicator is visible where
+off-screen content is not. It is also what the board draws.
+
+**Measured afterwards, the menu never appears.** All five presets stay laid out
+inside the sheet's 380dp at every font scale Android offers, 100% through 200%.
+So the overflow behaviour is insurance rather than a cost, and the worry that
+sent us measuring, that a low-vision user would meet a menu where everyone else
+sees buttons, does not happen.
+
+**That was a one-off measurement and nothing guards it.** The test written to
+take it was deleted rather than kept, so a sixth preset, a longer label or a
+change in Material's spacing would move the number with nothing to say so. Take
+the measurement again before trusting it.
+
+**How it was nearly got wrong, because the next person will reach for the same
+probe.** Counting labels in the semantics tree reports all five present at every
+font scale, and also reports all five present inside 120dp, which nothing that
+fits can be true of. Overflowed options do not leave the tree; only their bounds
+change. Measure bounds, and squeeze the group into a width nothing could fit to
+prove the probe can still fail.
+
+**Why the state rather than the dialog: the old code's own comment argued for
+it.** It read:
+
+> A dialog rather than a second sheet, because a modal sheet on Android is a
+> dialog with its own window: stacking one on another darkens the scrim twice
+> and makes back a question about which of the pair receives it.
+
+That is an argument against a second *window*, and an `AlertDialog` over a
+`ModalBottomSheet` is two windows. The board never proposed a second sheet; its
+frames are named "SAME ModalBottomSheet" and draw a back arrow. So the design
+the comment was rejecting is the one that satisfies it. Back is now one
+`BackHandler` on one sheet.
+
+It also drops a Done/Cancel confirm from the screen D-018 made commit-as-you-go.
+Done writes and closes, like every preset beside it. Nothing is written until
+Done, so leaving by the arrow or the scrim needs no Cancel.
+
+**Why the value on the Custom row.** The sheet could not show a custom estimate
+at all. Set 1h 20m and it lit no preset and said nothing, so the one value the
+presets cannot express was the one value invisible. The board solved this with a
+48sp readout above the presets; this puts it on the Custom row instead, as
+`Custom  1h 20m`, which is the `PlanRow` pattern the rest of the screen already
+uses and does not restate at display size a number the user set one gesture ago.
+
+The value appears only when no preset holds it. `Custom  45m` one line under a
+lit `45m` button would say the value was typed when it was pressed.
+
+**What was wrong in the file's own documentation.** The `DurationSheet` KDoc
+said "The value shown at the top is the task's current estimate, which is what
+tells the user whether they are changing something or setting it for the first
+time." No such readout was ever built. The comment described the board frame
+rather than the code beneath it, which is the failure mode this project's
+commenting style is most exposed to.
+
+**What would reverse this.** A sixth preset, which would put the group close
+enough to its width that the menu starts appearing at ordinary font scales. The
+answer then is the date sheet's grid, not a return to a row that truncates.
+
+---
+
+## D-027. Recurrence gains an interval, a weekday set and an end condition
+
+**Decision.** The board's Repeat editor is built now. `Recurrence` stops being a
+four-value enum and becomes a rule: a unit, an interval, a weekday set, and an
+end condition. `Task` gains `occurrenceNumber`, and the schema goes to
+version 10.
+
+**What this supersedes.** D-019 entirely. That entry kept the nine Repeat frames
+as a Phase 4 design and out of the code, and this one moves them in. It also
+closes `task-details.md`'s "Known gaps", which said "Repeat is designed and not
+built", and retires the third bullet of Phase 4 in `ROADMAP.md`.
+
+**Why the deferral ends.** D-019's objection was never that the design was
+wrong. It was that "a schema change and a rule engine arriving through a Figma
+frame" is what the drift guard exists to catch. That is an argument about how a
+change arrives, not about whether it should, and the entry says so in its own
+closing line: "when Phase 4 begins this stops being a deferral and becomes the
+specification." Pulling it forward changes which pass builds it, and leaves the
+substance where D-019 left it.
+
+So the guard is satisfied by arriving deliberately: the schema change is
+enumerated below, the counting problem D-019 raised is answered rather than
+discovered, and the design is settled on a board that has already been reviewed
+frame by frame.
+
+**The counting problem, which D-019 named and was right about.** It warned that
+"an end date and an occurrence count both need to know how many occurrences have
+already happened, and nothing records that today". The chain of `spawnedFromId`
+links looks like the answer and is not: counting it means walking every ancestor
+on every completion, and deleting any one of them breaks the count silently.
+
+`Task.occurrenceNumber` records the position directly. It is 1 for everything a
+person made, the spawned copy takes its parent's plus one, and the series stops
+when that number reaches the limit. One integer, no walk, and nothing to
+recompute. Existing rows default to 1, which is the conservative reading: an
+"after ten" rule set on a task that has already come back six times gets ten more
+rather than four. The app has no record of the six and should not invent one.
+
+**Stored rule names do not change.** The unit keeps `DAILY`, `WEEKLY`, `MONTHLY`
+and `YEARLY` as its constants even though the sheet now says Day, Week, Month and
+Year, because the label is a string resource and the constant is what is written
+in the `recurrence` column of every install. Renaming them to match the new
+labels would mean rewriting rows to store the same meaning, and version 10 should
+touch no row that already exists. Five appended columns, all nullable or
+defaulted, on the shape every migration before version 9 used.
+
+**Weeks are counted from Monday, and that is a fixed reference rather than a
+display convention.** "Every two weeks on Monday and Thursday" needs to agree
+with itself about which weeks are the on-weeks, so the interval is counted in
+whole weeks from the Monday of the anchor's week. A locale-dependent week start
+would move the rule when the device's locale changed, which is the class of bug
+`AGENTS.md` keeps out of the domain. Which day the chips are drawn from is a
+separate question and stays with the UI.
+
+An empty weekday set means the anchor's own weekday. The set is only offered for
+the Week unit, and a rule that matches no day at all, and so returns nothing
+forever, must not be reachable.
+
+**Two mechanisms, and they are not redundant.** The sheet will not let the last
+selected chip come off, which is what the board's own frame name asks for:
+"Weekday selection, visible ONLY when repeat unit == Week, require >=1 selected
+day". The fallback in the domain stands behind it, because the sheet is not the
+only way a rule with no days can exist: every weekly rule written before this
+entry has an empty set, and reads as the day its task is anchored to.
+
+So the sheet enforces the board's rule going forward and the fallback reads the
+rules that already exist. Removing either leaves a hole. Without the sheet rule a
+user can build a weekly rule that names no day; without the fallback every weekly
+task in every install before version 10 stops repeating.
+
+Selecting a first day from none is allowed. It is going back to none that is
+refused, and it is refused by nothing happening rather than by an error or a
+disabled chip: a greyed-out chip would say the day was unavailable when it is
+precisely the day that is chosen.
+
+**Occurrences are counted, not banked.** `nextOccurrence` still returns the first
+date strictly after today, so finishing three weeks late produces the next date
+still to come rather than three copies of what was missed. That rule predates
+this entry and the interval does not change it.
+
+**What the board does not answer, and the smallest reading of it.** No frame
+shows how a repeating task stops repeating. The main state has Every, Days, Ends
+and Save repeat, and none of them clears the rule. The sheet keeps a "Doesn't
+repeat" action beside Save, shown only when the task currently repeats, which
+follows the date sheets: their grid spends its first cell on "No date" for the
+same reason. A control offered when it can do nothing is one the user cannot tell
+worked, which is the rule `DatePresets.kt` already argues from.
+
+**Ends is not in the row summary, and the board has since said so better.** The
+board now carries a summary line under the sheet's title, and 471:6537 writes it
+with the horizon ("Every week on Mon, Wed and Fri, until Aug 17") while 471:6668
+writes the applied Plan row without one. So the split is the board's, on clearer
+evidence than the frame this entry originally cited.
+
+The reason holds either way: the row answers how often, and when it stops is a
+thing you open the sheet for. What the sheet adds is that it is the one surface
+where the rule is being *built*, and the one that does not commit as you go, so
+its subtitle is a preview of what Save will write.
+
+**Three amounts, not two flags.** `RecurrenceStyle` replaces the boolean that
+told the notification apart from the screens. `Compact` is the rows, `Sentence`
+is the notification, `Full` is the sheet subtitle. A second boolean would have
+made four combinations of which three mean anything.
+
+**The rows stay compact, and this is a deliberate divergence from the board.**
+471:6668 draws the Plan row reading "Every week on Mon, Wed and Fri"; the code
+writes "Mon, Wed and Fri". Two reasons. The value sits right-aligned beside a
+label with a chevron, next to siblings reading "Today", "None" and "45m", and the
+long phrase makes that one row visibly taller than the four above it in a longer
+language or at 200%. And `PlanRow`'s own rule is that the value "states what is
+set rather than naming the sheet it opens": the other four rows carry no verb,
+and "Repeat / Every week on..." puts one back.
+
+**Two weekday sets are named rather than listed, and one of them is Daily.**
+Every day selected at an interval of one is a daily rule: `RecurrenceRuleTest`
+asserts the two produce the same date on every day of a fortnight, so "Mon, Tue,
+Wed, Thu, Fri, Sat and Sun" was a long way of writing "Daily" and the Plan row
+was spending its whole width on it. The interval is load-bearing, because all
+seven days every *other* week is seven days on and seven off, which is not daily
+and is asserted not to be.
+
+The weekend and its complement are named too, because five days spelled out is
+nearly as long as seven and is not rescued by being daily. **Which days those are
+is ICU's answer and not Monday to Friday**, on the same reasoning as the list
+join: a good deal of the world does not take Saturday and Sunday off, and
+hardcoding the English-speaking week would be the same mistake one screen along.
+Android's ICU exposes `isWeekend()` rather than the day-type query that would
+answer this directly, so each day is probed at both ends, and a day the locale
+counts as weekend for only part of itself counts here.
+
+Each name has a standalone and a phrase form, because the row shows "Weekdays"
+on its own and the subtitle reads "Every week on weekdays". English capitalises
+one and not the other; a language that does not can translate both the same way.
+
+**Naming describes, it never rewrites.** The stored rule stays weekly with seven
+days. Normalising it would throw away the chips: the user taps seven and reopens
+the sheet to find the Daily unit, no Days section, and no way to drop a single
+day without rebuilding the rule. The row shows what it means and the sheet shows
+what it is, which is the split `RecurrenceStyle` already draws.
+
+**The count clause reads "for 10 occurrences", not "10 times in total".** Three
+reasons, and the third is the one that decided it. It parallels "until 17 Aug",
+which fills the same slot, so the reader meets two phrases of the same shape.
+"Occurrence" is the word the control that sets it already uses, along with its
+help text and the sheet's own footnote, so the summary stops changing vocabulary
+halfway down the sheet. And "in total" is a claim the data cannot support: a task
+that crossed the version 10 migration counts from one however many times it had
+already come back, so "ten in total" would vouch for a history this entry
+deliberately declined to invent. "For" bounds the span without saying where it
+began.
+
+**Weekday lists are joined by `android.icu.text.ListFormatter`.** A list is not
+commas with an "and" before the last item in most of the world; the separator,
+the conjunction and its placement all vary. ICU ships with Android and knows
+this, and the alternative was inventing a rule for English and exporting it. It
+also means the app renders the serial comma where the locale wants one, so an
+en-US device reads "Mon, Wed, and Fri" where the board, drawn in en-GB, reads
+"Mon, Wed and Fri". Both are correct and neither is ours to choose.
+
+**What would reverse this.** Nothing about the model. If the weekday set turns
+out to want a monthly counterpart ("the second Tuesday"), that is a new unit
+rather than a change to these, and it should be its own entry.
+
+---
+
+## D-028. Settings and local continuity move ahead of the widget
+
+**Decision.** Build the already-settled Settings and Backup & restore work now,
+before Phase 4's Glance widget. This changes ordering only: D-024's closed list
+still governs the Settings screen, and Phase 4's widget remains outstanding.
+
+**Why the order changes.** The Settings and continuity panel was explicitly
+requested from the reviewed board. Unlike an opportunistic adjacent feature,
+its product behavior is already bounded by D-024 and `docs/design/settings.md`:
+four rows, a three-choice theme dialog, persistent appearance choices, and a
+user-controlled JSON backup that replaces local data on restore.
+
+**What does not move.** Nothing else from Phase 5 moves with it. The full
+accessibility and dark-theme audits, Play listing, privacy policy, and release
+work stay in Phase 5, and this entry does not mark Phase 4 complete.
+
+**Continuity is explicit and local.** The backup includes every task field and
+the two appearance preferences. Reminder delivery history is not copied: it is
+evidence about the device that produced it, and restoring it onto another phone
+would make Reminder health report the old device as though it were the new one.
+The restore therefore clears that history while replacing the task set.
+
+**No new dependency.** Appearance choices use Android's `SharedPreferences`,
+and the backup uses the platform JSON reader/writer plus the Storage Access
+Framework. The Android SDK already supplies the required persistence and file
+ownership, so adding DataStore or a serialization library would buy another
+dependency without adding product capability.
+
+---
+
+## D-029. Reminder health has one home in Settings
+
+**Decision.** Remove Reminder health from the app-bar overflow. Settings is its
+single permanent navigation entry; the Reminder health screen and route remain
+unchanged.
+
+**Why this supersedes the two-entry rule in `docs/design/settings.md`.** That
+rule was written before Settings existed and treated a future Settings row as
+an additional safety entrance. Once both entrances were present, they became
+two identically labelled routes to the same room. The overflow gave no signal
+that one was a shortcut, and nothing differed after the tap, so the duplicate
+added a navigation choice without adding capability.
+
+Reminder reliability remains the product's highest-severity concern. It is
+still the first row in Settings, while contextual warnings and reminder deep
+links may take a user directly to the health screen when action is needed. A
+permanent duplicate in More is not the mechanism for communicating failure.
+
+**What stays in More.** Logbook and Settings. Both are distinct rooms; neither
+duplicates an entry inside the other.
+
+## D-030. A reminder resolves forward, and a past moment is never stored
+
+**Decision.** A reminder is never saved for a moment that has already gone.
+Where the day was not chosen deliberately, the reminder resolves forward to the
+next occurrence of that time of day and the app shows the day it landed on.
+Where the day *was* chosen deliberately, the app refuses to save and says why.
+`reminderTrigger`'s clamp is untouched.
+
+**The bug this fixes, and why it was invisible.** Two reminders on a OnePlus 8T
+were recorded as placed at 03:20:34 and 11:00:49 and delivered five seconds
+later, hours after the times they were set for. `reminder_deliveries` holds
+`scheduledWallAt` beside `arrivedWallAt`, so those are measured moments rather
+than an inference from a notification log. This read as a manufacturer delaying
+an alarm and was not: the alarms were placed correctly and were already overdue
+when they were placed.
+
+`ReminderDialog` selects a time and nothing else. `TaskDetailsScreen` supplied
+the day from `task.reminderAt?.toLocalDate() ?: task.scheduledDate ?: today`,
+and its own comment recorded the gap in writing: "`PRODUCT.md` keeps a reminder
+independent of a scheduled date, but nothing on this dialog moves it off that
+day". So a task scheduled for a day now past could only take a reminder on that
+past day. `reminderTrigger` then clamped it to now, and it rang immediately.
+
+**The dialog already contradicted the product.** `PRODUCT.md` says "A reminder
+is independent of a scheduled date and of a due date". A dialog with no date
+cannot express that, so this is not a refinement of a working control. The
+editor could not say the thing the product requires it to say, and the missed
+reminders are what that gap looks like from outside.
+
+**There were two doors, not one.** `CaptureParser.reminderAt` built its moment
+as `LocalDateTime.of(date ?: defaultDate, time)` with no comparison against the
+clock, so "call the dentist at 3pm" typed at 4pm captured a reminder three
+hours gone. A fix confined to the dialog would have left Quick Add doing it.
+Nothing anywhere on the write path compared a reminder against now; the only
+such comparisons, `Reminders.kt` lines 59 and 86, classify pending against
+missed *after* the row is stored, which is the machinery that then delivered
+these immediately.
+
+**Why forward rather than refusal, for the implicit case.** `date-parsing.md`
+already promises that "no supported input ever resolves to the past", and
+`DateParserTest` walks a full year to defend it. That promise covers the day
+peel only. The time peel rides on `defaultDate` and breaks it. Resolving a
+reminder forward is therefore not a new rule, it is the existing rule reaching
+the half of the parse that escaped it: "next Tuesday" never means last Tuesday,
+so "at 3pm" must not mean three hours ago.
+
+**Why refusal, for the explicit case.** Choosing a day on the calendar and then
+a time already gone is a request for something impossible, made deliberately. A
+promise the app has already decided it cannot keep should not be stored.
+
+**What TickTick does, and which parts were taken.** Checked on a device at
+18:35. Typing "Call dentist at 3pm" resolves to a chip reading "Tomorrow,
+3:00PM" before saving, with the parsed words highlighted and cancellable.
+Date, Time, Reminder and Repeat live in one sheet. Selecting today with the
+time still 3:00PM greys the Time and Reminder rows, and confirming produces
+"Oops...the reminder you set is invalid because it is already overdue."
+
+The forward resolution and the single control are taken. The grey-out is not.
+It warns at confirmation rather than at the moment of choice, and it stores the
+task carrying a reminder the app has already judged dead. `PRODUCT.md` calls a
+reminder "a promise that the app will interrupt the user at a specific moment"
+and a missed one the highest-severity bug in the product; storing a promise
+known to be unkeepable does not meet that bar, whatever the toast says.
+
+**The shape: two rows, not two pickers in one window.** The first build put day
+presets inside `TimePickerDialog`, above the clock. It worked and it was wrong.
+The day took the top third of a window that exists to pick a time, the calendar
+button was the heaviest control up there despite being the least-used option,
+and asking for the full width made the dialog span the screen and lose its own
+inset. Reusing D-018's grid was defended as consistency; the components were
+consistent and the density was not.
+
+`ReminderSheet` replaces it: a `ModalBottomSheet` with a Day row and a Time row,
+each opening its own picker, then Save. That is TickTick's structure, it is the
+one `RepeatSheet` already uses for a value made of several fields, and the rows
+are the same `PlanRow` the screen behind them is built from. The day presets
+move into a substate reached from the Day row, on the same terms as Every and
+Ends.
+
+No summary line above the rows. Two rows reading Tomorrow and 9:00 AM say the
+whole thing, so a line reading "Tomorrow, 9:00 AM" over them is the restatement
+D-026 refused for Duration's hero readout. `RepeatSheet` has one because four
+fields compose into something the controls do not show separately; two do not.
+
+**A Save, for the reason `RepeatSheet` has one.** D-018 commits as you go
+because every other row is one field set by one choice. A day and a time only
+mean something together, and writing each as it is tapped would push the task
+through saved states nobody asked for, each one rescheduling an alarm.
+
+**The day pane offers two presets, not D-018's four.** Today and Tomorrow. The
+far preset that suits a scheduled date does not follow here, because "this
+weekend at 3pm" is a vague thing to ask of an interruption in a way "tomorrow at
+3pm" is not. Clearing has its own control on the pane behind, which is what
+frees both cells for days.
+
+**What was not taken.** A reminder stays a moment of its own rather than an
+offset from a due date. TickTick's model would make this bug unreachable by
+construction, and it contradicts `PRODUCT.md` head-on. It also inverts the
+product: here the interruption is the feature, not a satellite of a deadline.
+
+**The clamp stays.** `reminderTrigger` maps an overdue reminder to now, and that
+is for the phone having been off, a battery optimiser having dropped an alarm,
+or a timezone change. Those are reminders that were correct when set. Removing
+the clamp to fix reminders that were wrong when set would trade a noisy failure
+for a silent one, which is the wrong direction in this product.
+
+**The boundary.** Forward resolution applies when the moment is strictly before
+now. A reminder set for exactly the current minute is kept and fires at once,
+matching `Reminders.kt`, where "a reminder due at exactly now counts as missed
+rather than pending".
+
+**This unblocks Reminder health, which was starved of evidence by the bug.**
+Found while verifying on the 8T and worth recording, because it is not obvious
+from either side alone.
+
+`backgroundWorkState` clears its `SleepStandby` warning only on
+`EvidenceOfHealth` consecutive deliveries that `testsIdleDelivery`, which means
+`scheduledAhead >= EvidenceHorizon`, an hour. A reminder created in the past is
+clamped by `reminderTrigger` to now, so it is placed with `scheduledAhead = 0`
+and, by `ReminderDeliveryTest`'s own rule, tests nothing.
+
+Both delivery records on that phone read `scheduledAhead = 0`. So the check had
+no evidence at all and would have sat at `Warning` for ever, on a device whose
+reminders it could never learn anything about. The screen was not wrong; it was
+being fed reminders that proved nothing. Reminders now placed hours ahead are
+the first this install has recorded that can clear it.
+
+**What the health screen was right about, and what it was not asked.** Those two
+records are not reported as missed, and that is correct rather than lucky.
+`lateness` is measured against the moment the alarm was aimed at, and for a
+clamped reminder that moment is the placement, so both read five seconds late
+rather than six and eleven hours. The app does not blame the device for its own
+scheduling. That property was already there and is what let this bug hide: the
+health screen honestly reported nothing wrong, because from where it stood
+nothing was.
+
+## D-031. The home widget speaks only when it has grounds
+
+**Decision.** Phase 4's widget is one design with a conditional lead, not two
+sizes distinguished by how many rows they hold.
+
+- It leads with a single task and its reason for `ResumePaused` and
+  `ReminderPassed` only. For `NoTimeToday` it shows the plain list.
+- It has two quiet end states, *everything done* and *nothing scheduled*. The
+  app does not distinguish them and the widget has to.
+- A completed row stays in place, checked, until the next refresh, rather than
+  vanishing on tap.
+- No "N tasks left". A count appears only to disclose rows that did not fit.
+- It follows the system theme, not the Settings theme choice.
+- Rows keep the app's anatomy: the trailing column is the duration, and overdue
+  is carried by the date in the metadata line, not by a word in that column.
+- Hierarchy inside a row comes from type size and weight. No accent colour and
+  no reduced opacity, for the reason below.
+
+Size changes how many rows fit and nothing else.
+
+**Today is consulted, the widget is glimpsed, and that is the whole argument.**
+Opening the app is a decision: the user has said they are dealing with their
+tasks, and D-012's card answers the question they just asked. A widget is
+crossed involuntarily while unlocking the phone for something else. No question
+was asked, so the surface has to earn the right to assert. The bar for speaking
+up scales with how much the user asked to be there.
+
+**Why the widget cuts the threshold higher than the app does.** `focusNow`
+already refuses to always have an answer, and D-012's reason is that a card that
+always found something to say "would be asserting without grounds". The
+threshold that satisfies that in-app does not satisfy it on a home screen.
+`focusNowReasonOf` matches `NoTimeToday` for any task scheduled today carrying
+no reminder, which on an ordinary day is most of them. A widget leading on that
+reason would point insistently at a task all day whose entire claim is that the
+user put it on today and said nothing about when. In-app that is a weak but real
+answer to a question. Ambient and unavoidable, it is the motivational noise
+`PRODUCT.md` principle 7 excludes.
+
+No new rule is needed for this. `FocusNowReason` is declared in priority order
+and is `Comparable` by it; the widget reads further up the same enum.
+
+**The two reasons kept are the two where the widget does something no other
+surface does.** `ReminderPassed` is the product's promise, and a notification is
+transient while a widget is permanent, so the widget is the durable backstop for
+a reminder that was swiped away. D-005 is the whole reason that matters.
+`ResumePaused` is better still: the session survives the sheet because the card
+points at it, and on a home screen Resume becomes one tap instead of open, find
+the card, tap.
+
+**Completion has to leave evidence, because on this surface it otherwise erases
+its own.** A widget showing outstanding work removes a task the moment it is
+checked. Three 48dp targets, read while walking, and a mis-tap makes the task
+disappear with no snackbar and nothing to say which one moved. Recovering means
+opening the app and expanding a Completed disclosure that is collapsed by
+default. `TaskListViewModel.kt` states the app's view of that trade already: one
+failure is unrecoverable and invisible, the other costs a glance. Keeping the
+checked row in place until the next refresh is also honest about the platform,
+where the update is asynchronous anyway. Whether the checked row can be tapped
+to undo is left open; showing what happened is not.
+
+**Everything done and nothing scheduled are different days.** Today needs one
+empty state because the Completed section is visible on the same screen. The
+widget has no such section, so a single state would tell someone who just
+finished six tasks that nothing was scheduled, which reads as the app forgetting
+their day.
+
+This is also what replaces the count. The honest case for "3 tasks left" is the
+glance: one number answers *am I on top of things* faster than three rows of
+text. A permanent home-screen burn-down that never reaches zero and refills each
+morning is the thing that makes task apps tiring, and an end state that looks
+calmly different answers the same question with no number. Where a count does
+appear it follows the app's existing rule rather than a new one:
+`CompletedDisclosure.kt` sets the default as "no count badge" and makes its own
+band a narrow exception because it counts what is collapsed out of view. So the
+widget may say what is hidden, never what is already on screen.
+
+**The theme follows the system, and D-024 is what settles it.** A widget sits
+among other widgets on the launcher's surface, where looking wrong beside its
+neighbours costs more than differing from an in-app setting the user is not
+looking at. The obvious escape hatch is a widget-theme row in Settings, and that
+is closed: D-024 fixed the list at four rows and D-028 built it. The Settings
+theme choice governs the app; the widget is not the app.
+
+**Colour cannot carry meaning on this widget, and dynamic colour is why.**
+Measured against the board's own variables, `Tertiary` on `Primary Container`
+gives 4.99:1 in Light and 5.51:1 in Dark, and 3.53:1 in Wallpaper warm, which is
+below AA for a 12sp line. `Error` is no better at 3.61:1. The warm
+`Primary Container` is a mid-luminance orange, so no accent clears it, and
+reducing opacity makes it worse rather than better: `On Primary Container` at 85%
+falls to 3.88:1. There is no `onPrimaryContainerVariant` to retreat to.
+
+This is why the overdue cue is the date itself rather than a colour, and it is
+the position the app already holds. `TaskRow.kt` treats the overdue colour as
+"the second cue" sitting on top of the words, and Today keeps overdue "readable
+without relying on the colour" because a band heading names it. The widget has no
+band headings, so the words have to do all of it. Row hierarchy comes from 12sp
+Regular against 14sp Medium, which costs no contrast at all.
+
+**What the board draws now, and what has to change.** Section 10 holds six
+frames, Medium and Compact in Clean Slate, Dark and Warm. They are token-clean
+and identical within each size, so the theming is sound and only the content
+moves. What changes: the two sizes stop differing by row count, "3 tasks left"
+goes, "Overdue" leaves the duration column, and the end states and the leading
+card are drawn for the first time.
+
+**What is not decided here.** Responsive sizing and the API 29 and 30 corner and
+size behaviour, whether the `+` survives at the smaller size, and whether a
+checked row is tappable to undo. Those are implementation shape and belong in
+`docs/design/widget.md`, whose absence is why this section drifted from the app
+unnoticed and which now carries them.
+
+**What would reverse the threshold.** Evidence that users place the widget and
+then ask why it is not telling them what to do. The failure this guards against
+is quiet and the failure it risks is loud, so the risk is self-reporting: a
+widget that says too little gets complained about, while one that nags gets
+removed without a word. If the plain list turns out to read as inert, promoting
+`NoTimeToday` is a one-line change to where the widget reads the enum.

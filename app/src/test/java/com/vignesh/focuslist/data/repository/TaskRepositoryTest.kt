@@ -2,6 +2,7 @@ package com.vignesh.focuslist.data.repository
 
 import com.vignesh.focuslist.core.domain.Task
 import com.vignesh.focuslist.core.domain.Recurrence
+import com.vignesh.focuslist.core.domain.RecurrenceUnit
 import com.vignesh.focuslist.data.local.TaskDao
 import com.vignesh.focuslist.data.local.TaskEntity
 import kotlinx.coroutines.flow.Flow
@@ -86,7 +87,7 @@ class TaskRepositoryTest {
         reminderAt: LocalDateTime? = null,
         reminderDeliveredAt: Instant? = null,
         estimatedDurationMinutes: Int? = null,
-        recurrence: Recurrence? = null,
+        recurrence: RecurrenceUnit? = null,
         completedAt: Instant? = null,
         deletedAt: Instant? = null
     ) = TaskEntity(
@@ -100,6 +101,11 @@ class TaskRepositoryTest {
         reminderDeliveredAt = reminderDeliveredAt,
         estimatedDurationMinutes = estimatedDurationMinutes,
         recurrence = recurrence,
+        recurrenceInterval = null,
+        recurrenceWeekdays = null,
+        recurrenceEndDate = null,
+        recurrenceEndCount = null,
+        occurrenceNumber = 1,
         spawnedFromId = null,
         completedAt = completedAt,
         deletedAt = deletedAt

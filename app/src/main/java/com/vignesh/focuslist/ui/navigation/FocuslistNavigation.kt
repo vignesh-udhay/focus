@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -23,7 +24,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.foundation.layout.size
 import com.vignesh.focuslist.R
+import com.vignesh.focuslist.ui.component.FocuslistMenuShape
 
 /**
  * The routes the navigation graph knows.
@@ -38,6 +41,8 @@ object FocuslistRoutes {
     const val UPCOMING = "upcoming"
     const val LOGBOOK = "logbook"
     const val REMINDER_HEALTH = "reminder-health"
+    const val SETTINGS = "settings"
+    const val BACKUP = "backup"
 
     /**
      * Task Details, which gained a route with `docs/decisions.md` D-018.
@@ -61,7 +66,7 @@ object FocuslistRoutes {
  *
  * These are not places among the lists. They are rooms you go into and come
  * back from, which is why each draws a back arrow rather than the navigation
- * bar. Settings joins this list when it exists; nothing else has to change.
+ * bar. Reminder health is nested under Settings rather than duplicated here.
  */
 private data class OverflowDestination(
     val route: String,
@@ -76,9 +81,9 @@ private val OverflowDestinations = listOf(
         R.drawable.ic_logbook
     ),
     OverflowDestination(
-        FocuslistRoutes.REMINDER_HEALTH,
-        R.string.reminder_health_title,
-        R.drawable.ic_notifications
+        FocuslistRoutes.SETTINGS,
+        R.string.settings_title,
+        R.drawable.ic_settings
     )
 )
 
@@ -156,8 +161,8 @@ private val TopLevelDestinations = listOf(
  *
  * More is gone from the bar. It was a fourth item standing in for a screen
  * that does not exist, and the places behind it are not places among the
- * lists: Logbook and Reminder health are rooms you go into and come back from.
- * They moved to the app-bar overflow, where the board puts them.
+ * lists: Logbook and Settings are rooms you go into and come back from. They
+ * live in the app-bar overflow; Reminder health is reached through Settings.
  */
 @Composable
 fun FocuslistNavigationBar(
@@ -324,19 +329,33 @@ private fun OverflowItems(
     onDismiss: () -> Unit,
     onOpen: (String) -> Unit
 ) {
-    DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismiss,
+        shape = FocuslistMenuShape
+    ) {
         OverflowDestinations.forEach { destination ->
+            // **The glyph sits after the label, and names the item.** That is
+            // where Material's own menu puts it: the spec's example runs
+            // Revert, Delete, Settings, Help & feedback, each with its own
+            // symbol right-aligned against the label.
+            //
+            // These icons were briefly removed altogether, on the argument that
+            // a leading icon here echoed a navigation bar these destinations
+            // are not in. The premise was right and the conclusion was wrong:
+            // the icons belonged in the other slot, not in the bin.
             DropdownMenuItem(
                 text = { Text(stringResource(destination.labelRes)) },
                 onClick = {
                     onDismiss()
                     onOpen(destination.route)
                 },
-                leadingIcon = {
+                trailingIcon = {
                     Icon(
                         painter = painterResource(destination.iconRes),
-                        // Beside its own label, as in the bar.
-                        contentDescription = null
+                        // The label it sits beside already names the place.
+                        contentDescription = null,
+                        modifier = Modifier.size(MenuDefaults.TrailingIconSize)
                     )
                 }
             )

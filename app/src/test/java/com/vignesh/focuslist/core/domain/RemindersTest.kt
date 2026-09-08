@@ -274,4 +274,101 @@ class RemindersTest {
             )
         )
     }
+
+    // 7. nextReminderOccurrence, where a time of day lands. D-030.
+
+    /**
+     * The bug, reduced to one line.
+     *
+     * Nine in the morning, asked for at six in the evening, is nine tomorrow
+     * morning. Before D-030 it was nine this morning: a moment nine hours gone,
+     * which `reminderTrigger` then clamped to now and delivered at once. Two
+     * such reminders on a OnePlus 8T were recorded as placed at 03:20 and 11:00
+     * and arriving five seconds later, which read as the manufacturer delaying
+     * an alarm and was not.
+     */
+    @Test
+    fun `a time of day already gone lands tomorrow`() {
+        assertEquals(
+            LocalDateTime.of(2026, 9, 6, 9, 0),
+            nextReminderOccurrence(
+                LocalDateTime.of(2026, 9, 5, 9, 0),
+                LocalDateTime.of(2026, 9, 5, 18, 0)
+            )
+        )
+    }
+
+    @Test
+    fun `a time of day still ahead is left where it is`() {
+        val at = LocalDateTime.of(2026, 9, 5, 21, 0)
+
+        assertEquals(at, nextReminderOccurrence(at, LocalDateTime.of(2026, 9, 5, 18, 0)))
+    }
+
+    /**
+     * The boundary agrees with [missedReminders], which counts a reminder due
+     * at exactly now as owed rather than pending. Pushing it a day out instead
+     * would turn a reminder about to fire into one the user waits a day for,
+     * which is the failure this product ranks highest.
+     */
+    @Test
+    fun `a reminder for exactly now is kept rather than moved a day`() {
+        val at = LocalDateTime.of(2026, 9, 5, 18, 0)
+
+        assertEquals(at, nextReminderOccurrence(at, at))
+    }
+
+    /** One second past is past, and moves. */
+    @Test
+    fun `a reminder one second gone moves to the next day`() {
+        val at = LocalDateTime.of(2026, 9, 5, 18, 0)
+
+        assertEquals(
+            at.plusDays(1),
+            nextReminderOccurrence(at, at.plusSeconds(1))
+        )
+    }
+
+    /**
+     * A moment from weeks back arrives at the next occurrence, not at the day
+     * after the one it was written for. A reminder edited on a long-overdue
+     * task should be offered today or tomorrow, never in August.
+     */
+    @Test
+    fun `a moment from weeks ago lands on the next occurrence`() {
+        assertEquals(
+            LocalDateTime.of(2026, 9, 5, 9, 0),
+            nextReminderOccurrence(
+                LocalDateTime.of(2026, 8, 22, 9, 0),
+                LocalDateTime.of(2026, 9, 5, 6, 30)
+            )
+        )
+    }
+
+    /** And on the day after, when that occurrence has itself gone by. */
+    @Test
+    fun `a moment from weeks ago whose hour has passed lands tomorrow`() {
+        assertEquals(
+            LocalDateTime.of(2026, 9, 6, 9, 0),
+            nextReminderOccurrence(
+                LocalDateTime.of(2026, 8, 22, 9, 0),
+                LocalDateTime.of(2026, 9, 5, 18, 0)
+            )
+        )
+    }
+
+    /**
+     * Wall-clock arithmetic, so the hour is preserved rather than the elapsed
+     * duration. A 9am reminder stays 9am across a daylight-saving change; doing
+     * this on [Instant]s would land it at 8am or 10am in half the world.
+     */
+    @Test
+    fun `the time of day survives the move`() {
+        val moved = nextReminderOccurrence(
+            LocalDateTime.of(2026, 9, 5, 9, 30),
+            LocalDateTime.of(2026, 9, 5, 23, 59)
+        )
+
+        assertEquals(LocalDateTime.of(2026, 9, 5, 9, 30).toLocalTime(), moved.toLocalTime())
+    }
 }

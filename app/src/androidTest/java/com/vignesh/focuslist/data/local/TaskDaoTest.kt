@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.vignesh.focuslist.core.domain.Recurrence
+import com.vignesh.focuslist.core.domain.RecurrenceUnit
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -60,7 +60,7 @@ class TaskDaoTest {
         reminderAt: LocalDateTime? = null,
         reminderDeliveredAt: Instant? = null,
         estimatedDurationMinutes: Int? = null,
-        recurrence: Recurrence? = null,
+        recurrence: RecurrenceUnit? = null,
         spawnedFromId: String? = null,
         completedAt: Instant? = null,
         deletedAt: Instant? = null,
@@ -76,6 +76,11 @@ class TaskDaoTest {
         reminderDeliveredAt = reminderDeliveredAt,
         estimatedDurationMinutes = estimatedDurationMinutes,
         recurrence = recurrence,
+        recurrenceInterval = null,
+        recurrenceWeekdays = null,
+        recurrenceEndDate = null,
+        recurrenceEndCount = null,
+        occurrenceNumber = 1,
         spawnedFromId = spawnedFromId,
         completedAt = completedAt,
         deletedAt = deletedAt

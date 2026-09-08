@@ -61,8 +61,8 @@ import androidx.compose.ui.semantics.semantics
  * @param actions the app-bar overflow, on the three primary screens. Empty by
  * default, because most screens have nothing to put there and an empty action
  * row still reserves its width. This is the only reason the bar has the slot:
- * Logbook, Reminder health and Settings are not places among the lists, so
- * they cannot live in the navigation bar, and the board puts them here.
+ * Logbook and Settings are not places among the lists, so they cannot live in
+ * the navigation bar. Reminder health is reached through Settings.
  */
 @Composable
 internal fun FocuslistTopAppBar(
