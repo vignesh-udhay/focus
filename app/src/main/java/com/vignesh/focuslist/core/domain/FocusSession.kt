@@ -183,16 +183,21 @@ private fun usableEstimate(estimateMinutes: Int?): Int? =
     estimateMinutes?.takeIf { minutes -> minutes > 0 }
 
 /**
- * The six states `docs/decisions.md` D-013 draws, derived rather than stored.
+ * The five states `docs/decisions.md` D-013 draws as amended by D-054, derived
+ * rather than stored.
  *
  * Storing which state a session is in would be a second answer to a question the
  * session and the task's estimate already answer between them, and two answers
  * is how a paused session ends up drawing a Pause button.
+ *
+ * **There were six, and Ready was the one that went.** It meant a task chosen
+ * with no clock running, and it existed for D-012's card, which picked a task on
+ * the user's behalf and needed somewhere for the user to agree with the pick
+ * before time started. D-048 removed the app's picking; every route into Focus is
+ * now one the user chose, and confirming a decision already made is friction. The
+ * state had no entry point left at all, which is what D-054 acted on.
  */
 enum class FocusState {
-
-    /** A task chosen, no clock running. The estimate, and a control to begin. */
-    Ready,
 
     /** Working, against an estimate. */
     Running,
@@ -213,19 +218,26 @@ enum class FocusState {
 /**
  * Whether the clock is running, which is the whole of what the shape says.
  *
- * `docs/decisions.md` D-014. Ready and both paused states are at rest; the other
- * three are running, including Estimate reached, which is still counting even
- * though it has nothing left to count down.
+ * `docs/decisions.md` D-014. Both paused states are at rest; the other three are
+ * running, including Estimate reached, which is still counting even though it has
+ * nothing left to count down.
  */
 val FocusState.isClockRunning: Boolean
     get() = when (this) {
         FocusState.Running, FocusState.EstimateReached, FocusState.OpenEnded -> true
-        FocusState.Ready, FocusState.Paused, FocusState.OpenEndedPaused -> false
+        FocusState.Paused, FocusState.OpenEndedPaused -> false
     }
 
 /**
- * Which of the six states [session] is in, for a task estimated at
+ * Which of the five states [session] is in, for a task estimated at
  * [estimateMinutes].
+ *
+ * **[session] is not nullable, and it used to be.** A null one meant Ready, and
+ * D-054 removed that state along with the only path that produced it. Opening the
+ * Focus sheet now implies a session: `_isFocusSheetOpen` is not persisted, so a
+ * restart cannot restore the sheet without one, and all three paths that open it
+ * start or resume a clock first. The type says so rather than leaving a branch for
+ * a state the app cannot be in.
  *
  * The order of the checks is what keeps them exclusive. Paused is asked before
  * the estimate, because a paused session is paused whether or not its estimate
@@ -234,12 +246,10 @@ val FocusState.isClockRunning: Boolean
  * would find the extra five already spent.
  */
 fun focusStateOf(
-    session: FocusSession?,
+    session: FocusSession,
     estimateMinutes: Int?,
     now: Instant
 ): FocusState {
-    if (session == null) return FocusState.Ready
-
     val estimate = session.estimateMinutes(estimateMinutes)
 
     return when {
@@ -267,14 +277,12 @@ fun focusStateOf(
  * rather than "1:30:00", because a Focus session is not long enough for hours to
  * be worth the punctuation, and the two-field form stays one width.
  */
-fun focusReadout(session: FocusSession?, estimateMinutes: Int?, now: Instant): String {
-    val shown = when (session) {
-        // A chosen task with no session shows the whole estimate, which is what
-        // the user is about to commit to. With no estimate it shows zero: no
-        // time has been worked, and that is the honest reading.
-        null -> Duration.ofMinutes((usableEstimate(estimateMinutes) ?: 0).toLong())
-        else -> session.remaining(now, estimateMinutes) ?: session.elapsed(now)
-    }
+fun focusReadout(session: FocusSession, estimateMinutes: Int?, now: Instant): String {
+    // **The null branch went with Ready, per D-054.** A chosen task with no session
+    // showed the whole estimate, which is what the user was about to commit to.
+    // There is no longer a way to be on this screen without a session, so the
+    // parameter says so.
+    val shown = session.remaining(now, estimateMinutes) ?: session.elapsed(now)
 
     val totalSeconds = shown.seconds.coerceAtLeast(0L)
 

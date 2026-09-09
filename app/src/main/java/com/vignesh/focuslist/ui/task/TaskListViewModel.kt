@@ -401,14 +401,6 @@ class TaskListViewModel(
     val isFocusSheetOpen: StateFlow<Boolean> = _isFocusSheetOpen.asStateFlow()
 
     /**
-     * Starts working on whatever [focusedTask] currently is.
-     *
-     * Takes no task: choosing and starting are separate acts, and the caller
-     * that wants both does both. This is what Ready's Start focus does.
-     */
-    fun startFocusSession() = restartFocusClock()
-
-    /**
      * Stops the clock, keeping everything worked so far.
      *
      * The session stays and so does the task pointer, because a paused session
@@ -605,19 +597,6 @@ class TaskListViewModel(
         focusTask(task.id)
         _isFocusSheetOpen.value = true
         resumeFocusSession()
-    }
-
-    /**
-     * Opens Focus on [id] in Ready: chosen, with no clock running.
-     *
-     * Any session left over from another task goes, because the clock measures
-     * this task against *its* estimate. Without that, picking up a fifteen
-     * minute task after forty minutes on another would open already overrun.
-     */
-    fun openFocus(id: String) {
-        focusTask(id)
-        writeFocusSession(null)
-        _isFocusSheetOpen.value = true
     }
 
     init {

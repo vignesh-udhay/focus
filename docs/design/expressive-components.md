@@ -760,8 +760,16 @@ one is read the sheet shows a single dismissible Reminder chip. The rule below
 against a second way to set a date is kept, and is why the day still has no
 chip. The reminder chip is not a second setter: nothing else in the sheet sets
 a reminder, and dismissing it unmarks the same run in the field, so there is
-one mechanism rather than two. The sheet also lost its heading; the FAB that
-opens it already says "Add task".
+one mechanism rather than two.
+
+**The sheet's heading came back in D-052.** This section used to end "The sheet
+also lost its heading; the FAB that opens it already says Add task." That was
+right about the FAB and wrong about where the name went: removing the heading
+did not remove the name, it moved it into the field's floating label, where it
+was redrawn on every keystroke and cost a row of the input to say what the sheet
+was for. "New task" is a `titleLarge` heading above the field now, and the field
+carries no label. A filled field is 56dp with or without one, so the container
+did not move; the top row went back to the text.
 
 [FD] One field and one action. Do not add a second field or a date picker.
 Capture should require almost no decisions.
@@ -770,6 +778,25 @@ Capture should require almost no decisions.
 words take `primary`, and a supporting line under the field names the resolved
 date. That is one field still, not two — the marking and the line are feedback
 on what was typed, not somewhere else to type.
+
+**When no day was typed, that line names the destination instead, and the sheet
+has to be told what it is.** D-053. The two hosts differ: Today saves
+`parsed.date ?: today` and the capture lands in Today, Inbox saves `parsed.date`
+and the capture stays undated in Inbox. The line worked it out from
+`parsed.date` alone, which is null in both cases, and so said "Saved to Today"
+over a task going to Inbox. `fallbackDate` is now a parameter, so a host cannot
+open this sheet without answering the question.
+
+**A dated capture still names the date, not the list**, even though a future day
+means the task appears in Upcoming. The date is what the user typed and wants
+confirmed, and the list follows from it. The line names a destination only when
+there is no date to name, which is also the only time the destination is the
+surprising part.
+
+**And it says nothing until there is a title.** It used to read "Saved to Today"
+over an empty field, asserting a destination for a task that did not exist. It
+is tied to the same test the Add button uses, so the line appears exactly when
+there is something for it to describe.
 
 [FD] The placeholder is an example of exactly that, and it is there to teach
 it. Nothing else on the sheet says a date can be typed, so without one the

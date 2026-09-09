@@ -250,8 +250,21 @@ private val TwelveHour = Regex("""^(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)$""")
  */
 private val TwentyFourHour = Regex("""^(\d{1,2})[:.](\d{2})$""")
 
-/** "at 3pm" is the longest time form, so two words is the whole of the reach. */
-private const val MaxTimeWords = 2
+/**
+ * "at 10 am" is the longest time form, so three words is the whole of the reach.
+ *
+ * Two, once, on the reasoning that "at 3pm" was the longest. It is not: a
+ * meridiem written apart from its hour is a word of its own. The peel matched
+ * the trailing "10 am" and left the preposition at the end of the head, where
+ * it shadowed any day standing in front of it, because [parseDate] matches
+ * whole candidates and "tomorrow at" is not one. "Call the guy tomorrow at
+ * 10 am" captured the hour and lost the day.
+ *
+ * Three cannot over-reach. The peel is longest-first and every candidate has to
+ * match [parseTimeOfDay] entire, so the only three-word span that can match is
+ * a preposition, an hour and a meridiem. "at 3pm" still wins at two.
+ */
+private const val MaxTimeWords = 3
 
 /**
  * A run of non-space characters.

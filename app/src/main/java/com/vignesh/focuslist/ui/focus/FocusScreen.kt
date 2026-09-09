@@ -40,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
@@ -124,6 +125,14 @@ fun FocusSheet(
     // `focus.md` names that as the rule and this is the mistake it warns about.
     val current = task ?: return
 
+    // **And a session, since D-054.** Ready was what a null session drew, and it
+    // has no entry point left: the sheet is opened by starting a clock or by
+    // resuming one, and `_isFocusSheetOpen` is not persisted, so a restart cannot
+    // put the sheet back without one. Returning is the same answer the missing
+    // task gets above, and for the same reason: this composable does not decide
+    // that Focus is over, `TaskListViewModel` does.
+    val active = session ?: return
+
     ModalBottomSheet(
         // Pauses. Covers the drag handle, the drag, the scrim and the back
         // gesture, because ModalBottomSheet routes all of them here, and D-015
@@ -139,9 +148,8 @@ fun FocusSheet(
     ) {
         FocusSheetContent(
             task = current,
-            session = session,
+            session = active,
             onComplete = { viewModel.completeFromFocus(current.id) },
-            onStart = viewModel::startFocusSession,
             onPause = viewModel::pauseFocusSession,
             onResume = viewModel::resumeFocusSession,
             onExtend = viewModel::extendFocusSession,
@@ -163,9 +171,8 @@ fun FocusSheet(
 @Composable
 private fun FocusSheetContent(
     task: Task,
-    session: FocusSession?,
+    session: FocusSession,
     onComplete: () -> Unit,
-    onStart: () -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onExtend: () -> Unit,
@@ -207,7 +214,6 @@ private fun FocusSheetContent(
             FocusActions(
                 state = reading.state,
                 onComplete = onComplete,
-                onStart = onStart,
                 onPause = onPause,
                 onResume = onResume,
                 onExtend = onExtend
@@ -290,7 +296,7 @@ private fun FocusTaskTitle(title: String) {
 @Composable
 private fun FocusStatusLine(reading: FocusReading, estimateMinutes: Int?) {
     val budget = when (reading.state) {
-        FocusState.Ready, FocusState.Running ->
+        FocusState.Running ->
             stringResource(R.string.focus_status_estimate, estimateMinutes ?: 0)
 
         FocusState.Paused -> stringResource(
@@ -308,11 +314,39 @@ private fun FocusStatusLine(reading: FocusReading, estimateMinutes: Int?) {
             stringResource(R.string.focus_status_no_limit)
     }
 
+    // **The digits get a spoken form, and until now they had none.** `strings.xml`
+    // has carried `focus_readout_remaining` and `focus_readout_elapsed` with a
+    // comment saying the readout "is digits, so it carries a spoken form for
+    // TalkBack", and no Kotlin ever referenced either: the strings were written
+    // and never wired. A screen reader was left announcing a bare "44:37", which
+    // says nothing about whether that is time left or time spent, and those are
+    // opposite readings of the same four digits.
+    //
+    // Which one it is follows `focusReadout`'s own branch. It shows `remaining`
+    // whenever there is an estimate to measure against and falls back to
+    // `elapsed` when there is not, and the two open-ended states are precisely
+    // the states with no estimate.
+    val spokenReadout = stringResource(
+        when (reading.state) {
+            FocusState.OpenEnded, FocusState.OpenEndedPaused -> R.string.focus_readout_elapsed
+            else -> R.string.focus_readout_remaining
+        },
+        reading.readout
+    )
+
+    // The whole line, because a description replaces the text rather than adding
+    // to it: describing only the clock would silence the budget beside it.
+    // Joined with a comma rather than the middle dot the line is drawn with,
+    // since a separator that reads as a pause in print does not read as one
+    // aloud.
+    val spokenLine = stringResource(R.string.focus_status_line_spoken, spokenReadout, budget)
+
     Text(
         text = stringResource(R.string.focus_status_line, reading.readout, budget),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        textAlign = TextAlign.Center
+        textAlign = TextAlign.Center,
+        modifier = Modifier.semantics { contentDescription = spokenLine }
     )
 }
 
@@ -348,7 +382,6 @@ private fun FocusStatusLine(reading: FocusReading, estimateMinutes: Int?) {
 private fun FocusActions(
     state: FocusState,
     onComplete: () -> Unit,
-    onStart: () -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onExtend: () -> Unit
@@ -372,13 +405,11 @@ private fun FocusActions(
         val label: Int
         val onClock: () -> Unit
 
+        // **No Start branch, since D-054.** Ready was the only state that offered
+        // one, because it was the only state whose clock had not begun. Every way
+        // into this screen now starts or resumes a clock, so the control beside
+        // Complete is always Pause or Resume.
         when (state) {
-            FocusState.Ready -> {
-                icon = R.drawable.ic_play_arrow
-                label = R.string.focus_start
-                onClock = onStart
-            }
-
             FocusState.Running, FocusState.OpenEnded -> {
                 icon = R.drawable.ic_pause
                 label = R.string.focus_pause
@@ -450,14 +481,14 @@ private data class FocusReading(
  * shape. The shape is a path that can be redrawn for nothing; text has to be
  * measured and laid out, so it is recomposed once a second and no faster.
  *
- * A stopped clock has one reading and the first sample already took it, so both
- * paused states and Ready never tick. Together with the shape only moving on a
- * state change, that is what makes `focus.md`'s claim true that the screen goes
+ * A stopped clock has one reading and the first sample already took it, so
+ * neither paused state ever ticks. Together with the mascot only changing pose on
+ * a state change, that is what makes `focus.md`'s claim true that the screen goes
  * idle: nothing here spends a frame to say what it said last frame.
  */
 @Composable
 private fun rememberFocusReading(
-    session: FocusSession?,
+    session: FocusSession,
     estimateMinutes: Int?
 ): FocusReading {
     fun sample(): FocusReading {
@@ -466,14 +497,14 @@ private fun rememberFocusReading(
         return FocusReading(
             readout = focusReadout(session, estimateMinutes, now),
             state = focusStateOf(session, estimateMinutes, now),
-            remainingMinutes = session?.remaining(now, estimateMinutes)?.toMinutes()
+            remainingMinutes = session.remaining(now, estimateMinutes)?.toMinutes()
         )
     }
 
     var reading by remember(session, estimateMinutes) { mutableStateOf(sample()) }
 
     LaunchedEffect(session, estimateMinutes) {
-        if (session == null || session.isPaused) return@LaunchedEffect
+        if (session.isPaused) return@LaunchedEffect
 
         while (true) {
             delay(ReadoutTickMillis)
@@ -565,13 +596,12 @@ private val SampleTask = Task(
 private val PreviewStart: Instant = Instant.now().minusSeconds(30)
 
 @Composable
-private fun FocusStatePreview(task: Task, session: FocusSession?) {
+private fun FocusStatePreview(task: Task, session: FocusSession) {
     FocuslistTheme(dynamicColor = false) {
         FocusSheetContent(
             task = task,
             session = session,
             onComplete = {},
-            onStart = {},
             onPause = {},
             onResume = {},
             onExtend = {},
@@ -579,10 +609,6 @@ private fun FocusStatePreview(task: Task, session: FocusSession?) {
         )
     }
 }
-
-@Preview(name = "Focus ready", showBackground = true, heightDp = 720)
-@Composable
-private fun FocusReadyPreview() = FocusStatePreview(SampleTask, null)
 
 @Preview(name = "Focus running", showBackground = true, heightDp = 720)
 @Preview(

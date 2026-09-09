@@ -82,8 +82,6 @@ fun UpcomingScreen(
         onRetry = viewModel::retryRead,
         onToggleComplete = viewModel::toggleComplete,
         onOpenTask = onOpenTask,
-        onDelete = viewModel::deleteTask,
-        onReschedule = viewModel::rescheduleTask,
         modifier = modifier,
         snackbarHostState = snackbarHostState,
         bottomBar = bottomBar,
@@ -105,8 +103,6 @@ private fun UpcomingContent(
     today: LocalDate,
     onToggleComplete: (String) -> Unit,
     onOpenTask: (String) -> Unit,
-    onDelete: (String) -> Unit,
-    onReschedule: (String, LocalDate?) -> Unit,
     readFailed: Boolean = false,
     onRetry: () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -254,8 +250,6 @@ private fun UpcomingScreenPreview() {
             today = today,
             onToggleComplete = {},
             onOpenTask = {},
-            onDelete = {},
-            onReschedule = { _, _ -> },
         )
     }
 }
@@ -270,8 +264,6 @@ private fun UpcomingScreenEmptyPreview() {
             today = LocalDate.now(),
             onToggleComplete = {},
             onOpenTask = {},
-            onDelete = {},
-            onReschedule = { _, _ -> },
         )
     }
 }
@@ -286,8 +278,6 @@ private fun UpcomingScreenLargeFontPreview() {
             today = today,
             onToggleComplete = {},
             onOpenTask = {},
-            onDelete = {},
-            onReschedule = { _, _ -> },
         )
     }
 }

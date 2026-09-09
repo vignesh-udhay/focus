@@ -236,19 +236,18 @@ class FocusSessionTest {
         assertNull(session.estimateReachedAt(at(12), null))
     }
 
-    // --- the six states ------------------------------------------------------
+    // --- the five states -----------------------------------------------------
 
+    /**
+     * **There were six, and `noSessionIsReady` tested the one that went.** A null
+     * session meant Ready, and D-054 removed both the state and the only path that
+     * produced one. `focusStateOf` no longer takes a nullable session, so that test
+     * cannot be written any more: the compiler rejects it, which is the point.
+     */
     @Test
-    fun noSessionIsReady() {
-        assertEquals(FocusState.Ready, focusStateOf(null, 45, start))
-        assertEquals(FocusState.Ready, focusStateOf(null, null, start))
-    }
-
-    @Test
-    fun theSixStatesAreTheSixTheDesignDraws() {
+    fun theFiveStatesAreTheFiveTheDesignDraws() {
         val session = FocusSession(startedAt = start)
 
-        assertEquals(FocusState.Ready, focusStateOf(null, 45, start))
         assertEquals(FocusState.Running, focusStateOf(session, 45, at(12)))
         assertEquals(FocusState.Paused, focusStateOf(session.paused(at(12)), 45, at(20)))
         assertEquals(FocusState.EstimateReached, focusStateOf(session, 45, at(45)))
@@ -266,7 +265,6 @@ class FocusSessionTest {
      */
     @Test
     fun theShapeFollowsWhetherTheClockIsRunning() {
-        assertFalse(FocusState.Ready.isClockRunning)
         assertTrue(FocusState.Running.isClockRunning)
         assertFalse(FocusState.Paused.isClockRunning)
         assertTrue(FocusState.EstimateReached.isClockRunning)
@@ -314,15 +312,12 @@ class FocusSessionTest {
         assertEquals("12:43", focusReadout(session, null, at(12, 43)))
     }
 
-    @Test
-    fun readyShowsTheWholeEstimate() {
-        assertEquals("45:00", focusReadout(null, 45, start))
-    }
-
-    @Test
-    fun readyWithNoEstimateShowsNothingWorked() {
-        assertEquals("00:00", focusReadout(null, null, start))
-    }
+    /**
+     * **Two tests were here and D-054 removed them.** A null session read the whole
+     * estimate, or "00:00" with no estimate, and both were describing Ready. The
+     * parameter is not nullable any more, so neither case can be expressed. A
+     * session that has just started reads the same "45:00" and is covered above.
+     */
 
     @Test
     fun theEstimateReachedStateReadsZero() {

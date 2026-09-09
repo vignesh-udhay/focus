@@ -140,19 +140,6 @@ fun TodayScreen(
         },
         onToggleComplete = viewModel::toggleComplete,
         onOpenTask = onOpenTask,
-        onDelete = viewModel::deleteTask,
-        onReschedule = viewModel::rescheduleTask,
-        // Choose the task, then move to Focus. Focus is on the task that was
-        // picked and no other, which is what answers "why this one".
-        //
-        // Straight into the session, without stopping at the ready state.
-        // Picking one task out of a list and choosing Focus on it is the
-        // deciding already done; asking the user to confirm it with a second
-        // tap would be the friction Quick Add was just cleared of.
-        onFocusTask = { id ->
-            viewModel.beginFocus(id)
-            onOpenFocus()
-        },
         // The card's one action. It resumes, and the sheet opens on a session
         // already running.
         //
@@ -184,6 +171,9 @@ fun TodayScreen(
             // The collected day, so the sheet marks and names the same date the
             // capture will get, and both follow a rollover while it is open.
             today = today,
+            // Today dates an undated capture, so the line under the field can
+            // say so. D-053.
+            fallbackDate = today,
             onDismiss = { isQuickAddVisible = false },
             // Captured onto today's list unless the title named a day itself.
             onSave = { parsed ->
@@ -231,9 +221,6 @@ private fun TodayContent(
     pausedRemainingMinutes: Long? = null,
     onToggleComplete: (String) -> Unit,
     onOpenTask: (String) -> Unit,
-    onDelete: (String) -> Unit,
-    onReschedule: (String, LocalDate?) -> Unit,
-    onFocusTask: (String) -> Unit,
     onResumeFocus: () -> Unit = {},
     onAddTask: () -> Unit,
     readFailed: Boolean = false,
@@ -646,9 +633,6 @@ private fun TodayScreenPreview() {
             pausedRemainingMinutes = 12,
             onToggleComplete = {},
             onOpenTask = {},
-            onDelete = {},
-            onReschedule = { _, _ -> },
-            onFocusTask = {},
             onAddTask = {},
         )
     }
@@ -665,9 +649,6 @@ private fun TodayScreenEmptyPreview() {
             pausedTask = null,
             onToggleComplete = {},
             onOpenTask = {},
-            onDelete = {},
-            onReschedule = { _, _ -> },
-            onFocusTask = {},
             onAddTask = {},
         )
     }
@@ -685,9 +666,6 @@ private fun TodayScreenLargeFontPreview() {
             pausedRemainingMinutes = 12,
             onToggleComplete = {},
             onOpenTask = {},
-            onDelete = {},
-            onReschedule = { _, _ -> },
-            onFocusTask = {},
             onAddTask = {},
         )
     }

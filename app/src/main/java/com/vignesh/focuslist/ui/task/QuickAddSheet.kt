@@ -26,6 +26,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -38,6 +40,7 @@ import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import com.vignesh.focuslist.R
 import com.vignesh.focuslist.ui.component.focuslistFieldColors
@@ -85,6 +88,15 @@ import java.time.format.FormatStyle
 @Composable
 fun QuickAddSheet(
     today: LocalDate,
+    // **Where a capture goes when the title names no day**, per D-053. Today
+    // passes its own day, because it saves `parsed.date ?: today`. Inbox passes
+    // null, because it saves `parsed.date` and an undated task staying undated
+    // is the decision Inbox exists to defer.
+    //
+    // The fallback date rather than a destination flag, so this is the same
+    // value the host acts on at save time and cannot drift from it. The line
+    // under the field used to work it out for itself and got Inbox wrong.
+    fallbackDate: LocalDate?,
     onDismiss: () -> Unit,
     onSave: (CapturedTask) -> Unit,
     modifier: Modifier = Modifier
@@ -142,6 +154,27 @@ fun QuickAddSheet(
                 .padding(horizontal = FocuslistSpacing.md)
                 .padding(bottom = FocuslistSpacing.lg)
         ) {
+            // **The sheet's name, and the field's, per D-052.** It was the
+            // field's floating label, where it repeated what the sheet was for
+            // on every keystroke and cost a row of the input to do it. As a
+            // heading it is drawn once and the field keeps its whole container
+            // for what the user is typing.
+            //
+            // `titleLarge` and a `heading()`, which is what RepeatSheet and the
+            // Task Details sheets already use, so this reads as the same kind of
+            // sheet rather than a new one.
+            //
+            // It also names the field. A `contentDescription` on an editable
+            // node can replace the announcement of what has been typed, so the
+            // heading above it is the safer way to say what the box is.
+            Text(
+                text = stringResource(R.string.quick_add_title_label),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier
+                    .padding(bottom = FocuslistSpacing.sm)
+                    .semantics { heading() }
+            )
+
             // Filled, per D-025. Every other surface in the app is a tinted
             // container on a plain page, and the outlined field was the one
             // component asking to be read by its border instead.
@@ -160,7 +193,10 @@ fun QuickAddSheet(
                     // the user never declined.
                     reminderDismissed = false
                 },
-                label = { Text(stringResource(R.string.quick_add_title_label)) },
+                // No label. The heading above carries the name, and a filled
+                // field is 56dp with or without one, so dropping it leaves the
+                // container where it was and returns the top row to the text.
+                // D-052.
                 placeholder = {
                     // The one place the field's own trick is taught. A day and a
                     // time written on the end of the title are taken as the
@@ -181,10 +217,31 @@ fun QuickAddSheet(
                 },
                 singleLine = true,
                 visualTransformation = markTheRun,
-                supportingText = { QuickAddSupportingText(parsed = parsed, today = today) },
+                // Null rather than an empty slot until there is something to
+                // describe, so the field does not reserve a line for a sentence
+                // about a task that does not exist. Tied to the same test the
+                // Add button uses, so the line and the button cannot disagree
+                // about whether a capture is real. D-053.
+                supportingText = if (parsed.title.isBlank()) null else {
+                    {
+                        QuickAddSupportingText(
+                            parsed = parsed,
+                            today = today,
+                            fallbackDate = fallbackDate
+                        )
+                    }
+                },
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.Sentences,
                     imeAction = ImeAction.Done
+                ),
+                // **Done saves.** It declared the action and then handled none
+                // of it, so the key that looks like it commits only dismissed
+                // the keyboard, and capture ended with reaching past it for the
+                // button. Guarded by the button's own rule, so the two commit
+                // paths agree about what is saveable.
+                keyboardActions = KeyboardActions(
+                    onDone = { if (parsed.title.isNotBlank()) onSave(parsed) }
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -233,19 +290,31 @@ fun QuickAddSheet(
  * state that used to say nothing at all.
  */
 @Composable
-private fun QuickAddSupportingText(parsed: CapturedTask, today: LocalDate) {
+private fun QuickAddSupportingText(
+    parsed: CapturedTask,
+    today: LocalDate,
+    fallbackDate: LocalDate?
+) {
     val day = parsed.date
 
     Text(
         text = when {
             // The reminder is named by the chip, so the line stays about the day.
+            //
+            // The date and not the list, even though a future day means the task
+            // appears in Upcoming. This is the value the user typed and wants
+            // confirmed, and the list follows from the date rather than the
+            // other way round. D-053.
             day != null -> stringResource(
                 R.string.quick_add_scheduled_for,
                 scheduledDateLabel(day, today)
             )
 
-            // Where it lands when the title named no day of its own.
-            else -> stringResource(R.string.quick_add_saved_to_today)
+            // No day typed, so the destination is the surprising part and this
+            // is the only branch that names one. Which it is depends on the
+            // host: Today dates an undated capture, Inbox leaves it undated.
+            fallbackDate != null -> stringResource(R.string.quick_add_saved_to_today)
+            else -> stringResource(R.string.quick_add_saved_to_inbox)
         }
     )
 }

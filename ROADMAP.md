@@ -9,6 +9,133 @@ scope it delivers is in `PRODUCT.md`.
 
 ## Current phase
 
+**Three fixes found by asking what was broken rather than what was next.** No
+decision entries: one restores behaviour `strings.xml` already claimed, one
+regenerates an asset, one deletes wiring a decision orphaned.
+
+**The Focus readout had no spoken form, and the strings for one had been sitting
+unused since they were written.** `strings.xml` carried `focus_readout_remaining`
+and `focus_readout_elapsed` under a comment saying the readout "is digits, so it
+carries a spoken form for TalkBack", and `git log -S` finds no Kotlin that ever
+referenced either. So TalkBack was given a bare "44:37", which does not say whether
+it is time left or time spent, and those are opposite readings of the same four
+digits. The status line now carries a description, and which word it uses follows
+`focusReadout`'s own branch: the two open-ended states count up and say elapsed,
+everything else counts down and says remaining. One string was added,
+`focus_status_line_spoken`, joining with a comma because the middle dot the line is
+drawn with does not read as a pause aloud.
+
+This is the failure mode D-040 named, a behaviour recorded in a document and never
+built, and it is worth noticing that nothing caught it: every other assertion in
+`FocusSessionSemanticsTest` passes with the readout unannounced. Three tests now
+pin it, including one that a missing description would fail on its own.
+
+**D-023's row menu left callbacks behind, and one of them was load-bearing in a
+document.** `TodayScreen` threaded `onFocusTask`, `onDelete` and `onReschedule`
+from the view model into `TodayContent`, and nothing in the body ever called them;
+Inbox and Upcoming carried the same dead `onReschedule` and `onDelete`.
+`TaskListRow` takes a toggle and an open and has for some time. All of it is gone,
+with the five strings that menu used and two more orphans found in the same sweep.
+
+The part that mattered: with `onFocusTask` dead there is **no way to start Focus
+from a Today row**, and `focus.md` listed one. That line was added during D-048 on
+the assumption the callback was live, and it has been corrected. Focus has two
+entries, Start focus on Task Details and the paused session card.
+
+**Ready is gone, and Focus has five states.** D-054, and this one is a decision
+rather than a cleanup, because removing the state removes a capability: a session
+can no longer be opened stopped.
+
+It had no entry point. D-048 removed the card branch that called `openFocus`, and
+nothing else ever did, so the state had been drawn, tested and unreachable since.
+`focus.md`'s own rule settled it, that "a drawn state nothing can arrive at is a
+state that should not exist". The alternative, giving Ready a route back, was
+refused on the grounds D-023 already wrote down: picking a task and choosing Focus
+on it is the deciding already done, and a state whose job is confirming a decision
+the user has made is friction.
+
+`FocusState.Ready`, `openFocus`, `startFocusSession`, the Start focus control and
+its string are all gone. `focusStateOf` and `focusReadout` stop taking a nullable
+session, which is the part worth keeping an eye on: it encodes the new invariant
+that opening the sheet implies a session. That holds because `_isFocusSheetOpen`
+is not persisted, so a restart cannot restore the sheet onto a session that is no
+longer there, and all remaining paths start or resume a clock before opening.
+
+Verified: 665 unit tests green, `FocusSessionSemanticsTest` 10/10 on the emulator,
+and Focus opened on a device to confirm it lands Running with Complete and Pause
+rather than on an empty sheet. Two instrumented tests changed rather than moved:
+the whole-status-line assertion was Ready's, because Ready was the only state whose
+clock did not move, and it now asserts Paused's line as a pattern since those
+digits are whatever the clock read when it stopped.
+
+**"tomorrow at 10 am" captures the hour and keeps the day.** A defect, no
+decision entry: this restores behaviour the code already claimed.
+
+The capture parser peels the time off the end of the title first, then reads the
+day from what is left. The peel reached back two words, on a comment asserting
+that "at 3pm" was the longest time form. It is not. A meridiem written apart
+from its hour is a word of its own, so "at 10 am" is three words. The peel
+matched the trailing "10 am" and left the preposition at the end of the head,
+where it shadowed the day standing directly in front of it, because `parseDate`
+matches whole candidates and "tomorrow at" is not one.
+
+The same fault with no day involved was visible the whole time and went
+unnoticed: "Call the dentist at 10 am" captured a title ending in "at" and
+marked only "10 am", against the rule three lines above the loop that the mark
+covers the preposition the user typed.
+
+**Why the suite missed it.** `parseTimeOfDay("3 pm")` is tested directly and
+passes. Every test that went through `splitTrailingCapture` used the closed-up
+"3pm", so the spaced meridiem was verified at the unit that handles it correctly
+and never on the path that broke it. Two tests now cross that path, both
+confirmed failing against the unfixed parser first.
+
+**Quick Add stopped naming the wrong destination, and its Done key commits.**
+D-053 for the first, a plain defect fix for the second.
+
+The sheet is opened from two screens that resolve a missing day differently.
+`TodayScreen` saves `parsed.date ?: today`, so an undated capture lands in
+Today. `InboxScreen` saves `parsed.date`, which is null, so it stays in Inbox,
+which is the decision Inbox exists to defer. The supporting line read neither
+and went by `parsed.date` alone, so it said "Saved to Today" over a capture
+going to Inbox. It now takes a `fallbackDate` from its host, which is the same
+value the host acts on rather than a second copy free to drift, and it says
+nothing at all until there is a title to describe.
+
+**Ranked above the Done key deliberately.** `CLAUDE.md` puts a missed reminder
+above a crash because a crash is visible. A capture surface naming a destination
+the task is not going to is invisible wrongness; a Done key that does not commit
+is visible friction, felt and worked around every time.
+
+The Done key: the field declared `ImeAction.Done` and had no `keyboardActions`,
+so the key that looks like it commits only closed the keyboard, and capture
+ended by reaching past it for the button. It is guarded by the button's own rule,
+so the two commit paths agree about what is saveable.
+
+**A miss worth recording.** D-052 moved "New task" from the field label to a
+heading, and `QuickAddSemanticsTest` had been using that label as its handle on
+the field in ten places. Running the unit suite and one instrumented class did
+not catch it. The file now finds the field by its edit action, which does not
+care what names it.
+
+**Quick Add names itself with a heading again, and the field stops carrying
+it.** D-052. Reported as the "New task" label making the input noisy. The field
+was showing five things at once: a placeholder teaching the date trick, a
+supporting line naming the resolved day, the parsed run marked in `primary`, a
+reminder chip beneath it, and a floating label repeating what the sheet was for.
+The label was the only one saying nothing about the task being typed.
+
+It is a `titleLarge` heading above the field now, with `heading()` semantics like
+RepeatSheet and the Task Details sheets. **The field is the same size and
+emptier**: a Material 3 filled field is 56dp with or without a label, so the
+container did not move and the top row went back to the text.
+
+This reverses a line in `expressive-components.md` that said the sheet had lost
+its heading because the FAB already says "Add task". Right about the FAB, wrong
+about where the name went: it moved into the label, where it was redrawn on
+every keystroke and cost a row of the input instead of a line of the sheet. Both
+the entry and that section now say so.
+
 **Quick Add from the widget opened once and then kept reopening.** Reported as:
 tap add on the widget, close the drawer without typing, go to Inbox, come back,
 and the drawer is open again. The request travels from the widget as a counter
@@ -102,6 +229,22 @@ own action or it is dead.
 checked row in its own band with its scroll position held, and the empty space and
 the headings both open Today. The main source set compiles clean.
 
+**And now verified in dark, and at a small size**, which is Phase 4's last exit
+criterion and was still standing on a check of the pre-D-049 widget. Placed on the
+emulator at 4x3 and again at roughly 3x2, in both ui modes. The container flips
+with the system, the band headings stay legible bold-on-tinted in both, and a
+narrow widget ellipsizes row titles rather than wrapping or clipping them. Phase 4
+can be called done.
+
+**The widget picker's preview image was stale again, and has been regenerated.** It
+showed an unlabelled run of five tasks, which is the widget D-049 replaced: no band
+headings anywhere in it. Recaptured from a 4x3 widget on the emulator against the
+debug seed, cropped to the host view's own bounds and masked back to the rounded
+corners the asset had, at the same 364x303. The bands are in it now. It still ends
+on a half-drawn row, because the real widget does: the list scrolls, and a preview
+that stopped on a clean row boundary would be advertising a size the widget does
+not have.
+
 This paragraph used to end by saying the JVM suite was blocked on D-048's
 leftovers: `FocusNowTest.kt` and about a dozen cases in `TaskListViewModelTest.kt`
 still calling the deleted `focusNow`, and `pausedFocusTask` with no test of its
@@ -143,10 +286,15 @@ touched.
 
 **Verified: 667 unit tests pass, and 30 Today instrumented tests pass on the
 emulator**, including the pair that used to assert the card opened its task and now
-assert the title appears exactly once, in the row. **Not verified by eye:** nobody
-has looked at the new card on a device. The thing to check is whether a card with no
-checkbox still reads as being about the task whose row sits below it, or whether the
-two now look like they are competing.
+assert the title appears exactly once, in the row.
+
+**Looked at on a device, in both ui modes.** A session started from Task Details and
+left draws "Paused · 45 min remaining", the title, and Resume focus, with the same
+task sitting in its band below. The open question was whether a card with no
+checkbox would compete with its own row; it does not. The card is tinted, has a
+button and no checkbox, and reads as the session rather than as the task. What is
+true and worth watching is that the title is now on the screen twice, which is
+exactly what D-012's promotion existed to prevent and what D-048 accepted.
 
 **The empty space below a short list stopped opening the app, and now does
 again.** D-047. Reported as "pressing the bottom empty space on the widget does

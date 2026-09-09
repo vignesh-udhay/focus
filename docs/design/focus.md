@@ -10,14 +10,13 @@ decision recorded as one.
 
 ---
 
-# One surface, six states
+# One surface, five states
 
-Focus is one surface with six states, opened as a sheet over the screen that
+Focus is one surface with five states, opened as a sheet over the screen that
 asked for it. It is not two screens, and it has not been a destination since
 `docs/decisions.md` D-004 removed the queue a bar entry would have landed on.
 `navigation.md` holds the current arrangement.
 
-    Ready              sit    45:00 · 45 min focus       Complete · play
     Running            nap    44:37 · 45 min focus       Complete · pause
     Paused             sit    32:18 · 32 min left        Complete · play
     Estimate reached   nap    00:00 · Estimate reached   Complete · +5 min
@@ -28,6 +27,14 @@ D-013 added the pause, the resume and the extension. D-014 settled what the
 shape says. D-015 settled what leaving does. **D-046 replaced the shape with the
 cat and moved the clock onto the status line**, so the middle two columns above
 read differently from every earlier version of this document.
+
+**A sixth state used to head that table**, `Ready sit 45:00 · 45 min focus
+Complete · play`: a task chosen with no clock running. D-054 removed it. It
+existed for D-012's card, which picked a task on the user's behalf and needed a
+moment for the user to agree with the pick before time started; D-048 removed the
+app's picking, which left the state with no entry point at all. Every way in now
+starts or resumes a clock, so the control beside Complete is always pause or
+play, never Start focus.
 
 **An earlier version of this document split Focus into Ready and Session**, two
 states with different navigation: Ready kept the bar, because a user who had
@@ -67,7 +74,7 @@ moving. It is not a gauge and it does not track progress.
 **The time is third now, on the status line at body size.** It is a real readout
 rather than an ornament: an estimate counts down, an open-ended session counts
 up, and a paused session has to be able to say what is left or resuming it means
-nothing. D-013 requires it, because three of the six states cannot be told apart
+nothing. D-013 requires it, because three of the five states cannot be told apart
 without it.
 
 D-014 already argued that the largest object on a screen built to stop
@@ -85,13 +92,15 @@ button already reads Pause or Resume, so putting the state in text would say it
 twice. What is left is the budget, and the one moment with no control to
 announce it:
 
-    Ready, Running       45:00 · 45 min focus
+    Running              45:00 · 45 min focus
     Paused               32:18 · 32 min left
     Estimate reached     00:00 · Estimate reached
     Open-ended, paused   12:43 · No time limit
 
-Ready and Running read the same budget, deliberately. What tells them apart is
-the pose, the icon on the button, and the digits moving.
+Ready read the same budget as Running, deliberately, and what told them apart was
+the pose, the icon on the button and the digits moving. D-054 removed the state,
+so the budget line no longer has to carry a distinction it was never carrying
+alone.
 
 **The clock control is a round icon button.** 56dp, filled, carrying play or
 pause. Holding no text, it does not grow with the font scale, and that is what
@@ -115,7 +124,7 @@ that reads as the default should be the likelier one.
 **Complete leads and the clock control trails.** D-046, and the ordering had
 never been decided before it: the row was built clock-first and stayed that way.
 
-Two reasons. Complete now sits in the same place in all six states, where before
+Two reasons. Complete now sits in the same place in all five states, where before
 it trailed in five and led in Estimate reached, which is the one state with no
 clock control for it to trail. And the clock is the control pressed repeatedly
 inside a session, start then pause then resume, where Complete is pressed once
@@ -182,9 +191,10 @@ worse at it. A second channel that says what the first says, less well, is
 decoration, and `expressive-motion.md` bans decoration. D-046 changes what draws
 the state; it does not reopen what the state channel is for.
 
-**Two poses cover six states.** Ready, Paused and Open-ended paused sit.
-Running, Estimate reached and Open-ended nap. That is D-014's own partition, so
-nothing new had to be decided about which state looks like what.
+**Two poses cover five states.** Paused and Open-ended paused sit. Running,
+Estimate reached and Open-ended nap. That is D-014's own partition, so nothing new
+had to be decided about which state looks like what. Ready sat too, until D-054
+removed it.
 
 **The cat does not wake up when the estimate runs out.** Estimate reached naps
 like any other running state. Running past the estimate is ordinary: the digits
@@ -250,8 +260,9 @@ Focus moved to whatever headed today's list. It is also precisely the
 behaviour that took Focus out of the navigation bar, described below: the user
 landed on a task with nothing to say why that one.
 
-The Clean Slate board settles it. No Focus frame carries a next-task preview,
-and Focus — Ready reads "One task. Nothing else until you leave Focus."
+The Clean Slate board settles it. No Focus frame carries a next-task preview, and
+the board's Ready frame read "One task. Nothing else until you leave Focus." The
+state is gone since D-054; the rule it stated is not, and applies to all five.
 
 The choice is one id in `TaskListViewModel`, which is app-scoped, so choosing
 a task on Today and arriving at Focus finds it still chosen. Nothing about
@@ -331,47 +342,39 @@ one entry that has to work. The repository only emits once it has really read.
 
 # Entry
 
-Three ways in:
+Two ways in:
 
-- **the paused session card on Today**, which opens the sheet on the session it
-  names, **already running**
 - **Start focus on Task Details**, which opens the sheet on the task being
   edited, with the clock started
-- **Focus on a Today row**, the same, on the task the row is for
+- **the paused session card on Today**, which opens the sheet on the session it
+  names, **already running**
 
-**None of them lands on Ready, and this paragraph used to say two of them did.**
-D-048 removed the card's other behaviour: it spoke for a paused session or a
-reminder that had passed, and only the second had no session yet, so only the
-second needed a state where a task is chosen and no clock is running. With that
-reason gone the card always resumes.
+**A Today row is not one of them, and an earlier revision of this list said it
+was.** `TodayScreen` still threads an `onFocusTask` from the view model, and
+nothing in the composable ever calls it: `TaskListRow` takes a toggle and an open
+and nothing else. The callback is a leftover of D-023 removing the row menu, and
+the strings that menu used are still in `strings.xml` unreferenced. So Focus has
+one entry point that starts a session and one that resumes one.
 
-The Task Details claim was wrong before D-048 and is worth naming separately:
+**Both start a clock, and there is no longer a state that does not.** This
+paragraph used to say two entries landed on Ready, a task chosen with nothing
+running. D-048 removed the card's other behaviour, which was the only one that
+arrived without a session; D-054 then removed the state itself, on this document's
+own rule that a drawn state nothing can arrive at is a state that should not
+exist.
+
+The Task Details claim was wrong even before that, and is worth naming separately:
 `TaskDetailsScreen` calls `beginFocus`, which starts the clock, not `openFocus`,
-which is the one that lands on Ready. The document said Ready and the code has
-gone straight into the session for as long as that call has been there.
-
-**So Ready is currently unreachable**, and `openFocus` has no caller outside an
-instrumented test. This document argues two sections below that "a drawn state
-nothing can arrive at is a state that should not exist", which makes this a
-question for a decision rather than something to quietly patch here: either an
-entry point lands on Ready again, or D-013's six states become five. It is
-recorded in `docs/decisions.md` D-048 as a consequence that entry did not
-foresee.
+which was the one that landed on Ready. The document said Ready and the code went
+straight into the session for as long as that call has been there. `openFocus` is
+gone now, so the two agree.
 
 **A third way used to exist**, Focus in a Today row's long-press menu, and it was
 the one that skipped Ready and started the session directly, "because picking one
 task out of a list and choosing Focus on it is the deciding already done". D-023
-removed the row menu, and the special case went with it.
-
-That is a simplification rather than a loss. Ready was previously reachable by
-some routes and not others, so the state a user met depended on how they had
-arrived. Now every entry lands on the same place and the user presses play.
-
-The first does not skip it, and the difference is who chose. The card names a
-task the app picked and gives its reason; Ready is where the user agrees with
-that pick before the clock runs. This is also the only thing that makes Ready
-reachable, which is worth stating plainly, because a drawn state nothing can
-arrive at is a state that should not exist.
+removed the row menu, and the special case went with it. That reasoning outlived
+the menu: it is the argument D-054 used to refuse giving Ready an entry point back
+rather than remove it.
 
 **There used to be a third way in**, the Focus item in the navigation bar,
 opening on whatever a queue resolved to. D-004 removed the queue and
@@ -531,27 +534,28 @@ readout is attached to: a control. Every state that shows digits shows them abov
 the one decision that state offers, so the number is being read to make a choice
 rather than watched to pass the time.
 
-**Ready comes back too**, as a state. D-013 lists it among the six, and the code
-had removed it when Focus left the navigation bar and the only entry left was a
-task row, which went straight into the session on purpose. Ready was then reached
-from the Focus now card, which was the replacement for the navigation-bar entry
-this document originally gave it: the card named a task the app had chosen, and
-Ready was where the user agreed with the choice before the clock ran.
+**Ready came back as a state, and has since gone for good.** D-013 listed it among
+the six, and the code had removed it when Focus left the navigation bar and the
+only entry left was a task row, which went straight into the session on purpose.
+Ready was then reached from the Focus now card, which was the replacement for the
+navigation-bar entry this document originally gave it: the card named a task the
+app had chosen, and Ready was where the user agreed with the choice before the
+clock ran.
 
-**That route is gone, and Ready is unreachable again.** D-048 left the card
-speaking only for a session the user started themselves, which is a choice already
-made, so the card resumes rather than offering Ready. See "Entry" above: nothing
-in the app now calls `openFocus`. The state is still drawn and still tested; what
-it lacks is a way in.
+**D-048 removed the app's choosing, and D-054 removed the state.** With the card
+speaking only for a session the user started themselves, there was no choice left
+to agree with, and nothing called `openFocus` at all. Focus has five states now.
+The capability that went with it is real and named in D-054: a session can no
+longer be opened stopped. It had no route to it for a user to miss.
 
-This paragraph used to end by saying a row long-press still skipped Ready. D-023
-removed the row menu, so nothing skips it any more and every entry lands there.
-See Entry above.
+This paragraph used to end by saying a row long-press still skipped Ready, then
+that nothing skipped it because every entry landed there. Both are moot since
+D-054: there is no Ready to land on or skip. See Entry above.
 
-Ready comes back without the container transform `expressive-components.md`
-describes for it. The sheet's own entrance already does that job, and rebuilding
-the transform would be a second shape morph, which `expressive-motion.md`
-forbids.
+It also said Ready came back without the container transform
+`expressive-components.md` describes for it, because the sheet's own entrance
+already does that job and rebuilding the transform would be a second shape morph,
+which `expressive-motion.md` forbids. That still holds for the sheet as a whole.
 
 **The play button itself did come back**, which an earlier version of this note
 said it had not. It is a plain 56dp round icon button rather than the origin of a
@@ -670,7 +674,7 @@ schedules the focused task's estimate, that a task without one schedules
 nothing, that pausing cancels, and that resuming reschedules against the time
 that is actually left rather than the whole estimate.
 
-`FocusSessionSemanticsTest` covers the six states. Each publishes its task title
+`FocusSessionSemanticsTest` covers the five states. Each publishes its task title
 as a heading, names its clock control by the action rather than the glyph,
 carries its status line as text, and offers a visible way out. Completing ends
 the task and returns to Today. **Leaving pauses rather than stops**, which is

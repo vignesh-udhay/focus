@@ -1,12 +1,12 @@
 <resources>
-    <string name="app_name">Focuslist</string>
+    <string name="app_name">Catimo</string>
     <string name="task_row_mark_complete">Mark \"%1$s\" complete</string>
     <string name="task_row_mark_incomplete">Mark \"%1$s\" not complete</string>
     <string name="today_title">Today</string>
     <string name="task_add">Add task</string>
     <string name="today_empty_headline">Nothing scheduled for today</string>
     <string name="today_empty_supporting">Tasks without a day wait in your Inbox.</string>
-    <string name="widget_description">Today’s tasks from Focuslist</string>
+    <string name="widget_description">Today’s tasks from Catimo</string>
     <string name="widget_all_done">All done for today</string>
     <string name="widget_add_task">Add a task</string>
     <string name="today_section_overdue">Overdue</string>
@@ -40,16 +40,15 @@
     <string name="duration_spoken_hours_minutes">%1$s %2$s</string>
     <string name="task_due_today">Today</string>
     <string name="task_due_tomorrow">Tomorrow</string>
-    <string name="task_actions">Show task actions</string>
     <string name="task_open">Open task details</string>
-    <string name="task_focus">Focus</string>
+    <!-- The row's actions menu had five more strings here: Show task actions,
+         Focus, and three Move to... entries. D-023 removed the menu and left them
+         behind, along with the callbacks the screens threaded to reach it. Both
+         are gone now. A row toggles and opens, and nothing else. -->
     <string name="task_delete">Delete</string>
     <string name="task_completed">Task completed</string>
     <string name="task_deleted">Task deleted</string>
     <string name="task_rescheduled">Task moved</string>
-    <string name="task_reschedule_today">Move to today</string>
-    <string name="task_reschedule_tomorrow">Move to tomorrow</string>
-    <string name="task_reschedule_pick">Move to a date…</string>
     <string name="undo">Undo</string>
     <string name="nav_more">More</string>
     <string name="focus_title">Focus</string>
@@ -58,7 +57,6 @@
       The clock control is an icon in every state, so its description names the
       action rather than the glyph. focus.md: "never the glyph".
     -->
-    <string name="focus_start">Start focus</string>
     <string name="focus_pause">Pause focus</string>
     <string name="focus_resume">Resume focus</string>
     <string name="focus_extend">+%1$d min</string>
@@ -78,10 +76,13 @@
       line now reads as the clock, then the budget: "44:37 · 45 min focus".
     -->
     <string name="focus_status_line">%1$s \u00b7 %2$s</string>
-    <!-- The readout is digits, so it carries a spoken form for TalkBack. -->
+    <!-- The readout is digits, so it carries a spoken form for TalkBack: a bare
+         "44:37" does not say whether it is time left or time spent. The joiner is
+         a comma rather than the middle dot the line is drawn with, because a
+         separator that reads as a pause in print does not read as one aloud. -->
     <string name="focus_readout_remaining">%1$s remaining</string>
     <string name="focus_readout_elapsed">%1$s elapsed</string>
-    <string name="focus_estimate_minutes">%1$d min</string>
+    <string name="focus_status_line_spoken">%1$s, %2$s</string>
     <string name="focus_estimate_reached_title">Estimated time is up</string>
     <string name="focus_channel_name">Focus sessions</string>
     <string name="focus_channel_description">When a focus session reaches the time you estimated for the task.</string>
@@ -107,7 +108,7 @@
     <string name="today_all_done_supporting">Tomorrow\'s tasks are in Upcoming.</string>
 
     <!--
-      A read that failed. It must never mention a connection: Focuslist has no
+      A read that failed. It must never mention a connection: Catimo has no
       account, no sync and no backend, so every read is local and telling anyone
       to check their connection sends them to fix something never involved.
       The Logbook differs on purpose, per expressive-components.md: it is the
@@ -143,7 +144,7 @@
     <string name="backup_export_description">Export tasks, reminders, recurrence, and settings.</string>
     <string name="backup_export_action">Export backup</string>
     <string name="backup_restore_heading">Restore</string>
-    <string name="backup_restore_description">Restore from a Focuslist backup file.</string>
+    <string name="backup_restore_description">Restore from a Catimo backup file.</string>
     <string name="backup_restore_action">Restore from file</string>
     <!--
       What a finished export or restore says. A count rather than a bare
@@ -160,10 +161,10 @@
         <item quantity="other">Restored %1$d tasks</item>
     </plurals>
     <string name="backup_restore_error_title">Couldn\'t restore this file</string>
-    <string name="backup_restore_error_body">The file may not be a Focuslist backup, or it may be damaged.</string>
+    <string name="backup_restore_error_body">The file may not be a Catimo backup, or it may be damaged.</string>
     <string name="backup_restore_error_choose_another">Choose another file</string>
     <string name="backup_export_error_title">Couldn\'t export this backup</string>
-    <string name="backup_export_error_body">Focuslist couldn\'t write to this location.</string>
+    <string name="backup_export_error_body">Catimo couldn\'t write to this location.</string>
     <string name="backup_export_error_choose_another">Choose another location</string>
     <string name="backup_error_cancel">Cancel</string>
     <!-- Task Details, rebuilt to D-018: a screen of picker rows, no Save. -->
@@ -171,7 +172,6 @@
     <!-- The Task Details overflow. Holds Delete and nothing else, per D-022. -->
     <string name="task_details_back">Back</string>
     <string name="task_details_title_label">Title</string>
-    <string name="task_details_notes_label">Notes</string>
     <string name="task_details_notes_placeholder">Add notes</string>
     <string name="task_plan">Plan</string>
     <!-- Announced as one action, so a row reads as label, value and a control. -->
@@ -366,6 +366,7 @@
       because it is the channel a screen reader gets the outcome from.
     -->
     <string name="quick_add_saved_to_today">Saved to Today</string>
+    <string name="quick_add_saved_to_inbox">Saved to Inbox</string>
     <string name="quick_add_reminder">Reminder %1$s at %2$s</string>
     <string name="quick_add_reminder_dismiss">Remove reminder</string>
 
@@ -381,7 +382,7 @@
          Slate. Android shows no dialog for exact alarms, so the screen walks
          the user to the settings page instead, and says so. -->
     <string name="reminder_permission_title">Allow precise reminders</string>
-    <string name="reminder_permission_body">Focuslist needs permission to deliver reminders at the exact time you choose.</string>
+    <string name="reminder_permission_body">Catimo needs permission to deliver reminders at the exact time you choose.</string>
     <string name="reminder_permission_why">Why this matters</string>
     <string name="reminder_permission_bullet">• %1$s</string>
     <string name="reminder_permission_reason_closed">Reminders can fire while the app is closed</string>
@@ -402,10 +403,10 @@
     <string name="reminder_health_action_label">Action needed</string>
     <!-- A risk the app inferred rather than a refusal it was told about. D-021. -->
     <string name="reminder_health_caution_label">Worth checking</string>
-    <string name="reminder_health_no_notifications_title">Focuslist cannot show notifications</string>
+    <string name="reminder_health_no_notifications_title">Catimo cannot show notifications</string>
     <string name="reminder_health_no_notifications_body">A reminder will fire and nothing will appear.</string>
     <string name="reminder_health_no_exact_title">Reminders may arrive late</string>
-    <string name="reminder_health_no_exact_body">Focuslist has not been allowed to schedule alarms for an exact time.</string>
+    <string name="reminder_health_no_exact_body">Catimo has not been allowed to schedule alarms for an exact time.</string>
     <string name="reminder_health_missed_label">Missed reminder</string>
     <string name="reminder_health_missed_title">A reminder arrived %1$s late</string>
     <string name="reminder_health_missed_silent_title">A reminder arrived and said nothing</string>
@@ -432,17 +433,17 @@
     <string name="reminder_restriction_sleeping_apps">Sleeping apps</string>
     <string name="reminder_restriction_protected_apps">Protected apps</string>
     <string name="reminder_restriction_may_block">May block background alarms</string>
-    <string name="reminder_restriction_action_title">%1$s may put Focuslist to sleep</string>
-    <string name="reminder_restriction_action_body">%1$s can delay reminders. Focuslist cannot tell whether it is on.</string>
+    <string name="reminder_restriction_action_title">%1$s may put Catimo to sleep</string>
+    <string name="reminder_restriction_action_body">%1$s can delay reminders. Catimo cannot tell whether it is on.</string>
     <string name="reminder_test_scheduled_title">Test reminder scheduled</string>
-    <string name="reminder_test_scheduled_body">You can close the app. Focuslist will notify you in 30 seconds.</string>
+    <string name="reminder_test_scheduled_body">You can close the app. Catimo will notify you in 30 seconds.</string>
     <string name="reminder_test_scheduled_done">Done</string>
     <string name="reminder_test_title">Test reminder</string>
     <string name="reminder_test_body">Arrived at %1$s.</string>
     <!--
       The group summary, per D-039. The count alone: Android already draws the
-      app name in the notification header, so the board's "Focuslist · 3
-      reminders" would say Focuslist twice. The number is a disclosure of what
+      app name in the notification header, so the board's "Catimo · 3
+      reminders" would say Catimo twice. The number is a disclosure of what
       the collapsed stack is hiding, which is the only count this app allows
       itself outside the widget's "+N more".
     -->

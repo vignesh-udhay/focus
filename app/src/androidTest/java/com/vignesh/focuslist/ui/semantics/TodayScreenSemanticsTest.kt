@@ -120,6 +120,34 @@ class TodayScreenSemanticsTest {
     @Test
     fun passedReminder_isARow_at200() = assertThePassedReminderIsARow(FontScale200)
 
+    /**
+     * Leaving Focus inserts the paused-session card above the first Today band.
+     *
+     * LazyColumn normally keeps the old first item's key at the same visual
+     * position when an item is inserted ahead of it. At the top of Today that
+     * would keep Overdue pinned and place the new card just above the viewport,
+     * making the control created by leaving Focus invisible until the user
+     * scrolls backwards.
+     */
+    @Test
+    fun leavingFocus_keepsPausedSessionCardVisible() {
+        val viewModel = testViewModel(withOneTask())
+
+        rule.setFocuslistContent(FontScale100) {
+            TodayScreen(viewModel = viewModel, onOpenTask = {})
+        }
+
+        rule.waitUntilExactlyOneExists(hasText(TITLE), TIMEOUT_MILLIS)
+
+        rule.runOnIdle {
+            viewModel.beginFocus("1")
+            viewModel.leaveFocusSheet()
+        }
+
+        rule.waitUntilExactlyOneExists(hasText(RESUME_FOCUS), TIMEOUT_MILLIS)
+        rule.onNodeWithText(RESUME_FOCUS).assertIsDisplayed()
+    }
+
     /** And the row says what tapping it does, in the words every row uses. */
     private fun assertTheRowNamesItsAction(fontScale: Float) {
         setToday(fontScale, withOneTask())
@@ -488,6 +516,7 @@ class TodayScreenSemanticsTest {
         const val UNDO = "Undo"
         const val MARK_COMPLETE = "Mark \"$TITLE\" complete"
         const val MARK_INCOMPLETE = "Mark \"$TITLE\" not complete"
+        const val RESUME_FOCUS = "Resume focus"
 
         /** D-012's Completed disclosure, which carries a count and collapses. */
         const val COMPLETED_ONE = "Completed · 1"
@@ -498,7 +527,7 @@ class TodayScreenSemanticsTest {
         /** D-040's banner, in the health screen's own words. */
         const val BANNER_ACTION_LABEL = "Action needed"
         const val BANNER_MISSED_LABEL = "Missed reminder"
-        const val BANNER_NO_NOTIFICATIONS = "Focuslist cannot show notifications"
+        const val BANNER_NO_NOTIFICATIONS = "Catimo cannot show notifications"
         const val BANNER_LATE = "Reminders may arrive late"
         const val BANNER_DISMISS = "Dismiss missed reminder notice"
         const val TIMEOUT_MILLIS = 5_000L

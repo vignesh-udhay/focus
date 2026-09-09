@@ -3094,10 +3094,11 @@ class TaskListViewModelTest {
     fun startingASessionSchedulesTheEstimateForTheFocusedTask() {
         store(task(id = "a", scheduledDate = today, estimatedDurationMinutes = 45))
         val model = viewModel()
-        model.focusTask("a")
+        // `beginFocus`, because D-054 removed `startFocusSession` with Ready: it
+        // started the clock on an already-chosen task, which was Ready's Start
+        // focus control and nothing else.
+        model.beginFocus("a")
         awaitFocusedTaskId(model, "a")
-
-        model.startFocusSession()
 
         val (title, at) = awaitScheduled()
         assertEquals("Task a", title)
@@ -3111,9 +3112,8 @@ class TaskListViewModelTest {
     fun aTaskWithNoEstimateAnnouncesNothing() {
         store(task(id = "a", scheduledDate = today, estimatedDurationMinutes = null))
         val model = viewModel()
+        model.beginFocus("a")
         awaitFocusedTaskId(model, "a")
-
-        model.startFocusSession()
 
         // Nothing to be a fraction of, so nothing to announce.
         assertTrue(alarms.scheduled.isEmpty())
@@ -3123,9 +3123,8 @@ class TaskListViewModelTest {
     fun endingASessionCancelsTheAnnouncement() {
         store(task(id = "a", scheduledDate = today, estimatedDurationMinutes = 45))
         val model = viewModel()
-        model.focusTask("a")
+        model.beginFocus("a")
         awaitFocusedTaskId(model, "a")
-        model.startFocusSession()
         awaitScheduled()
 
         model.endFocus()

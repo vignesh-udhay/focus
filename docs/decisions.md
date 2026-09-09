@@ -3489,3 +3489,171 @@ this app.
 **What would reverse this.** Evidence that the header-only frame is visible long
 enough to read as a broken widget, which would be answered by giving `Loading`
 something to say rather than by waiting for data before drawing.
+
+## D-052. Quick Add gets its heading back, and the field stops carrying the name
+
+**Decision.** "New task" moves out of the text field's `label` and becomes a
+heading on the sheet, `titleLarge`, above the field. The field keeps its
+placeholder, its supporting line and its marking, and loses nothing else.
+
+**Why. The name was the noisiest thing on a field that already says four
+things.** The field carries a placeholder teaching the date trick, a supporting
+line naming the resolved day, the parsed run marked in `primary`, and a reminder
+chip under it when there is a time. On top of that a floating label repeated
+what the sheet was for. The label was the only one of the five carrying no
+information about the task being typed.
+
+**The field does not get smaller, it gets emptier.** A Material 3 filled
+`TextField` is 56dp tall whether or not it has a label; the label simply takes
+the top of that container and pushes the text down. Removing it leaves the
+container exactly where it was and gives the typed text the row back, which is
+the outcome asked for: same size, more room.
+
+**This reverses a line in `expressive-components.md`**, and that is the point of
+this entry. Its Quick Add section records "The sheet also lost its heading; the
+FAB that opens it already says Add task." That was right about the FAB and wrong
+about where the name would end up. The heading did not disappear when it was
+removed, it moved into the field, where it cost a row of the input instead of a
+line of the sheet and was drawn on every keystroke rather than once. A heading is
+the cheaper place for it, and the argument that the FAB already names the sheet
+never justified naming it twice inside the field.
+
+**Why not remove the name altogether**, which was the alternative considered. It
+would have been the smallest change and it leaves the field just as clean. It
+also leaves the sheet with no name at all in any form, which costs a screen
+reader user the one landmark on it, and costs a sighted user the confirmation
+that the sheet they got is the one they asked for.
+
+**The field is named by the heading rather than by a description.** Setting
+`contentDescription` on an editable node risks replacing the announcement of
+what the user has typed, which is worse than an unnamed field. A visible heading
+marked with `heading()` immediately above a single field is the pattern this is
+for, and it is what `RepeatSheet` and the Task Details sheets already do.
+
+**What this costs.** A line of sheet height that the sheet did not spend before.
+On a one-field sheet with a keyboard up, that line is affordable in a way a row
+of the input was not.
+
+**What would reverse this.** A second field ever arriving on this sheet, which
+`expressive-components.md` forbids and D-011 reaffirmed. Two fields would need
+their own labels and the heading would start competing with them.
+
+## D-053. Quick Add's supporting line says where the capture lands, and says nothing before there is one
+
+**Decision.** The sheet is told where an undated capture goes, and the line under
+the field says it: "Saved to Today" from Today, "Saved to Inbox" from Inbox, and
+the resolved date when the title named one. The line is drawn only once the
+title would save something, so an empty field is silent.
+
+The fact travels as the fallback date itself, `null` when the host leaves a
+capture undated, because that is the same value the host acts on at save time.
+A destination flag would have been a second copy of the answer and free to drift
+from it, which is how this went wrong in the first place.
+
+**Why. It was telling the truth on one screen and not the other.** Quick Add is
+opened from two places that resolve a missing day differently. `TodayScreen`
+saves `parsed.date ?: today`, so an undated capture gets today's date and lands
+in Today. `InboxScreen` saves `parsed.date`, which is null, so the task keeps no
+date and stays in Inbox: that is the decision Inbox exists to defer.
+
+The line read neither. It looked only at `parsed.date`, found it null in both
+cases, and said "Saved to Today" either way. Capture from Inbox without typing a
+day and the sheet named a destination the task was not going to.
+
+**This is a trust bug and it was ranked as one.** `CLAUDE.md` puts a missed
+reminder above a crash because a crash is visible. The same ladder applies here:
+a user told their task went to Today looks in Today, does not find it, and has
+nothing to work out why from. It was fixed before the sheet's more annoying
+problem, which is that the keyboard's Done key did not save, on those grounds.
+
+**The empty field goes quiet for a different reason.** "Saved to Today" was
+shown before anything had been typed, which asserts a destination for a task
+that does not exist. The line is now tied to the same test the Add button uses,
+so it appears exactly when there is something for it to describe, and the two
+cannot disagree about whether a capture is real.
+
+**The dated case still names the date, not the list.** A task scheduled for
+Friday appears in Upcoming, so "Saved to Upcoming" would be true, and it would
+be worse. `expressive-components.md` gives this line the job of naming the
+resolved date, which is the thing the user typed and wants confirmed. The list
+follows from the date; the date does not follow from the list.
+
+That leaves the line naming a destination only when there is no date to name,
+which is also the only time the destination is the surprising part.
+
+**What this costs.** One string, and a parameter every caller has to answer. The
+parameter is the point: a new host cannot open this sheet without saying where
+an undated capture goes, which is the question that was previously answered by
+assumption.
+
+**What would reverse this.** Inbox gaining a default date, which D-003 and the
+Inbox design both refuse, or a third host with a destination that is neither.
+
+## D-054. Ready comes out, and Focus has five states
+
+**Decision.** `FocusState.Ready` is removed, and D-013's six states become five:
+Running, Paused, EstimateReached, OpenEnded, OpenEndedPaused. The Start focus
+control goes with it, because Ready was the only state that offered one, and so
+does `TaskListViewModel.openFocus`, which was the only way to reach Ready.
+
+`focusStateOf` and `focusReadout` stop taking a nullable session. Opening the
+Focus sheet now implies a session exists, and the sheet returns early on a null
+one the way it already does on a null task.
+
+**Why now, and what makes it safe.** D-048 removed the Focus now card's second
+reason, and with it the card's non-paused branch, which was `openFocus`'s only
+caller. Nothing else has ever called it: a Today row and Start focus on Task
+Details both call `beginFocus`, which starts the clock. So the state has been
+drawn, tested and unreachable since D-048 landed.
+
+The check that matters is whether a null session can reach the sheet by some
+other route, because that is what Ready was rendering. It cannot.
+`_isFocusSheetOpen` starts `false` and is not persisted, so a process restart
+closes the sheet rather than restoring it onto a session that may be gone. The
+three paths that open it all guarantee a session first: `beginFocus` starts one,
+`resumeFocusFromCard` resumes one that already exists, and `openFocus` was the
+only path that deliberately nulled it. With it gone, sheet-open implies
+session-exists, and the nullable parameters were expressing a state the app can
+no longer be in.
+
+**`focus.md` asked for this in its own words.** It says "a drawn state nothing
+can arrive at is a state that should not exist", written when Ready was
+*reachable* and the document was explaining why the card had to reach it. The
+sentence outlived the entry point. Taking the state out is the document's own
+rule applied to the situation D-048 left.
+
+**Why not the other answer.** The alternative was to give Ready an entry point
+back: land something on it so the state earns its place. That was weighed and
+refused, because nothing in the product wants it. D-012 built Ready for a card
+that had chosen a task on the user's behalf, where Ready was the user agreeing
+with the app's pick before the clock ran. D-048 removed the app's picking. Every
+remaining route into Focus is one the user chose themselves, and `focus.md` has
+said since D-023 that "picking one task out of a list and choosing Focus on it is
+the deciding already done". A state whose whole purpose is confirming a decision
+the user has already made is friction, and adding an entry point to justify
+keeping it would be building the product around the code.
+
+**What this costs.** A session can no longer be opened stopped. Every entry
+starts or resumes a clock, so a user who wants to look at the Focus screen
+without running time down has no way to do it. That is a real capability being
+removed rather than dead code being swept, and it is the reason this is an entry
+rather than a cleanup.
+
+Taken deliberately, because the capability had no route to it for a user to miss.
+If it is wanted back it should return as a designed entry point with a reason,
+not as a state restored because its enum value was still there.
+
+**What this supersedes.** D-013's state list, which is six and becomes five, and
+its table row `Ready 45:00 45 min focus Start focus · Complete`. Nothing else in
+D-013 changes: pause, resume, the extension and both open-ended states are
+untouched, and they are what that entry was actually for.
+
+`focus.md` needs its state count and its Ready sections cut, including the
+paragraph beginning "Ready comes back too", which D-048 had already amended once
+to say the route was gone.
+
+**What would reverse this.** A user asking to open Focus on a task without
+starting the clock, which is the capability named above. The fix then is an entry
+point that lands there and a reason written down for it, and the state itself is
+a `when` branch and an enum value: the expensive part of this entry is the
+argument, not the code.

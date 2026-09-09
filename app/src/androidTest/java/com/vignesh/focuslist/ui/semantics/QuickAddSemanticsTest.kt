@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.assertCountEquals
@@ -54,26 +55,40 @@ class QuickAddSemanticsTest {
         onSave: (CapturedTask) -> Unit = {}
     ) {
         rule.setFocuslistContent(fontScale) {
-            QuickAddSheet(today = TODAY, onDismiss = onDismiss, onSave = onSave)
+            QuickAddSheet(
+                today = TODAY,
+                // Today dates an undated capture. `QuickAddCaptureTest` covers
+                // the Inbox side, where it does not.
+                fallbackDate = TODAY,
+                onDismiss = onDismiss,
+                onSave = onSave
+            )
         }
 
-        rule.waitUntilExactlyOneExists(hasText(FIELD_LABEL), TIMEOUT_MILLIS)
+        rule.waitUntilExactlyOneExists(hasText(SHEET_NAME), TIMEOUT_MILLIS)
     }
 
-    private fun assertFieldIsLabelledAndFocused(fontScale: Float) {
+    /**
+     * The field is found by its edit action rather than by a label, because
+     * since D-052 it has none: SHEET_NAME is a heading above it. That heading
+     * is what names the field, so this asserts both halves.
+     */
+    private fun field() = rule.onNode(hasSetTextAction())
+
+    private fun assertFieldIsNamedAndFocused(fontScale: Float) {
         setSheet(fontScale)
 
-        rule.onNodeWithText(FIELD_LABEL).assertIsDisplayed()
+        rule.onNodeWithText(SHEET_NAME).assertIsDisplayed()
         // The sheet requests focus on open, so capture starts with the keyboard
         // already in the right place.
-        rule.onNodeWithText(FIELD_LABEL).assertIsFocused()
+        field().assertIsFocused()
     }
 
     @Test
-    fun field_isLabelledAndFocused_at100() = assertFieldIsLabelledAndFocused(FontScale100)
+    fun field_isNamedAndFocused_at100() = assertFieldIsNamedAndFocused(FontScale100)
 
     @Test
-    fun field_isLabelledAndFocused_at200() = assertFieldIsLabelledAndFocused(FontScale200)
+    fun field_isNamedAndFocused_at200() = assertFieldIsNamedAndFocused(FontScale200)
 
     private fun assertSaveIsRefusedWithoutATitle(fontScale: Float) {
         setSheet(fontScale)
@@ -96,7 +111,7 @@ class QuickAddSemanticsTest {
         val saved = mutableListOf<CapturedTask>()
         setSheet(fontScale, onSave = { parsed -> saved += parsed })
 
-        rule.onNodeWithText(FIELD_LABEL).performTextInput(TITLE)
+        field().performTextInput(TITLE)
 
         rule.onNodeWithText(SAVE).assertIsDisplayed()
         rule.onNodeWithText(SAVE).assertIsEnabled()
@@ -117,7 +132,7 @@ class QuickAddSemanticsTest {
     private fun assertADayIsNamedInText(fontScale: Float) {
         setSheet(fontScale)
 
-        rule.onNodeWithText(FIELD_LABEL).performTextInput(DATED_TITLE)
+        field().performTextInput(DATED_TITLE)
 
         // The words being taken are coloured, but colour is not announced and
         // not everyone sees it. This line is the accessible half of the signal.
@@ -136,7 +151,7 @@ class QuickAddSemanticsTest {
         val saved = mutableListOf<CapturedTask>()
         setSheet(FontScale100, onSave = { parsed -> saved += parsed })
 
-        rule.onNodeWithText(FIELD_LABEL).performTextInput(DATED_TITLE)
+        field().performTextInput(DATED_TITLE)
         rule.onNodeWithText(SAVE).performClick()
 
         assertEquals(1, saved.size)
@@ -156,7 +171,7 @@ class QuickAddSemanticsTest {
     private fun assertATimeIsNamedByAChip(fontScale: Float) {
         setSheet(fontScale)
 
-        rule.onNodeWithText(FIELD_LABEL).performTextInput(TIMED_TITLE)
+        field().performTextInput(TIMED_TITLE)
 
         rule.waitUntilExactlyOneExists(hasContentDescription(REMINDER_DISMISS), TIMEOUT_MILLIS)
         rule.onNodeWithContentDescription(REMINDER_DISMISS).assertIsDisplayed()
@@ -176,7 +191,7 @@ class QuickAddSemanticsTest {
         val saved = mutableListOf<CapturedTask>()
         setSheet(FontScale100, onSave = { parsed -> saved += parsed })
 
-        rule.onNodeWithText(FIELD_LABEL).performTextInput(TIMED_TITLE)
+        field().performTextInput(TIMED_TITLE)
         rule.waitUntilExactlyOneExists(hasContentDescription(REMINDER_DISMISS), TIMEOUT_MILLIS)
         rule.onNodeWithText(SAVE).performClick()
 
@@ -198,7 +213,7 @@ class QuickAddSemanticsTest {
         val saved = mutableListOf<CapturedTask>()
         setSheet(FontScale100, onSave = { parsed -> saved += parsed })
 
-        rule.onNodeWithText(FIELD_LABEL).performTextInput(TIMED_TITLE)
+        field().performTextInput(TIMED_TITLE)
         rule.waitUntilExactlyOneExists(hasContentDescription(REMINDER_DISMISS), TIMEOUT_MILLIS)
         rule.onNodeWithContentDescription(REMINDER_DISMISS).performClick()
 
@@ -223,13 +238,13 @@ class QuickAddSemanticsTest {
     fun typingAgainAfterDismissing_bringsTheReminderBack() {
         setSheet(FontScale100)
 
-        rule.onNodeWithText(FIELD_LABEL).performTextInput(TIMED_TITLE)
+        field().performTextInput(TIMED_TITLE)
         rule.waitUntilExactlyOneExists(hasContentDescription(REMINDER_DISMISS), TIMEOUT_MILLIS)
         rule.onNodeWithContentDescription(REMINDER_DISMISS).performClick()
         rule.waitUntilExactlyOneExists(hasText(SCHEDULED_FOR_TOMORROW), TIMEOUT_MILLIS)
 
         // Retyping the same trailing time, which is a fresh promise.
-        rule.onNodeWithText(FIELD_LABEL).performTextInput(" at 4pm")
+        field().performTextInput(" at 4pm")
 
         rule.waitUntilExactlyOneExists(hasContentDescription(REMINDER_DISMISS), TIMEOUT_MILLIS)
     }
@@ -239,7 +254,7 @@ class QuickAddSemanticsTest {
     fun aPlainTitle_saysWhereItWillBeSaved() {
         setSheet(FontScale100)
 
-        rule.onNodeWithText(FIELD_LABEL).performTextInput(TITLE)
+        field().performTextInput(TITLE)
 
         rule.waitUntilExactlyOneExists(hasText(SAVED_TO_TODAY), TIMEOUT_MILLIS)
         rule.onAllNodesWithContentDescription(REMINDER_DISMISS).assertCountEquals(0)
@@ -251,7 +266,7 @@ class QuickAddSemanticsTest {
 
         // Nothing is taken, so there is nothing to announce, and the day stays
         // the title rather than leaving the field empty.
-        rule.onNodeWithText(FIELD_LABEL).performTextInput("tomorrow")
+        field().performTextInput("tomorrow")
 
         rule.onNodeWithText(SAVE).assertIsEnabled()
         rule.onAllNodesWithText(SCHEDULED_FOR_TOMORROW).assertCountEquals(0)
@@ -262,7 +277,7 @@ class QuickAddSemanticsTest {
     fun aTitleThatIsOnlyADayAndATime_promisesNothing() {
         setSheet(FontScale100)
 
-        rule.onNodeWithText(FIELD_LABEL).performTextInput("tomorrow at 3pm")
+        field().performTextInput("tomorrow at 3pm")
 
         rule.onNodeWithText(SAVE).assertIsEnabled()
         rule.onAllNodesWithContentDescription(REMINDER_DISMISS).assertCountEquals(0)
@@ -270,7 +285,7 @@ class QuickAddSemanticsTest {
     }
 
     private companion object {
-        const val FIELD_LABEL = "New task"
+        const val SHEET_NAME = "New task"
         const val SAVE = "Add task"
         const val TITLE = "Buy milk"
         const val DATED_TITLE = "Buy milk tomorrow"

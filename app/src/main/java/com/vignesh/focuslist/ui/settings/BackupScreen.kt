@@ -65,7 +65,10 @@ fun BackupScreen(
     )
 
     val chooseExport = {
-        exportLauncher.launch("Focuslist-backup-${LocalDate.now()}.json")
+        // The name the system file picker offers. Cosmetic, and renamed with the
+        // app: the format identifier inside the file is a different thing and did
+        // not move, so a backup written under the old name still restores.
+        exportLauncher.launch("Catimo-backup-${LocalDate.now()}.json")
     }
     val chooseRestore = {
         restoreLauncher.launch(arrayOf(JsonMimeType, "text/json"))

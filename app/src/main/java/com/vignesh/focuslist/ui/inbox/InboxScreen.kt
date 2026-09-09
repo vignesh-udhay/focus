@@ -82,8 +82,6 @@ fun InboxScreen(
         today = today,
         onToggleComplete = viewModel::toggleComplete,
         onOpenTask = onOpenTask,
-        onDelete = viewModel::deleteTask,
-        onReschedule = viewModel::rescheduleTask,
         onAddTask = { isQuickAddVisible = true },
         readFailed = readFailed,
         onRetry = viewModel::retryRead,
@@ -96,6 +94,9 @@ fun InboxScreen(
     if (isQuickAddVisible) {
         QuickAddSheet(
             today = today,
+            // Inbox leaves an undated capture undated, which is the decision it
+            // exists to defer, so the line names Inbox rather than Today. D-053.
+            fallbackDate = null,
             onDismiss = { isQuickAddVisible = false },
             // Captured without a date unless the title named one: deciding when
             // to do it is the decision Inbox defers, but a user who already
@@ -131,8 +132,6 @@ private fun InboxContent(
     today: LocalDate,
     onToggleComplete: (String) -> Unit,
     onOpenTask: (String) -> Unit,
-    onDelete: (String) -> Unit,
-    onReschedule: (String, LocalDate?) -> Unit,
     onAddTask: () -> Unit,
     readFailed: Boolean = false,
     onRetry: () -> Unit = {},
@@ -267,8 +266,6 @@ private fun InboxScreenPreview() {
             today = LocalDate.now(),
             onToggleComplete = {},
             onOpenTask = {},
-            onDelete = {},
-            onReschedule = { _, _ -> },
             onAddTask = {}
         )
     }
@@ -284,8 +281,6 @@ private fun InboxScreenEmptyPreview() {
             today = LocalDate.now(),
             onToggleComplete = {},
             onOpenTask = {},
-            onDelete = {},
-            onReschedule = { _, _ -> },
             onAddTask = {}
         )
     }
@@ -300,8 +295,6 @@ private fun InboxScreenLargeFontPreview() {
             today = LocalDate.now(),
             onToggleComplete = {},
             onOpenTask = {},
-            onDelete = {},
-            onReschedule = { _, _ -> },
             onAddTask = {}
         )
     }

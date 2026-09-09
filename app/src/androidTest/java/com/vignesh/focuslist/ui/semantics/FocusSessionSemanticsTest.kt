@@ -7,6 +7,8 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.onAllNodesWithText
@@ -83,9 +85,10 @@ class FocusSessionSemanticsTest {
      * Composes the sheet on a state, and hands back the view model so a test can
      * assert what leaving actually did.
      *
-     * [start] is what puts the session in one of the six states: Ready is a
-     * chosen task with no clock, and the rest are reached by driving the same
-     * controls the user would.
+     * [start] is what puts the session in one of the five states, reached by
+     * driving the same controls the user would. There were six, and D-054 removed
+     * Ready: a chosen task with no clock had no entry point left once D-048 took
+     * away the card branch that opened one.
      */
     private fun setFocus(
         fontScale: Float,
@@ -102,35 +105,63 @@ class FocusSessionSemanticsTest {
         return viewModel
     }
 
-    private fun ready(dao: FakeTaskDao, fontScale: Float = FontScale100) =
-        setFocus(fontScale, dao) { model -> model.openFocus("1") }
-
     private fun running(dao: FakeTaskDao, fontScale: Float = FontScale100) =
         setFocus(fontScale, dao) { model -> model.beginFocus("1") }
 
     private fun paused(dao: FakeTaskDao, fontScale: Float = FontScale100) =
         setFocus(fontScale, dao) { model -> model.beginFocus("1"); model.pauseFocusSession() }
 
-    // --- the six states -------------------------------------------------------
+    // --- the status line's spoken form ---------------------------------------
 
     /**
-     * Every state names its clock control by what pressing it does. An icon
-     * carries no text, so a description reading "play" would describe the
-     * drawing rather than the action.
+     * The clock is announced as time left or time spent, never as bare digits.
+     *
+     * **These two strings existed for a long time and nothing used them.**
+     * `strings.xml` carried `focus_readout_remaining` and `focus_readout_elapsed`
+     * under a comment saying the readout "is digits, so it carries a spoken form
+     * for TalkBack", and no Kotlin ever referenced either. A screen reader was
+     * given "44:37", which does not say whether that is time left or time spent,
+     * and those are opposite readings of the same four digits.
+     *
+     * Asserted here rather than trusted, because a description that goes missing
+     * again would break nothing a sighted test can see: every other assertion in
+     * this file still passes with the readout unannounced. That is exactly how it
+     * was lost the first time.
      */
-    private fun assertStatesNameTheirControls(fontScale: Float) {
-        ready(withEstimate(), fontScale)
-        rule.waitUntilExactlyOneExists(hasText(FIRST), TIMEOUT_MILLIS)
-        rule.onNodeWithContentDescription(START).assertIsDisplayed()
-        rule.onNodeWithText(ESTIMATE_STATUS, substring = true).assertIsDisplayed()
-        rule.onNodeWithText(COMPLETE).assertIsDisplayed()
+    private fun assertTheReadoutIsSpoken(fontScale: Float) {
+        paused(withEstimate(), fontScale)
+        rule.waitUntilExactlyOneExists(hasContentDescription(RESUME), TIMEOUT_MILLIS)
+        rule.onNodeWithContentDescription(PAUSED_SPOKEN, substring = true).assertIsDisplayed()
     }
 
     @Test
-    fun readyNamesItsControls_at100() = assertStatesNameTheirControls(FontScale100)
+    fun readout_isSpokenAsRemaining_at100() = assertTheReadoutIsSpoken(FontScale100)
 
     @Test
-    fun readyNamesItsControls_at200() = assertStatesNameTheirControls(FontScale200)
+    fun readout_isSpokenAsRemaining_at200() = assertTheReadoutIsSpoken(FontScale200)
+
+    /**
+     * A session with no estimate counts up, so its readout is time spent. The
+     * word has to follow the direction of the clock or it states the opposite of
+     * what the digits mean.
+     */
+    @Test
+    fun readout_isSpokenAsElapsed_whenThereIsNoEstimate() {
+        running(withoutEstimate())
+        rule.waitUntilExactlyOneExists(hasText(FIRST), TIMEOUT_MILLIS)
+        rule.onNodeWithContentDescription(ELAPSED_SUFFIX, substring = true).assertIsDisplayed()
+    }
+
+    // --- the five states ------------------------------------------------------
+
+    /**
+     * **A Ready pair used to open this section**, asserting that the state named
+     * its Start focus control. D-054 removed the state and the control with it, and
+     * the principle it stood for is covered by the four tests below: every state
+     * names its clock control by what pressing it does, because an icon carries no
+     * text and a description reading "play" would describe the drawing rather than
+     * the action.
+     */
 
     @Test
     fun runningOffersPauseAndTheEstimate() {
@@ -171,18 +202,28 @@ class FocusSessionSemanticsTest {
      * **The clock is on the status line, and D-046 put it there.**
      *
      * It used to be its own node inside the shape. The budget assertions above
-     * match on a substring for that reason: every state's line now begins with
-     * a readout, and in five of the six it is ticking.
+     * match on a substring for that reason: every state's line begins with a
+     * readout, and in three of the five it is ticking.
      *
-     * Ready is the one state where the whole line can be asserted exactly.
-     * Nothing is running, so the readout is the estimate and it does not move.
+     * **This used to assert Ready's whole line as an exact string**, since nothing
+     * was running and the readout sat at the estimate. D-054 removed Ready, and
+     * Paused is now the only frozen clock. Its digits cannot be written down in
+     * advance, because they are whatever the clock read at the moment it stopped,
+     * so the shape of the line is asserted instead: two fields, the readout first.
      */
     @Test
-    fun readyPutsTheClockOnTheStatusLine() {
-        ready(withEstimate())
+    fun pausedPutsTheClockOnTheStatusLine() {
+        paused(withEstimate())
 
-        rule.waitUntilExactlyOneExists(hasText(FIRST), TIMEOUT_MILLIS)
-        rule.onNodeWithText(READY_LINE).assertIsDisplayed()
+        rule.waitUntilExactlyOneExists(hasContentDescription(RESUME), TIMEOUT_MILLIS)
+        rule.onNode(hasTextMatching(PAUSED_LINE)).assertIsDisplayed()
+    }
+
+    /** The status line as a whole, so a missing readout fails rather than passes. */
+    private fun hasTextMatching(pattern: Regex) = SemanticsMatcher("text matches $pattern") { node ->
+        node.config.getOrNull(SemanticsProperties.Text)
+            .orEmpty()
+            .any { pattern.matches(it.text) }
     }
 
     // --- D-015, which is the assertion that matters most ---------------------
@@ -241,15 +282,28 @@ class FocusSessionSemanticsTest {
     private companion object {
         const val FIRST = "Review the quarterly budget"
         const val COMPLETE = "Complete"
-        const val START = "Start focus"
         const val PAUSE = "Pause focus"
         const val RESUME = "Resume focus"
         const val ESTIMATE_STATUS = "45 min focus"
         const val REMAINING = "45 min left"
         const val NO_LIMIT = "No time limit"
 
-        /** Ready, whole: the clock the session is about to spend, then the budget. */
-        const val READY_LINE = "45:00 · 45 min focus"
+        /**
+         * Paused, whole: a two-field readout, then the budget. The digits are a
+         * pattern rather than a literal because they are whatever the clock read
+         * when it stopped, which is a fraction of a second after it started.
+         */
+        val PAUSED_LINE = Regex("""^\d+:\d{2} · 45 min left$""")
+
+        /**
+         * The same line as a screen reader gets it: the clock said in words, and a
+         * comma where the middle dot is drawn, because a dot does not read as a
+         * pause aloud.
+         */
+        const val PAUSED_SPOKEN = "remaining, 45 min left"
+
+        /** Counting up has no estimate to be remaining against. */
+        const val ELAPSED_SUFFIX = "elapsed"
 
         /** The queue's old footer, asserted absent so it cannot come back. */
         const val NEXT_PREFIX = "Next: "

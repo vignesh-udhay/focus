@@ -75,6 +75,46 @@ class CaptureParserTest {
         assertEquals(today.atTime(15, 0), result.reminderAt(today, morning))
     }
 
+    /**
+     * The meridiem written apart from its hour, which is one word more than the
+     * time peel used to reach for.
+     *
+     * "at 3pm" is two words and "at 10 am" is three, so the peel matched the
+     * trailing "10 am" and left the preposition at the end of the head. Nothing
+     * there is a date, and `parseDate` only ever matches a whole candidate, so
+     * the stranded "at" shadowed the day standing directly in front of it. The
+     * hour was captured and tomorrow was lost.
+     *
+     * The two spellings of ten in the morning have to reach the same capture,
+     * which is the whole of the claim here.
+     */
+    @Test
+    fun aSpacedMeridiemDoesNotShadowTheDay() {
+        val text = "Call the guy tomorrow at 10 am"
+        val result = capture(text)
+
+        assertEquals("Call the guy", result.title)
+        assertEquals(tomorrow, result.date)
+        assertEquals(LocalTime.of(10, 0), result.time)
+        assertEquals(tomorrow.atTime(10, 0), result.reminderAt(today, morning))
+        assertEquals("tomorrow at 10 am", text.substring(result.markRange!!))
+    }
+
+    /**
+     * The same bug with no day involved, which is the half a reader is likelier
+     * to see first: the title kept a dangling "at" and the mark started after
+     * it, against the rule that the mark covers the preposition the user typed.
+     */
+    @Test
+    fun aSpacedMeridiemMarksThePrepositionRatherThanOrphaningIt() {
+        val text = "Call the dentist at 10 am"
+        val result = capture(text)
+
+        assertEquals("Call the dentist", result.title)
+        assertEquals(today.atTime(10, 0), result.reminderAt(today, morning))
+        assertEquals("at 10 am", text.substring(result.markRange!!))
+    }
+
     // --- the mark, which is what the field colours ---------------------------
 
     @Test
