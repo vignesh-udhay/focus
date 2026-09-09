@@ -3,7 +3,6 @@ package com.vignesh.focuslist.ui.widget
 import android.content.Context
 import android.os.Build
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.ColorFilter
@@ -62,9 +61,6 @@ import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.LocalDateTime
 
-private val CompactSize = DpSize(288.dp, 190.dp)
-private val MediumSize = DpSize(364.dp, 266.dp)
-
 /**
  * Where text begins and ends, on both edges.
  *
@@ -107,7 +103,23 @@ private data class WidgetSnapshot(
 
 class FocuslistWidget : GlanceAppWidget() {
 
-    override val sizeMode: SizeMode = SizeMode.Responsive(setOf(CompactSize, MediumSize))
+    /**
+     * The widget's real dimensions, per D-041.
+     *
+     * This was `SizeMode.Responsive` over the two board sizes, under which
+     * `LocalSize` reports the matched member of the declared set rather than
+     * what the launcher actually gave the widget. D-036 had already replaced the
+     * breakpoint table with arithmetic over the reported height, on the argument
+     * that a dragged widget is rarely either declared size, and then fed that
+     * arithmetic one of two constants. A widget with room for five rows drew
+     * three.
+     *
+     * **The rule the old mode was protecting still holds**: row count is the
+     * only thing size may affect. `Exact` does not weaken it, it only makes the
+     * number true. The guard is that `rowCapacity` is the sole reader of this
+     * size, and any second reader is the thing to refuse.
+     */
+    override val sizeMode: SizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val application = context.applicationContext as FocuslistApplication
@@ -136,11 +148,10 @@ class FocuslistWidget : GlanceAppWidget() {
                     now = LocalDateTime.now(),
                     storedFocus = snapshot.storedFocus,
                     completion = snapshot.completion,
-                    // The height this widget actually has, per D-036. It used
-                    // to be a `WidgetLayout` resolved by comparing both
-                    // dimensions against `MediumSize`, which meant a widget with
-                    // ample height but slightly too little width was given the
-                    // Compact row count. Width has no say in how many rows fit.
+                    // The height this widget actually has, per D-036, and since
+                    // D-041 that is finally true rather than the nearer of two
+                    // declared sizes. Width has no say in how many rows fit, and
+                    // this is the only place the size is read at all.
                     heightDp = LocalSize.current.height.value,
                     fontScale = context.resources.configuration.fontScale
                 )

@@ -9,6 +9,48 @@ scope it delivers is in `PRODUCT.md`.
 
 ## Current phase
 
+**The widget fills its space and can be dragged again, under D-041.** Reported
+from a phone: a lot of blank space at the bottom where a row would clearly fit,
+and resize handles that did nothing.
+
+**Both were one root and it had survived a decision written to prevent it.**
+D-036 replaced the breakpoint table with arithmetic over the reported height,
+arguing that a dragged widget is rarely either declared size. It kept the two
+`DpSize`s because "Glance needs them to choose which RemoteViews it builds",
+which is true and carries a consequence nobody traced: under
+`SizeMode.Responsive`, `LocalSize` also reports the matched declared size, so
+`heightDp` arrived as 190 or 266 and never anything else. The division was real
+and its input was one of two constants. At 266 the model computes three rows no
+matter how tall the widget is, which is the reported blank space exactly.
+`SizeMode.Exact` now reports the real size, and the `DpSize`s are gone.
+
+**The resize ceiling was never a decision at all.** `maxResizeWidth="364dp"` and
+`maxResizeHeight="266dp"` are `MediumSize` to the pixel: the largest frame the
+board drew became the largest size the widget was allowed to be, and no document
+argues for a maximum. With `minResize` equal to `min`, the whole band was 76dp
+in each axis, about one grid cell, so the launcher offered handles with nowhere
+to go. The maximums are gone, `minResizeHeight` is 140 and `minResizeWidth` is
+250, both sized to the row rather than copied from a frame.
+
+**The tests could not have caught it, which is the part worth remembering.**
+`FocuslistWidgetModelTest` pinned eight cases at 190 and 266, the two values
+production was trapped at. A suite that only asks about the heights the code can
+actually receive will pass forever. It now has a ladder at heights no breakpoint
+could produce, and its fixture takes a task count, because six filler tasks made
+a tall widget look capped by the arithmetic when it was capped by the work.
+
+**Checked against TickTick**, by pulling its APK off the emulator, the same
+method D-030 used. Its scrolling task list declares `minResize` 110x110 against a
+294x180 placement and no maximum at all, so ours was the outlier. Not adopted:
+their list is a `RemoteViewsService` collection that scrolls, so it never
+measures and needs no `+N more`. That is sound and it is not this design, which
+D-031 built around disclosing what did not fit.
+
+Verified: 667 unit tests, and the installed provider now reads `minResize
+250x140` with `resizeMode=3` and no maximum. **Not verified by eye:** nobody has
+watched a widget grow a row while being dragged. That is the one thing the tests
+cannot answer and it wants a real launcher.
+
 **Reminders are grouped, and the two platform calls it looked like found two
 bugs.** D-039. Every reminder carries `setGroup` and a summary counts them, which
 closes the other frame the board drew and the app had never built. The count is

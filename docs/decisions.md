@@ -2606,3 +2606,87 @@ of the two states is firing when nothing is wrong, and the fix is that state's
 detection rather than the banner. If `backgroundWorkState` ever learns to return
 `Blocked` from something measured rather than inferred, `ActionNeeded` gains a
 third cause and the banner gains it too, with no change here.
+
+## D-041. The widget asks for the size it has, and may be dragged to any size
+
+**Decision.** `SizeMode.Exact` replaces `SizeMode.Responsive`, so `LocalSize`
+reports the widget's real dimensions instead of the nearest declared one. The two
+`DpSize` breakpoints go with it. `maxResizeWidth` and `maxResizeHeight` are
+removed, `minResizeHeight` drops to 140dp and `minResizeWidth` to 250dp.
+
+**Row count remains the only thing size may affect.** That rule survives intact
+and is the reason the original choice was made; see below.
+
+**Why. D-036's arithmetic was correct and was never given a real number.** That
+entry replaced a breakpoint table with `available / RowHeight` on the argument
+that "a widget is resized by dragging, so most real ones are neither declared
+size". Under `SizeMode.Responsive`, `LocalSize` returns the matched member of the
+declared set rather than the widget's actual size, so `heightDp` could only ever
+be 190 or 266. The division was real; its input was quantised to the two values
+the entry had just finished arguing against.
+
+The visible cost, reported from a phone: a widget with room for five rows drew
+three and left the rest blank. At 266dp the model computes
+`(266 - 60 - 8 - 20) / 48 = 3`, and it computes that no matter how tall the
+widget really is.
+
+**`FocuslistWidgetModelTest` could not have caught it.** Its eight pinned cases
+are the two declared sizes crossed with lead and text scale, which is exactly the
+assumption that was wrong. A test that fixes the same two heights the production
+code was stuck at will pass forever. Cases at heights no breakpoint would ever
+produce are added with this entry.
+
+**What this supersedes, and the part of it that was right.**
+`docs/design/widget.md` argued: "Every launcher lets the user drag a corner, so
+the two drawn sizes are two samples of a continuum rather than an enumeration.
+Glance's `SizeMode.Responsive` takes a set of breakpoints and picks the largest
+that fits... `SizeMode.Exact` would invite per-size layouts and is the wrong tool
+here."
+
+The first sentence is right and argues for the opposite conclusion: it names the
+continuum and then picks the API that enumerates it. The likely slip is that
+"picks the largest that fits" is true of what the launcher draws and not of what
+the composable is told.
+
+The second sentence is a real concern and it is kept rather than dismissed.
+Handing code the true dimensions does tempt it to branch and grow a second
+layout, which is the drift D-031 exists to prevent. But that is a worry about
+what is done with an accurate number, not a reason to supply an inaccurate one.
+The guard is that there is one layout and one reader: **any use of `LocalSize`
+beyond `rowCapacity` is the thing to refuse.**
+
+**The resize ceiling was never a decision.** `maxResizeWidth="364dp"` and
+`maxResizeHeight="266dp"` are `MediumSize` to the pixel: the largest frame the
+board happened to draw became the largest size the widget was permitted to be.
+Nothing in any document argues for a maximum. With `minResize` equal to `min`,
+the whole resizable band was 76dp in each axis, about one grid cell, so a
+launcher offered resize handles that could not move. Advertising
+`resizeMode="horizontal|vertical"` and then refusing to resize is worse than
+either honest answer.
+
+**Checked against TickTick**, on the emulator, the same way D-030 was. Their
+scrolling task list declares `minWidth` 294 and `minHeight` 180 while allowing
+`minResize` 110x110, and declares no maximum at all. A widget that shrinks to a
+third of its placed size and grows without limit is the ordinary shape of this;
+ours was the outlier.
+
+**The new minimums are sized to the layout rather than copied.** 140dp is the
+smallest height that still shows a task: 60 header, 20 disclosure and 8 bottom
+inset leave 52 for one 48dp row. Below it the widget would draw furniture over
+nothing. 250dp is deliberately conservative on width, because a row spends 48 on
+the checkbox and 70 on the duration column before the title gets anything, and
+nobody has looked at a narrow one on a device. TickTick reaches 110 with simpler
+rows. Taking ours lower wants a render, not an argument.
+
+**What was not adopted.** TickTick's list is a `RemoteViewsService` collection,
+a scrolling `ListView` fed by an adapter, so the platform fills the height and
+the remainder scrolls. It never measures, which makes blank space impossible and
+`+N more` unnecessary. That is a sound design and it is not this one: D-031
+allows the widget one count, "disclosing rows that did not fit", and a scrolling
+home-screen surface cuts against the restraint that entry is built on. Focuslist
+keeps the measured design and fixes the measurement.
+
+**What would reverse this.** A launcher reporting a size the widget does not get,
+which would show as clipped rows rather than as empty space. That is the same
+failure D-036 named, and it is now reachable for the first time, because the
+number is finally the launcher's rather than one of two constants.

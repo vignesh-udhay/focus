@@ -1,13 +1,28 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?><!--
+  Sizing per D-041.
+
+  There is deliberately no maxResizeWidth or maxResizeHeight. The widget grows
+  as far as the user drags it and fills what it is given, which is what
+  SizeMode.Exact is for. The previous 364x266 ceiling was the Medium board frame
+  reused as a limit rather than a decision, and with minResize equal to minWidth
+  and minHeight it left a resizable band of 76dp in each axis: about one grid
+  cell, so the launcher drew handles that could not move.
+
+  minResizeHeight is sized to the layout rather than chosen. 60dp of header,
+  20dp of disclosure and 8dp of bottom inset leave 52dp at 140dp, which is one
+  48dp row. Anything shorter draws furniture over nothing.
+
+  minResizeWidth is conservative on purpose: a row spends 48dp on its checkbox
+  and 70dp on its duration column before the title is given anything, and no
+  narrow widget has been looked at on a device. Lowering it wants a render.
+-->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:description="@string/widget_description"
     android:initialLayout="@layout/glance_default_loading_layout"
-    android:maxResizeHeight="266dp"
-    android:maxResizeWidth="364dp"
     android:minHeight="190dp"
-    android:minResizeHeight="190dp"
-    android:minResizeWidth="288dp"
+    android:minResizeHeight="140dp"
+    android:minResizeWidth="250dp"
     android:minWidth="288dp"
     android:previewImage="@drawable/focuslist_widget_preview"
     android:resizeMode="horizontal|vertical"

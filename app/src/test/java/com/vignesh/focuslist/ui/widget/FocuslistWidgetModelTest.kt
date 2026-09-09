@@ -158,6 +158,14 @@ class FocuslistWidgetModelTest {
      * its answers at the two declared sizes is the answer the table gave. A
      * change to any height constant has to come here and say which case it
      * moved.
+     *
+     * **These eight could not catch what D-041 fixed**, and it is worth knowing
+     * why before trusting them. They pin the two sizes the widget used to
+     * declare, which is exactly the set `LocalSize` was stuck inside: the model
+     * was right and was never handed a height outside this pair. A suite that
+     * only asks about the values production is trapped at will pass forever.
+     * [capacityGrowsWithHeightRatherThanSteppingAtBreakpoints] is the case that
+     * would have failed.
      */
     @Test
     fun capacityReproducesTheTableItReplaced() {
@@ -192,6 +200,64 @@ class FocuslistWidgetModelTest {
     }
 
     /**
+     * The regression D-041 exists for, at heights no breakpoint could produce.
+     *
+     * The reported bug was a widget with room for five rows drawing three, on a
+     * model whose arithmetic was already right. `SizeMode.Responsive` reports the
+     * matched declared size rather than the real one, so `heightDp` arrived as
+     * 190 or 266 and nothing else, and the space above the match was left blank.
+     *
+     * Every height here is one the old mode could never have delivered. They
+     * step one row at a time, which is the property that matters: capacity has
+     * to be a function of the height rather than of which breakpoint was
+     * nearest.
+     */
+    @Test
+    fun capacityGrowsWithHeightRatherThanSteppingAtBreakpoints() {
+        // 88dp of header, disclosure and bottom inset, then 48dp a row.
+        assertEquals(1, capacity(140f, hasLead = false, fontScale = 1f, taskCount = 12))
+        assertEquals(2, capacity(188f, hasLead = false, fontScale = 1f, taskCount = 12))
+        assertEquals(3, capacity(236f, hasLead = false, fontScale = 1f, taskCount = 12))
+        assertEquals(4, capacity(284f, hasLead = false, fontScale = 1f, taskCount = 12))
+        assertEquals(5, capacity(332f, hasLead = false, fontScale = 1f, taskCount = 12))
+        assertEquals(6, capacity(380f, hasLead = false, fontScale = 1f, taskCount = 12))
+
+        // The reported case: five rows' worth of widget, which used to match
+        // Medium and draw three.
+        assertEquals(5, capacity(340f, hasLead = false, fontScale = 1f, taskCount = 12))
+    }
+
+    /**
+     * A widget larger than the old ceiling keeps earning rows.
+     *
+     * `maxResizeHeight` was 266dp, the Medium frame reused as a limit, so this
+     * height was not reachable at all before D-041 removed it. Nothing in the
+     * arithmetic caps, and nothing should: the launcher decides how tall the
+     * widget is and the model spends what it is given.
+     */
+    @Test
+    fun aWidgetTallerThanTheOldCeilingIsNotCapped() {
+        assertEquals(8, capacity(480f, hasLead = false, fontScale = 1f, taskCount = 12))
+        assertEquals(6, capacity(480f, hasLead = true, fontScale = 1f, taskCount = 12))
+    }
+
+    /**
+     * The smallest height the provider permits still shows a task.
+     *
+     * The hard floor is 136dp, 88 of furniture and one 48dp row.
+     * `minResizeHeight` is declared at 140 rather than 136, so the narrowest
+     * legal widget has a few dp of slack rather than sitting exactly on the
+     * boundary. Both are asserted: the declared minimum works, and the floor is
+     * where the arithmetic says it is.
+     */
+    @Test
+    fun theDeclaredMinimumResizeHeightFitsOneRow() {
+        assertEquals(1, capacity(MinResizeHeight, hasLead = false, fontScale = 1f))
+        assertEquals(1, capacity(136f, hasLead = false, fontScale = 1f))
+        assertEquals(0, capacity(135f, hasLead = false, fontScale = 1f))
+    }
+
+    /**
      * Smaller system text does not buy extra rows. The layout was drawn at 1x
      * and the heights here are its heights, so scaling below it would be reading
      * space the composables never gave back.
@@ -205,9 +271,20 @@ class FocuslistWidgetModelTest {
      * Rows the model decided to show, which is capacity whenever there is more
      * work than room. The lead is a passed reminder, since D-035 left that as
      * the only reason reachable without a stored session.
+     *
+     * **[taskCount] has to exceed the capacity being asserted**, or this
+     * measures the fixture instead of the arithmetic. Six was enough while the
+     * widget could not be told it was taller than 266dp; D-041 lets it grow
+     * without limit, and a tall widget with six tasks shows six rows because
+     * that is all the work there is.
      */
-    private fun capacity(heightDp: Float, hasLead: Boolean, fontScale: Float): Int {
-        val filler = (1..6).map { index -> task("f$index") }
+    private fun capacity(
+        heightDp: Float,
+        hasLead: Boolean,
+        fontScale: Float,
+        taskCount: Int = 6
+    ): Int {
+        val filler = (1..taskCount).map { index -> task("f$index") }
         val tasks =
             if (hasLead) listOf(task("lead", reminderAt = now.minusMinutes(5))) + filler
             else filler
@@ -239,8 +316,18 @@ class FocuslistWidgetModelTest {
     )
 
     private companion object {
-        /** The two responsive sizes D-031 declares, which D-036 still keeps. */
+        /**
+         * The two sizes the widget used to declare responsively.
+         *
+         * D-041 retired the breakpoints, so these are no longer sizes the widget
+         * can be told it is. They stay because the eight cases pinned against
+         * them are still the table D-036 replaced, and moving a height constant
+         * should still have to say which of those it moved.
+         */
         const val CompactHeight = 190f
         const val MediumHeight = 266f
+
+        /** `minResizeHeight` in `focuslist_widget_info.xml`, per D-041. */
+        const val MinResizeHeight = 140f
     }
 }

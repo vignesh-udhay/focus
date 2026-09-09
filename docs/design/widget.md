@@ -168,18 +168,43 @@ are where to look.
 `minSdk = 29`, and that is the constraint shaping this section.
 
 **On API 31 and above** the widget declares `targetCellWidth` and
-`targetCellHeight` and the launcher sizes it in grid cells. `maxResizeWidth` and
-`maxResizeHeight` bound the drag.
+`targetCellHeight` and the launcher sizes it in grid cells.
 
 **On API 29 and 30** none of those exist. Sizing falls back to `minWidth` and
 `minHeight` in dp with `resizeMode`, and the launcher's own cell arithmetic
 decides the rest. Both sets must be declared. The older ones are not optional.
 
-**Every launcher lets the user drag a corner**, so the two drawn sizes are two
-samples of a continuum rather than an enumeration. Glance's
-`SizeMode.Responsive` takes a set of breakpoints and picks the largest that
-fits, which matches the design: size changes how many rows fit and nothing else.
-`SizeMode.Exact` would invite per-size layouts and is the wrong tool here.
+**Every launcher lets the user drag a corner**, so the drawn sizes are samples
+of a continuum rather than an enumeration. `SizeMode.Exact` reports the size the
+widget actually has, and `rowCapacity` divides it. D-041.
+
+**This paragraph used to argue the opposite**, and the correction is worth
+keeping visible. It said `SizeMode.Responsive` "picks the largest that fits,
+which matches the design", and that `SizeMode.Exact` "would invite per-size
+layouts and is the wrong tool here". The first half named the continuum and then
+chose the API that quantises it: under `Responsive`, `LocalSize` reports the
+matched member of the declared set, so the composable was told 190 or 266 and
+nothing else however large the widget was. "Picks the largest that fits" is true
+of what the launcher draws, not of what the code is told.
+
+**The second half was a real worry and it is kept as a rule.** An accurate size
+does tempt code to branch on it and grow a second layout, which is the drift
+D-031 forbids. The guard is not an inaccurate number, it is that **`rowCapacity`
+is the only reader of the size.** A second reader is the thing to refuse.
+
+**There is no maximum size.** `maxResizeWidth` and `maxResizeHeight` are absent
+on purpose: the widget grows as far as it is dragged and fills what it is given.
+They previously held 364x266, which is the Medium frame reused as a limit rather
+than a decision, and with `minResize` equal to `minWidth` and `minHeight` the
+resizable band was 76dp in each axis, so the launcher drew handles that could
+not move.
+
+**The minimums are sized to the layout.** `minResizeHeight` is 140dp: 60 of
+header, 20 of disclosure and 8 of bottom inset leave 52, which is one 48dp row,
+and the hard floor is 136. `minResizeWidth` is 250dp and is conservative, since
+a row spends 48 on its checkbox and 70 on its duration column before the title
+is given anything. TickTick's task list reaches 110dp with simpler rows. Taking
+ours lower wants a render on a device rather than an argument.
 
 **What grows is rows of today, never days.** Upcoming on the home screen would
 invite the planning mindset the app is built to avoid, and the widget is called
@@ -358,17 +383,23 @@ space and the user chose to keep it after reviewing the tradeoff.
 **A checked row is tappable to undo.** Both its checkbox and its body reopen the
 task through `TaskCompletion`, including safe recurrence cleanup.
 
-**The responsive breakpoints are 288x190dp and 364x266dp.** They are the
-smallest complete Compact and Medium layouts, declared to Glance as responsive
-sizes rather than branching on a launcher name or cell count.
+**The board's 288x190dp and 364x266dp are drawings, not declarations.** They are
+the smallest complete Compact and Medium layouts and they remain what the frames
+show. They are no longer given to Glance as anything.
 
-**They no longer decide the row count.** D-036 derives capacity from the reported
-height instead, because a widget is resized by dragging and most real ones are
-neither declared size. One taller than Compact and a little narrower than Medium
-used to fall to Compact, and Compact with a lead card is no rows, so a large
-widget drew one card over an empty container. The two `DpSize`s remain, because
-Glance needs them to choose which RemoteViews it builds; they simply no longer
-stand in for the height.
+**Capacity is the reported height, and since D-041 that height is real.** D-036
+replaced a breakpoint table with arithmetic, because a widget is resized by
+dragging and most are neither drawn size: one taller than Compact and a little
+narrower than Medium used to fall to Compact, and Compact with a lead card is no
+rows, so a large widget drew one card over an empty container.
+
+**The arithmetic then spent two versions being fed a constant.** The two
+`DpSize`s survived D-036 on the grounds that "Glance needs them to choose which
+RemoteViews it builds", which was true and carried a consequence nobody traced:
+`SizeMode.Responsive` also decides what `LocalSize` reports, so the height was
+always 190 or 266. A widget with room for five rows drew three and left the rest
+blank, which is the bug D-036 was written to prevent, surviving D-036. The
+`DpSize`s are gone with `SizeMode.Exact`.
 
 **API 29 and 30 use the declared dp minimums and the 28dp fallback corner.** The
 resource and provider fallbacks are implemented. They still need visual
@@ -378,7 +409,7 @@ verification on an API 29 or 30 launcher; the available emulator is API 37.
 
 # Implementation status
 
-**Built with Jetpack Glance.** One responsive provider renders the six states,
+**Built with Jetpack Glance.** One provider renders the six states,
 uses dynamic colour on API 31 and later with Focuslist light/dark fallbacks,
 keeps add at both sizes, and keeps a just-completed row in place until the next
 data or day change. Its checked row is the undo target the consultation chose.
