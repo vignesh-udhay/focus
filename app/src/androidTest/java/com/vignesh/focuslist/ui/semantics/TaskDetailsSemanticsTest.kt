@@ -137,7 +137,7 @@ class TaskDetailsSemanticsTest {
             rule.onNodeWithText(row).assertIsDisplayed()
         }
 
-        // Action. D-036 moved both actions into a floating toolbar, so they are
+        // Action. D-037 moved both actions into a floating toolbar, so they are
         // icons carrying their words as descriptions rather than text in the
         // column, and they no longer scroll: the toolbar is pinned, which is
         // most of the point of it. Asserted at both scales for the same reason
@@ -435,7 +435,7 @@ class TaskDetailsSemanticsTest {
         var backs = 0
         setScreen(onBack = { backs++ })
 
-        // One tap. The overflow it used to open is gone with D-036, which is
+        // One tap. The overflow it used to open is gone with D-037, which is
         // what this line stops silently passing through a menu that no longer
         // exists: without the change it would fail to find TASK_ACTIONS.
         rule.onNodeWithContentDescription(DELETE).performClick()

@@ -95,7 +95,7 @@ one field and it is shown once.
 Reminder, Duration, Repeat. Each shows its current value and opens a sheet.
 
 **Actions.** A floating toolbar, pinned bottom centre, holding Delete and Start
-focus. D-036. Start focus is the toolbar's attached FAB and one of two ways into
+focus. D-037. Start focus is the toolbar's attached FAB and one of two ways into
 Focus alongside the Focus now card, the row long-press having gone with D-023.
 `focus.md` carries the entry rules.
 
@@ -109,7 +109,7 @@ The full-width button carried a play glyph because without it the button wore
 the treatment every commit in this app wears, on a screen D-018 left with
 nothing to commit, and it was pressed by people meaning to close the page. That
 trap is gone with the pill: a small play icon in a floating bar is not open to
-being read as Done. What replaces it is lower discoverability, which D-036
+being read as Done. What replaces it is lower discoverability, which D-037
 records as the trade.
 
 ---
@@ -117,7 +117,7 @@ records as the trade.
 # The app bar has no title
 
 A back arrow at the start and nothing at the end. The overflow that held Delete
-is gone with D-036, which moved it to the floating toolbar; the trailing slot now
+is gone with D-037, which moved it to the floating toolbar; the trailing slot now
 matches Today, Inbox and Upcoming by being empty here rather than by holding a
 different control.
 
@@ -283,7 +283,7 @@ Grammar, in order: `Every {interval}` then optionally `on {days}` then
 optionally the end clause. `Every day`. `Every 2 weeks on Tue, 10 times`.
 `Every week on Mon, Wed and Fri, until Aug 17`. No end condition adds no clause.
 
-**Not "Repeats every…"**, because the sheet is already titled Repeat and the row
+**Not "Repeats everyâ€¦"**, because the sheet is already titled Repeat and the row
 is already labelled Repeat. The verb would echo the label immediately above it.
 
 **Only on the main state.** The Every and Ends substates are titled for the part
@@ -370,7 +370,7 @@ without scrolling `Start focus` sits off the bottom with no way to reach it.
 
 # Deleting
 
-Delete is the leading action in the floating toolbar. D-036 is the entry;
+Delete is the leading action in the floating toolbar. D-037 is the entry;
 D-022 is the one it supersedes.
 
 **Why not the overflow any more.** It held Delete and nothing else, and three

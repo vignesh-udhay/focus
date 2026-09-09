@@ -2289,7 +2289,7 @@ here are the ones the composables declare, so the check is whether those stay in
 step: a row that changes height and does not change `RowHeight` puts the two out
 of agreement, and nothing but a render will say so.
 
-## D-036. Task Details puts its two actions in a floating toolbar
+## D-037. Task Details puts its two actions in a floating toolbar
 
 **Decision.** Start focus and Delete move into one `HorizontalFloatingToolbar`,
 pinned bottom centre. The full-width Start focus button at the foot of the

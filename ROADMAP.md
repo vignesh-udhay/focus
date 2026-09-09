@@ -9,6 +9,49 @@ scope it delivers is in `PRODUCT.md`.
 
 ## Current phase
 
+**Task Details has a floating toolbar, and D-037 is the entry.** Start focus and
+Delete are one `HorizontalFloatingToolbar` pinned bottom centre, which retires
+both the full-width button at the foot of the scroll and the app-bar overflow.
+What started it is that an overflow whose only item is Delete promises options it
+does not have: three dots say there are more of these, and there was one. D-022
+argued well against an icon button, against a button beside Start focus and
+against a confirmation dialog, and never against the menu being a menu of one.
+
+The order inverts the row menu's rule and applies its reasoning. In a vertical
+menu the thumb lands nearest the bottom, so constructive goes before
+destructive; in a horizontal bar it lands nearest the reaching side, so Start
+focus trails and Delete leads. That is
+`FloatingToolbarHorizontalFabPosition`'s own default, not an arrangement imposed
+on the component.
+
+The honest cost is that Start focus loses its label, and `task-details.md` had
+recorded that the same button without its glyph "was pressed by people meaning
+to close the page". A small play icon in a floating bar is not open to being read
+as a commit control, so that specific trap is gone; what replaces it is lower
+discoverability, and D-037 is the entry to supersede if it costs more than the
+overflow did.
+
+`expressive-components.md` lists `FloatingToolbar` under "Do not introduce,
+unless a later product decision explicitly requires one". This is that decision.
+The same list still forbids `ButtonGroup`, which D-026 introduced through the
+same escape hatch and nobody struck off; that line wants correcting either way.
+
+**There were two D-036s, and the second is now D-037.** The widget's capacity
+entry and this one were both written as D-036. The widget keeps the number,
+since its code and tests already cite it; Task Details takes D-037 across
+`decisions.md`, `task-details.md`, `TaskDetailsScreen.kt` and
+`TaskDetailsSemanticsTest.kt`.
+
+Verified: `TaskDetailsSemanticsTest` passes on the Pixel 10 emulator with
+`ANDROID_SERIAL` pinned, 14 tests. Both actions are found by content description
+and displayed at 100% and 200%, which is what says the pinned toolbar has not
+been pushed off screen at the larger scale, and Delete on the final task still
+pops the screen now that it is a toolbar button rather than a menu item.
+
+Not verified by eye: the toolbar has not been seen rendered. Whether a small
+play glyph reads as Start focus to someone meeting the screen for the first time
+is the thing the tests cannot answer, and it is the cost D-037 accepts.
+
 **The board redrew four poses, and the code took the redraw without moving.**
 The sleeping, sitting, lying and question cats were replaced rather than edited,
 so every path changed and each took a new node id. Nothing else had to change:

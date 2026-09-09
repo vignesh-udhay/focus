@@ -192,7 +192,7 @@ private fun TaskDetailsContent(
             // Today. The screen name is published as `paneTitle` above, which a
             // screen reader announces and nothing draws.
             //
-            // **No actions.** D-036 moved Delete to the floating toolbar, so
+            // **No actions.** D-037 moved Delete to the floating toolbar, so
             // the overflow that held it and nothing else is gone. A menu whose
             // only item is one action promises options it does not have, and
             // the trailing slot now matches the three list screens by being
@@ -603,7 +603,7 @@ private fun PlanSheetHost(
 /**
  * The screen's two actions, floating over the content.
  *
- * `docs/decisions.md` D-036. Start focus and Delete, in one
+ * `docs/decisions.md` D-037. Start focus and Delete, in one
  * `HorizontalFloatingToolbar`, replacing a full-width button at the foot of the
  * scroll and an app-bar overflow whose only item was Delete.
  *
@@ -619,7 +619,7 @@ private fun PlanSheetHost(
  * pairing them: a rare one-way action must not carry the same weight as the
  * screen's payoff. The fill is the weight, since neither can carry a label.
  *
- * **Both lose their words, and that is the cost D-036 accepts.** D-022 called an
+ * **Both lose their words, and that is the cost D-037 accepts.** D-022 called an
  * unlabelled trash icon "the least legible form of the most destructive action",
  * and that is still true. What is different is that deletion here is a soft
  * delete raising the same undo offer every list raises, and that a one-item
