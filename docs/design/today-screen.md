@@ -52,7 +52,13 @@ A single `Scaffold`:
     ├── snackbarHost           SnackbarHost, carrying the undo offer
     ├── bottomBar              NavigationBar, passed in by the caller
     ├── floatingActionButton   FloatingActionButton
-    └── content                LazyColumn, or the empty state
+    └── content                LazyColumn, or the empty state,
+                               either one led by the reminder health banner
+
+The banner is in both branches rather than in the container above them, because
+`innerPadding` belongs to the list's `contentPadding` and lifting it into a
+wrapper would stop the collection scrolling under the system bars. See
+Scrolling behavior, and the banner's own section below.
 
 The bar is hoisted rather than built here, so Today does not decide what the
 app's destinations are. `navigation.md` describes what it holds.
@@ -333,6 +339,71 @@ description.
 
 ---
 
+# The reminder health banner
+
+`docs/decisions.md` D-040. Today draws a banner when reminders cannot be relied
+on, and tapping it opens Reminder health.
+
+**Two states draw it, three do not.**
+
+    ActionNeeded   a permission the app was refused        drawn
+    Missed         a reminder that actually went wrong     drawn
+    WorthChecking  a restriction inferred from the vendor  not drawn
+    Checking       nothing has been read yet               not drawn
+    Ready          nothing is wrong                        not drawn
+
+The line between the first two and the third is D-021's, and it is the whole
+design. `WorthChecking` comes from `Build.MANUFACTURER` and nothing else, so a
+banner on it would appear on every OnePlus, OPPO, Realme, Xiaomi, Redmi, POCO,
+Samsung, Huawei and Honor from first launch and stay there, on a phone where
+nothing may be wrong and where no action the user takes can clear it. That
+warning belongs on the health screen, which the user opened to ask.
+
+**What it draws.** The state's label, one sentence naming the cause, and a
+chevron. Both strings come from the health screen's own `reminder_health_*` set,
+unchanged, so tapping through never produces a second wording of the same fact.
+No body copy and no button: the banner's job is to get the user to the screen
+that can fix the problem, not to become that screen on top of their day.
+
+- container: `errorContainer` on `onErrorContainer`, matching the health
+  screen's headline for the same two states
+- shape: `MaterialTheme.shapes.large`, the corner the bands and the Focus now
+  card round to
+- one semantics node, merged, with an `onClickLabel` naming where the tap goes
+
+**It cannot be dismissed.** Every state that draws it is fixable, and fixing it
+removes it. A dismiss control would let someone clear the notice and keep the
+silence that caused it, which `PRODUCT.md` calls the most severe class of bug in
+this product. That is defensible only because the banner is rare and always
+actionable; if it were ever neither, remove it rather than making it dismissible.
+
+**It does not animate.** `expressive-motion.md` gives it no token, and the
+implementation gives its list item no `animateItem`. It appears because a check
+found something, not because the user did anything.
+
+**Where it sits in each branch.**
+
+- the collection: the first `item`, above the finished-day header and the Focus
+  now card, guarded by `hasReminderHealthBanner()` so an absent banner does not
+  leave the column's gap behind
+- the empty state: a `Column` above it, because the empty state replaces the
+  collection rather than sitting inside it, and a banner written only into the
+  list would be missing from the one screen a user with no tasks and no
+  notification permission actually sees
+- the failed read: absent. That screen already says one thing and offers one
+  action, and a second message with a second action underneath competes for a
+  user who cannot see their tasks at all
+
+[IMPL] `TodayScreen` takes the state as a parameter and does not read a view
+model for it. `FocuslistNavHost` owns one `ReminderHealthViewModel` above the
+graph and hands it to both Today and the health screen, and calls `refresh()`
+from a `LifecycleResumeEffect` on the Today destination: permissions change while
+the user is away in Settings, Android offers nothing to observe, and without the
+re-read the banner would outlive the problem.
+
+
+---
+
 # Completed-task behavior
 
 Completed and incomplete tasks coexist in the same list.
@@ -610,6 +681,8 @@ Built and working:
   `focus.md`
 - Task Details, editing title, notes, scheduled date, due date, and
   estimated duration, described in `task-details.md`
+- the reminder health banner, for `ActionNeeded` and `Missed` only, opening
+  Reminder health; see the section above and `docs/decisions.md` D-040
 
 Tasks are stored in a Room database owned by `FocuslistApplication`, read
 through `TaskRepository`, and derived into Today by `TaskQueries.todayTasks`.

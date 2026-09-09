@@ -33,6 +33,12 @@
     <string name="today_focus_now_reason_and_estimate">%1$s \u00b7 %2$s</string>
     <string name="today_section_completed">Completed</string>
 
+    <!-- The reminder health banner, D-040. The label and the sentence it draws
+         come from the reminder_health_* strings the health screen already owns,
+         so one fact is never worded two ways. This is the only string the banner
+         adds: what the tap does, announced rather than drawn. -->
+    <string name="today_reminder_health_open">Open Reminder health</string>
+
     <!-- Compact durations, for places where a total sits beside other text.
          Spoken forms exist because "3h 20m" read aloud is not a sentence. -->
     <string name="duration_compact_minutes">%1$dm</string>

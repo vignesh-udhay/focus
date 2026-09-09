@@ -9,6 +9,85 @@ scope it delivers is in `PRODUCT.md`.
 
 ## Current phase
 
+**Reminders are grouped, and the two platform calls it looked like found two
+bugs.** D-039. Every reminder carries `setGroup` and a summary counts them, which
+closes the other frame the board drew and the app had never built. The count is
+allowed under D-031's carve-out, disclosing what a collapsed stack hides, and it
+counts notifications on screen rather than reminders fired or tasks outstanding.
+The board's "Focuslist · 3 reminders" lost its app name, because Android draws
+that in the header and the string would have said Focuslist twice.
+
+**The first bug would have shipped and would have been severe.** The summary was
+cancelled once fewer than two reminders remained, which is the obvious rule and
+is wrong: the notification service cancels a group's children along with its
+summary, so dealing with one of two reminders silently removed the other from the
+shade. The user is not told about work they never touched, which `CLAUDE.md`
+ranks above a crash, and it is invisible until a second reminder exists and the
+first is handled. The summary now goes only when the group is empty.
+
+**The second was a race, and it had already produced a wrong number.** `notify`
+and `cancel` are processed on the notification service's handler, so reading the
+count straight back sees a stale shade; it was observed announcing "1 reminder"
+over two. The count is read from the shade and then corrected by the one id the
+caller just moved.
+
+**One cost is open rather than solved.** Grouping doubles the enqueue rate, two
+posts per reminder, and the service sheds posts from a package exceeding a few
+per second. Reminders due in the same minute produce that burst. A shed summary
+is cosmetic; a shed reminder is not. D-039 records it, and the fix is coalescing
+a burst rather than anything in this change.
+
+Verified: `ReminderGroupTest`, 7 tests, three consecutive green runs on the
+Pixel 10 emulator with `ANDROID_SERIAL` pinned, and 664 unit tests. Both bugs
+were found by that suite rather than by reading, and the first version of it
+passed against a shade that never received anything, because `postReminder` does
+not create its channel and its callers do. That is the D-026 rule again: check
+that a probe can fail.
+
+Not verified by eye: no grouped stack has been looked at in a real shade.
+
+**Today has a reminder health banner, and D-040 is the entry.** Reported as a
+banner that would not appear with notifications switched off. It had never been
+built: `TodayScreen` read no health state, and `ReminderHealthState` had exactly
+one consumer in the app, the health screen. What made it look like a regression
+is that `expressive-motion.md` carried two entries about the banner's motion,
+including a paragraph arguing that it must not slide in because that would be
+"the app performing its own bad news". The reasoning had been written down and
+the component never had.
+
+It draws for `ActionNeeded` and `Missed`, and never for `WorthChecking`. That
+line is D-021's and it matters more here than on the health screen: a
+`WorthChecking` banner fires from `Build.MANUFACTURER` alone, so it would sit
+permanently on the default screen of every OnePlus, OPPO, Realme, Xiaomi, Redmi,
+POCO, Samsung, Huawei and Honor, unclearable by anything the owner does. A label,
+one sentence and a chevron, all of it in the health screen's own strings, opening
+the health screen. It cannot be dismissed, because every state that draws it is
+fixable and fixing it is what removes it.
+
+This is Phase 2 reliability work landing after Phase 5 design work, which is out
+of order and was asked for directly. D-029 is not superseded: it removed Reminder
+health from the overflow partly on the grounds that "contextual warnings and
+reminder deep links may take a user directly to the health screen when action is
+needed", and no such warning existed at the time. This is that warning, so the
+entry point D-029 traded away now has its replacement.
+
+`FocuslistNavHost` owns one `ReminderHealthViewModel` above the graph now, handed
+to both Today and the health screen, and refreshes it from a
+`LifecycleResumeEffect` on the Today destination. Permissions change while the
+user is in Settings and Android offers nothing to observe, so without the re-read
+the banner would outlive the problem it names.
+
+Verified: `TodayScreenSemanticsTest` passes on the Pixel 10 emulator with
+`ANDROID_SERIAL` pinned, 25 tests, 11 of them new. They cover the sentence naming
+the cause rather than the category, the tap reaching Reminder health, the banner
+surviving the empty screen, and its absence for `WorthChecking`, `Ready` and
+`Checking`. `NavigationSemanticsTest` still passes, 14 tests, which is what says
+the hoisted view model did not disturb the graph.
+
+Not verified by eye: the banner has not been seen rendered, in either theme or at
+either font scale. `errorContainer` above the segmented collection is the one
+pairing on this screen that has never been looked at together.
+
 **The full-screen alarm is dated rather than cut, under D-038.** It ships after
 1.0. The board has drawn `notify/Full screen alarm` since Phase 1 and no
 `setFullScreenIntent` has ever existed in the app, which is the state that makes

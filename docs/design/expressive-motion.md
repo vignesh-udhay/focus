@@ -184,6 +184,12 @@ found something, not because the user did anything, and the rules below forbid
 motion that plays without a user action. It is simply present when the screen
 composes. Sliding it in would be the app performing its own bad news.
 
+[IMPL] This entry described a component that did not exist for most of the life
+of this document, and read convincingly enough that the banner's absence from
+Today was taken for a regression rather than a gap. It is built now, under
+`docs/decisions.md` D-040, and its list item carries no `animateItem`, which is
+what the paragraph above amounts to in code. `today-screen.md` has the rest.
+
 [IMPL] The top app bar does not move. D-020 replaced the 152dp
 `LargeFlexibleTopAppBar` with a pinned 64dp bar, and 64dp has nothing to
 collapse to. This entry used to describe Material's

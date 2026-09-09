@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasContentDescriptionExactly
@@ -15,6 +16,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.waitUntilExactlyOneExists
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.vignesh.focuslist.core.domain.HealthCheck
+import com.vignesh.focuslist.core.domain.ReminderHealthState
 import com.vignesh.focuslist.ui.today.TodayScreen
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -47,6 +50,32 @@ class TodayScreenSemanticsTest {
 
         rule.setFocuslistContent(fontScale) {
             TodayScreen(viewModel = viewModel, onOpenTask = {})
+        }
+    }
+
+    /**
+     * Today with a reminder health answer, which is D-040's banner input.
+     *
+     * Handed in rather than produced, because the states that draw a banner are
+     * a refused permission and a recorded miss, and neither can be provoked from
+     * a test. The screen takes the answer as a parameter for exactly this
+     * reason.
+     */
+    private fun setToday(
+        fontScale: Float,
+        dao: FakeTaskDao,
+        health: ReminderHealthState?,
+        onOpenHealth: () -> Unit = {}
+    ) {
+        val viewModel = testViewModel(dao)
+
+        rule.setFocuslistContent(fontScale) {
+            TodayScreen(
+                viewModel = viewModel,
+                onOpenTask = {},
+                reminderHealth = health,
+                onOpenReminderHealth = onOpenHealth
+            )
         }
     }
 
@@ -250,6 +279,122 @@ class TodayScreenSemanticsTest {
     @Test
     fun undo_reopensTheTask_at200() = assertUndoReopensTheTask(FontScale200)
 
+    /**
+     * The banner says which check failed, not that something is wrong.
+     *
+     * The sentence is the health screen's own, which is the point: a user who
+     * taps through must not be met by a second wording of the same fact.
+     */
+    private fun assertTheBannerNamesTheCause(fontScale: Float) {
+        setToday(
+            fontScale,
+            withOneTask(),
+            ReminderHealthState.ActionNeeded(HealthCheck.Notifications)
+        )
+
+        rule.onNodeWithText(BANNER_NO_NOTIFICATIONS).assertIsDisplayed()
+        rule.onNodeWithText(BANNER_ACTION_LABEL).assertIsDisplayed()
+    }
+
+    @Test
+    fun reminderBanner_namesTheCause_at100() = assertTheBannerNamesTheCause(FontScale100)
+
+    @Test
+    fun reminderBanner_namesTheCause_at200() = assertTheBannerNamesTheCause(FontScale200)
+
+    /** And it is one target that goes to the screen that can fix the problem. */
+    private fun assertTheBannerOpensHealth(fontScale: Float) {
+        var opened = false
+
+        setToday(
+            fontScale,
+            withOneTask(),
+            ReminderHealthState.ActionNeeded(HealthCheck.ExactAlarms),
+            onOpenHealth = { opened = true }
+        )
+
+        rule.onNodeWithText(BANNER_LATE).assertHasClickAction()
+        rule.onNodeWithText(BANNER_LATE).performClick()
+
+        assertTrue("The banner did not open Reminder health", opened)
+    }
+
+    @Test
+    fun reminderBanner_opensHealth_at100() = assertTheBannerOpensHealth(FontScale100)
+
+    @Test
+    fun reminderBanner_opensHealth_at200() = assertTheBannerOpensHealth(FontScale200)
+
+    /**
+     * It survives the empty screen, which is the case D-040 says matters most.
+     *
+     * The empty state replaces the collection rather than sitting inside it, so
+     * a banner written only into the list would be missing from the one screen
+     * a user with no tasks and no notification permission actually sees.
+     */
+    private fun assertTheBannerSurvivesTheEmptyScreen(fontScale: Float) {
+        setToday(
+            fontScale,
+            FakeTaskDao(),
+            ReminderHealthState.ActionNeeded(HealthCheck.Notifications)
+        )
+
+        rule.onNodeWithText(EMPTY_HEADLINE).assertIsDisplayed()
+        rule.onNodeWithText(BANNER_NO_NOTIFICATIONS).assertIsDisplayed()
+    }
+
+    @Test
+    fun reminderBanner_survivesTheEmptyScreen_at100() =
+        assertTheBannerSurvivesTheEmptyScreen(FontScale100)
+
+    @Test
+    fun reminderBanner_survivesTheEmptyScreen_at200() =
+        assertTheBannerSurvivesTheEmptyScreen(FontScale200)
+
+    /**
+     * **A guess does not earn a banner**, which is the assertion this file
+     * exists to hold on to.
+     *
+     * `WorthChecking` is inferred from `Build.MANUFACTURER` alone. If it ever
+     * starts drawing, every OnePlus, OPPO, Realme, Xiaomi, Redmi, POCO, Samsung,
+     * Huawei and Honor owner gets a permanent notice on their default screen
+     * that no action of theirs can clear. D-021 and D-040 both turn on this.
+     */
+    @Test
+    fun reminderBanner_isAbsent_forAnInferredRestriction() {
+        setToday(
+            FontScale100,
+            withOneTask(),
+            ReminderHealthState.WorthChecking(HealthCheck.BackgroundWork)
+        )
+
+        rule.onNodeWithText(BANNER_ACTION_LABEL).assertDoesNotExist()
+        rule.onNodeWithText(BANNER_MISSED_LABEL).assertDoesNotExist()
+    }
+
+    /** And a healthy app says nothing at all on Today. */
+    @Test
+    fun reminderBanner_isAbsent_whenRemindersAreHealthy() {
+        setToday(FontScale100, withOneTask(), ReminderHealthState.Ready)
+
+        rule.onNodeWithText(BANNER_ACTION_LABEL).assertDoesNotExist()
+        rule.onNodeWithText(BANNER_MISSED_LABEL).assertDoesNotExist()
+    }
+
+    /**
+     * Nor before the first check has run.
+     *
+     * `Checking` is the state the view model holds until `refresh` completes, so
+     * this is what Today draws for a frame on every cold start.
+     */
+    @Test
+    fun reminderBanner_isAbsent_whileStillChecking() {
+        setToday(FontScale100, withOneTask(), ReminderHealthState.Checking)
+
+        rule.onNodeWithText(BANNER_ACTION_LABEL).assertDoesNotExist()
+        rule.onNodeWithText(BANNER_MISSED_LABEL).assertDoesNotExist()
+    }
+
     private companion object {
         const val TITLE = "Write the report"
         const val ADD_TASK = "Add task"
@@ -266,6 +411,12 @@ class TodayScreenSemanticsTest {
 
         /** The same action label the task rows carry, because it is the same act. */
         const val OPEN_TASK = "Open task details"
+
+        /** D-040's banner, in the health screen's own words. */
+        const val BANNER_ACTION_LABEL = "Action needed"
+        const val BANNER_MISSED_LABEL = "Missed reminder"
+        const val BANNER_NO_NOTIFICATIONS = "Focuslist cannot show notifications"
+        const val BANNER_LATE = "Reminders may arrive late"
         const val TIMEOUT_MILLIS = 5_000L
     }
 }

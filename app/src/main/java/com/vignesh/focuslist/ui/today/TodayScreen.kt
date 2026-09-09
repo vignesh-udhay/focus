@@ -3,6 +3,7 @@ package com.vignesh.focuslist.ui.today
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -40,6 +41,7 @@ import com.vignesh.focuslist.core.design.FocuslistSpacing
 import com.vignesh.focuslist.core.design.focuslistContentGutter
 import com.vignesh.focuslist.core.domain.FocusNow
 import com.vignesh.focuslist.core.domain.FocusNowReason
+import com.vignesh.focuslist.core.domain.ReminderHealthState
 import com.vignesh.focuslist.core.domain.Task
 import com.vignesh.focuslist.core.domain.TodayBand
 import com.vignesh.focuslist.core.domain.TodaySection
@@ -81,6 +83,12 @@ fun TodayScreen(
     quickAddRequest: Int = 0,
     bottomBar: @Composable () -> Unit = {},
     onOpenFocus: () -> Unit = {},
+    // Whether reminders can currently be relied on, read from the health view
+    // model the host owns rather than from this screen's own. D-040 draws it as
+    // a banner for the two states the app is sure about; the default is the
+    // state that draws nothing, so a caller with no opinion gets no banner.
+    reminderHealth: ReminderHealthState? = null,
+    onOpenReminderHealth: () -> Unit = {},
     // The three dots at the end of the header row. A slot rather than a route,
     // because navigating is the host's job and this screen only has to leave
     // room for it.
@@ -147,7 +155,9 @@ fun TodayScreen(
         modifier = modifier,
         snackbarHostState = snackbarHostState,
         bottomBar = bottomBar,
-        overflow = overflow
+        overflow = overflow,
+        reminderHealth = reminderHealth,
+        onOpenReminderHealth = onOpenReminderHealth
     )
 
 
@@ -213,7 +223,9 @@ private fun TodayContent(
     modifier: Modifier = Modifier,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     bottomBar: @Composable () -> Unit = {},
-    overflow: @Composable RowScope.() -> Unit = {}
+    overflow: @Composable RowScope.() -> Unit = {},
+    reminderHealth: ReminderHealthState? = null,
+    onOpenReminderHealth: () -> Unit = {}
 ) {
     // The collection runs away from the page rather than sitting a step above
     // it: toward white in light, toward black in dark. The page is the tinted
@@ -285,12 +297,30 @@ private fun TodayContent(
                 modifier = Modifier.padding(innerPadding)
             )
         } else if (tasks.isEmpty() && focusNow == null) {
-            TaskListEmptyState(
-                headline = stringResource(R.string.today_empty_headline),
-                supporting = stringResource(R.string.today_empty_supporting),
-                modifier = Modifier.padding(innerPadding),
-                illustration = { TodayMascot() }
-            )
+            // The banner survives the empty screen, and D-040 says this is
+            // where it matters most: a user who has just declined the
+            // notification permission and owns no tasks yet is exactly the user
+            // about to set a first reminder into silence. A Column rather than
+            // a list item, because the empty state is not a scroll container
+            // and has no contentPadding to carry this.
+            Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+                ReminderHealthBanner(
+                    state = reminderHealth,
+                    onOpen = onOpenReminderHealth,
+                    modifier = Modifier.padding(
+                        start = FocuslistSpacing.md + gutter,
+                        end = FocuslistSpacing.md + gutter,
+                        top = FocuslistSpacing.xs
+                    )
+                )
+
+                TaskListEmptyState(
+                    headline = stringResource(R.string.today_empty_headline),
+                    supporting = stringResource(R.string.today_empty_supporting),
+                    modifier = Modifier.weight(1f),
+                    illustration = { TodayMascot() }
+                )
+            }
         } else {
             LazyColumn(
                 state = listState,
@@ -305,6 +335,26 @@ private fun TodayContent(
                 ),
                 verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
             ) {
+                // First, above the day's work and above the card, because it is
+                // about whether any of that work will be announced at all.
+                //
+                // No `animateItem`. `expressive-motion.md` gives the banner no
+                // token and says why: it appears because a check found
+                // something, not because the user did anything, and sliding it
+                // in would be the app performing its own bad news.
+                if (reminderHealth.hasReminderHealthBanner()) {
+                    item(key = "reminder-health") {
+                        ReminderHealthBanner(
+                            state = reminderHealth,
+                            onOpen = onOpenReminderHealth,
+                            // The collection's own gap is for segments of one
+                            // list. The banner is not one of them, so it takes
+                            // a little more room below itself.
+                            modifier = Modifier.padding(bottom = FocuslistSpacing.xs)
+                        )
+                    }
+                }
+
                 // Above the Completed disclosure, not instead of it. The
                 // day is finished, which is worth saying, but the rows are
                 // still how a task completed today is reopened once the undo

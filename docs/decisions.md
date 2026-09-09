@@ -2538,3 +2538,71 @@ on that list.
 and the count is read as a workload rather than as a disclosure. That would show
 up as users reporting the app nags, and the fix is the summary losing its number
 rather than the group being removed.
+
+## D-040. Today carries a reminder health banner, for what the app knows and not for what it guesses
+
+**Decision.** Today draws a banner when `ReminderHealthState` is `ActionNeeded`
+or `Missed`, and never for `WorthChecking`, `Ready` or `Checking`. It cannot be
+dismissed, it sits above the day's work in both the populated and the empty
+layout, and tapping it opens Reminder health.
+
+**This is new work, not a repair.** No such component existed. `TodayScreen` read
+no health state at all and `ReminderHealthState` had exactly one consumer in the
+app, the health screen itself. What made this look like a regression is that
+`expressive-motion.md` already carried two entries about the banner's motion,
+including a paragraph arguing at length that it must not slide in because
+"sliding it in would be the app performing its own bad news". A document
+described the behaviour of a component that had never been written, which is the
+failure mode this file exists to catch: the reasoning was recorded and the code
+was not.
+
+**D-029 reserved the mechanism and this is it.** That entry removed Reminder
+health from the app-bar overflow and justified the removal partly on the grounds
+that "contextual warnings and reminder deep links may take a user directly to the
+health screen when action is needed". No contextual warning existed then, so
+D-029 traded a real entry point for a promised one. This banner is the promise
+being kept, and D-029 needs no amendment.
+
+**Only the two states the app is sure about.** D-021 split the health states by
+certainty, and the split holds harder here than it does on the health screen. A
+user opens Reminder health to ask a question, and an honest "worth checking"
+answers it. Nobody opens Today to ask. `WorthChecking` fires from
+`Build.MANUFACTURER` alone, so a banner on it would appear on every OnePlus,
+OPPO, Realme, Xiaomi, Redmi, POCO, Samsung, Huawei and Honor from first launch,
+permanently, on a phone where nothing may be wrong. That is a banner on the
+default screen of the app that can never be cleared by any action the user takes,
+which is the precise shape of a warning people learn to scroll past. `Checking`
+is excluded for the same reason in miniature: the app has not asked yet, and a
+spinner on Today would be the app worrying aloud.
+
+**It cannot be dismissed, because the condition is the dismissal.** Every state
+that draws it is fixable, and fixing it removes it. A dismiss control would let a
+user clear the notice in one tap and keep the silence that caused it, and
+`PRODUCT.md` calls a reminder that does not fire the most severe class of bug in
+this product, worse than a crash. The banner is safe to make undismissable
+exactly because it is rare and always actionable; if it were ever neither, it
+should be removed rather than made dismissible.
+
+**It appears on the empty screen too, which is where it matters most.** Today
+renders an empty state instead of the collection when there is no work, so a
+banner living only in the list would be missing on a fresh install: the user who
+has just declined the notification permission and has not yet added a task is
+exactly the user about to set their first reminder into silence. The empty branch
+draws it above the empty state for that reason. The failed-read branch does not.
+That screen already says one thing and offers one action, and a second message
+with a second action underneath it competes for a user who cannot see their tasks
+at all.
+
+**It says less than the health screen on purpose.** A label and a sentence, both
+strings the health screen already owns, and a chevron. No body copy, no button,
+no list of checks. Its job is to get the user to the screen that can fix the
+problem, not to become that screen on top of their day. Reusing the health
+screen's own strings is what stops the same fact being phrased two ways in two
+places, which is how "Focuslist cannot show notifications" and some second
+wording of it end up disagreeing.
+
+**What would reverse this.** A user reporting the banner as noise would mean one
+of the two states is firing when nothing is wrong, and the fix is that state's
+detection rather than the banner. If `backgroundWorkState` ever learns to return
+`Blocked` from something measured rather than inferred, `ActionNeeded` gains a
+third cause and the banner gains it too, with no change here.

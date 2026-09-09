@@ -12,6 +12,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -72,6 +73,18 @@ fun FocuslistNavHost(
     val viewModel = taskListViewModel()
     var quickAddRequest by rememberSaveable { mutableIntStateOf(0) }
 
+    // Built here for the same reason, and now for a second one: since D-040 two
+    // screens read it. The health screen is the room, and Today's banner is the
+    // contextual warning D-029 said would take a user there. Built inside the
+    // health destination it would have been that destination's own, so Today
+    // would have had a second instance answering the same question separately.
+    val reminderHealthViewModel: ReminderHealthViewModel = viewModel(
+        factory = ReminderHealthViewModel.Factory(
+            deliveries = application.reminderDeliveryRepository,
+            checks = application.reminderHealthChecks
+        )
+    )
+
     LaunchedEffect(widgetCommand) {
         val command = widgetCommand ?: return@LaunchedEffect
         when (command) {
@@ -131,6 +144,23 @@ fun FocuslistNavHost(
             modifier = hostModifier
         ) {
             composable(FocuslistRoutes.TODAY) {
+                // Permissions change while the user is away in Settings and
+                // Android offers nothing to observe, so Today asks again every
+                // time it comes back. Without this the banner would outlive the
+                // problem: the user turns notifications on, returns, and is
+                // still being told they are off.
+                //
+                // Here rather than inside the screen, because the question is
+                // the host's: `TodayScreen` is handed an answer and does not
+                // know which view model produced it.
+                LifecycleResumeEffect(Unit) {
+                    reminderHealthViewModel.refresh()
+                    onPauseOrDispose {}
+                }
+
+                val reminderHealth by reminderHealthViewModel.state
+                    .collectAsStateWithLifecycle()
+
                 TodayScreen(
                     viewModel = viewModel,
                     quickAddRequest = quickAddRequest,
@@ -142,7 +172,14 @@ fun FocuslistNavHost(
                     // Nothing to navigate to any more. Choosing a task is what
                     // opens Focus, and the sheet appears over whatever screen
                     // asked for it.
-                    onOpenFocus = {}
+                    onOpenFocus = {},
+                    reminderHealth = reminderHealth,
+                    // An ordinary forward move, like the overflow's, so back
+                    // returns to Today rather than to whatever Today was
+                    // reached from.
+                    onOpenReminderHealth = {
+                        navController.openSecondary(FocuslistRoutes.REMINDER_HEALTH)
+                    }
                 )
             }
 
@@ -203,13 +240,11 @@ fun FocuslistNavHost(
             // No bottom bar. Reminder health is the room behind Settings'
             // first row, and the frame draws a back arrow instead.
             composable(FocuslistRoutes.REMINDER_HEALTH) {
+                // The same view model Today's banner reads. Two answers to
+                // "can a reminder arrive" would be one answer too many, and
+                // the banner sends the user straight here.
                 ReminderHealthScreen(
-                    viewModel = viewModel(
-                        factory = ReminderHealthViewModel.Factory(
-                            deliveries = application.reminderDeliveryRepository,
-                            checks = application.reminderHealthChecks
-                        )
-                    ),
+                    viewModel = reminderHealthViewModel,
                     onBack = navController::popBackStack
                 )
             }
