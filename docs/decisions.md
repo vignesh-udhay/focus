@@ -2365,3 +2365,84 @@ overflow did, the entry to supersede is this one.
 beneath its last Plan row, on the same terms the lists reserve it under their
 FAB: a floating control that covers the thing it acts on is worse than one that
 scrolls.
+
+## D-038. The full-screen alarm is deferred past 1.0, and the board frame stops looking built
+
+**Decision.** Focuslist ships 1.0 without `setFullScreenIntent`. The
+`notify/Full screen alarm` frame is marked as a design held rather than as
+behaviour, and the item moves to the After 1.0 list in `ROADMAP.md`, ordered by
+review evidence like everything else there.
+
+This does not decline the feature. It dates it.
+
+**Why it looked ready.** D-005 commits to "full-screen intents where warranted"
+inside the API layer, the board draws the frame, and 202 of the reviews in the
+study ask for an alarm rather than a notification, which is the second largest
+ask behind missed reminders themselves. `reminders.md` had already recorded that
+none of it exists in code. A commitment, a drawn frame and no implementation is
+the state that makes a thing look done to the next session.
+
+**It is a feature, not a notification flag.** The warranting rule has to be
+per-task, for the reason below, and per-task means a column on `Task`, so schema
+version 11 and a migration; a field in the backup codec, whose format is at
+`Version = 1` and which rejects an unknown version by design, so the file format
+moves with it; a Task Details row and its sheet; board frames for both; and an
+answer for what Quick Add and the widget do with the flag. Then the alarm
+surface: an activity over the lock screen, `setShowWhenLocked`,
+`setTurnScreenOn`, keyguard dismissal, and a permission flow with a degraded
+path. That is a phase. It was never a Phase 5 bullet.
+
+**It is the riskiest available change to the one subsystem that cannot break.**
+`CLAUDE.md` puts a reminder that does not fire above a crash, because a crash is
+visible and a miss is not. Adding a second delivery path through the reminder
+pipeline immediately before the first public release inverts the sequencing the
+whole roadmap rests on. Phase 3 ran before Phase 4 to avoid this exact shape of
+mistake, and the argument does not weaken because the feature is wanted.
+
+**A contested declaration is worst on a first submission.** Play's carve-out is
+"apps whose core functionality is a high-priority use case of setting an alarm
+or receiving phone or video calls". Whether task reminders are that is genuinely
+arguable, and arguing it on the first submission spends the riskiest declaration
+at the moment the app has the least standing and no install base to point at. On
+a later update a questioned declaration costs a feature; on the first one it can
+hold the launch.
+
+**Some of the demand is already met, which is easy to miss.** The reviews asking
+for an alarm are mostly people whose notifications were silent, late or absent.
+Focuslist answers that with `IMPORTANCE_HIGH`, `CATEGORY_REMINDER`, exact alarms
+that survive a restart and a clock change, the OEM layer, and the trust layer no
+competitor ships. The full-screen intent is one expression of alarm-like, not
+the whole of the ask, and shipping it is not the same as answering the
+complaint.
+
+**The door is demonstrably open, and this is worth recording while it is fresh.**
+TickTick 8.1.3.6, installed from `com.android.vending` on the emulator, declares
+`USE_FULL_SCREEN_INTENT` alongside `SYSTEM_ALERT_WINDOW` and `WAKE_LOCK`, and
+holds it `granted=true` at `targetSdk=37`, the same target Focuslist builds
+against. So a task app rather than an alarm clock does hold this permission
+through Play today. What the dump cannot say is how: the package app op reads
+`default` while the UID mode reads `allow`, and the op changed about four days
+after install, which hints at a user grant rather than a Play pre-grant. Read
+that as a lead, not a finding.
+
+**The failure mode is a floor rather than a cliff**, which is the other half of
+why deferring costs little. Since 22 January 2025 a non-qualifying app is not
+refused the permission, it is merely not pre-granted: it prompts through
+`ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT`, reads
+`NotificationManager.canUseFullScreenIntent()`, and degrades to the heads-up
+notification the app already ships. Nothing about waiting makes the eventual
+build harder.
+
+**What warrants one, when it is built.** Per-task opt-in. A reminder is not
+automatically an alarm, and an app that decides for the user which of their
+tasks may take over the device is making the claim D-031 refuses on the widget:
+speaking loudly on grounds that are equally true of everything else. Per-task is
+also the honest thing to write on the declaration, because it makes the
+alarm-grade path a choice the user made rather than a claim that every task
+reminder is an alarm.
+
+**What would reverse this.** Reviews of the shipped app asking for it
+specifically, once the reminder pipeline has been observed working in the wild.
+That is the trigger the After 1.0 list already runs on, and D-007 says the same
+thing in general terms: let the app's own reviews set the order. Nothing about
+this entry survives that evidence arriving.

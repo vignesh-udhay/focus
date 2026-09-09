@@ -29,8 +29,10 @@ light and dark:
 - **Expanded** — the same, plus the notes, plus Done and Snooze.
 - **Snooze options** — the second screen of the Snooze action.
 - **Lock screen** — the same notification, drawn by the system.
-- **Full-screen alarm** — not built. See below.
-- **Grouped** — several at once. Not built. See below.
+- **Full-screen alarm** — a design held past 1.0 under D-038, not behaviour. See
+  below.
+- **Grouped** — several at once. Not built, and not yet decided either way. See
+  below.
 
 `notify/Opened from reminder` was the seventh and is retired. It drew a bespoke
 Task screen with a card round the title and two full-width buttons, which D-018
@@ -104,20 +106,33 @@ behaviour.
 
 ---
 
-# The full-screen alarm is not built
+# The full-screen alarm is a design held past 1.0
 
 `notify/Full screen alarm` draws it. No `setFullScreenIntent` exists anywhere in
-the app.
+the app, and none will before 1.0 ships.
 
-D-005 commits to "full-screen intents where warranted" as part of the API layer,
-so this is scope that was planned and not yet reached rather than scope that was
-declined. It is worth naming plainly because the board makes it look done.
+**D-038 is the entry**, and it defers rather than declines. D-005 commits to
+"full-screen intents where warranted" as part of the API layer, so this is scope
+that was planned and dated rather than scope that was cut. It is worth naming
+plainly because the board otherwise makes it look done.
 
-**What would warrant one** is the question to answer before building it: a
-full-screen intent takes over the device, and Android 14 restricts the
-permission to alarm and calling apps. A reminder is not automatically an alarm.
-The likely answer is that the user asks for it per task, which is a product
-decision and needs an entry before anyone writes the code.
+The short version of the argument: per-task opt-in is the only warranting rule
+that holds, per-task means schema version 11 and a backup format change on top of
+a lock-screen activity and a permission flow, and that is a phase rather than a
+Phase 5 bullet. Threading a second delivery path through the reminder pipeline
+immediately before the first release is the sequencing mistake Phase 3 ran early
+to avoid. D-038 carries the rest, including why the Play declaration is worst
+spent on a first submission and why waiting costs little.
+
+**What warrants one, when it is built:** per-task opt-in. A reminder is not
+automatically an alarm, and an app that decides which of the user's tasks may
+take over their device is making the claim D-031 refuses on the widget.
+
+**The permission is obtainable**, which D-038 records from the emulator so the
+next reader does not re-derive it: TickTick holds `USE_FULL_SCREEN_INTENT`
+granted at `targetSdk=37` from a Play install. A non-qualifying app is not
+refused the permission, only denied the pre-grant, and degrades to the heads-up
+notification this app already posts.
 
 ---
 
@@ -149,6 +164,10 @@ Not part of delivery:
 **Built:** collapsed, expanded, snooze options, and the lock screen as a
 consequence of them. `ReminderNotification.kt` names the frames it draws.
 
-**Not built:** the full-screen alarm and grouping.
+**Not built:** the full-screen alarm, held past 1.0 by D-038, and grouping,
+which is unbuilt and still undecided. Grouping is the smaller of the two by a
+wide margin: `setGroup` and `setGroupSummary`, no schema change, no permission
+and no policy question. It wants an answer of its own rather than being carried
+along by D-038.
 
 **Retired:** `notify/Opened from reminder`, on the Archive page.

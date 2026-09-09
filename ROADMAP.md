@@ -9,6 +9,41 @@ scope it delivers is in `PRODUCT.md`.
 
 ## Current phase
 
+**The full-screen alarm is dated rather than cut, under D-038.** It ships after
+1.0. The board has drawn `notify/Full screen alarm` since Phase 1 and no
+`setFullScreenIntent` has ever existed in the app, which is the state that makes
+a thing look built to a session that has not checked.
+
+Three things decided it. The warranting rule has to be per-task, because an app
+that picks which of the user's tasks may take over their device is making the
+claim D-031 refuses on the widget; per-task means schema version 11, a backup
+format change, a Task Details row and a lock-screen activity with its own
+permission flow, so it is a phase rather than a Phase 5 bullet. Threading a
+second delivery path through the reminder pipeline immediately before the first
+release inverts the sequencing the roadmap rests on, and `CLAUDE.md` puts a
+reminder that does not fire above a crash. And Play's declaration is worst spent
+on a first submission, where a questioned claim holds the launch rather than
+costing a feature.
+
+**Checked rather than recalled, which changed the shape of the entry.** TickTick
+8.1.3.6 on the emulator, installed by `com.android.vending`, declares
+`USE_FULL_SCREEN_INTENT` and holds it `granted=true` at `targetSdk=37`, the same
+target Focuslist builds against. So the permission is obtainable by a task app
+rather than reserved to alarm clocks, and D-038 defers on sequencing alone
+rather than on a policy wall that is not there. The dump cannot say whether Play
+pre-granted it or the user did; that is recorded as a lead.
+
+The failure mode is also a floor rather than a cliff: since 22 January 2025 a
+non-qualifying app is not refused the permission, only denied the pre-grant, and
+degrades to the heads-up notification the app already posts. Nothing about
+waiting makes the eventual build harder.
+
+`reminders.md` no longer says "not built" without saying why, and the item heads
+the After 1.0 list as the first thing to reconsider. **Grouping was deliberately
+not folded in.** It is the other unbuilt frame, it is far smaller, `setGroup` and
+`setGroupSummary` with no schema change and no policy question, and it wants its
+own answer rather than being carried along by this one.
+
 **Task Details has a floating toolbar, and D-037 is the entry.** Start focus and
 Delete are one `HorizontalFloatingToolbar` pinned bottom centre, which retires
 both the full-width button at the foot of the scroll and the app-bar overflow.
@@ -1721,6 +1756,12 @@ Estimate: 3 to 4 weeks.
 
 In rough evidence order, and only once real users ask:
 
+- The full-screen alarm, per-task opt-in, held here by D-038 rather than cut.
+  It has the strongest prior evidence of anything on this list, 202 reviews
+  asking for an alarm rather than a notification, and it is still below the
+  line for 1.0 because it is a schema change and a lock-screen surface threaded
+  through the one subsystem that cannot break. First on this list to be
+  reconsidered.
 - Subtasks
 - Flat Lists, replacing the deferred Projects idea (see `docs/decisions.md`,
   D-003)
