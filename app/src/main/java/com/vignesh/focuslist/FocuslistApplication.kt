@@ -6,6 +6,8 @@ import androidx.room.Room
 import com.vignesh.focuslist.data.local.FocuslistDatabase
 import com.vignesh.focuslist.data.local.FocuslistMigrations
 import com.vignesh.focuslist.data.local.FocuslistPreferences
+import com.vignesh.focuslist.data.local.FocusSessionPreferences
+import com.vignesh.focuslist.data.local.WidgetInteractionPreferences
 import com.vignesh.focuslist.data.local.debugSeedCallback
 import com.vignesh.focuslist.core.notification.AndroidFocusAlarms
 import com.vignesh.focuslist.core.notification.AndroidReminderAlarms
@@ -21,9 +23,16 @@ import com.vignesh.focuslist.data.repository.TaskRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
+import androidx.glance.appwidget.updateAll
+import com.vignesh.focuslist.ui.widget.FocuslistWidget
 
 /**
  * The application-level composition root.
@@ -62,6 +71,14 @@ class FocuslistApplication : Application() {
 
     /** The two persisted appearance choices, observed directly by the theme. */
     val preferences: FocuslistPreferences by lazy { FocuslistPreferences(this) }
+
+    /** The one resumable Focus clock, shared with the home widget. */
+    val focusSessionStore: FocusSessionPreferences by lazy { FocusSessionPreferences(this) }
+
+    /** Completion evidence that remains on the widget until its next refresh. */
+    val widgetInteractions: WidgetInteractionPreferences by lazy {
+        WidgetInteractionPreferences(this)
+    }
 
     /** User-controlled JSON continuity, kept separate from Android cloud backup. */
     val backupRepository: BackupRepository by lazy {
@@ -128,6 +145,7 @@ class FocuslistApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         keepRemindersInStepWithStorage()
+        keepWidgetInStepWithState()
     }
 
     /**
@@ -149,6 +167,31 @@ class FocuslistApplication : Application() {
             taskRepository.observeTasks().collectLatest { tasks ->
                 reminderScheduler.reconcile(tasks)
             }
+        }
+    }
+
+    /** Keeps task and Focus writes serialized behind one Glance update path. */
+    private fun keepWidgetInStepWithState() {
+        applicationScope.launch {
+            combine(
+                taskRepository.observeTasks(),
+                // SharedFlow has no initial value. Supplying one lets task
+                // writes drive the combined stream before Focus changes.
+                focusSessionStore.changes.onStart { emit(Unit) }
+            ) { tasks, _ -> tasks }
+                // Starting a Glance SessionWorker creates the Application too.
+                // Re-enqueueing from Room's initial snapshot would cancel that
+                // very session and can leave the old RemoteViews on screen.
+                // Provider and clock broadcasts already request their own
+                // refresh; this observer is responsible only for later writes.
+                .drop(1)
+                .conflate()
+                .collect { tasks ->
+                    // Reading it retires completion evidence when this emission
+                    // is the first data change after the widget interaction.
+                    widgetInteractions.completionFor(tasks, currentDay.today.value)
+                    FocuslistWidget().updateAll(this@FocuslistApplication)
+                }
         }
     }
 

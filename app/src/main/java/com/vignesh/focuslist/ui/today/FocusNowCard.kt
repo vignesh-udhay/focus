@@ -38,7 +38,7 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
 /**
- * The Focus now card, from `docs/decisions.md` D-012.
+ * The Focus now card, from `docs/decisions.md` D-012 as amended by D-035.
  *
  * `PRODUCT.md` opens Today with "What should I do now?" and asks that the screen
  * make the answer obvious within seconds. This is the first thing in the app
@@ -50,6 +50,13 @@ import java.time.format.FormatStyle
  * Focus queue D-004 removed. The queue was a ranking with nothing to say why its
  * head was its head; this states its grounds on screen, and completing its task
  * re-runs the rule rather than advancing to a next one.
+ *
+ * **It appears for an event, so on many days it does not appear at all.** D-035
+ * cut the reason that fired for any task scheduled today without a time, which
+ * was most of them, on the grounds that its reason line restated the label of
+ * the band directly below it. What is left is a paused session or a reminder
+ * that passed. The screen has to read well without this card, because most of
+ * the time there will not be one.
  *
  * It sits on `primaryContainer`, which is the one tinted surface on Today. That
  * is what makes it read as an assertion rather than as another row: everything
@@ -64,7 +71,7 @@ fun FocusNowCard(
     onOpen: () -> Unit,
     modifier: Modifier = Modifier,
     // What is left of a paused session, for the one reason that has a session
-    // behind it. Null for the other two, which have nothing running.
+    // behind it. Null for a passed reminder, which has nothing running.
     pausedRemainingMinutes: Long? = null
 ) {
     val toggleDescription =
@@ -88,6 +95,24 @@ fun FocusNowCard(
         // row already uses: the children take their own clicks and the body
         // takes the rest. This is that, with a button on the end of it.
         onClick = onOpen,
+        // **The same corner the bands below round to.** `CardDefaults.shape` is
+        // `medium`, and `ListItemDefaults.segmentedShapes` rounds a band's outer
+        // corners to `large`, so the card sat at 12dp directly above rows at
+        // 16dp, on the same left edge and the same inset. Measured on a Pixel at
+        // 420dpi: 31.4px against 41.4px.
+        //
+        // `expressive-design-system.md` says shape "communicates component
+        // identity", not hierarchy, and by that rule a card and a list item are
+        // allowed to differ. They are not allowed to differ here: D-012 takes
+        // this task out of the bands below so it is on Today exactly once, which
+        // makes the card a promoted task rather than a different kind of thing.
+        // Two shapes for one identity is the drift the rule exists to stop.
+        //
+        // Named as the token rather than a number, so this and the rows move
+        // together if the scale ever changes. That is what let them drift apart
+        // in the first place: neither had chosen a corner, so each inherited a
+        // different default.
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -171,10 +196,10 @@ fun FocusNowCard(
 /**
  * The reason line, which is the card's justification for itself.
  *
- * One of D-012's three reasons, in words, with the estimate on the end of the
- * same line. The estimate moved here from its own row in the design review: it
- * is the same kind of fact as the reason, a thing known about the task, and a
- * row of its own gave it a weight it does not carry.
+ * One of the two reasons D-035 left standing, in words, with the estimate on the
+ * end of the same line. The estimate moved here from its own row in the design
+ * review: it is the same kind of fact as the reason, a thing known about the
+ * task, and a row of its own gave it a weight it does not carry.
  *
  * Never a colour or an icon alone. A screen reader cannot announce either, and
  * an assertion the user cannot check is one they cannot disagree with.
@@ -213,8 +238,10 @@ private fun focusNowReasonText(
             if (at == null) {
                 // Not reachable: the reason is only assigned to a task with a
                 // reminder. Named rather than forced, because a crash on the
-                // screen the app opens to is the worst place for one.
-                stringResource(R.string.today_focus_now_no_time)
+                // screen the app opens to is the worst place for one. "Due now"
+                // rather than a time, since a time is exactly what is missing
+                // here, and it stays true of every path that could reach it.
+                stringResource(R.string.today_focus_now_due)
             } else {
                 stringResource(
                     if (at.toLocalDate() == today) {
@@ -228,8 +255,6 @@ private fun focusNowReasonText(
                 )
             }
         }
-
-        FocusNowReason.NoTimeToday -> stringResource(R.string.today_focus_now_no_time)
     }
 
     val minutes = task.estimatedDurationMinutes ?: return reason
@@ -299,19 +324,29 @@ private fun FocusNowReminderPreview() {
     }
 }
 
-@Preview(name = "Focus now no time", showBackground = true)
-@Preview(name = "Focus now no time large font", showBackground = true, fontScale = 2f)
+/**
+ * A long title, and the same card at twice the font scale.
+ *
+ * It used to preview `NoTimeToday`, which D-035 removed. The reason it exists is
+ * the title length rather than the reason, so it moved to a reminder that passed
+ * on an earlier day: the longest reason line the card can draw, under the longest
+ * title, which is where this card wraps if it is going to.
+ */
+@Preview(name = "Focus now long title", showBackground = true)
+@Preview(name = "Focus now long title large font", showBackground = true, fontScale = 2f)
 @Composable
-private fun FocusNowNoTimePreview() {
+private fun FocusNowLongTitlePreview() {
     FocuslistTheme(dynamicColor = false) {
         FocusNowCard(
             focusNow = FocusNow(
                 SampleTask.copy(
                     title = "Prepare launch checklist for the release, including the " +
                         "changelog and the store screenshots",
+                    scheduledDate = LocalDate.of(2025, 12, 31),
+                    reminderAt = LocalDateTime.of(2025, 12, 31, 17, 30),
                     estimatedDurationMinutes = 35
                 ),
-                FocusNowReason.NoTimeToday
+                FocusNowReason.ReminderPassed
             ),
             today = LocalDate.of(2026, 1, 1),
             onToggleComplete = {},

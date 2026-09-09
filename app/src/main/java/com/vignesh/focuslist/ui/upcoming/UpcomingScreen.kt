@@ -32,6 +32,7 @@ import com.vignesh.focuslist.core.domain.upcomingSections
 import com.vignesh.focuslist.core.domain.upcomingTasks
 import com.vignesh.focuslist.ui.component.FocuslistTopAppBar
 import com.vignesh.focuslist.ui.component.TaskListEmptyState
+import com.vignesh.focuslist.ui.component.TaskListErrorState
 import com.vignesh.focuslist.ui.component.UpcomingMascot
 import com.vignesh.focuslist.ui.component.SectionLabel
 import com.vignesh.focuslist.ui.component.TaskListRow
@@ -68,6 +69,7 @@ fun UpcomingScreen(
 ) {
     val tasks by viewModel.upcomingTasks.collectAsStateWithLifecycle()
     val today by viewModel.today.collectAsStateWithLifecycle()
+    val readFailed by viewModel.readFailed.collectAsStateWithLifecycle()
 
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -76,6 +78,8 @@ fun UpcomingScreen(
     UpcomingContent(
         tasks = tasks,
         today = today,
+        readFailed = readFailed,
+        onRetry = viewModel::retryRead,
         onToggleComplete = viewModel::toggleComplete,
         onOpenTask = onOpenTask,
         onDelete = viewModel::deleteTask,
@@ -103,6 +107,8 @@ private fun UpcomingContent(
     onOpenTask: (String) -> Unit,
     onDelete: (String) -> Unit,
     onReschedule: (String, LocalDate?) -> Unit,
+    readFailed: Boolean = false,
+    onRetry: () -> Unit = {},
     modifier: Modifier = Modifier,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     bottomBar: @Composable () -> Unit = {},
@@ -133,7 +139,14 @@ private fun UpcomingContent(
             )
         }
     ) { innerPadding ->
-        if (tasks.isEmpty()) {
+        if (readFailed) {
+            TaskListErrorState(
+                headline = stringResource(R.string.error_tasks_headline),
+                supporting = stringResource(R.string.error_tasks_supporting),
+                onRetry = onRetry,
+                modifier = Modifier.padding(innerPadding)
+            )
+        } else if (tasks.isEmpty()) {
             TaskListEmptyState(
                 headline = stringResource(R.string.upcoming_empty_headline),
                 supporting = stringResource(R.string.upcoming_empty_supporting),

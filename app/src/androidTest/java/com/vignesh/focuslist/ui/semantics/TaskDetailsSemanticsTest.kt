@@ -137,9 +137,14 @@ class TaskDetailsSemanticsTest {
             rule.onNodeWithText(row).assertIsDisplayed()
         }
 
-        // Action. Scrolled to, because at 200% it is below the fold and a test
-        // that only passed at 100% would not prove it is reachable at all.
-        rule.onNodeWithText(START_FOCUS).performScrollTo().assertIsDisplayed()
+        // Action. D-036 moved both actions into a floating toolbar, so they are
+        // icons carrying their words as descriptions rather than text in the
+        // column, and they no longer scroll: the toolbar is pinned, which is
+        // most of the point of it. Asserted at both scales for the same reason
+        // the old scrolled assertion existed, that a control reachable at 100%
+        // has not been pushed off screen at 200%.
+        rule.onNodeWithContentDescription(START_FOCUS).assertIsDisplayed()
+        rule.onNodeWithContentDescription(DELETE).assertIsDisplayed()
     }
 
     @Test
@@ -420,6 +425,25 @@ class TaskDetailsSemanticsTest {
         assertTrue(viewModel.pendingUndo.value != null)
     }
 
+    /**
+     * Deleting the final live task empties `allTasks`. That empty result is not
+     * the repository's initial placeholder once this task has already been on
+     * screen, so Task Details must leave instead of rendering a blank route.
+     */
+    @Test
+    fun deletingTheOnlyTaskReturnsToThePreviousScreen() {
+        var backs = 0
+        setScreen(onBack = { backs++ })
+
+        // One tap. The overflow it used to open is gone with D-036, which is
+        // what this line stops silently passing through a menu that no longer
+        // exists: without the change it would fail to find TASK_ACTIONS.
+        rule.onNodeWithContentDescription(DELETE).performClick()
+
+        rule.waitUntil(TIMEOUT_MILLIS) { backs == 1 }
+        assertEquals(1, backs)
+    }
+
     private companion object {
         const val TASK_ID = "1"
         const val TITLE = "Refine landing page hero"
@@ -428,6 +452,7 @@ class TaskDetailsSemanticsTest {
         /** Published as `paneTitle` and drawn nowhere. */
         const val HEADING = "Task details"
         const val BACK = "Back"
+        const val DELETE = "Delete"
         const val PLAN = "Plan"
 
         /** The notes placeholder, which is also how the field is tapped. */

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!--
+        The dark counterpart of `values/themes.xml`, which did not exist.
+
+        The app declared one theme, `Material.Light`, in every configuration, so
+        `android:windowBackground` was light even on a device in dark mode. That
+        showed as a white flash on every page change, in the frames where a
+        NavHost transition has faded one screen out and not yet faded the next
+        one in.
+
+        The transition itself is fixed in `MainActivity`, which now paints an
+        opaque `surface` under the graph and is correct whatever `ThemePreference`
+        resolves to. This file covers the frames before Compose draws at all: the
+        cold start, where only the window background exists.
+
+        It follows the system rather than the in-app setting, because a resource
+        qualifier cannot see `ThemePreference`. Forcing Dark from Settings on a
+        light system still opens on a light frame; that is a launch flash rather
+        than a navigation one, and fixing it means painting the window at runtime.
+    -->
+    <style name="Theme.Focuslist" parent="android:Theme.Material.NoActionBar" />
+</resources>

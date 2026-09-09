@@ -34,6 +34,7 @@ import com.vignesh.focuslist.ui.component.AddTaskFab
 import com.vignesh.focuslist.ui.component.FocuslistTopAppBar
 import com.vignesh.focuslist.ui.component.InboxMascot
 import com.vignesh.focuslist.ui.component.TaskListEmptyState
+import com.vignesh.focuslist.ui.component.TaskListErrorState
 import com.vignesh.focuslist.ui.component.TaskListRow
 import com.vignesh.focuslist.ui.component.UndoSnackbarHost
 import com.vignesh.focuslist.ui.task.QuickAddSheet
@@ -67,6 +68,7 @@ fun InboxScreen(
 ) {
     val tasks by viewModel.inboxTasks.collectAsStateWithLifecycle()
     val today by viewModel.today.collectAsStateWithLifecycle()
+    val readFailed by viewModel.readFailed.collectAsStateWithLifecycle()
 
     // Screen state, not app state: opening Quick Add here says nothing about
     // whether Today has its own sheet open.
@@ -83,6 +85,8 @@ fun InboxScreen(
         onDelete = viewModel::deleteTask,
         onReschedule = viewModel::rescheduleTask,
         onAddTask = { isQuickAddVisible = true },
+        readFailed = readFailed,
+        onRetry = viewModel::retryRead,
         modifier = modifier,
         snackbarHostState = snackbarHostState,
         bottomBar = bottomBar,
@@ -130,6 +134,8 @@ private fun InboxContent(
     onDelete: (String) -> Unit,
     onReschedule: (String, LocalDate?) -> Unit,
     onAddTask: () -> Unit,
+    readFailed: Boolean = false,
+    onRetry: () -> Unit = {},
     modifier: Modifier = Modifier,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     bottomBar: @Composable () -> Unit = {},
@@ -166,7 +172,14 @@ private fun InboxContent(
             )
         }
     ) { innerPadding ->
-        if (tasks.isEmpty()) {
+        if (readFailed) {
+            TaskListErrorState(
+                headline = stringResource(R.string.error_tasks_headline),
+                supporting = stringResource(R.string.error_tasks_supporting),
+                onRetry = onRetry,
+                modifier = Modifier.padding(innerPadding)
+            )
+        } else if (tasks.isEmpty()) {
             TaskListEmptyState(
                 headline = stringResource(R.string.inbox_empty_headline),
                 supporting = stringResource(R.string.inbox_empty_supporting),

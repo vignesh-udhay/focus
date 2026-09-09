@@ -109,23 +109,20 @@ always did. A task can turn out to be already done, or to take ten seconds, and
 making the user start and stop a session to tick it off would be ceremony for
 its own sake.
 
-**There is a top app bar. It holds one control and no title.** An earlier
-version of this document ruled the bar out entirely, arguing that a heading
-reading "Focus" above the task would be the screen naming itself instead of
-naming the work. Half of that was right, and it took a second pass to separate
-the halves. A sheet has no navigation bar underneath it saying where the user
-is, so it has to carry its own way out. It does not have to carry a name, and
-while it did, the screen had two centred headings stacked and the upper one was
-about the app rather than about the work. The name is published as `paneTitle`,
+**There is no top app bar, and no control in one.** An earlier version of this
+document ruled the bar out, a second pass brought it back to hold a dismiss
+chevron, and D-032 has now removed both. The name is published as `paneTitle`,
 which a screen reader announces and nothing draws.
 
-**The control is a chevron down, not a close X.** D-015 made it
-non-destructive: it pauses, and hands the session to the Focus now card. An X
-claims the thing is finished. A chevron says it has been put away, which is what
-actually happens, and where it went is on the screen underneath. It also agrees
-with the gesture: a bottom sheet is dismissed by dragging down, and the control
-in the corner should not mean something different from the drag that does the
-same job.
+**The way out is the drag handle.** `ModalBottomSheet` is called with no
+`dragHandle` argument, so Material draws its default, and the chevron that used
+to sit beneath it was a second affordance saying the same thing. D-032 has the
+argument and the cost: a 48dp labelled target becomes a 32x4dp bar, and for a
+screen reader the sheet's own dismiss action carries it.
+
+**Leaving is still never destructive.** D-015 governs that and is untouched. The
+handle, the drag, the scrim and the back gesture all reach `onDismissRequest`,
+and all of them pause.
 
 Still absent: capture, editing, Task Details, metadata beyond the estimate, a
 floating action button.
@@ -450,9 +447,11 @@ Not part of Focus:
 
 **A pause and a resume.** D-013 names this one and gives the argument: the Focus
 now card's first and strongest reason is "resume paused focus", and building the
-card without a session that can be paused ships two of its three reasons and
-leaves the most useful one as a comment. `PRODUCT.md` principle 7 still rules out
-the session history, and nothing here asks for one.
+card without a session that can be paused ships the rest of its reasons and
+leaves the most useful one as a comment. That argument has since got sharper
+rather than weaker: D-035 cut the card to two reasons, so a Focus without pause
+would now leave it with one. `PRODUCT.md` principle 7 still rules out the session
+history, and nothing here asks for one.
 
 **A countdown and an elapsed clock.** D-013 does not name this one, and it takes
 it all the same: its six-state table gives every state a readout, and three of

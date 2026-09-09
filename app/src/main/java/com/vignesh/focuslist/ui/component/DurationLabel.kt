@@ -1,5 +1,6 @@
 package com.vignesh.focuslist.ui.component
 
+import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -50,6 +51,43 @@ fun durationLabel(minutes: Int): DurationLabel {
         else -> DurationLabel(
             text = stringResource(R.string.duration_compact_hours_minutes, hours, remainder),
             spoken = stringResource(
+                R.string.duration_spoken_hours_minutes,
+                spokenHours,
+                spokenMinutes
+            )
+        )
+    }
+}
+
+/** The same label outside an ordinary Compose composition, such as Glance. */
+fun durationLabel(context: Context, minutes: Int): DurationLabel {
+    val hours = minutes / MinutesPerHour
+    val remainder = minutes % MinutesPerHour
+    val spokenHours = context.resources.getQuantityString(
+        R.plurals.duration_spoken_hours,
+        hours,
+        hours
+    )
+    val spokenMinutes = context.resources.getQuantityString(
+        R.plurals.duration_spoken_minutes,
+        remainder,
+        remainder
+    )
+
+    return when {
+        hours == 0 -> DurationLabel(
+            text = context.getString(R.string.duration_compact_minutes, remainder),
+            spoken = spokenMinutes
+        )
+
+        remainder == 0 -> DurationLabel(
+            text = context.getString(R.string.duration_compact_hours, hours),
+            spoken = spokenHours
+        )
+
+        else -> DurationLabel(
+            text = context.getString(R.string.duration_compact_hours_minutes, hours, remainder),
+            spoken = context.getString(
                 R.string.duration_spoken_hours_minutes,
                 spokenHours,
                 spokenMinutes

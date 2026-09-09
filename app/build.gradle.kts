@@ -73,6 +73,10 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.room.runtime)
+    // Glance is AndroidX's RemoteViews-safe Compose API. A home-screen widget
+    // cannot use the app's ordinary Compose UI directly.
+    implementation(libs.androidx.glance.appwidget)
+    implementation(libs.androidx.glance.material3)
     ksp(libs.androidx.room.compiler)
     testImplementation(libs.junit)
     // Supplies Dispatchers.setMain, so a view model observing through

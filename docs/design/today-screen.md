@@ -250,7 +250,7 @@ From most to least prominent:
 3. task metadata, `bodySmall`, supplied by `TaskRow`
 
 The empty state sits outside that hierarchy and uses `titleMedium` with a
-`bodyMedium` supporting line, above them the sleeping dachshund that says why
+`bodyMedium` supporting line, above them the cat curled asleep, which says why
 the screen is empty. `expressive-components.md` owns the variant, its colour
 roles, and why the headline did not follow the board up to Title Large.
 
@@ -281,6 +281,44 @@ soft edges, not as six separate tiles.
 All colors come from `MaterialTheme.colorScheme`, through `FocuslistTheme`,
 so dynamic color and both themes work without further work. Do not hard-code
 a color anywhere on this screen.
+
+## The card appears for an event, and most days there is no card
+
+Two reasons, per D-035: a focus session was paused, or a reminder fired and the
+work is still outstanding. Nothing else promotes a task, and there is no
+fallback to "the first task".
+
+A third reason used to match any task scheduled for today carrying no time,
+which is most of them. Under it the card was the first row of the "No time set"
+band lifted out and drawn larger, with that band's own label as its explanation,
+on grounds equally true of every other row in the band. D-035 has the argument
+and what would reverse it.
+
+**Draw and review this screen without a card.** That is now its ordinary state:
+work scheduled, nothing timed, nothing started, so the list begins at its first
+band under the app bar. A screen that only looks right with a card on it is
+mis-specified, and every preview but the card's own should be checked in both
+forms.
+
+## The card rounds to the same corner as the bands
+
+`FocusNowCard` names `shape = MaterialTheme.shapes.large`, which is the corner
+`ListItemDefaults.segmentedShapes` gives a band's outer edges.
+
+It had to be named, because the defaults disagree. `CardDefaults.shape` is
+`medium`, so the card sat at 12dp directly above rows at 16dp, on the same left
+edge at the same inset. Measured on a Pixel emulator at 420dpi from the corner's
+cut-out area: 31.4px against 41.4px, now 42.0px against 41.4px.
+
+`expressive-design-system.md` says shape "communicates component identity" rather
+than hierarchy, and by that rule a card and a list item may legitimately differ.
+They may not differ here. D-012 removes the promoted task from the bands below so
+it appears on Today exactly once, which makes the card a promoted task rather
+than a different kind of object, and the eye compares the two edges directly.
+
+Named as the token rather than a number so the two move together. Neither had
+chosen a corner, which is precisely how they drifted apart: each inherited a
+different Material default and nothing recorded that they were meant to match.
 
 ---
 
@@ -448,6 +486,9 @@ The populated preview must include:
 
 - an outstanding task scheduled for today
 - an outstanding task that is overdue
+- an outstanding task carrying a reminder that has passed, which is what puts a
+  card on the screen at all since D-035, and which leaves the Overdue band, so
+  the overdue task above is what keeps that band populated
 - a completed task
 - a title long enough to wrap onto multiple lines
 

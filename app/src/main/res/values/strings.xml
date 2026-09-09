@@ -5,7 +5,15 @@
     <string name="today_title">Today</string>
     <string name="task_add">Add task</string>
     <string name="today_empty_headline">Nothing scheduled for today</string>
-    <string name="today_empty_supporting">Add a task when you are ready.</string>
+    <string name="today_empty_supporting">Tasks without a day wait in your Inbox.</string>
+    <string name="widget_description">Today’s tasks from Focuslist</string>
+    <string name="widget_all_done">All done for today</string>
+    <string name="widget_resume">Resume</string>
+    <string name="widget_add_task">Add a task</string>
+    <plurals name="widget_more_tasks">
+        <item quantity="one">+%1$d more</item>
+        <item quantity="other">+%1$d more</item>
+    </plurals>
     <string name="today_section_overdue">Overdue</string>
     <string name="today_section_no_time_set">No time set</string>
     <string name="today_section_later_today">Later today</string>
@@ -19,7 +27,7 @@
     <string name="today_focus_now_resume">Resume focus</string>
     <string name="today_focus_now_paused">Paused</string>
     <string name="today_focus_now_paused_remaining">Paused \u00b7 %1$d min remaining</string>
-    <string name="today_focus_now_no_time">Scheduled for today</string>
+    <string name="today_focus_now_due">Due now</string>
     <string name="today_focus_now_scheduled_at">Scheduled for %1$s</string>
     <string name="today_focus_now_was_due_at">Was due at %1$s</string>
     <string name="today_focus_now_reason_and_estimate">%1$s \u00b7 %2$s</string>
@@ -56,7 +64,6 @@
     <string name="focus_resume">Resume focus</string>
     <string name="focus_extend">+%1$d min</string>
     <!-- Chevron down, not a close X. Per D-015 it pauses and discards nothing. -->
-    <string name="focus_dismiss">Put focus away</string>
     <!--
       The status line carries only what the controls cannot say. The button
       already reads Pause or Resume, so naming the state here would say it
@@ -83,6 +90,30 @@
     <string name="upcoming_title">Upcoming</string>
     <string name="upcoming_empty_headline">Nothing scheduled ahead</string>
     <string name="upcoming_empty_supporting">Tasks scheduled for a later day appear here.</string>
+
+    <!--
+      A day that had work and finished it. Separate from today_empty_*, which is
+      a day that never had any: D-033 turns on the difference. It heads the list
+      rather than replacing it, so the completed rows are directly beneath and
+      the supporting line does not have to account for them. It points at where
+      the next work is instead, and it does not congratulate, which PRODUCT.md
+      principle 7 rules out.
+    -->
+    <string name="today_all_done_headline">All done for today</string>
+    <string name="today_all_done_supporting">Tomorrow\'s tasks are in Upcoming.</string>
+
+    <!--
+      A read that failed. It must never mention a connection: Focuslist has no
+      account, no sync and no backend, so every read is local and telling anyone
+      to check their connection sends them to fix something never involved.
+      The Logbook differs on purpose, per expressive-components.md: it is the
+      screen that makes completing a task safe, so it answers that fear.
+    -->
+    <string name="error_tasks_headline">Couldn\'t load your tasks</string>
+    <string name="error_tasks_supporting">Your tasks are safe. This is a read that failed.</string>
+    <string name="error_logbook_headline">Couldn\'t load your Logbook</string>
+    <string name="error_logbook_supporting">The record is safe. This is a read that failed.</string>
+    <string name="error_try_again">Try again</string>
     <!-- Settings and local continuity, D-024 and D-028. -->
     <string name="settings_title">Settings</string>
     <string name="settings_back">Back</string>
@@ -110,6 +141,20 @@
     <string name="backup_restore_heading">Restore</string>
     <string name="backup_restore_description">Restore from a Focuslist backup file.</string>
     <string name="backup_restore_action">Restore from file</string>
+    <!--
+      What a finished export or restore says. A count rather than a bare
+      confirmation: the number can be checked against what the lists hold, and
+      an assertion the user cannot check is one they cannot disagree with.
+      Deleted tasks are not counted, so the number matches what they will find.
+    -->
+    <plurals name="backup_export_done">
+        <item quantity="one">Backup saved, %1$d task</item>
+        <item quantity="other">Backup saved, %1$d tasks</item>
+    </plurals>
+    <plurals name="backup_restore_done">
+        <item quantity="one">Restored %1$d task</item>
+        <item quantity="other">Restored %1$d tasks</item>
+    </plurals>
     <string name="backup_restore_error_title">Couldn\'t restore this file</string>
     <string name="backup_restore_error_body">The file may not be a Focuslist backup, or it may be damaged.</string>
     <string name="backup_restore_error_choose_another">Choose another file</string>
@@ -120,7 +165,6 @@
     <!-- Task Details, rebuilt to D-018: a screen of picker rows, no Save. -->
     <string name="task_details_heading">Task details</string>
     <!-- The Task Details overflow. Holds Delete and nothing else, per D-022. -->
-    <string name="task_details_more">Task actions</string>
     <string name="task_details_back">Back</string>
     <string name="task_details_title_label">Title</string>
     <string name="task_details_notes_label">Notes</string>

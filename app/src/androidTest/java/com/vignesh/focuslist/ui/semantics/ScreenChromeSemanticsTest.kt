@@ -72,7 +72,7 @@ class ScreenChromeSemanticsTest {
         fontScale,
         title = "Today",
         emptyHeadline = "Nothing scheduled for today",
-        emptySupporting = "Add a task when you are ready."
+        emptySupporting = "Tasks without a day wait in your Inbox."
     ) { viewModel -> TodayScreen(viewModel = viewModel, onOpenTask = {}) }
 
     @Test

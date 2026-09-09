@@ -146,6 +146,37 @@ principle 8 and D-001 make local-only a product decision rather than a temporary
 state, and this is the one screen where a user asks where their data went. It
 says the thing the screen exists to prove.
 
+## A finished export or restore says so
+
+A snackbar on the Backup page, carrying a count:
+
+    Backup saved, 47 tasks
+    Restored 47 tasks
+
+**This section did not exist, and the behaviour did not either.** Success landed
+on the same UI state the screen starts in, so the file picker closed and nothing
+else happened. This page shows no tasks, so a restore that had replaced the whole
+database looked exactly like one that had not run. The error dialog below was
+specified here in full, which is how the gap survived review: the failure had
+copy written for it and the success had nothing.
+
+**A snackbar, not a dialog.** The message asks nothing of the user. The error is
+a dialog because it needs a decision, choose another file, and a dialog for
+something with one possible response is a tap spent on nothing.
+
+**A count, not a bare confirmation.** "Backup restored" is a claim; "Restored 47
+tasks" can be checked against what the lists hold a moment later. It is the same
+standard the Focus now card is held to, that an assertion the user cannot check
+is one they cannot disagree with.
+
+The count excludes soft-deleted tasks. A backup carries them so a restore can put
+the trash back as it was, but every list filters them with `WHERE deletedAt IS
+NULL`, so counting them would report a number found nowhere in the app.
+
+**No confirmation step before a restore.** The tonal button already carries that
+weight, per the ordering above. A destructive action that announces itself
+afterwards and a weaker button before it is the whole of the protection here.
+
 ## Restore errors
 
 A Material alert dialog over the Backup page: "Couldn't restore this file", "The
@@ -217,7 +248,14 @@ Not part of this screen:
 Backup & restore page, Storage Access Framework launchers, versioned JSON codec,
 and restore-error dialog are in place. Restore parses and validates the whole
 file before replacing tasks; device-specific reminder delivery history is
-cleared rather than moved to a different phone.
+cleared rather than moved to a different phone. Both operations now announce
+themselves with a counted snackbar, which was missing entirely until it was
+reported from use.
+
+Not built: any indication that an operation is in progress. Both buttons disable
+while one runs and nothing else is drawn. Accepted for now on the grounds that a
+local file of this size is written and read faster than a spinner would be seen.
+If a large enough backup ever makes the page look inert, that is where to look.
 
 The debug APK and JVM suite build cleanly. Focused emulator tests cover every
 task field and both settings through the codec, foreign/future file rejection,

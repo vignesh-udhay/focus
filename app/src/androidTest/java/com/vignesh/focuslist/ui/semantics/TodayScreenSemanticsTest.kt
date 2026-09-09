@@ -59,8 +59,8 @@ class TodayScreenSemanticsTest {
      * so an unclickable card left the one task this screen is built around with
      * no route to its details from Today at all.
      *
-     * The task is scheduled for today with no reminder, which is D-012's third
-     * reason and the one that needs no clock.
+     * The task carries a reminder that has passed, which since D-035 is the only
+     * one of the card's reasons a test can reach without starting a session.
      */
     private fun assertTheCardOpensItsTask(fontScale: Float) {
         var opened: String? = null
@@ -100,8 +100,23 @@ class TodayScreenSemanticsTest {
     @Test
     fun focusNowCard_namesItsAction_at200() = assertTheCardNamesItsAction(FontScale200)
 
+    /**
+     * One task, carrying a reminder that has passed.
+     *
+     * The reminder is what puts the task in the card. It used to be enough that
+     * the task was scheduled for today, which was D-012's third reason; D-035
+     * removed that reason, so a fixture without a time now draws a plain list
+     * and every assertion about the card here would be asserting about a row.
+     */
     private fun withOneTask() = FakeTaskDao(
-        listOf(testTask(id = "1", title = TITLE, scheduledDate = TestToday))
+        listOf(
+            testTask(
+                id = "1",
+                title = TITLE,
+                scheduledDate = TestToday,
+                reminderAt = TestPassedReminder
+            )
+        )
     )
 
     private fun assertScreenTitleIsAHeading(fontScale: Float) {
@@ -240,7 +255,7 @@ class TodayScreenSemanticsTest {
         const val ADD_TASK = "Add task"
         const val QUICK_ADD_LABEL = "New task"
         const val EMPTY_HEADLINE = "Nothing scheduled for today"
-        const val EMPTY_SUPPORTING = "Add a task when you are ready."
+        const val EMPTY_SUPPORTING = "Tasks without a day wait in your Inbox."
         const val COMPLETED_MESSAGE = "Task completed"
         const val UNDO = "Undo"
         const val MARK_COMPLETE = "Mark \"$TITLE\" complete"

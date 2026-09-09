@@ -5,6 +5,8 @@ import com.vignesh.focuslist.MainDispatcherRule
 import com.vignesh.focuslist.core.notification.FocusAlarms
 import com.vignesh.focuslist.core.domain.FocusNowReason
 import com.vignesh.focuslist.core.domain.FocusSession
+import com.vignesh.focuslist.core.domain.FocusSessionStore
+import com.vignesh.focuslist.core.domain.StoredFocusSession
 import com.vignesh.focuslist.core.domain.Recurrence
 import com.vignesh.focuslist.core.domain.RecurrenceUnit
 import com.vignesh.focuslist.data.local.toDomain
@@ -137,6 +139,19 @@ private class FakeCurrentDay(initial: LocalDate) : CurrentDay {
 
     fun advanceTo(day: LocalDate) {
         _today.value = day
+    }
+}
+
+private class FakeFocusSessionStore : FocusSessionStore {
+    override var current: StoredFocusSession? = null
+        private set
+
+    override fun save(value: StoredFocusSession) {
+        current = value
+    }
+
+    override fun clear() {
+        current = null
     }
 }
 
@@ -922,7 +937,12 @@ class TaskListViewModelTest {
         assertNull(storedRow("b").deletedAt)
         // The superseded deletion stays deleted.
         assertNotNull(storedRow("a").deletedAt)
-        assertEquals(listOf("b"), model.todayTasks.value.map { it.id })
+        // Through the flow rather than off `todayTasks.value`, which made this
+        // test flaky: `awaitRestore` waits on the DAO, and the derived stream
+        // emits after that, so a straight read could land in the gap. The
+        // helper is bounded, so a wrong list still fails here rather than
+        // hanging the run.
+        assertEquals(listOf("b"), awaitTodayIds(model, listOf("b")))
     }
 
     @Test
@@ -3217,10 +3237,23 @@ class TaskListViewModelTest {
         assertEquals(null, awaitFocusedTaskId(model, null))
     }
 
-    /** The card opens Ready: a task chosen, and no clock running yet. */
+    /**
+     * The card opens Ready: a task chosen, and no clock running yet.
+     *
+     * The reminder is what earns the card at all. Since D-035 a task scheduled
+     * for today carrying no time is not promoted, so the fixture has to be a
+     * reminder that passed.
+     */
     @Test
     fun theCardOpensFocusOnReady() {
-        store(task(id = "a", scheduledDate = today, estimatedDurationMinutes = 45))
+        store(
+            task(
+                id = "a",
+                scheduledDate = today,
+                reminderAt = reminder,
+                estimatedDurationMinutes = 45
+            )
+        )
         val model = viewModel()
         runBlocking { model.focusNow.first { it?.task?.id == "a" } }
 
@@ -3252,6 +3285,41 @@ class TaskListViewModelTest {
 
         assertTrue(model.isFocusSheetOpen.value)
         assertEquals(false, model.focusSession.value!!.isPaused)
+    }
+
+    @Test
+    fun widgetCanRestoreAndResumeThePersistedTaskAndSessionTogether() {
+        store(task(id = "a", scheduledDate = today, estimatedDurationMinutes = 45))
+        val sessionStore = FakeFocusSessionStore()
+        val first = TaskListViewModel(
+            repository,
+            currentDay,
+            SavedStateHandle(),
+            alarms,
+            sessionStore
+        )
+        first.beginFocus("a")
+        awaitFocusedTaskId(first, "a")
+        first.leaveFocusSheet()
+
+        assertEquals("a", sessionStore.current?.taskId)
+        assertTrue(sessionStore.current?.session?.isPaused == true)
+
+        val restored = TaskListViewModel(
+            repository,
+            currentDay,
+            SavedStateHandle(),
+            RecordingFocusAlarms(),
+            sessionStore
+        )
+        runBlocking {
+            restored.focusNow.first { it?.reason == FocusNowReason.ResumePaused }
+        }
+        restored.resumeFocusFromWidget("a")
+
+        assertTrue(restored.isFocusSheetOpen.value)
+        assertEquals("a", awaitFocusedTaskId(restored, "a"))
+        assertEquals(false, restored.focusSession.value?.isPaused)
     }
 
     @Test

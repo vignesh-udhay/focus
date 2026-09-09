@@ -33,6 +33,7 @@ import com.vignesh.focuslist.core.domain.Task
 import com.vignesh.focuslist.core.domain.completedTasks
 import com.vignesh.focuslist.ui.component.FocuslistTopAppBar
 import com.vignesh.focuslist.ui.component.TaskListEmptyState
+import com.vignesh.focuslist.ui.component.TaskListErrorState
 import com.vignesh.focuslist.ui.component.TaskListRow
 import com.vignesh.focuslist.ui.component.UndoSnackbarHost
 import com.vignesh.focuslist.ui.task.TaskListViewModel
@@ -68,6 +69,7 @@ fun LogbookScreen(
 ) {
     val tasks by viewModel.completedTasks.collectAsStateWithLifecycle()
     val today by viewModel.today.collectAsStateWithLifecycle()
+    val readFailed by viewModel.readFailed.collectAsStateWithLifecycle()
 
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -79,6 +81,8 @@ fun LogbookScreen(
         onToggleComplete = viewModel::toggleComplete,
         onOpenTask = onOpenTask,
         onDelete = viewModel::deleteTask,
+        readFailed = readFailed,
+        onRetry = viewModel::retryRead,
         modifier = modifier,
         snackbarHostState = snackbarHostState,
         onBack = onBack
@@ -100,6 +104,8 @@ private fun LogbookContent(
     onToggleComplete: (String) -> Unit,
     onOpenTask: (String) -> Unit,
     onDelete: (String) -> Unit,
+    readFailed: Boolean = false,
+    onRetry: () -> Unit = {},
     modifier: Modifier = Modifier,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     onBack: () -> Unit = {}
@@ -131,7 +137,18 @@ private fun LogbookContent(
             )
         }
     ) { innerPadding ->
-        if (tasks.isEmpty()) {
+        if (readFailed) {
+            // The Logbook's wording differs on purpose. It is the screen that
+            // exists to make completing a task safe, so a user who cannot see
+            // their finished work has a specific fear, and "The record is safe"
+            // answers that one rather than the generic one.
+            TaskListErrorState(
+                headline = stringResource(R.string.error_logbook_headline),
+                supporting = stringResource(R.string.error_logbook_supporting),
+                onRetry = onRetry,
+                modifier = Modifier.padding(innerPadding)
+            )
+        } else if (tasks.isEmpty()) {
             TaskListEmptyState(
                 headline = stringResource(R.string.logbook_empty_headline),
                 supporting = stringResource(R.string.logbook_empty_supporting),

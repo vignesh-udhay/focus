@@ -151,6 +151,27 @@ data class FocusSession(
 }
 
 /**
+ * The part of Focus that must outlive a screen and be readable by the widget.
+ *
+ * A session without its task id cannot be resumed. Keeping the two in one
+ * value prevents the process-death state the old SavedStateHandle path could
+ * produce: a live clock with no task to attach it to.
+ */
+data class StoredFocusSession(
+    val taskId: String,
+    val session: FocusSession
+)
+
+/** Persistence seam for the one active Focus session. */
+interface FocusSessionStore {
+    val current: StoredFocusSession?
+
+    fun save(value: StoredFocusSession)
+
+    fun clear()
+}
+
+/**
  * An estimate that can actually be measured against, or null.
  *
  * Zero and negative are not durations anything can be a fraction of, and the

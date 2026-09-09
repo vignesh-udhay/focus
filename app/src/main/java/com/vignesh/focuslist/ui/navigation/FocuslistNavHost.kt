@@ -8,6 +8,10 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -36,6 +40,7 @@ import com.vignesh.focuslist.ui.settings.SettingsScreen
 import com.vignesh.focuslist.ui.task.TaskListViewModel
 import com.vignesh.focuslist.ui.today.TodayScreen
 import com.vignesh.focuslist.ui.upcoming.UpcomingScreen
+import com.vignesh.focuslist.ui.widget.WidgetLaunchCommand
 
 /**
  * The navigation graph.
@@ -51,7 +56,9 @@ import com.vignesh.focuslist.ui.upcoming.UpcomingScreen
 @Composable
 fun FocuslistNavHost(
     modifier: Modifier = Modifier,
-    navController: NavHostController = rememberNavController()
+    navController: NavHostController = rememberNavController(),
+    widgetCommand: WidgetLaunchCommand? = null,
+    onWidgetCommandHandled: (WidgetLaunchCommand) -> Unit = {}
 ) {
     val currentEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentEntry?.destination?.route
@@ -63,6 +70,28 @@ fun FocuslistNavHost(
     // entry, which would give each list its own view model and split the undo
     // offer five ways.
     val viewModel = taskListViewModel()
+    var quickAddRequest by rememberSaveable { mutableIntStateOf(0) }
+
+    LaunchedEffect(widgetCommand) {
+        val command = widgetCommand ?: return@LaunchedEffect
+        when (command) {
+            WidgetLaunchCommand.Today -> navController.openTopLevel(FocuslistRoutes.TODAY)
+            WidgetLaunchCommand.Add -> {
+                navController.openTopLevel(FocuslistRoutes.TODAY)
+                quickAddRequest += 1
+            }
+            is WidgetLaunchCommand.TaskDetails -> {
+                navController.navigate(FocuslistRoutes.taskDetails(command.taskId)) {
+                    launchSingleTop = true
+                }
+            }
+            is WidgetLaunchCommand.ResumeFocus -> {
+                navController.openTopLevel(FocuslistRoutes.TODAY)
+                viewModel.resumeFocusFromWidget(command.taskId)
+            }
+        }
+        onWidgetCommandHandled(command)
+    }
 
     // Whether the Focus sheet is on screen, which since D-015 is a different
     // question from whether a session exists: leaving pauses rather than stops,
@@ -104,6 +133,7 @@ fun FocuslistNavHost(
             composable(FocuslistRoutes.TODAY) {
                 TodayScreen(
                     viewModel = viewModel,
+                    quickAddRequest = quickAddRequest,
                     onOpenTask = { id ->
                         navController.navigate(FocuslistRoutes.taskDetails(id))
                     },
@@ -283,6 +313,19 @@ fun FocuslistNavHost(
  * they had already left.
  */
 private fun NavHostController.openTopLevel(route: String) {
+    // **The paragraph above promised this and the code did not do it.**
+    // `launchSingleTop` stops a second Today being stacked on the first, which
+    // is what it was there for, but it still swaps the top entry for a fresh
+    // instance of the same destination. `NavHost` animates per entry rather
+    // than per route, so tapping Today while on Today played a full
+    // Today-to-Today transition: the screen faded out and back in for a tap
+    // that changed nothing.
+    //
+    // Guarded here rather than in the bar so the rail gets it too, and so a
+    // widget asking for Today while Today is open is a no-op rather than a
+    // flicker.
+    if (currentDestination?.route == route) return
+
     navigate(route) {
         popUpTo(graph.findStartDestination().id)
         launchSingleTop = true
@@ -318,7 +361,8 @@ private fun taskListViewModel(): TaskListViewModel {
         factory = TaskListViewModel.Factory(
             repository = application.taskRepository,
             currentDay = application.currentDay,
-            alarms = application.focusAlarms
+            alarms = application.focusAlarms,
+            focusSessionStore = application.focusSessionStore
         )
     )
 }

@@ -9,6 +9,8 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import com.vignesh.focuslist.core.domain.FocusNow
 import com.vignesh.focuslist.core.domain.FocusNowReason
 import com.vignesh.focuslist.core.domain.FocusSession
+import com.vignesh.focuslist.core.domain.FocusSessionStore
+import com.vignesh.focuslist.core.domain.StoredFocusSession
 import com.vignesh.focuslist.core.domain.Recurrence
 import com.vignesh.focuslist.core.domain.nextRecurringInstance
 import com.vignesh.focuslist.core.domain.Task
@@ -27,6 +29,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import com.vignesh.focuslist.core.notification.FocusAlarms
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emptyFlow
@@ -83,6 +86,24 @@ sealed interface PendingUndo {
 }
 
 /**
+ * The outcome of reading stored tasks.
+ *
+ * [Failed] carries an empty list rather than the last good one. A screen
+ * drawing stale rows beneath an error message would be making two claims at
+ * once, and the older of them is the one that cannot be checked.
+ */
+private sealed interface TaskRead {
+
+    val tasks: List<Task>
+
+    data class Loaded(override val tasks: List<Task>) : TaskRead
+
+    data object Failed : TaskRead {
+        override val tasks: List<Task> = emptyList()
+    }
+}
+
+/**
  * State for every task surface.
  *
  * One view model behind all of them, scoped to the Activity. Each surface is
@@ -106,8 +127,11 @@ class TaskListViewModel(
     private val repository: TaskRepository,
     private val currentDay: CurrentDay,
     private val savedState: SavedStateHandle,
-    private val alarms: FocusAlarms
+    private val alarms: FocusAlarms,
+    private val focusSessionStore: FocusSessionStore? = null
 ) : ViewModel() {
+
+    private val storedFocus = focusSessionStore?.current
 
     /**
      * What completing a task actually does.
@@ -128,9 +152,66 @@ class TaskListViewModel(
      */
     val today: StateFlow<LocalDate> = currentDay.today
 
+    /**
+     * Whether the last attempt to read stored tasks failed.
+     *
+     * Room hands the app a cold `Flow`, and a `Flow` that throws is finished:
+     * every list derived from it stops emitting and each one would sit at its
+     * initial empty list, which is indistinguishable from a user who has no
+     * tasks. That is the failure this exists to prevent. An empty screen that
+     * says "Nothing scheduled for today" when the read actually failed is the
+     * app asserting something untrue about the user's work.
+     *
+     * So the read is caught once, here, and every view derives from the caught
+     * stream rather than from the repository directly.
+     */
+    private val readAttempt = MutableStateFlow(0)
+
+    /**
+     * The stored stream every list view derives from, with a failed read
+     * carried as a value instead of an exception.
+     *
+     * [readAttempt] is what makes Try again work. `catch` ends the flow it
+     * guards, so a retry cannot resume the dead one, it can only start another;
+     * incrementing the attempt is what `flatMapLatest` needs to do that.
+     */
+    private val storedTasks: StateFlow<TaskRead> =
+        readAttempt
+            .flatMapLatest {
+                repository.observeTasks()
+                    .map<List<Task>, TaskRead> { TaskRead.Loaded(it) }
+                    .catch { emit(TaskRead.Failed) }
+            }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
+                initialValue = TaskRead.Loaded(emptyList())
+            )
+
+    /**
+     * True while the stored read is in the failed state.
+     *
+     * Every list screen shows the same error, because they all failed for the
+     * same reason: there is one read behind all of them.
+     */
+    val readFailed: StateFlow<Boolean> =
+        storedTasks
+            .map { it is TaskRead.Failed }
+            .distinctUntilChanged()
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
+                initialValue = false
+            )
+
+    /** Starts a fresh read after a failed one. The Try again button calls it. */
+    fun retryRead() {
+        readAttempt.value += 1
+    }
+
     val todayTasks: StateFlow<List<Task>> =
-        combine(repository.observeTasks(), currentDay.today) { tasks, day ->
-            queryTodayTasks(tasks, day)
+        combine(storedTasks, currentDay.today) { read, day ->
+            queryTodayTasks(read.tasks, day)
         }
             .stateIn(
                 scope = viewModelScope,
@@ -151,7 +232,8 @@ class TaskListViewModel(
      * without being a view of anything.
      */
     val allTasks: StateFlow<List<Task>> =
-        repository.observeTasks()
+        storedTasks
+            .map { it.tasks }
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
@@ -165,8 +247,8 @@ class TaskListViewModel(
      * either, and a task that stops being upcoming simply stops being emitted.
      */
     val upcomingTasks: StateFlow<List<Task>> =
-        combine(repository.observeTasks(), currentDay.today) { tasks, day ->
-            queryUpcomingTasks(tasks, day)
+        combine(storedTasks, currentDay.today) { read, day ->
+            queryUpcomingTasks(read.tasks, day)
         }
             .stateIn(
                 scope = viewModelScope,
@@ -179,8 +261,8 @@ class TaskListViewModel(
      * stored stream. The query owns the filtering and the ordering.
      */
     val inboxTasks: StateFlow<List<Task>> =
-        repository.observeTasks()
-            .map { tasks -> queryInboxTasks(tasks) }
+        storedTasks
+            .map { read -> queryInboxTasks(read.tasks) }
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
@@ -195,8 +277,8 @@ class TaskListViewModel(
      * destructive.
      */
     val completedTasks: StateFlow<List<Task>> =
-        repository.observeTasks()
-            .map { tasks -> queryCompletedTasks(tasks) }
+        storedTasks
+            .map { read -> queryCompletedTasks(read.tasks) }
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
@@ -207,11 +289,15 @@ class TaskListViewModel(
      * The task the user chose to focus on, or null while they have chosen
      * none.
      *
-     * Not stored on the task, and not persisted across a relaunch. Focus is
-     * entered by picking the task it is for, so a session that did not survive
-     * the process has no task to resume and null is the honest answer.
+     * Not stored on the task. It is persisted only while a session exists,
+     * because a clock without the task it measures is not resumable and the
+     * home widget must be able to point back to the same work.
      */
-    private val _focusedTaskId = MutableStateFlow<String?>(null)
+    private val _focusedTaskId = MutableStateFlow(
+        storedFocus?.taskId
+            ?: savedState.get<String>(FocusSessionTaskIdKey)
+                ?.takeIf { restoreFocusSession() != null }
+    )
 
     /**
      * The one task Focus is on, and only ever that one.
@@ -264,7 +350,7 @@ class TaskListViewModel(
         _isFocusSheetOpen.value = true
     }
 
-    private val _focusSession = MutableStateFlow(restoreFocusSession())
+    private val _focusSession = MutableStateFlow(storedFocus?.session ?: restoreFocusSession())
 
     /**
      * The session being worked, or null while none has been started.
@@ -338,6 +424,19 @@ class TaskListViewModel(
     /** Starts the clock again, without counting the time spent paused. */
     fun resumeFocusSession() {
         writeFocusSession(_focusSession.value?.resumed(Instant.now()))
+    }
+
+    /** Opens and resumes the paused session named by a widget action. */
+    fun resumeFocusFromWidget(id: String) {
+        val session = _focusSession.value ?: focusSessionStore?.current
+            ?.takeIf { stored -> stored.taskId == id }
+            ?.session
+            ?: return
+        if (!session.isPaused) return
+
+        focusTask(id)
+        writeFocusSession(session.resumed(Instant.now()))
+        _isFocusSheetOpen.value = true
     }
 
     /**
@@ -428,13 +527,18 @@ class TaskListViewModel(
         _focusSession.value = session
 
         if (session == null) {
+            savedState.remove<String>(FocusSessionTaskIdKey)
             savedState.remove<Long>(FocusSessionStartedAtKey)
             savedState.remove<Long>(FocusSessionPausedAtKey)
             savedState.remove<Int>(FocusSessionExtraKey)
+            focusSessionStore?.clear()
         } else {
+            val taskId = _focusedTaskId.value ?: return
+            savedState[FocusSessionTaskIdKey] = taskId
             savedState[FocusSessionStartedAtKey] = session.startedAt.toEpochMilli()
             savedState[FocusSessionPausedAtKey] = session.pausedAt?.toEpochMilli()
             savedState[FocusSessionExtraKey] = session.extraMinutes
+            focusSessionStore?.save(StoredFocusSession(taskId = taskId, session = session))
         }
     }
 
@@ -467,8 +571,8 @@ class TaskListViewModel(
      * the app losing their place.
      *
      * The clock is read at collection time rather than injected, unlike
-     * [today]. Two of the three reasons turn on the time of day, and `CurrentDay`
-     * is a day: it emits on a date change and nothing finer. What that costs is
+     * [today]. The reminder reason turns on the time of day, and `CurrentDay` is
+     * a day: it emits on a date change and nothing finer. What that costs is
      * that a reminder passing does not re-run the rule on its own; the card
      * appears the next time anything else emits, which in practice is the next
      * write or the next time the screen is opened. Making it exact would mean a
@@ -482,10 +586,13 @@ class TaskListViewModel(
             currentDay.today,
             _focusSession,
             _focusedTaskId
-        ) { tasks, day, session, focusedId ->
+            // The day is a trigger, not an input. D-035 left the rule with no
+            // dependency on the date, so `focusNow` no longer takes one, but a
+            // date change is still one of the few moments this flow re-reads the
+            // clock and so re-checks whether a reminder has passed.
+        ) { tasks, _, session, focusedId ->
             queryFocusNow(
                 tasks = tasks,
-                today = day,
                 now = LocalDateTime.now(),
                 // Only a *paused* session earns the card's strongest reason. A
                 // running one is already on screen in the sheet, and a card
@@ -990,7 +1097,8 @@ class TaskListViewModel(
     class Factory(
         private val repository: TaskRepository,
         private val currentDay: SystemCurrentDay,
-        private val alarms: FocusAlarms
+        private val alarms: FocusAlarms,
+        private val focusSessionStore: FocusSessionStore
     ) : ViewModelProvider.Factory {
 
         override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
@@ -1006,7 +1114,8 @@ class TaskListViewModel(
                 // belongs to the owner being created for, and a factory that
                 // kept one would hand the same saved state to every owner.
                 savedState = extras.createSavedStateHandle(),
-                alarms = alarms
+                alarms = alarms,
+                focusSessionStore = focusSessionStore
             ) as T
         }
     }
@@ -1022,6 +1131,7 @@ class TaskListViewModel(
          * the current time. The extension is explicit; the field's own KDoc has
          * the bug that says why it cannot move the origin too.
          */
+        const val FocusSessionTaskIdKey = "focus.session.taskId"
         const val FocusSessionStartedAtKey = "focus.session.startedAt"
         const val FocusSessionPausedAtKey = "focus.session.pausedAt"
         const val FocusSessionExtraKey = "focus.session.extraMinutes"

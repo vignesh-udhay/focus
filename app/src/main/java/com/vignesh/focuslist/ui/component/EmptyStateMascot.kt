@@ -15,11 +15,13 @@ import androidx.compose.ui.unit.dp
 /**
  * The part every mascot shares: its colours, and how it takes space.
  *
- * One mascot per screen, and each says why its own screen is empty rather than
- * decorating the absence. Today's dachshund sleeps because nothing is
- * scheduled, Upcoming's watches a ball because something is coming, Inbox's
- * leans out from behind a blank card. It is the same dog in all three, which is
- * the point: a different animal per screen would read as three products.
+ * One mascot per screen, and the same cat in all three. What changes is its
+ * posture, and the posture is what says why the screen is empty: curled asleep
+ * for a day with nothing on it, sitting upright for an inbox waiting to be
+ * filled, lying down but awake for days that are still clear. Nothing else is
+ * in the drawing. An earlier set gave the cat a prop on each screen, a bowl, a
+ * calendar, a checked card, and the object did the explaining; these say the
+ * same three things with the animal alone.
  *
  * Purely decorative to a screen reader. The empty state's headline is the line
  * that says what the screen holds, and it carries the heading semantics, so
@@ -36,17 +38,31 @@ import androidx.compose.ui.unit.dp
  *
  * Fixed roles hold one value in light and dark by definition, so a mascot does
  * not restate itself per theme, and a device palette replaces all three
- * together when dynamic colour is on.
+ * together when dynamic colour is on. That is deliberate: in the app the
+ * illustration should belong to the user's phone. The launcher icon is the
+ * opposite case and takes fixed hex, because a launcher draws outside the
+ * app's theme and an icon has to be recognisable among strangers.
  *
- * The three tones do the same job in every pose. `pale` is the ground shadow
- * and whatever the dog is with, the card and the ball; `body` is the animal
- * itself; `detail` is the ear, tail, paws, nose and eye. Bound this way the
- * three mascots recolour together and cannot drift apart.
+ * The three tones are named for their order, not their subject, because what
+ * each one draws changes from pose to pose. [light] is the coat and the soft
+ * contact shade beneath it, which the board draws at almost the coat's own
+ * value; [mid] is the shading that gives the coat its folds and its tail;
+ * [dark] is the eyes and the nose.
+ *
+ * They bind by the part's name rather than by its colour, because the greys
+ * drift between poses. One difference is deliberate and lives in the poses
+ * rather than here: the sitting cat's nose is drawn lighter than its eyes and
+ * takes [mid], where the other two draw it dark.
  *
  * ## Sizing
  *
- * [width] and [height] are the frame the board draws the pose in, and they
- * differ per pose: the sleeping dog is wide and flat, the sitting one is tall.
+ * [width] and [height] are the frame the board draws the pose in, scaled by one
+ * factor shared across all three. Neither dimension is normalised: a cat
+ * sitting is genuinely taller than the same cat lying down, so matching heights
+ * would shrink the sitting one and matching widths would swell it. The board
+ * already drew the three at a consistent scale, within about 9% by area, so
+ * carrying that scale through is what keeps them one animal.
+ *
  * A mascot takes that size until the window is narrower than it, then gives way
  * rather than clipping. It is the part of an empty state that can afford to.
  */
@@ -55,17 +71,17 @@ internal fun MascotImage(
     width: Float,
     height: Float,
     modifier: Modifier = Modifier,
-    build: (pale: Color, body: Color, detail: Color) -> ImageVector
+    build: (light: Color, mid: Color, dark: Color) -> ImageVector
 ) {
-    val pale = MaterialTheme.colorScheme.primaryFixed
-    val body = MaterialTheme.colorScheme.primaryFixedDim
-    val detail = MaterialTheme.colorScheme.onPrimaryFixedVariant
+    val light = MaterialTheme.colorScheme.primaryFixed
+    val mid = MaterialTheme.colorScheme.primaryFixedDim
+    val dark = MaterialTheme.colorScheme.onPrimaryFixedVariant
 
     Image(
         // Keyed on the colours alone. The builder is a reference to a top-level
         // function and the two sizes are constants, so nothing else here can
         // change without the call site itself changing.
-        imageVector = remember(pale, body, detail) { build(pale, body, detail) },
+        imageVector = remember(light, mid, dark) { build(light, mid, dark) },
         contentDescription = null,
         modifier = modifier
             .widthIn(max = width.dp)

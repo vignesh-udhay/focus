@@ -9,39 +9,273 @@ scope it delivers is in `PRODUCT.md`.
 
 ## Current phase
 
-**The three lists have their mascots, and they are the app's first
-illustrations.** The board's `Focuslist / Empty state — illustrated` was drawn
-for three screens and exported for none, so the code had been showing two lines
-of text on an otherwise blank screen. It is the same dachshund on all three: it
-sleeps on Today because nothing is scheduled, sits watching a ball on Upcoming
-because something is coming, and leans out from behind a blank card on Inbox. No
-copy changed anywhere; `strings.xml` already held all six lines exactly as the
-board writes them.
+**The board redrew four poses, and the code took the redraw without moving.**
+The sleeping, sitting, lying and question cats were replaced rather than edited,
+so every path changed and each took a new node id. Nothing else had to change:
+part names, paint order and the three colour bindings all survived, and the drawn
+sizes moved by under half a dp at the shared 0.36430 scale. That is the property
+`MascotImage` was built for, and this is the first time it has been tested by an
+actual redraw rather than by a swap of the whole set.
 
-The Logbook does not get one, and that is the board's position rather than a
-gap. The component has three variants and the Logbook is not among them: the
-mascots explain lists that are empty, and the Logbook is a room whose empty
-state says a record has not started. The illustration sheet's "All done" pose is
-the candidate if that is ever revisited, though it means "you are caught up",
-which is not what "Nothing completed yet" says.
+The scale factor stays anchored to the numbers the first Today pose set,
+210.66 / 578.259. Re-deriving it from the redrawn Today would have moved all five
+poses to chase a change of a fortieth of a dp, so the constant is the constant and
+Today now draws at 210.67x130.49 rather than 210.66x130.58.
+
+**The widget's lead card had escaped its own container.** Reported from a phone:
+the card's surface ran edge to edge, touching both sides of the widget. Glance
+takes `padding` as a view's own padding rather than as a margin, so
+`.padding(horizontal = 8.dp).background(surface)` put the 8dp inside the card and
+drew the surface across the full width. A parent Box carries the inset now, which
+is how Glance expresses a margin, and the card's contents did not have to move
+because they were already written against an 8dp offset.
+
+The alignment pass around it found the reason this was easy to miss: the widget
+had no named geometry. The insets were 18 in the header, 18 in the empty states,
+8 on a row, 24 at the end of one, and 58 on the disclosure, so nothing lined up
+with anything and each element picked whichever number was nearest in the file.
+There are two constants now, `ContentInset` at 24 and `SurfaceInset` at 8, and
+`widget.md` has the section explaining which takes which and why the checkbox
+glyph is allowed to land one dp inside the text column.
+
+Verified on the emulator with a real 4x3 widget and a real paused session: the
+card is inset, and its checkbox, title and Resume pill line up with the row
+beneath it.
+
+**The widget now fills the space it was given, and D-036 has the argument.**
+`rowCapacity` was a seven-branch `when` over a `WidgetLayout` enum resolved by
+comparing both dimensions against the Medium breakpoint, which treated the two
+declared responsive sizes as the only two shapes a widget can have. Widgets are
+resized by dragging, so most are neither: one taller than Compact and slightly
+narrower than Medium fell to Compact, and Compact with a lead card is zero rows,
+which is why a large widget drew one card over an empty container. Width had a
+vote purely because it shared a breakpoint with height.
+
+Capacity is arithmetic over the reported height now, with the composables'
+heights named as constants beside it and text scale multiplying the row and the
+card rather than tripping a `largeText` threshold. The enum is gone. The two
+`DpSize`s stay, because Glance needs them to pick which RemoteViews it builds.
+
+It reproduces the old table exactly at both declared sizes across all eight
+combinations, and `FocuslistWidgetModelTest` pins those eight so any change to a
+height constant has to say which case it moved. The reported bug has its own
+test at 320dp.
+
+Not verified by eye: the emulator's widget reports close to the Medium height, so
+it renders the same one row either way, and a resize to an in-between height did
+not take. The improvement is proven by test, not by a launcher.
+
+**The "widget does not refresh on a session change" report was wrong, and the
+record is corrected here.** `keepWidgetInStepWithState` already combines
+`focusSessionStore.changes` with `observeTasks()`, `onCreate` starts it, and
+`writeFocusSession` emits on every save and clear. Verified on the emulator:
+resuming a paused session removed the lead card from the widget within seconds
+and put its task back in the rows. Nothing to fix, and nothing was changed.
+
+What produced the original report was a session that was still *running* while it
+was assumed to be paused, and then a completion suppressing the lead by design.
+One observation is still unexplained: immediately after an install, a session
+paused before the install did not appear until the next task write. The suspect
+is the `drop(1)` in that flow, which exists so a Glance `SessionWorker` that
+created the Application does not cancel itself, and which would also drop the
+first emission when the process is new. That is a hypothesis, not a finding, and
+the comment it would touch describes a real failure it prevents, so it wants
+isolating before anything moves.
+
+**One flaky unit test, fixed.**
+`TaskListViewModelTest.undoAfterASecondDeletionRestoresTheSecondTask` failed once
+and passed on clean re-runs. Its last line read `todayTasks.value` straight after
+`awaitRestore()`, which waits on the DAO while the derived stream emits after
+that, so the read could land in the gap. It goes through `awaitTodayIds` now,
+which the file already had for exactly this and which is bounded, so a wrong list
+still fails the assertion rather than hanging the run.
+
+**A finished backup or restore says so, and nothing was saying it.** Reported
+from use: restoring a file gave no feedback at all. `BackupViewModel` landed
+success on `BackupUiState()`, which is the state the screen starts in, so the
+picker closed and nothing else happened. The Backup page shows no tasks, so a
+restore that had replaced the whole database looked exactly like one that had not
+run. Export was identically silent for the same reason.
+
+Both now report through a counted snackbar: "Restored 47 tasks". A count rather
+than a bare confirmation, because it can be checked against what the lists hold a
+moment later. Soft-deleted rows are excluded, since a backup carries them but no
+list shows them. `BackupError` became `BackupOperation`, one enum naming which
+half ran rather than only how it can fail, and `BackupDone` carries an id so that
+restoring the same file twice announces itself twice.
+
+`settings.md` had specified the restore error dialog down to its copy and never
+specified success at all, which is how this survived review. That section exists
+now, along with a note that in-progress state is deliberately nothing but two
+disabled buttons.
+
+Not verified by eye: the snackbar has not been seen on a device. Restore's
+reminder rescheduling was checked and is sound, `keepRemindersInStepWithStorage`
+reconciles on the write.
+
+**The Focus now card stopped guessing, and D-035 has the argument.** It had
+three reasons and one of them, `NoTimeToday`, matched any task scheduled for
+today carrying no time, which on an ordinary day is most of them. Under it the
+card was the first row of the "No time set" band lifted out and drawn larger,
+explained by that band's own label, on grounds equally true of every other row in
+the band. That is a ranking with nothing to say why its head is its head, which
+is what D-004 removed the queue for.
+
+The reason is gone from the enum, so the card now speaks only for a paused
+session or a reminder that fired and was not acted on. Both are events; neither
+can be read off a list. The knock-on is that D-031's widget threshold is no
+longer a threshold: the filter came out of `FocuslistWidgetModel` because the
+rule it was correcting no longer produces the reason, and `focusNow` lost its
+`today` parameter because nothing left in it asks what day it is.
+
+**Today's ordinary state is now a screen with no card**, which is the cost taken
+knowingly: a light user who sets no reminder times may rarely see one, and the
+card is the only one-tap route from Today into a focus session. Previews and
+review passes should treat the cardless screen as the default form.
+
+Verified: the full unit suite passes, and `TodayScreenSemanticsTest` and
+`FocusSessionSemanticsTest` pass on the emulator, 24 tests at both font scales.
+The card and Today previews were updated to a passed reminder, since the old
+fixtures no longer produce a card, but have not been looked at rendered.
+
+**The board's empty and task-list error states now use the current mascot set.**
+The illustrated component variants in section 08 use the prop-free sleeping,
+sitting and lying cats, so every linked instance stays in step. Sections 13 and
+14 use the question-mark cat for failed task reads while Logbook remains
+illustration-free, preserving the distinction recorded in
+`expressive-components.md`.
+
+**A failed read now says so, and it turned out nothing was catching one.**
+`expressive-components.md` described the error empty state in full, down to the
+copy, as though it were built. None of it existed: the component took a headline
+and a supporting line, there were no error strings, and `TaskListViewModel` had
+no error path at all. Worse, each of the five list views subscribed to
+`observeTasks()` separately, and a Room `Flow` that throws is finished, so a
+failed read would have left every screen sitting at its initial empty list.
+Today would have said "Nothing scheduled" on a full day, which is the app
+asserting that work does not exist. The read is caught once now, every view
+derives from the caught stream, and Try again starts a fresh read rather than
+resuming a dead one. D-034.
+
+**Today gained a finished-day state, and the first version of it was wrong.**
+It drew in place of the whole body like the other empty states, which deleted
+the Completed disclosure. `undo_reopensTheTask` caught that, and the test was
+encoding something real: once the undo snackbar times out, that disclosure is
+how a task completed today is reopened, and D-012 built it for exactly that. It
+heads the list now, with the rows beneath it. `TaskListDoneHeader` and
+`TaskListEmptyState` share one body composable so the two forms cannot drift.
+D-033 supersedes the claim in `widget.md` that Today needs only one empty state.
+
+**Two more mascot poses, and the set is five.** `cat-question` for a failed read
+and `cat-sitting-happy` for a finished day, both from the board at the same
+0.36430 scale factor the first three share, landing at 173x170 and 195x176. The
+question mark is the only prop in the set and has to be: a posture can say why a
+list is empty, but not that a read failed. The happy cat is a sitting pose like
+the Inbox one and differs in the eyes, closed against open, and takes the same
+lighter nose that sitting poses already had an exception for.
+
+**The error state took the mascot, so the headline carries the colour.** The doc
+had specified an 80dp `errorContainer` icon and called it, with the button, "the
+signal". By the time the state was built the illustrated variant existed, and a
+mascot draws in the fixed primary tones and says nothing about severity. The
+headline takes the error role instead. The copy still never mentions a
+connection, since every read here is local.
+
+**Today's empty supporting line stopped instructing.** It read "Add a task when
+you are ready", the only one of the four aimed at the user rather than at the
+screen, and it sat under a cat drawn asleep. It states a fact now and points at
+the Inbox. The rule that a supporting line never instructs is written down,
+along with why "Nothing overdue, either" was tried and is wrong: overdue is one
+of Today's own bands, so the blank screen already proves it.
+
+Not verified on a device: nothing is attached, so the instrumented suite has not
+run and none of the five states has been seen rendered. The finished-day header
+inside the list and the error state at 200% font scale are the two worth looking
+at first.
+
+**The live widget row now matches the board rather than only its picker
+preview.** Launcher inspection exposed the difference: Glance's native
+RemoteViews checkbox does not carry Material's horizontal inset, while the
+unconditional 7dp vertical correction pushed it below a title carrying
+metadata. Rows now begin at the board's 8dp inset, place the glyph 15dp inside
+its unchanged 48dp target, and apply the vertical correction only to one-line
+rows. They also reserve the board's 70dp duration column plus 24dp trailing
+space. Duration and metadata were confirmed in the live widget from stored task
+fields.
+
+**Deleting the last task no longer strands Task Details on a blank route.**
+The screen now remembers that its task was successfully shown, so that task's
+later disappearance is conclusive even when `allTasks` becomes empty. It still
+does not mistake the flow's initial empty placeholder for a deleted task, and
+an instrumented regression test covers the final-task case.
+
+**The Phase 4 home widget is built.** One responsive Jetpack Glance provider
+implements the board's Compact and Medium states at 288x190dp and 364x266dp:
+ordinary rows, reminder-passed and paused leads, just completed, everything
+done, and nothing scheduled. It follows system dynamic colour, falls back to
+the app palettes before API 31, uses launcher corner dimensions where they
+exist, and includes the exact Medium board frame as its picker preview.
+
+The consultation closed D-031's two product questions. The add button remains
+at Compact for direct capture. A just-completed row remains where it was, and
+both its checkbox and row body undo through `TaskCompletion.reopen`, including
+safe cleanup of an untouched recurring occurrence. The two responsive
+breakpoints use the smallest complete board layouts; API 29 and 30 retain the
+declared dp size and corner fallbacks but still need visual verification on an
+older launcher.
+
+Room writes, date/time/timezone changes, and persisted Focus-session changes
+refresh every widget without polling. Persisting the Focus task id alongside
+its clock also repairs the existing process-death promise: a paused session can
+still be resumed after the app process has gone away, which is necessary for
+the widget's Resume action. Widget refreshes are conflated without cancelling
+an update already in flight, preventing rapid Room emissions from leaving the
+launcher on stale task data. Room and Focus signals use one serialized update
+path, and its initial Room value is skipped so creation of a Glance worker does
+not recursively enqueue and cancel that same worker. The add control keeps its 48dp touch target while
+using a 32dp visible circle aligned with the Today title. Dynamic checkbox
+roles are resolved before they enter Glance's checked/unchecked API, fixing the
+runtime failure that previously left the widget empty as soon as it had a task
+row to render. The native checkbox glyph carries Material's horizontal optical
+inset without reducing the 48dp target. The pure widget model covers state selection,
+capacity, completion evidence, urgency and large font scaling with JVM tests;
+manifest tests cover the provider and closed-app refresh wiring.
+
+**The three lists have their mascots, and Focuslist has a cat.** The empty
+states had been two lines of text on an otherwise blank screen. Each now draws
+the same cat in a different posture, and the posture is what says why the screen
+is empty: curled asleep for a day with nothing on it, sitting upright for an
+inbox waiting to be filled, lying down but awake for days that are still clear.
+No copy changed anywhere; `strings.xml` already held all six lines exactly as the
+board writes them. The app icon is the same cat, face on.
+
+**The mascot changed three times in a day, and that is the useful finding.** It
+was a dachshund, then a cat with a prop on each screen, then this. Every swap
+cost three generated files and one KDoc, because the poses are data,
+`MascotImage` owns the colour roles and the sizing, and a screen asks for a
+mascot without knowing what is inside it. Nothing about the screens, the tests or
+the empty-state component moved on any of the three.
 
 Each is an `ImageVector` built in Kotlin rather than a vector drawable, because
 their fills are colour roles and a drawable can neither read the Compose colour
-scheme nor take three colours from one tint. All three poses use the same three
-fixed roles `Color.kt` set aside for this: `primaryFixed` for the ground shadow
-and whatever the dog is with, `primaryFixedDim` for the animal, and
-`onPrimaryFixedVariant` for ear, tail, paws, nose and eye. Fixed roles hold one
-value in light and dark, so each pose is one artwork instead of two to keep in
-step, and dynamic colour replaces all three together. `MascotImage` owns the
-roles and the sizing, so a pose file is its frame, its builder, and its exported
-paths.
+scheme nor take three colours from one tint. All three use the same three fixed
+roles `Color.kt` set aside for this: `primaryFixed` for the coat and the soft
+shade it sits on, `primaryFixedDim` for the shading that gives the coat its
+folds and its tail, `onPrimaryFixedVariant` for the eyes and nose. They bind by
+the part's name rather than by its colour, since the greys drift between poses
+and the sitting cat's nose is deliberately drawn lighter than its eyes.
 
-The pale tone is the one part that is not symmetric across themes: 8.0 L* below
-the page in light, 83.8 above it in dark. That reads correctly for the card and
-the ball and less so for the ground shadow. Moving the shadow to
-`surfaceContainerHighest` was tried and reverted, and
-`expressive-components.md` carries the measurements so the next attempt starts
-from them.
+The three share one scale factor rather than a common width or height. A cat
+sitting is genuinely taller than the same cat lying down, so matching either
+dimension makes them read as two differently sized animals; the board already
+drew them at a consistent scale, within about 9% by area, so carrying that scale
+through is the whole rule. They land at 211x131, 190x173 and 250x134.
+
+Rendered under a device palette rather than the app's own, the illustrations
+hold: the tones are fixed points on one tonal palette, so a wallpaper changes
+the hue and nothing else. That is the argument for leaving them themeable while
+the launcher icon stays fixed hex, since a launcher draws outside the app's
+theme and an icon has to be recognisable among strangers.
 
 The headline stayed at `titleMediumEmphasized`. The board draws it at Title
 Large Emphasized, which is what the app bar uses, and two identical headings
@@ -55,7 +289,7 @@ least room, at 167dp against Today's 102.
 Verified by rendering all three screens on the emulator in light and dark, and
 Upcoming at 200%. Lint is unchanged.
 
-**The widget is designed but not built, and D-031 is what it now means.**
+**The widget design pass established D-031 before implementation began.**
 Phase 4's remaining item had six board frames and no design document, which is
 how it drifted from the app without anyone noticing. It is specified now.
 
@@ -88,11 +322,12 @@ row still sitting where it was. Growing the section to two rows moved sections 1
 through 18 down 980px, because the page is one stacked column on a fixed 120px
 rhythm and no section can grow locally.
 
-**No widget code exists.** No Glance dependency, no `appwidget` receiver, no
-`ui/widget` package. `docs/design/widget.md` is the next thing, and D-031 parks
-four questions in it: responsive sizing, the API 29 and 30 corner and size
-behaviour, whether the add button survives at the smaller size, and whether a
-checked row can be tapped to undo.
+**At that point no widget code existed.** There was no Glance dependency,
+`appwidget` receiver, or `ui/widget` package. `docs/design/widget.md` carried
+four questions into implementation: responsive sizing, the API 29 and 30
+corner and size behaviour, whether the add button survived at the smaller size,
+and whether a checked row could be tapped to undo. The current entry above
+records how those landed.
 
 **Reminders no longer promise moments that have already gone, under D-030.**
 Two reminders on the OnePlus 8T were recorded as placed at 03:20 and 11:00 and

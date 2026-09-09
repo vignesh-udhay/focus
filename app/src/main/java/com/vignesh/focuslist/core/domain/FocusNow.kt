@@ -1,15 +1,23 @@
 package com.vignesh.focuslist.core.domain
 
-import java.time.LocalDate
 import java.time.LocalDateTime
 
 /**
- * The rule behind the Focus now card, from `docs/decisions.md` D-012.
+ * The rule behind the Focus now card, from `docs/decisions.md` D-012 as amended
+ * by D-035.
  *
  * `PRODUCT.md` opens Today with "What should I do now?" and asks that Today make
  * the answer obvious within seconds. An unlabelled run of rows does not answer
  * it; it leaves the user to work it out. This is the rule that answers it, and
  * it is a pure function so that the answer is testable without a device.
+ *
+ * **The card speaks for an event, not for a position in the list.** D-035 cut a
+ * third reason, `NoTimeToday`, which matched any task scheduled for today
+ * carrying no time. Under it the card was the first row of the band immediately
+ * below it, lifted out and drawn larger, explained by that band's own label, on
+ * grounds equally true of every other task in the band. What is left are two
+ * things that happened: work was started and paused, or a reminder fired and was
+ * not acted on. Neither can be read off a list.
  *
  * **This is not the Focus queue D-004 removed.** The queue was a ranking with
  * nothing to say why its head was its head, and completing the head advanced to
@@ -22,7 +30,9 @@ import java.time.LocalDateTime
  * Why a task is the one to do now.
  *
  * The card shows exactly one of these, in words, on the card. A card that
- * asserted a task without saying why would be the queue again.
+ * asserted a task without saying why would be the queue again, and per D-035 a
+ * reason that could not tell its task apart from the four below it did not clear
+ * that bar either.
  *
  * Declared in priority order, and [Comparable] by it, so the rule below sorts on
  * the enum rather than on a second table that could disagree with it.
@@ -49,16 +59,7 @@ enum class FocusNowReason {
      * severity bug in the product, so a reminder that fired and was not acted on
      * is the next most urgent thing after work already begun.
      */
-    ReminderPassed,
-
-    /**
-     * Scheduled for today, carrying no time.
-     *
-     * The weakest of the three and still a real answer: the user put this on
-     * today and said nothing about when, so any moment is as good as another and
-     * now is a moment.
-     */
-    NoTimeToday
+    ReminderPassed
 }
 
 /** One task, and the reason it is the one to do now. */
@@ -67,10 +68,16 @@ data class FocusNow(val task: Task, val reason: FocusNowReason)
 /**
  * The task to do now, or null when nothing qualifies.
  *
- * Only the three reasons above qualify. When nothing does the card is absent and
+ * Only the two reasons above qualify. When neither does the card is absent and
  * the list begins at its first band; there is no fallback to "the first task",
  * because a card that always found something to say would be asserting without
- * grounds, which is the failure D-012 was written to avoid.
+ * grounds, which is the failure D-012 was written to avoid and the one D-035
+ * found it had not fully avoided.
+ *
+ * Returning null is now the common case, on any day without a passed reminder or
+ * a paused session. That is the intent, not a gap: D-035 weighed a card seen
+ * rarely against one seen daily on grounds it could not defend, and took the
+ * first.
  *
  * **Where several qualify, the reason decides first, then the earliest time,
  * then the order Today already shows.** That is D-012's tie-break verbatim, and
@@ -84,18 +91,23 @@ data class FocusNow(val task: Task, val reason: FocusNowReason)
  * @param pausedTaskId the task a paused session is on, or null when no session
  * is paused. Passed in rather than read, because a session lives in the view
  * model and this stays a function of data.
- * @param now the current moment, passed in like every other query takes [today],
- * so the result is deterministic. A date is not enough here: two of the three
- * reasons turn on the time of day.
+ * @param now the current moment, passed in like every other query takes a date,
+ * so the result is deterministic. A date would not be enough: the reminder
+ * reason turns on the time of day.
+ *
+ * **There is no `today` parameter, and there used to be.** `NoTimeToday` was the
+ * only reason that compared a task's date against the current day, and D-035
+ * removed it. Neither surviving reason asks what day it is: a paused session is
+ * paused whatever the date, and a reminder that has passed has passed. Keeping
+ * the parameter would have claimed a dependency the rule no longer has.
  */
 fun focusNow(
     tasks: List<Task>,
-    today: LocalDate,
     now: LocalDateTime,
     pausedTaskId: String? = null
 ): FocusNow? {
     val candidates = tasks.mapNotNull { task ->
-        focusNowReasonOf(task, today, now, pausedTaskId)?.let { reason -> FocusNow(task, reason) }
+        focusNowReasonOf(task, now, pausedTaskId)?.let { reason -> FocusNow(task, reason) }
     }
 
     return candidates.minWithOrNull(
@@ -117,7 +129,6 @@ fun focusNow(
  */
 private fun focusNowReasonOf(
     task: Task,
-    today: LocalDate,
     now: LocalDateTime,
     pausedTaskId: String?
 ): FocusNowReason? {
@@ -134,11 +145,8 @@ private fun focusNowReasonOf(
     val reminderAt = task.reminderAt
     if (reminderAt != null && !reminderAt.isAfter(now)) return FocusNowReason.ReminderPassed
 
-    // Scheduled for today and saying nothing about when. Overdue work is
-    // deliberately not here: it belongs in the Overdue band, where it needs a
-    // decision, and promoting it would answer "what should I do now" with
-    // something the user already chose not to do.
-    if (task.scheduledDate == today && task.reminderAt == null) return FocusNowReason.NoTimeToday
-
+    // A task scheduled for today carrying no time used to match here, and D-035
+    // removed it. It stays in the "No time set" band, which is the only place
+    // that fact was ever worth stating.
     return null
 }

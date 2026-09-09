@@ -63,19 +63,21 @@ day.
 # The threshold
 
 The widget leads with a task and its reason for `ResumePaused` and
-`ReminderPassed`. It does not lead for `NoTimeToday`.
+`ReminderPassed`, which since D-035 is every reason there is.
 
-`focusNowReasonOf` matches `NoTimeToday` for any task scheduled today carrying
-no reminder, which on an ordinary day is most of them. In the app that is a weak
-but real answer to a question the user asked by opening it. Permanently, in
-peripheral vision, it is the app insisting all day on work whose entire claim is
-that someone put it on today.
+**This used to be the widget's own threshold, and is now the rule.** D-031 gave
+the widget a filter because `focusNowReasonOf` also matched `NoTimeToday`, for
+any task scheduled today carrying no reminder, which on an ordinary day is most
+of them. Permanently, in peripheral vision, that is the app insisting all day on
+work whose entire claim is that someone put it on today.
 
-No new rule implements this. `FocusNowReason` is declared in priority order and
-is `Comparable` by it. The widget reads further up the same enum than the card
-does, and that is the whole difference.
+D-035 accepted the same argument one surface inward and removed the reason
+outright, on the further ground that in-app the card was then the first row of
+the band directly below it, drawn larger and explained by that band's own label.
+So the filter is gone: `focusNow` returns what the widget can lead with, and the
+widget and Today decline together.
 
-The two reasons kept are the two where the widget does something no other
+The two reasons left are the two where the widget does something no other
 surface can. A notification is transient and a widget is permanent, so
 `ReminderPassed` on the home screen is the durable backstop for a reminder that
 was dismissed unread, which D-005 makes the highest-severity concern in the
@@ -185,6 +187,41 @@ Today.
 
 ---
 
+# The content column
+
+Two insets, named in `FocuslistWidget.kt` rather than spelled out per element.
+
+    ContentInset   24dp   where text begins and ends, both edges
+    SurfaceInset    8dp   where a filled surface's edge and a 48dp target begin
+
+A target that starts at `SurfaceInset` carries its glyph 15dp inside itself, so
+the glyph lands at 23, one dp inside the text column. That is below perception,
+and it is what lets the checkbox keep all 48dp of itself while still reading as
+one column with the text above it.
+
+The lead card takes `SurfaceInset` too, so its edge and the rows' targets start
+together, the way `today-screen.md` has the Focus now card and the bands share a
+left edge. Its own trailing control lands back on `ContentInset`, measured from
+the widget rather than from the card.
+
+`+N more` is the exception, and deliberately: it sits on the row titles at 58,
+because it stands in for rows that did not fit rather than heading a group.
+`today-screen.md` draws the same distinction the other way round for a band
+label, which does head a group and so sits at its edge.
+
+**This section exists because none of it was written down.** The insets had been
+18 in the header, 18 in the empty states, 8 on a row, 24 at the end of one, and
+58 on the disclosure, so each new element picked whichever number was nearest in
+the file and nothing lined up with anything.
+
+**A Glance `padding` is the view's own padding, not a margin.** The lead card
+carried `.padding(horizontal = 8.dp).background(surface)` and drew its surface
+edge to edge with the 8dp inside it, which on a launcher reads as the card having
+escaped the widget that is supposed to contain it. A margin in Glance is a parent
+carrying the padding, which is how the card is built now.
+
+---
+
 # Corners and background
 
 `android.R.dimen.system_app_widget_background_radius` is API 31 and capped at
@@ -210,9 +247,12 @@ Five targets, and only one of them stays on the home screen.
 | anywhere else | opens Today |
 
 The checkbox is the only one that does not launch the app, and it is the reason
-the widget is worth a home-screen slot at all. **It is currently drawn quieter
-than the add button, which only launches.** Whether that visual weight is right
-is an open question below.
+the widget is worth a home-screen slot at all. **It is drawn quieter than the
+add button, which only launches.** The add button remains at Compact after
+consultation: capture from the home screen is useful enough to keep the direct
+target. Its visible circle is 32dp, aligned to the visual height of the Today
+title, while its Android touch area remains 48dp. The checkbox also keeps its
+full 48dp touch area.
 
 ---
 
@@ -237,10 +277,10 @@ own documentation anticipated this surface: one operation needed identically by
 a view model, a notification action and later the widget.
 
 **Recurrence makes the mis-tap more expensive.** `TaskCompletion.complete`
-returns the id of the occurrence it spawned so a caller can take both back. A
-widget with no undo drops that return value, which means a mis-tap on a
-repeating task also creates a row. This is the strongest argument for a
-widget-native undo, and it is unresolved below.
+returns the id of the occurrence it spawned so a caller can take both back. The
+checked row is tappable to undo after consultation. It goes through
+`TaskCompletion.reopen`, so a still-untouched recurring occurrence is taken back
+with the completion rather than being left as work nobody asked for.
 
 ---
 
@@ -283,14 +323,19 @@ and 18 of the board draw.
 # Accessibility
 
 The checkbox is 48dp and stays 48dp. It is the smallest target on the surface
-and the only destructive one.
+and the only destructive one. The native RemoteViews checkbox is narrower than
+Material's 48dp target and otherwise sits at its leading edge, so its glyph is
+inset 15dp horizontally inside that target. A one-line row centres the native
+glyph inside the target with a 7dp top inset. A row with metadata takes no top
+inset, aligning the glyph with the title instead of centring it against the
+combined title-and-metadata block. The tappable bounds do not move.
 
 Each row announces as one thing, with the duration spoken as words rather than
 as `45m`, which `durationLabel` already provides through its `spoken` field.
 
-Font scale is the untested risk. A widget cannot scroll, so at 200% the row
-count has to fall rather than the text clip, and that is a thing to verify on a
-device rather than assert here.
+At 150% and above the model reduces the row count rather than asking a widget
+that cannot scroll to clip its text. That rule has JVM coverage; 200% still
+needs visual verification on a launcher.
 
 ---
 
@@ -305,37 +350,54 @@ device rather than assert here.
 
 ---
 
-# Open product decisions
+# Resolved decisions and platform verification
 
-D-031 parked four questions here rather than guessing at them.
+**The add button survives at Compact.** The direct capture path is worth its
+space and the user chose to keep it after reviewing the tradeoff.
 
-**Does the add button survive at Compact?** It is the highest-contrast element
-on the widget and it only launches the app, which the row and the header also
-do. At Compact it and the header consume roughly a third of the surface to leave
-two rows. The case for keeping it is that capture from a home screen is
-genuinely fast. The case against is that it outranks the checkbox, which is the
-only control that does something here.
+**A checked row is tappable to undo.** Both its checkbox and its body reopen the
+task through `TaskCompletion`, including safe recurrence cleanup.
 
-**Is a checked row tappable to undo?** Showing what happened is settled. A
-widget-native undo is not, and recurrence raises the stakes.
+**The responsive breakpoints are 288x190dp and 364x266dp.** They are the
+smallest complete Compact and Medium layouts, declared to Glance as responsive
+sizes rather than branching on a launcher name or cell count.
 
-**What are the responsive breakpoints?** The two drawn sizes are samples. The
-real set has to come from the cell grid, not from the board.
+**They no longer decide the row count.** D-036 derives capacity from the reported
+height instead, because a widget is resized by dragging and most real ones are
+neither declared size. One taller than Compact and a little narrower than Medium
+used to fall to Compact, and Compact with a lead card is no rows, so a large
+widget drew one card over an empty container. The two `DpSize`s remain, because
+Glance needs them to choose which RemoteViews it builds; they simply no longer
+stand in for the height.
 
-**How does the widget behave on API 29 and 30**, where the corner dimens and the
-cell-sizing attributes do not exist? The fallback is described above but has not
-been seen on a device.
+**API 29 and 30 use the declared dp minimums and the 28dp fallback corner.** The
+resource and provider fallbacks are implemented. They still need visual
+verification on an API 29 or 30 launcher; the available emulator is API 37.
 
 ---
 
 # Implementation status
 
-**Not built.** No Glance dependency, no `appwidget` receiver in the manifest, no
-`ui/widget` package. Every statement in this document describes a design, not
-behaviour.
+**Built with Jetpack Glance.** One responsive provider renders the six states,
+uses dynamic colour on API 31 and later with Focuslist light/dark fallbacks,
+keeps add at both sizes, and keeps a just-completed row in place until the next
+data or day change. Its checked row is the undo target the consultation chose.
 
-**Ready for it:** `TaskCompletion` is already the shared completion path and
-names the widget as a caller. `focusNow` is a pure function over data and needs
-no view model. `durationLabel` and `taskMetadata` are the row's vocabulary.
+`TaskCompletion` remains the shared completion path. `focusNow` supplies the
+candidate before the widget applies its stricter threshold, and the widget's
+model is a pure function covered by JVM tests.
 
-**The one thing the app has that this cannot reuse:** `CurrentDay`.
+Room changes and persisted Focus-session changes update every instance. A
+manifest receiver covers date, time and timezone changes while the app is
+closed; `updatePeriodMillis` remains zero. The widget reads its own current day
+because the launcher's `RemoteViews` cannot share the screen's `CurrentDay`
+collector. Storage refreshes are conflated but never cancelled once started,
+so a second Room emission cannot withdraw the Glance update already being
+enqueued and leave the launcher showing stale tasks. Task and Focus signals
+share that one serialized path. The observer skips Room's initial snapshot:
+starting a Glance worker creates the Application, and enqueuing again from that
+initial value cancels the worker that is already rendering. Provider and clock
+broadcasts already own initial/closed-process refreshes. Checkbox roles are
+resolved to concrete colours before building `CheckBoxColors`: Glance's
+dynamic roles are resource-backed providers, and its custom checked/unchecked
+API rejects those providers at runtime even though the code compiles.

@@ -6,11 +6,15 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.waitUntilExactlyOneExists
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vignesh.focuslist.ui.focus.FocusSheet
@@ -28,7 +32,8 @@ import org.junit.runner.RunWith
  *
  * `focus.md` names what this file has to cover: each state publishes its task
  * title as a heading, names its clock control by the action rather than the
- * glyph, carries its status line as text, and offers a visible way out.
+ * glyph, and carries its status line as text. The way out is the sheet's own
+ * dismiss action since D-032, not a control this file can name.
  * Completing ends the task. **Leaving pauses rather than stops**, which is the
  * assertion that matters most here, because the failure it guards against is a
  * silent one.
@@ -162,14 +167,6 @@ class FocusSessionSemanticsTest {
         rule.onNodeWithText(NO_LIMIT).assertIsDisplayed()
     }
 
-    /** Every state offers a visible way out, and it is never a close X. */
-    @Test
-    fun everyStateOffersAVisibleWayOut() {
-        running(withEstimate())
-
-        rule.waitUntilExactlyOneExists(hasContentDescription(DISMISS), TIMEOUT_MILLIS)
-    }
-
     // --- D-015, which is the assertion that matters most ---------------------
 
     /**
@@ -179,13 +176,22 @@ class FocusSessionSemanticsTest {
      * loses the elapsed time with nothing that puts it back. Asserted against
      * the view model rather than the screen, because what went wrong would go
      * wrong behind the sheet closing.
+     *
+     * D-032 removed the dismiss button, so leaving is triggered through the
+     * sheet's own dismiss action, which is where the drag, the scrim and the
+     * back gesture all arrive. That the action exists at all is the other half
+     * of this test, and what is left of "every state offers a way out": the
+     * chevron used to be asserted separately and there is no longer a control
+     * of this app's own to assert.
      */
     @Test
     fun leavingPausesRatherThanStopping() {
         val model = running(withEstimate())
         rule.waitUntilExactlyOneExists(hasContentDescription(PAUSE), TIMEOUT_MILLIS)
 
-        rule.onNodeWithContentDescription(DISMISS).performClick()
+        rule.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsActions.Dismiss))
+            .onFirst()
+            .performSemanticsAction(SemanticsActions.Dismiss)
         rule.waitForIdle()
 
         val session = model.focusSession.value
@@ -220,7 +226,6 @@ class FocusSessionSemanticsTest {
         const val START = "Start focus"
         const val PAUSE = "Pause focus"
         const val RESUME = "Resume focus"
-        const val DISMISS = "Put focus away"
         const val ESTIMATE_STATUS = "45 min focus"
         const val REMAINING = "45 min left"
         const val NO_LIMIT = "No time limit"

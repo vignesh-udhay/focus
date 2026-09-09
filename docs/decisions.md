@@ -2034,3 +2034,334 @@ is quiet and the failure it risks is loud, so the risk is self-reporting: a
 widget that says too little gets complained about, while one that nags gets
 removed without a word. If the plain list turns out to read as inert, promoting
 `NoTimeToday` is a one-line change to where the widget reads the enum.
+
+**Superseded in part by D-035**, which took the same argument into the app and
+removed `NoTimeToday` from `FocusNowReason` altogether. The threshold above is
+no longer the widget's own: there is nothing left to filter, and restoring the
+reason now means restoring it to the rule both surfaces read.
+
+## D-032. The Focus sheet loses its dismiss button
+
+**Decision.** Remove the chevron from the Focus sheet. Leaving is the drag
+handle, the drag, the scrim and the back gesture, all of which already routed to
+the same place.
+
+**This does not touch D-015.** That decision is about what leaving *does*, and
+leaving still pauses rather than stops. `onDismissRequest` is unchanged and
+every remaining route arrives there. What goes is one of the ways in, not the
+behaviour behind it.
+
+**Why it was redundant, and this is the part that had never been written down.**
+`ModalBottomSheet` is called with no `dragHandle` argument, so Material draws its
+default one. The chevron sat directly beneath it. Two collapse affordances,
+stacked, eight pixels apart, both meaning "put this away" and both landing on the
+same call. `focus.md` argued the chevron "agrees with the gesture: a bottom sheet
+is dismissed by dragging down" without noticing that the thing which announces
+that gesture was already on screen saying it.
+
+**The board had never drawn the handle**, which is how this survived review. Its
+Focus frames showed a 64dp header holding a chevron and nothing else, so on the
+board the chevron looked like the only way out, and in the app it was the second
+one. The frames now draw the handle and no header.
+
+**What it costs, stated plainly.** A 48dp target with a content description
+becomes a 32×4dp bar without one. That is a smaller and less obvious affordance,
+and for a screen reader the labelled control is replaced by the sheet's own
+dismiss action, which Compose publishes and TalkBack offers. Nothing becomes
+unreachable, and back still works, but this is a reduction in how loudly the exit
+announces itself rather than a free simplification.
+
+**A test went with it.** `everyStateOffersAVisibleWayOut` existed to assert the
+chevron was present in every state. What it guarded now belongs to Material
+rather than to this app, so the assertion moves into
+`leavingPausesRatherThanStopping`, which triggers leaving through the sheet's
+dismiss action and therefore proves the exit exists and pauses in one place.
+
+**What would reverse this.** Users not finding their way out of Focus, which
+would show up as sessions left running rather than paused, or as the sheet being
+backed out of rather than dismissed. The drag handle is the whole exit now, so if
+it is not enough the answer is a labelled control, not a second gesture.
+
+---
+
+## D-033. Today gains a finished-day state, and it supersedes the one-empty-state rule
+
+**Decision.** Today draws a distinct state when the day had work and all of it
+is complete: the sitting-happy cat, "All done for today", and a supporting line
+sending the user to the Logbook. It is separate from `today_empty_*`, which
+stays for a day that never had anything on it.
+
+This supersedes the claim in `docs/design/widget.md` that "Today needs one empty
+state because its Completed section sits on the same screen." That sentence was
+written to justify the widget having two states, and it asserted something about
+Today as a side effect of arguing about the widget. Today now has two as well.
+
+**Why.** The reason given for one state was that the Completed section keeps a
+finished day legible. It does, but not as an answer to the question the screen
+is asked. Opening Today on a finished day currently shows a single collapsed
+"Completed · 6" disclosure and nothing else, which is a control rather than an
+answer, and it is the same screen you get for a day where you completed one
+thing out of seven. The state that is worth naming is the one where nothing is
+outstanding, and that state had no words on it.
+
+The product owner asked for it, and the pose existed on the board before the
+implementation did.
+
+**It heads the list rather than replacing it.** The first implementation drew
+the finished-day state in place of the whole body, the way the other empty
+states do, and that was wrong. Today's instrumented tests caught it:
+`undo_reopensTheTask` completes the only task, opens the Completed disclosure
+and reopens the row from Today, and with the body replaced that disclosure was
+gone. The test was encoding something real. Once the undo snackbar times out,
+reopening a task finished today would have meant leaving for the Logbook, and
+D-012 built that disclosure precisely so it would not.
+
+So the day being finished is worth saying, and it is said above the rows rather
+than instead of them. `TaskListDoneHeader` is the same statement as
+`TaskListEmptyState` sized to its content, sharing one body composable so the
+two cannot drift.
+
+A consequence worth noting: this is the one state in the app that is not an
+empty state and draws like one. It is a header over a list that has content.
+That is the honest description of a finished day, which is full of completed
+work rather than empty.
+
+**It is not a celebration, and the line matters.** `PRODUCT.md` principle 7
+rules out unnecessary celebrations, and this sits close to that line. What keeps
+it on the right side is that the copy states a fact and points somewhere, the
+same rule every other supporting line follows. A pose that reads as content
+rather than triumphant is doing the same job the sleeping cat does on an empty
+day. If the copy ever congratulates, principle 7 is what it broke.
+
+**What would reverse this.** Evidence that the finished-day state is read as the
+app losing the day's work, which would show as users opening the Logbook to
+check their tasks are still there rather than to read them.
+
+---
+
+## D-034. A failed read says so, on every list
+
+**Decision.** `TaskListViewModel` catches the stored read once and carries the
+failure as a value. Every list derives from the caught stream, and a failure
+draws `TaskListErrorState`: the question-mark cat, the headline in the error
+role, the copy from `expressive-components.md`, and a Try again button that
+starts a fresh read.
+
+**Why.** Room hands the app a cold `Flow`, and a `Flow` that throws is finished.
+Before this, each of the five list views subscribed to `observeTasks()`
+separately, so a failed read left every one of them sitting at its initial empty
+list. The user would see "Nothing scheduled for today" on a day full of tasks.
+
+That is the worst class of bug this product has, one step below a missed
+reminder and for the same reason: the app quietly asserting that work does not
+exist. It was not a hypothetical. The error state had been designed, written
+down in full, and described in `expressive-components.md` as though it were
+built, and none of it existed in code.
+
+**Retry starts a read rather than resuming one.** `catch` ends the flow it
+guards, so there is nothing to resume. `retryRead` increments an attempt counter
+that `flatMapLatest` turns into a new subscription, which is also why the caught
+stream sits behind a `MutableStateFlow` rather than being a plain `catch` on the
+repository.
+
+**The failure carries no tasks.** `TaskRead.Failed` holds an empty list rather
+than the last good one, because a screen drawing stale rows beneath an error
+message makes two claims at once and the older one cannot be checked.
+
+**The copy must never mention a connection.** Focuslist has no account, no sync
+and no backend, all three permanently out of scope in `PRODUCT.md`, so every
+read is local. Earlier draft copy on Inbox and Upcoming read "Check your
+connection and try again", which sends the user to fix something that was never
+involved and implies a server the app does not have.
+
+**What would reverse this.** Nothing about the state itself. The open question
+is whether one shared error is right: all five views read the same stream, so
+they fail together, and if a future read is genuinely per-screen this becomes a
+per-screen flag rather than one.
+
+## D-035. The Focus now card speaks only for an event, and loses NoTimeToday
+
+**Decision.** `FocusNowReason` loses `NoTimeToday`. The card appears for a paused
+session or a reminder that has passed, and for nothing else. A task scheduled for
+today carrying no time stays in the "No time set" band, where it always belonged.
+
+This supersedes D-012's third reason. It also ends D-031's split threshold: the
+app and the widget now read the same rule, and the widget's filter goes with it.
+
+**What changed the answer.** D-031 made this argument fourteen entries ago and
+stopped at the app boundary. It cut `NoTimeToday` from the widget because a task
+"whose entire claim is that the user put it on today and said nothing about when"
+is not enough to assert on, and it defended keeping the reason in-app on the
+grounds that opening Today is a question being asked, so the card may answer it.
+
+That defends answering. It does not defend answering with the label already on
+the screen. Three things become visible when the case is looked at directly:
+
+- The reason line under `NoTimeToday` reads "Scheduled for today", sitting
+  directly above a band labelled "No time set". It is the band label in a
+  sentence.
+- D-012 promotes the card's task out of its band, so under this reason the card
+  *is* the first row of the band immediately below it, lifted out and drawn at
+  double size. Nothing is added but weight.
+- The grounds apply equally to every task in that band. `focusNow` then picks the
+  first by list order and states a reason that would be equally true of the next
+  four. That is a ranking with nothing to say why its head is its head, which is
+  what D-004 removed the queue for. D-012's defence against being the queue again
+  was that the card states its reason on screen; a reason that cannot distinguish
+  its task from four others does not clear that bar.
+
+**What survives is the two reasons that name an event.** A paused session is not
+derivable from any list on any screen: no row can say that work was started and
+has seventeen minutes left, and per `FocusNow.kt` the session surviving the sheet
+depends on this card pointing at it. A reminder that fired and was not acted on
+is `PRODUCT.md` principle 1's defining failure, and the app promoting it is the
+app admitting it. Both are things that happened. Neither is a position in a list.
+
+**The cost, taken deliberately.** On a day with no paused session and no passed
+reminder there is no card, and for a user who schedules days rather than times
+that is most days. A card seen rarely is a card that is learned slowly, and the
+Focus button on it is Today's only one-tap route into a session, so that route
+gets rarer too.
+
+Accepted, because principle 2 asks Today to make the answer obvious within
+seconds and the bands already do that by ordering: past, present, future, with
+the answer at the top of the screen. Against that baseline the `NoTimeToday` card
+was contributing size, not information. A card that is right whenever it appears
+is worth more than one that appears daily and guesses, and the guessing one
+teaches the user to skip the top of the screen.
+
+**What this does not reopen.** Not the queue, still. Not Anytime, whose vocabulary
+D-002 cut and whose band label D-012 deliberately worded in plain English. The
+bands are untouched, including their order and the Completed disclosure.
+
+**What would reverse this.** Evidence that Today reads as inert for users who set
+no reminder times, or that the card appears too rarely to be understood when it
+does. Both are observable without instrumentation the app does not have: the
+first shows up as users not knowing Focus exists, the second as the card being
+ignored on the days it fires. Restoring the reason is an enum value and a branch.
+
+## D-036. The widget fills the space it was given, not the breakpoint it matched
+
+**Decision.** `rowCapacity` is derived from the widget's reported height rather
+than looked up from a table keyed on `WidgetLayout`. The enum goes with the
+table; the responsive sizes D-031 declared stay exactly as they are.
+
+    available = height - header - bottom inset - disclosure
+    available -= lead card + its gap, when there is a lead
+    capacity  = floor(available / row height)
+
+The lead card and the row height are both multiplied by the font scale, which is
+what used to be spelled as a `largeText` branch.
+
+**Why.** D-031 declared two responsive sizes, 288x190 and 364x266, and the model
+then treated them as the only two shapes a widget can be. A widget is resized by
+dragging, so most real ones are neither. The failure it produced was reported
+from a phone: a widget clearly taller than Compact but a little narrower than
+Medium fell to Compact, and Compact with a lead card is zero rows, so more than
+half of a large widget was empty container with one card floating at the top.
+
+`layout` was the wrong input. Height is what row capacity is a function of, and
+width had a vote purely because it shared a breakpoint with height.
+
+**This does not reverse D-031.** That entry's argument was against branching on a
+launcher name or a cell count, in favour of sizes reported by the platform.
+Reading the reported height is the same argument carried one step further: it is
+still the platform's number, and it is now the number the calculation actually
+depends on. The two `DpSize`s remain, because Glance needs them to pick which
+RemoteViews it builds.
+
+**It reproduces the old table exactly at both declared sizes.** All eight
+combinations of the two sizes, lead or no lead, and normal or large text come out
+at the counts the hand-tuned `when` returned, which is what makes this a
+generalisation rather than a retune. `FocuslistWidgetModelTest` pins those eight
+so a change to any constant has to admit which case it moved.
+
+**The disclosure is reserved whether or not it appears.** It costs 20dp on a
+widget that has nothing to hide. It buys that `+N more` can never be the thing
+that gets clipped, and the disclosure is the only thing on the surface that says
+rows exist which are not being shown. D-031 already refuses "a count of anything,
+beyond disclosing rows that did not fit"; this keeps the one count it allows
+legible.
+
+**What would reverse this.** A launcher that reports a height the widget does not
+get, which would show as clipped rows rather than as empty space. The heights
+here are the ones the composables declare, so the check is whether those stay in
+step: a row that changes height and does not change `RowHeight` puts the two out
+of agreement, and nothing but a render will say so.
+
+## D-036. Task Details puts its two actions in a floating toolbar
+
+**Decision.** Start focus and Delete move into one `HorizontalFloatingToolbar`,
+pinned bottom centre. The full-width Start focus button at the foot of the
+scroll is removed, and so is the app-bar overflow that held Delete. The
+checkbox beside the title stays a checkbox.
+
+**What this supersedes.** Three things, and each was argued rather than
+assumed.
+
+`expressive-components.md` lists `FloatingToolbar` under "Do not introduce,
+unless a later product decision explicitly requires one", noting the exclusion
+was "because Focuslist has no use for them, not because they are unsound".
+This is that decision. The list also still forbids `ButtonGroup`, which D-026
+introduced through the same escape hatch and nobody removed from the list; that
+line needs correcting either way.
+
+D-022 put Delete in an overflow and rejected every alternative. Its reasoning
+is kept where it still holds and named where it does not, below.
+
+`task-details.md` described the third region as "One full-width `Start focus`".
+It is now the toolbar's trailing action.
+
+**The complaint that started it.** An overflow whose only item is Delete
+promises options it does not have. Three dots say "there are more of these", and
+there is one. D-022 argued well against an icon button, against a button beside
+Start focus, and against a confirmation dialog, but never against the menu
+itself being a menu of one.
+
+**What D-022 got right and this keeps.** Delete must not sit one tap from Back
+in the corner a thumb reaches for when leaving; it is not there. It must not
+carry the same weight as the screen's payoff; Start focus is the toolbar's
+attached FAB and Delete is a plain icon button inside it, which is Material's
+own arrangement for a bar with one action that outranks the rest. A
+`FilledIconButton` was the first build and only approximated it: the same fill,
+none of the size or the separation, so the two read as equals with one tinted
+differently.
+Deletion stays a soft delete raising the same single undo offer every list
+raises, with no confirmation dialog, because a dialog is a second question after
+a reversible answer.
+
+**What D-022 got right and this gives up.** "An unlabelled trash icon is the
+least legible form of the most destructive action." That is still true and this
+accepts it. Two things make it affordable: the delete is soft and undoable, and
+the icon carries `error` as it did in the menu, so colour remains the second cue
+even though the word is gone. The word survives as the content description,
+which is what a screen reader announces.
+
+**Order: Delete leads, Start focus trails, which inverts the menu rule and
+applies its reasoning.** `expressive-components.md` orders the row menu
+"constructive before destructive, so the thumb does not land on Delete". In a
+vertical menu the thumb lands nearest the bottom; in a horizontal bar it lands
+nearest the reaching side. Putting Start focus at the trailing end is what keeps
+the thumb off Delete here, and `FloatingToolbarHorizontalFabPosition` defaults
+to exactly that, so the arrangement is the component's own rather than one
+imposed on it.
+
+**Why a floating toolbar rather than a docked one.** M3 separates them by
+purpose: docked carries global actions repeated across pages, floating carries
+contextual actions belonging to the body content. These two act on the one task
+the screen is about. Task Details also has no navigation bar, so the rule
+against pairing a docked toolbar with one does not arise either way.
+
+**What this does not fix, and the honest cost.** Start focus loses its label,
+and `task-details.md` recorded that the same button without its glyph "was
+pressed by people meaning to close the page". The glyph solved a filled pill
+being read as a commit control; a small play icon in a floating bar is not
+open to that reading, so the specific trap is gone. What replaces it is lower
+discoverability: a first-time user sees two glyphs rather than a worded action.
+That is the trade this decision makes, and if it turns out to cost more than the
+overflow did, the entry to supersede is this one.
+
+**Clearance.** The scrolling column reserves `FocuslistDimensions.FabClearance`
+beneath its last Plan row, on the same terms the lists reserve it under their
+FAB: a floating control that covers the thing it acts on is worse than one that
+scrolls.

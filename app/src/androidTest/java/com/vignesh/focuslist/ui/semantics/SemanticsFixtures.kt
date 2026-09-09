@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 /**
  * The two font scales every semantics contract in this package is checked at.
@@ -208,6 +209,7 @@ internal fun testTask(
     notes: String? = null,
     recurrence: Recurrence? = null,
     completedAt: Instant? = null,
+    reminderAt: LocalDateTime? = null,
     createdAt: Instant = TestCreatedAt
 ): Task = Task(
     id = id,
@@ -218,8 +220,18 @@ internal fun testTask(
     dueDate = dueDate,
     estimatedDurationMinutes = estimatedDurationMinutes,
     recurrence = recurrence,
-    completedAt = completedAt
+    completedAt = completedAt,
+    reminderAt = reminderAt
 )
+
+/**
+ * A reminder on the fixture day, already in the past.
+ *
+ * [TestToday] is a fixed date behind the real clock, so a task carrying this is
+ * the Focus now card's `ReminderPassed` case whenever a test runs. Since D-035
+ * that is the only reason a test can reach without starting a session.
+ */
+internal val TestPassedReminder: LocalDateTime = TestToday.atTime(9, 0)
 
 /**
  * A real view model over fake storage and a fixed day.

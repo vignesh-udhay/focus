@@ -144,6 +144,6 @@ class EmptyStateSemanticsTest {
 
     private companion object {
         const val HEADLINE = "Nothing scheduled for today"
-        const val SUPPORTING = "Add a task when you are ready."
+        const val SUPPORTING = "Tasks without a day wait in your Inbox."
     }
 }

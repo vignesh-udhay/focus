@@ -1,28 +1,25 @@
 package com.vignesh.focuslist.ui.task
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FloatingToolbarDefaults
+import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
@@ -50,7 +47,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vignesh.focuslist.R
-import com.vignesh.focuslist.ui.component.FocuslistMenuShape
 import com.vignesh.focuslist.core.design.FocuslistDimensions
 import com.vignesh.focuslist.core.design.FocuslistSpacing
 import com.vignesh.focuslist.core.design.focuslistContentGutter
@@ -101,6 +97,7 @@ fun TaskDetailsScreen(
     val today by viewModel.today.collectAsStateWithLifecycle()
 
     val task = tasks.firstOrNull { it.id == taskId }
+    var taskWasShown by rememberSaveable(taskId) { mutableStateOf(false) }
 
     // The task was deleted from under the screen, or completed from a
     // notification. There is nothing left to edit, so the screen leaves rather
@@ -110,8 +107,14 @@ fun TaskDetailsScreen(
     // placeholder before storage answers, and reading that placeholder as
     // "gone" would pop the screen on the way in. That is the same trap Focus
     // fell into and `focus.md` warns about.
+    // A non-empty list is still useful for rejecting a stale id on first load.
+    // Once this particular task has been shown, though, its disappearance is
+    // conclusive even when it was the last live task and the list is now empty.
     LaunchedEffect(task, tasks.isEmpty()) {
-        if (task == null && tasks.isNotEmpty()) onBack()
+        when {
+            task != null -> taskWasShown = true
+            taskWasShown || tasks.isNotEmpty() -> onBack()
+        }
     }
 
     val current = task ?: return
@@ -189,12 +192,11 @@ private fun TaskDetailsContent(
             // Today. The screen name is published as `paneTitle` above, which a
             // screen reader announces and nothing draws.
             //
-            // The overflow holds Delete and nothing else, per D-022. A menu
-            // rather than an icon button: an unlabelled trash icon is the least
-            // legible form of the most destructive action, and an icon here
-            // would sit one tap from Back, in the corner a thumb reaches for
-            // when leaving. `expressive-components.md` already decided that for
-            // the row menu, as constructive before destructive.
+            // **No actions.** D-036 moved Delete to the floating toolbar, so
+            // the overflow that held it and nothing else is gone. A menu whose
+            // only item is one action promises options it does not have, and
+            // the trailing slot now matches the three list screens by being
+            // empty here rather than by holding a different control.
             FocuslistTopAppBar(
                 title = null,
                 navigationIcon = {
@@ -204,60 +206,40 @@ private fun TaskDetailsContent(
                             contentDescription = stringResource(R.string.task_details_back)
                         )
                     }
-                },
-                actions = {
-                    TaskDetailsOverflow(onDelete = onDelete)
                 }
             )
         }
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                // Six fields at large font scales do not fit, and without this
-                // Start focus sits off the bottom with no way to reach it.
-                .verticalScroll(rememberScrollState())
-                .padding(innerPadding)
-                .padding(horizontal = FocuslistSpacing.md + gutter)
-                .padding(bottom = FocuslistSpacing.lg),
-            verticalArrangement = Arrangement.spacedBy(FocuslistSpacing.md)
-        ) {
-            IdentityRegion(task = task, onToggleComplete = onToggleComplete, onEdit = onEdit)
-
-            PlanRegion(
-                task = task,
-                today = today,
-                onOpenSheet = { sheet -> openSheet = sheet }
-            )
-
-            // **The glyph is what stops this reading as a Done button.** Every
-            // other full-width button at the foot of a surface in this app
-            // commits and leaves: Done in the custom-duration state, Save
-            // repeat, Doesn't repeat. This one enters a mode instead, and
-            // wearing their treatment it was pressed by people meaning to
-            // close the screen. D-018 sharpens that trap by removing Save, so
-            // a lone filled pill at the bottom has no other reading available.
-            //
-            // The app already draws the line, and this was on the wrong side
-            // of it: text alone commits the surface, an icon beside the label
-            // says the button does something else. `Choose a date` is the
-            // precedent. The play glyph is Focus's own, so the control that
-            // starts a session looks the same in both places.
-            Button(
-                onClick = onStartFocus,
+        // **A Box, so the toolbar floats over the content rather than ending
+        // it.** The column below scrolls; the toolbar does not move with it.
+        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = FocuslistDimensions.ActionHeight)
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = FocuslistSpacing.md + gutter)
+                    // Clearance beneath the last Plan row, on the same terms the
+                    // lists reserve it under their FAB: a floating control that
+                    // covers the thing it acts on is worse than one that scrolls.
+                    .padding(bottom = FocuslistDimensions.FabClearance),
+                verticalArrangement = Arrangement.spacedBy(FocuslistSpacing.md)
             ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_play_arrow),
-                    // The label beside it already names the action.
-                    contentDescription = null,
-                    modifier = Modifier.size(ButtonDefaults.IconSize)
+                IdentityRegion(task = task, onToggleComplete = onToggleComplete, onEdit = onEdit)
+
+                PlanRegion(
+                    task = task,
+                    today = today,
+                    onOpenSheet = { sheet -> openSheet = sheet }
                 )
-                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                Text(stringResource(R.string.task_start_focus))
             }
+
+            TaskDetailsToolbar(
+                onStartFocus = onStartFocus,
+                onDelete = onDelete,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = FocuslistSpacing.md)
+            )
         }
     }
 
@@ -619,54 +601,71 @@ private fun PlanSheetHost(
 }
 
 /**
- * The app-bar overflow, holding Delete and nothing else.
+ * The screen's two actions, floating over the content.
  *
- * `docs/decisions.md` D-022. One item is enough: it buys a tap of protection
- * without a confirmation dialog, which deletion does not need because it is a
- * soft delete raising the same undo offer every list raises.
+ * `docs/decisions.md` D-036. Start focus and Delete, in one
+ * `HorizontalFloatingToolbar`, replacing a full-width button at the foot of the
+ * scroll and an app-bar overflow whose only item was Delete.
  *
- * Labelled in `error`, as `expressive-components.md` specifies for the row
- * menu's Delete. Colour is the second cue there rather than the only one: the
- * word says it first.
+ * **Delete leads and Focus trails, which is the opposite of the menu rule and
+ * the same reasoning.** `expressive-components.md` orders the row menu
+ * "constructive before destructive, so the thumb does not land on Delete". In a
+ * vertical menu the thumb lands nearest the bottom; in a horizontal bar it lands
+ * nearest the reaching side. Putting Focus at the trailing end is what keeps the
+ * thumb off Delete here, and it is also where Material puts a toolbar's
+ * prominent action.
+ *
+ * **Focus is filled and Delete is not**, which answers D-022's objection to
+ * pairing them: a rare one-way action must not carry the same weight as the
+ * screen's payoff. The fill is the weight, since neither can carry a label.
+ *
+ * **Both lose their words, and that is the cost D-036 accepts.** D-022 called an
+ * unlabelled trash icon "the least legible form of the most destructive action",
+ * and that is still true. What is different is that deletion here is a soft
+ * delete raising the same undo offer every list raises, and that a one-item
+ * overflow was hiding the action behind a control promising options it did not
+ * have. The content descriptions carry the words for a screen reader.
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun TaskDetailsOverflow(onDelete: () -> Unit) {
-    var expanded by rememberSaveable { mutableStateOf(false) }
-
-    IconButton(onClick = { expanded = true }) {
-        Icon(
-            painter = painterResource(R.drawable.ic_more_vert),
-            contentDescription = stringResource(R.string.task_details_more)
-        )
-    }
-
-    DropdownMenu(
-        expanded = expanded,
-        onDismissRequest = { expanded = false },
-        shape = FocuslistMenuShape
-    ) {
-        DropdownMenuItem(
-            text = {
-                Text(
-                    text = stringResource(R.string.task_delete),
-                    color = MaterialTheme.colorScheme.error
-                )
-            },
-            onClick = {
-                expanded = false
-                onDelete()
-            },
-            // After the label, as Material's own menu draws it, and in `error`
-            // like the word. Colour is the second cue on both halves; the word
-            // still says it first.
-            trailingIcon = {
+private fun TaskDetailsToolbar(
+    onStartFocus: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    HorizontalFloatingToolbar(
+        expanded = true,
+        modifier = modifier,
+        // **Focus is the attached FAB, which is Material's own arrangement for
+        // a toolbar with one action that outranks the rest.** It carries the
+        // prominence the full-width button used to, without a label and without
+        // competing with the bar it sits on. `FilledIconButton` was the first
+        // build of this and only approximated it: same fill, none of the size
+        // or the separation, so the two actions read as a pair of equals with
+        // one tinted differently.
+        floatingActionButton = {
+            FloatingToolbarDefaults.StandardFloatingActionButton(onClick = onStartFocus) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_delete),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(MenuDefaults.TrailingIconSize)
+                    painter = painterResource(R.drawable.ic_play_arrow),
+                    // The only place the words survive, so they are the action
+                    // rather than the glyph: "Start focus", never "play".
+                    contentDescription = stringResource(R.string.task_start_focus)
                 )
             }
-        )
+        }
+    ) {
+        IconButton(
+            onClick = onDelete,
+            colors = IconButtonDefaults.iconButtonColors(
+                // The word is gone, so the colour is the only cue left that this
+                // one is different in kind. It was `error` on the menu item too.
+                contentColor = MaterialTheme.colorScheme.error
+            )
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_delete),
+                contentDescription = stringResource(R.string.task_delete)
+            )
+        }
     }
 }

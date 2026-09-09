@@ -18,14 +18,18 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -37,6 +41,7 @@ import com.vignesh.focuslist.core.design.FocuslistDimensions
 import com.vignesh.focuslist.core.design.FocuslistSpacing
 import com.vignesh.focuslist.core.design.focuslistContentGutter
 import com.vignesh.focuslist.ui.component.FocuslistTopAppBar
+import com.vignesh.focuslist.ui.component.UndoSnackbarHost
 import com.vignesh.focuslist.ui.theme.FocuslistTheme
 import java.time.LocalDate
 
@@ -48,6 +53,7 @@ fun BackupScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument(JsonMimeType),
@@ -65,11 +71,38 @@ fun BackupScreen(
         restoreLauncher.launch(arrayOf(JsonMimeType, "text/json"))
     }
 
+    // **A finished operation says so, and it used to not.** Success landed on
+    // the same state the screen starts in, so the picker closed and nothing
+    // else happened. This page shows no tasks, so a restore that replaced the
+    // whole database looked exactly like one that had not run.
+    //
+    // A snackbar rather than a dialog, because the message asks nothing of the
+    // user. The error is a dialog because it needs a decision: choose another
+    // file. `settings.md` specified that dialog in full and never specified
+    // this, which is how the gap survived being reviewed.
+    val done = state.done
+    val doneMessage = done?.let { finished ->
+        pluralStringResource(
+            if (finished.operation == BackupOperation.Restore) R.plurals.backup_restore_done
+            else R.plurals.backup_export_done,
+            finished.taskCount,
+            finished.taskCount
+        )
+    }
+
+    LaunchedEffect(done) {
+        if (done == null || doneMessage == null) return@LaunchedEffect
+
+        snackbarHostState.showSnackbar(doneMessage)
+        viewModel.consumeDone()
+    }
+
     BackupContent(
         isWorking = state.isWorking,
         onExport = chooseExport,
         onRestore = chooseRestore,
         onBack = onBack,
+        snackbarHostState = snackbarHostState,
         modifier = modifier
     )
 
@@ -79,7 +112,7 @@ fun BackupScreen(
             onDismiss = viewModel::dismissError,
             onChooseAnother = {
                 viewModel.dismissError()
-                if (error == BackupError.Restore) chooseRestore() else chooseExport()
+                if (error == BackupOperation.Restore) chooseRestore() else chooseExport()
             }
         )
     }
@@ -91,6 +124,7 @@ private fun BackupContent(
     onExport: () -> Unit,
     onRestore: () -> Unit,
     onBack: () -> Unit,
+    snackbarHostState: SnackbarHostState,
     modifier: Modifier = Modifier
 ) {
     val gutter = focuslistContentGutter()
@@ -98,6 +132,12 @@ private fun BackupContent(
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface,
+        // The app's one snackbar host, which is a Material host plus a polite
+        // live region. Named for where it came from rather than for what it
+        // does: nothing in it is specific to undo, and a second component
+        // differing only in name is how one of them ends up missing the live
+        // region.
+        snackbarHost = { UndoSnackbarHost(snackbarHostState) },
         topBar = {
             FocuslistTopAppBar(
                 title = stringResource(R.string.backup_title),
@@ -201,11 +241,11 @@ private fun BackupAction(
 
 @Composable
 private fun BackupErrorDialog(
-    error: BackupError,
+    error: BackupOperation,
     onDismiss: () -> Unit,
     onChooseAnother: () -> Unit
 ) {
-    val restore = error == BackupError.Restore
+    val restore = error == BackupOperation.Restore
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -254,7 +294,8 @@ private fun BackupPreview() {
             isWorking = false,
             onExport = {},
             onRestore = {},
-            onBack = {}
+            onBack = {},
+            snackbarHostState = remember { SnackbarHostState() }
         )
     }
 }

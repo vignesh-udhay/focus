@@ -18,6 +18,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.SideEffect
@@ -47,7 +48,10 @@ import com.vignesh.focuslist.core.domain.todayTasks
 import com.vignesh.focuslist.ui.component.AddTaskFab
 import com.vignesh.focuslist.ui.component.DurationLabel
 import com.vignesh.focuslist.ui.component.FocuslistTopAppBar
+import com.vignesh.focuslist.ui.component.AllDoneMascot
+import com.vignesh.focuslist.ui.component.TaskListDoneHeader
 import com.vignesh.focuslist.ui.component.TaskListEmptyState
+import com.vignesh.focuslist.ui.component.TaskListErrorState
 import com.vignesh.focuslist.ui.component.SectionLabel
 import com.vignesh.focuslist.ui.component.TaskListRow
 import com.vignesh.focuslist.ui.component.TodayMascot
@@ -74,6 +78,7 @@ fun TodayScreen(
     // rather than a sheet this screen hosts. The route is the host's to know.
     onOpenTask: (String) -> Unit,
     modifier: Modifier = Modifier,
+    quickAddRequest: Int = 0,
     bottomBar: @Composable () -> Unit = {},
     onOpenFocus: () -> Unit = {},
     // The three dots at the end of the header row. A slot rather than a route,
@@ -85,10 +90,15 @@ fun TodayScreen(
     val today by viewModel.today.collectAsStateWithLifecycle()
     val focusNow by viewModel.focusNow.collectAsStateWithLifecycle()
     val focusSession by viewModel.focusSession.collectAsStateWithLifecycle()
+    val readFailed by viewModel.readFailed.collectAsStateWithLifecycle()
 
     // Screen state, not app state: opening Quick Add here says nothing about
     // whether Inbox has its own sheet open.
     var isQuickAddVisible by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(quickAddRequest) {
+        if (quickAddRequest > 0) isQuickAddVisible = true
+    }
 
     val snackbarHostState = remember { SnackbarHostState() }
     UndoSnackbarEffect(viewModel = viewModel, snackbarHostState = snackbarHostState)
@@ -132,6 +142,8 @@ fun TodayScreen(
             onOpenFocus()
         },
         onAddTask = { isQuickAddVisible = true },
+        readFailed = readFailed,
+        onRetry = viewModel::retryRead,
         modifier = modifier,
         snackbarHostState = snackbarHostState,
         bottomBar = bottomBar,
@@ -196,6 +208,8 @@ private fun TodayContent(
     onFocusTask: (String) -> Unit,
     onFocusNow: () -> Unit = {},
     onAddTask: () -> Unit,
+    readFailed: Boolean = false,
+    onRetry: () -> Unit = {},
     modifier: Modifier = Modifier,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     bottomBar: @Composable () -> Unit = {},
@@ -216,6 +230,15 @@ private fun TodayContent(
     // done in the query rather than here, because a screen that filtered the
     // list it was handed would be a second place the ordering is decided.
     val sections = todaySections(tasks, today, promotedTaskId = focusNow?.task?.id)
+
+    // A day that had work and finished it, which D-033 separates from a day
+    // that never had any. Read off the bands rather than the tasks, so the one
+    // place that decides what is outstanding stays `todaySections`. A promoted
+    // Focus card is outstanding work by definition, so its presence rules this
+    // out the same way it rules out the empty state.
+    val isEverythingDone = focusNow == null &&
+        sections.isNotEmpty() &&
+        sections.all { it.band == TodayBand.COMPLETED }
 
     // Collapsed by default, per D-012, and screen state rather than app state:
     // whether the user opened Completed on Today says nothing about anything
@@ -254,7 +277,14 @@ private fun TodayContent(
         // now card and nothing else is not empty, and telling the user there is
         // nothing scheduled while a task sits above the words would be the two
         // halves of the screen disagreeing.
-        if (tasks.isEmpty() && focusNow == null) {
+        if (readFailed) {
+            TaskListErrorState(
+                headline = stringResource(R.string.error_tasks_headline),
+                supporting = stringResource(R.string.error_tasks_supporting),
+                onRetry = onRetry,
+                modifier = Modifier.padding(innerPadding)
+            )
+        } else if (tasks.isEmpty() && focusNow == null) {
             TaskListEmptyState(
                 headline = stringResource(R.string.today_empty_headline),
                 supporting = stringResource(R.string.today_empty_supporting),
@@ -275,6 +305,26 @@ private fun TodayContent(
                 ),
                 verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
             ) {
+                // Above the Completed disclosure, not instead of it. The
+                // day is finished, which is worth saying, but the rows are
+                // still how a task completed today is reopened once the undo
+                // snackbar has gone. D-033 records the version that replaced
+                // them and why it was wrong.
+                if (isEverythingDone) {
+                    item(key = "all-done") {
+                        TaskListDoneHeader(
+                            headline = stringResource(R.string.today_all_done_headline),
+                            supporting = stringResource(R.string.today_all_done_supporting),
+                            illustration = { AllDoneMascot() },
+                            modifier = Modifier.animateItem(
+                                fadeInSpec = FocuslistMotion.reveal(),
+                                placementSpec = FocuslistMotion.reveal(),
+                                fadeOutSpec = FocuslistMotion.reveal()
+                            )
+                        )
+                    }
+                }
+
                 if (focusNow != null) {
                     item(key = "focus-now") {
                         FocusNowCard(
@@ -493,9 +543,26 @@ private fun sampleTodayTasks(): List<Task> {
             createdAt = SampleTimestamp,
             scheduledDate = today.minusDays(2),
             estimatedDurationMinutes = 15
+        ),
+        // The card's task, and the only kind of task that can be one since
+        // D-035: a reminder that fired on an earlier day and was not acted on.
+        // Dated rather than timed today so it is reliably in the past whenever a
+        // preview renders. It leaves the Overdue band, which task 7 keeps
+        // populated.
+        Task(
+            id = "8",
+            title = "Confirm the venue booking",
+            createdAt = SampleTimestamp,
+            scheduledDate = today.minusDays(1),
+            reminderAt = today.minusDays(1).atTime(9, 0),
+            estimatedDurationMinutes = 20
         )
     )
 }
+
+/** The sample task the Focus now previews promote. */
+private fun sampleFocusNow(): FocusNow =
+    FocusNow(sampleTodayTasks().first { it.id == "8" }, FocusNowReason.ReminderPassed)
 
 @Preview(name = "Today light", heightDp = 640)
 @Preview(name = "Today dark", heightDp = 640, uiMode = Configuration.UI_MODE_NIGHT_YES)
@@ -506,7 +573,7 @@ private fun TodayScreenPreview() {
         TodayContent(
             tasks = todayTasks(sampleTodayTasks(), today),
             today = today,
-            focusNow = FocusNow(sampleTodayTasks()[0], FocusNowReason.NoTimeToday),
+            focusNow = sampleFocusNow(),
             onToggleComplete = {},
             onOpenTask = {},
             onDelete = {},
@@ -544,7 +611,7 @@ private fun TodayScreenLargeFontPreview() {
         TodayContent(
             tasks = todayTasks(sampleTodayTasks(), today),
             today = today,
-            focusNow = FocusNow(sampleTodayTasks()[0], FocusNowReason.NoTimeToday),
+            focusNow = sampleFocusNow(),
             onToggleComplete = {},
             onOpenTask = {},
             onDelete = {},

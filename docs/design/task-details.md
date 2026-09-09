@@ -94,22 +94,32 @@ one field and it is shown once.
 **Plan.** A section label, then five grouped rows: Scheduled, Due date,
 Reminder, Duration, Repeat. Each shows its current value and opens a sheet.
 
-**Action.** One full-width `Start focus`, carrying a play glyph. It is the
-screen's only accent and one of two ways into Focus alongside the Focus now
-card, the row long-press having gone with D-023. `focus.md` carries the entry
-rules.
+**Actions.** A floating toolbar, pinned bottom centre, holding Delete and Start
+focus. D-036. Start focus is the toolbar's attached FAB and one of two ways into
+Focus alongside the Focus now card, the row long-press having gone with D-023.
+`focus.md` carries the entry rules.
 
-The glyph is not decoration. Without it the button wears the treatment every
-commit in this app wears, on a screen D-018 left with nothing to commit, and it
-was pressed by people meaning to close the page. `expressive-components.md`
-states the rule it now follows: text alone commits the surface, an icon beside
-the label says the button does something else.
+This replaces a full-width `Start focus` at the foot of the scroll and an
+app-bar overflow whose only item was Delete. A menu of one promises options it
+does not have, and the two actions belong together: both act on the one task the
+screen is about, which is what M3 means by a floating toolbar's contextual
+actions.
+
+The full-width button carried a play glyph because without it the button wore
+the treatment every commit in this app wears, on a screen D-018 left with
+nothing to commit, and it was pressed by people meaning to close the page. That
+trap is gone with the pill: a small play icon in a floating bar is not open to
+being read as Done. What replaces it is lower discoverability, which D-036
+records as the trade.
 
 ---
 
 # The app bar has no title
 
-A back arrow at the start and an overflow at the end, holding one item.
+A back arrow at the start and nothing at the end. The overflow that held Delete
+is gone with D-036, which moved it to the floating toolbar; the trailing slot now
+matches Today, Inbox and Upcoming by being empty here rather than by holding a
+different control.
 
 The screen used to be titled "Task", centred, directly above the task's own
 title. Two centred headings stacked, the upper one naming the app rather than
@@ -360,27 +370,36 @@ without scrolling `Start focus` sits off the bottom with no way to reach it.
 
 # Deleting
 
-The overflow holds Delete and nothing else. D-022 is the entry.
+Delete is the leading action in the floating toolbar. D-036 is the entry;
+D-022 is the one it supersedes.
 
-**A menu rather than an icon button.** An unlabelled trash icon is the least
-legible form of the most destructive action, and an icon in the bar would sit
-one tap from Back, in the corner a thumb reaches for when leaving.
-`expressive-components.md` decided that principle for the row menu already:
-constructive before destructive, so the thumb does not land on Delete. The bar's
-trailing slot is also the overflow on the three primary screens, and a different
-control there would make one slot mean two things.
+**Why not the overflow any more.** It held Delete and nothing else, and three
+dots promising options that turn out to be one option is a control lying about
+itself. D-022 argued each alternative down and never argued for the menu.
 
-**A menu rather than a button beside Start focus**, for the same thumb reason,
-and because it would weight a rare one-way action like the screen's primary.
+**What D-022 settled and still holds.** Delete does not sit one tap from Back in
+the corner a thumb reaches for when leaving, and it does not carry the weight of
+the screen's payoff. In the toolbar it leads and Start focus trails as the
+attached FAB, so the thumb's natural landing is the constructive action. That is
+the row menu's rule, "constructive before destructive", read for a horizontal
+bar instead of a vertical list.
 
-Three actions, three weights. Start focus is full-width because it is the
-payoff. Completion is a checkbox because it is reversible state. Delete is a
-menu item because it is rare and terminal.
+**What it gives up.** The word. "An unlabelled trash icon is the least legible
+form of the most destructive action" was D-022's first objection and it is still
+true; the icon keeps `error` so colour is the second cue, and the word survives
+as the content description. The delete is soft and undoable, which is what makes
+that affordable.
+
+Three actions, three weights. Start focus is a FAB because it is the payoff.
+Completion is a checkbox because it is reversible state. Delete is a plain icon
+button because it is rare and terminal.
 
 **No confirmation.** Deletion is a soft delete raising the same single undo
 offer every list raises, and this screen already hosts the snackbar. It also
-does not navigate: the task leaving `allTasks` is what pops the screen, so
-deletion has one exit rather than two that could disagree.
+does not navigate directly: once the task has been shown, its leaving
+`allTasks` is what pops the screen, even when it was the final live task and
+the resulting list is empty. Deletion therefore has one exit rather than two
+that could disagree.
 
 ---
 
@@ -396,7 +415,7 @@ Not part of this screen:
 
 - subtasks, projects and areas
 - rich text or formatting in notes
-- deletion as anything other than an overflow item
+- a confirmation dialog before deleting
 - a typed date field, which is Quick Add's job
 
 ---

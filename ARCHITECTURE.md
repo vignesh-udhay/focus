@@ -16,7 +16,8 @@ No dependency injection framework. No Hilt, no Dagger, no Koin. Wiring is
 manual and lives in one place.
 
 The dependency list is deliberately short: Compose, Material 3, Navigation
-Compose, Lifecycle, Room. Adding to it needs a reason, per `AGENTS.md`.
+Compose, Lifecycle, Room, and Glance for the launcher widget. Adding to it
+needs a reason, per `AGENTS.md`.
 
 ## Packages
 
@@ -25,12 +26,13 @@ Compose, Lifecycle, Room. Adding to it needs a reason, per `AGENTS.md`.
     core/notification alarm seam and its Android implementation
     core/text         resource-backed wording shared by screens and notifications
     core/time         current-day seam and its Android implementation
-    data/local        Room plus the two-value SharedPreferences store
+    data/local        Room plus small SharedPreferences stores
     data/repository   task, reminder-delivery, and backup repositories/codecs
     ui/component      shared composables
     ui/<screen>       one package per screen
     ui/navigation     routes and the NavHost
     ui/theme          Material theme, type, shape
+    ui/widget         Glance rendering, actions, and its pure responsive model
 
 `core` knows nothing about Android UI. `ui` knows nothing about Room.
 `data` knows nothing about composables.
@@ -52,6 +54,8 @@ notification must agree on, belongs here.
 - `currentDay`, a `SystemCurrentDay` that listens for date-change broadcasts
 - `focusAlarms`, an `AndroidFocusAlarms`
 - `preferences`, the observable dynamic-colour and theme choices
+- `focusSessionStore`, the resumable Focus clock and task pointer
+- `widgetInteractions`, the transient just-completed row evidence
 - `backupRepository`, coordinating versioned JSON with Room and preferences
 
 It is deliberately not a service locator. It holds these and nothing else. If
@@ -83,13 +87,16 @@ that calls it. Do not add a DAO query. Do not filter in a composable.
 
 ## Seams: how Android is kept out of testable code
 
-Two interfaces exist purely so that decisions stay testable without a device:
+Three interfaces exist purely so that decisions stay testable without a device:
 
 - `CurrentDay` in `core/time`, implemented by `SystemCurrentDay`. Today is a
   value the app is told, never a value it reads from the clock inline.
 - `FocusAlarms` in `core/notification`, implemented by `AndroidFocusAlarms`.
   The view model decides when something should be announced and does not know
   that `AlarmManager` or notifications exist.
+- `FocusSessionStore` in `core/domain`, implemented by
+  `FocusSessionPreferences`. The view model owns the interaction while the
+  persisted clock lets process death and the home widget resume the same task.
 
 Both are process-scoped, owned by the application, and injected into the view
 model. This is the established pattern. Follow it for anything that touches
@@ -114,6 +121,11 @@ that has to think about it. See `AGENTS.md`.
 Deletion is soft. `deletedAt` is set and cleared, which is what makes undo
 work.
 
+The active Focus session is four scalar values in SharedPreferences rather
+than a Room table: one task pointer and one clock, atomically replaced together.
+The widget's completion evidence is another small preference record and is
+retired on the first later task or day snapshot.
+
 ## Navigation
 
 Compose Navigation. Routes are string constants in `FocuslistRoutes`, named
@@ -126,6 +138,11 @@ through Settings.
 Focus is a sheet rather than a destination, which matches `PRODUCT.md`
 treating it as a mode rather than a place. `FocuslistNavHost` opens
 `FocusSheet` over whatever list the user was on.
+
+Launcher-widget intents enter through the single-top `MainActivity` and become
+one-shot `WidgetLaunchCommand`s. Navigation owns routing to Today, Quick Add,
+Task Details, or a persisted paused Focus session; the widget never constructs
+a Compose route itself.
 
 The Anytime and Someday routes were removed at Phase 3 along with the
 placement axis they read. `docs/decisions.md` D-002 has the reason and

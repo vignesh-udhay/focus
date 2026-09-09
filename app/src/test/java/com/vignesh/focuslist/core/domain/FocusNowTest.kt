@@ -8,10 +8,11 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 
 /**
- * The Focus now card's rule, from `docs/decisions.md` D-012.
+ * The Focus now card's rule, from `docs/decisions.md` D-012 as amended by D-035.
  *
  * The card is an assertion about one task, so the thing worth testing is when it
- * declines to make one. Most of what follows is about the card being absent.
+ * declines to make one. Most of what follows is about the card being absent, and
+ * D-035 made that the common case rather than the exception.
  */
 class FocusNowTest {
 
@@ -35,7 +36,7 @@ class FocusNowTest {
         deletedAt = deletedAt
     )
 
-    // --- the three reasons ---------------------------------------------------
+    // --- the two reasons -----------------------------------------------------
 
     @Test
     fun aPausedSessionIsTheStrongestReason() {
@@ -44,7 +45,7 @@ class FocusNowTest {
             task("paused", scheduledDate = today)
         )
 
-        val card = focusNow(tasks, today, now, pausedTaskId = "paused")
+        val card = focusNow(tasks, now, pausedTaskId = "paused")
 
         assertEquals("paused", card?.task?.id)
         assertEquals(FocusNowReason.ResumePaused, card?.reason)
@@ -59,7 +60,7 @@ class FocusNowTest {
     fun aPausedTaskQualifiesWhateverListItCameFrom() {
         val tasks = listOf(task("inbox"))
 
-        val card = focusNow(tasks, today, now, pausedTaskId = "inbox")
+        val card = focusNow(tasks, now, pausedTaskId = "inbox")
 
         assertEquals("inbox", card?.task?.id)
     }
@@ -68,10 +69,24 @@ class FocusNowTest {
     fun aReminderThatHasPassedQualifies() {
         val tasks = listOf(task("a", scheduledDate = today, reminderAt = now.minusMinutes(5)))
 
-        val card = focusNow(tasks, today, now)
+        val card = focusNow(tasks, now)
 
         assertEquals("a", card?.task?.id)
         assertEquals(FocusNowReason.ReminderPassed, card?.reason)
+    }
+
+    /**
+     * A reminder that fired on an earlier day still qualifies, and this is the
+     * card's most common case since D-035. The app said it would interrupt, it
+     * did, and the work is still outstanding.
+     */
+    @Test
+    fun aReminderThatPassedOnAnEarlierDayQualifies() {
+        val tasks = listOf(
+            task("a", scheduledDate = today.minusDays(2), reminderAt = now.minusDays(2))
+        )
+
+        assertEquals(FocusNowReason.ReminderPassed, focusNow(tasks, now)?.reason)
     }
 
     @Test
@@ -79,7 +94,7 @@ class FocusNowTest {
         val tasks = listOf(task("a", scheduledDate = today, reminderAt = now.plusMinutes(5)))
 
         // It will announce itself. That is what the Later today band is for.
-        assertNull(focusNow(tasks, today, now))
+        assertNull(focusNow(tasks, now))
     }
 
     /** A reminder exactly now has arrived. The boundary is inclusive. */
@@ -87,61 +102,87 @@ class FocusNowTest {
     fun aReminderAtThisVeryMomentQualifies() {
         val tasks = listOf(task("a", scheduledDate = today, reminderAt = now))
 
-        assertEquals(FocusNowReason.ReminderPassed, focusNow(tasks, today, now)?.reason)
-    }
-
-    @Test
-    fun aTaskScheduledForTodayWithNoTimeQualifies() {
-        val tasks = listOf(task("a", scheduledDate = today))
-
-        assertEquals(FocusNowReason.NoTimeToday, focusNow(tasks, today, now)?.reason)
+        assertEquals(FocusNowReason.ReminderPassed, focusNow(tasks, now)?.reason)
     }
 
     // --- when the card stays away -------------------------------------------
 
+    /**
+     * D-035, and the point of it. A task scheduled for today carrying no time
+     * used to be a reason of its own, which made the card the first row of the
+     * band below it drawn larger, explained by that band's own label, on grounds
+     * equally true of every other task in the band.
+     */
     @Test
-    fun nothingQualifiesWhenThereIsNothingToDo() {
-        assertNull(focusNow(emptyList(), today, now))
+    fun aTaskScheduledForTodayWithNoTimeDoesNotQualify() {
+        val tasks = listOf(task("a", scheduledDate = today))
+
+        assertNull(focusNow(tasks, now))
     }
 
     /**
-     * Overdue work is deliberately not a reason. It belongs in the Overdue band,
+     * The ordinary day, and the shape of the screen most of the time: work
+     * scheduled, nothing timed, nothing started. No card at all.
+     */
+    @Test
+    fun aFullDayWithNoTimesAndNoSessionHasNoCard() {
+        val tasks = listOf(
+            task("a", scheduledDate = today),
+            task("b", scheduledDate = today),
+            task("c", scheduledDate = today)
+        )
+
+        assertNull(focusNow(tasks, now))
+    }
+
+    @Test
+    fun nothingQualifiesWhenThereIsNothingToDo() {
+        assertNull(focusNow(emptyList(), now))
+    }
+
+    /**
+     * Overdue work is not a reason on its own. It belongs in the Overdue band,
      * where it needs a decision, and promoting it would answer "what should I do
-     * now" with something the user has already chosen not to do.
+     * now" with something the user has already chosen not to do. A reminder is
+     * what makes the difference, and the test above covers that case.
      */
     @Test
     fun overdueWorkDoesNotQualifyOnItsOwn() {
         val tasks = listOf(task("a", scheduledDate = today.minusDays(3)))
 
-        assertNull(focusNow(tasks, today, now))
+        assertNull(focusNow(tasks, now))
     }
 
     @Test
     fun anUpcomingTaskDoesNotQualify() {
         val tasks = listOf(task("a", scheduledDate = today.plusDays(1)))
 
-        assertNull(focusNow(tasks, today, now))
+        assertNull(focusNow(tasks, now))
     }
 
     @Test
     fun anUndatedTaskDoesNotQualify() {
         val tasks = listOf(task("a"))
 
-        assertNull(focusNow(tasks, today, now))
+        assertNull(focusNow(tasks, now))
     }
 
     @Test
     fun aCompletedTaskDoesNotQualify() {
-        val tasks = listOf(task("a", scheduledDate = today, completedAt = createdAt))
+        val tasks = listOf(
+            task("a", scheduledDate = today, reminderAt = now.minusHours(1), completedAt = createdAt)
+        )
 
-        assertNull(focusNow(tasks, today, now))
+        assertNull(focusNow(tasks, now))
     }
 
     @Test
     fun aDeletedTaskDoesNotQualify() {
-        val tasks = listOf(task("a", scheduledDate = today, deletedAt = createdAt))
+        val tasks = listOf(
+            task("a", scheduledDate = today, reminderAt = now.minusHours(1), deletedAt = createdAt)
+        )
 
-        assertNull(focusNow(tasks, today, now))
+        assertNull(focusNow(tasks, now))
     }
 
     /**
@@ -152,21 +193,24 @@ class FocusNowTest {
     fun aPausedTaskThatWasCompletedElsewhereStopsQualifying() {
         val tasks = listOf(task("a", scheduledDate = today, completedAt = createdAt))
 
-        assertNull(focusNow(tasks, today, now, pausedTaskId = "a"))
+        assertNull(focusNow(tasks, now, pausedTaskId = "a"))
     }
 
     // --- the tie-break -------------------------------------------------------
 
-    /** The reason decides first, so a weak reason never outranks a strong one. */
+    /**
+     * The reason decides first, so a weaker reason never outranks a stronger one
+     * on time. The paused task carries no time at all and still wins against a
+     * reminder that passed three hours ago.
+     */
     @Test
     fun theReasonOutranksTheTime() {
         val tasks = listOf(
-            // Earlier, and the weaker reason.
-            task("untimed", scheduledDate = today),
-            task("passed", scheduledDate = today, reminderAt = now.minusMinutes(1))
+            task("passed", scheduledDate = today, reminderAt = now.minusHours(3)),
+            task("paused", scheduledDate = today)
         )
 
-        assertEquals("passed", focusNow(tasks, today, now)?.task?.id)
+        assertEquals("paused", focusNow(tasks, now, pausedTaskId = "paused")?.task?.id)
     }
 
     /** Then the earliest time, among tasks sharing a reason. */
@@ -177,18 +221,18 @@ class FocusNowTest {
             task("earlier", scheduledDate = today, reminderAt = now.minusHours(3))
         )
 
-        assertEquals("earlier", focusNow(tasks, today, now)?.task?.id)
+        assertEquals("earlier", focusNow(tasks, now)?.task?.id)
     }
 
     /** Then the order Today already shows, which is the order given. */
     @Test
     fun theOrderGivenBreaksTheRemainingTie() {
         val tasks = listOf(
-            task("first", scheduledDate = today),
-            task("second", scheduledDate = today)
+            task("first", scheduledDate = today, reminderAt = now.minusMinutes(30)),
+            task("second", scheduledDate = today, reminderAt = now.minusMinutes(30))
         )
 
-        assertEquals("first", focusNow(tasks, today, now)?.task?.id)
+        assertEquals("first", focusNow(tasks, now)?.task?.id)
     }
 
     /**
@@ -198,10 +242,10 @@ class FocusNowTest {
     @Test
     fun thePromotedTaskLeavesItsBand() {
         val tasks = listOf(
-            task("a", scheduledDate = today),
+            task("a", scheduledDate = today, reminderAt = now.minusMinutes(5)),
             task("b", scheduledDate = today)
         )
-        val card = focusNow(tasks, today, now)!!
+        val card = focusNow(tasks, now)!!
 
         val sections = todaySections(tasks, today, promotedTaskId = card.task.id)
 

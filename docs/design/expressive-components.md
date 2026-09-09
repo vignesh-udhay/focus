@@ -476,28 +476,62 @@ draw. The three lists pass their mascot; the Logbook passes nothing and is the
 same component without one.
 
 [FD] One mascot per screen, and each says why its own screen is empty rather
-than decorating the absence. It is the same dachshund in every pose, which is
-the point: a different animal per screen would read as three products.
+than decorating the absence. It is the same cat in all three; what changes is
+its posture.
 
-| Screen | Pose | Board node | Frame |
+| Screen | Pose | Board node | Drawn at |
 | --- | --- | --- | --- |
-| Today | asleep, because nothing is scheduled | `879:6016` | 280x102 |
-| Inbox | leaning out from behind a blank card | `883:6049` | 240x146 |
-| Upcoming | sitting up watching a ball, because something is coming | `879:6029` | 180x167 |
+| Today | curled asleep, for a day with nothing on it | `1076:5756` | 211x130 |
+| Inbox | sitting upright, waiting to be filled | `1076:5773` | 190x173 |
+| Upcoming | lying down but awake, for days still clear | `1076:5781` | 250x134 |
+| Today, finished | sitting, content, eyes closed | `1068:5746` | 195x176 |
+| Error | sitting, with a question mark | `1076:5764` | 173x170 |
 
-[FD] The frames differ because the poses do, and the component does not
-normalise them. A sleeping dog is wide and flat, a sitting one is tall, and
-forcing both into one box would either crop the sitting dog or strand the
-sleeping one in empty space.
+[FD] **The board redraws these, and the node ids move when it does.** The
+sleeping, sitting, lying and question poses were replaced wholesale rather than
+edited, so every path changed and each pose took a new node. Nothing else had to: the part
+names, the paint order and the three colour bindings survived the redraw
+untouched, which is the property `MascotImage` exists to protect. The drawn sizes
+moved by less than half a dp. Ids in this table are therefore a record of where a
+pose came from, not a stable handle.
 
-[FD] **The Logbook has no mascot, and that is the board's position rather than
-an omission.** The component has three variants and the Logbook is not among
-them. The mascots explain lists that are empty; the Logbook is a room, and its
-empty state says a record has not started rather than that a list ran out. The
-illustration sheet's "All done" pose is the obvious candidate if this is ever
-revisited, but its meaning is "you are caught up", which is not what "Nothing
-completed yet" says. Adding one means drawing it into the component first, so
-it is exported the same way as the other three rather than drawn twice.
+[FD] **The three share one scale factor, not a common width or height.** A cat
+sitting is genuinely taller than the same cat lying down. Matching heights would
+shrink the sitting one and matching widths would swell it, and either reads as
+two differently sized animals. The board already drew the three at a consistent
+scale, within about 9% by area, so carrying that scale through is the rule.
+
+[FD] **The error pose is the exception to the no-props rule, and has to be.**
+The other four say why a screen is empty, and a posture can carry that. "The app
+could not read your tasks" is not a state a cat can sit in, so `cat-question`
+takes the question mark. It is the only prop in the set and the only pose that
+is not about an empty collection.
+
+[FD] **The finished-day pose is a sitting cat, like the Inbox one, and the eyes
+are the difference.** Closed and curved where the Inbox cat's are open and
+waiting. Both are sitting because both are states where nothing is in motion;
+what separates a day that is done from an inbox that is waiting is whether the
+animal is still watching for something. Both also draw the nose in `mid` rather
+than `dark`, which is the sitting-pose exception the tone table already carried
+for one pose and now carries for two.
+
+[FD] **The props are gone.** An earlier set gave the cat something to sit beside
+on each screen, a bowl for Inbox, a calendar for Upcoming, a checked card for
+Today, and the object carried the meaning. The posture carries it now. That is
+the stronger version: it says the same three things with the animal alone, and
+it drops three objects that had to be drawn, scaled and kept consistent.
+
+[FD] Before the cat there was a dachshund, and before these poses there were the
+props. Each swap cost three generated files and one KDoc, because the poses are
+data and `MascotImage` owns the roles and the sizing. That is the property worth
+protecting: a screen asks for a mascot without knowing what is inside it.
+
+[FD] **The Logbook still has no mascot.** The three lists have one and it does
+not. That is the same shape of inconsistency this section once recorded as a
+defect, and it is decided by the same invisible fact: which poses have been
+drawn. It should get one. What it must not get is a pose that congratulates,
+because `logbook.md` says its empty state "does not congratulate, and it does
+not treat an empty Logbook as a problem or an achievement".
 
 [FD] **The mascot is decorative to a screen reader.** It draws the fact the
 headline states, and the headline is the heading TalkBack lands on, so
@@ -511,9 +545,18 @@ uses the same three, which is what keeps them from drifting apart:
 
 | Tone | Role | What it draws |
 | --- | --- | --- |
-| pale | `primaryFixed` | the ground shadow, and whatever the dog is with: the card, the ball |
-| body | `primaryFixedDim` | the animal itself, and the Z's |
-| detail | `onPrimaryFixedVariant` | ear, tail, paws, nose, eye |
+| light | `primaryFixed` | the coat, and the soft contact shade it sits on |
+| mid | `primaryFixedDim` | the shading that gives the coat its folds and its tail |
+| dark | `onPrimaryFixedVariant` | eyes and nose |
+
+[FD] The tones bind by the part's **name**, not by its hex. The greys drift
+between poses, and the sitting cat's nose is deliberately drawn lighter than its
+eyes where the other two draw it dark, so matching on colour would have produced
+three slightly different mappings and one wrong nose.
+
+[FD] The ordering is the part that has to hold. Binding the cat a step darker for
+more contrast against the page was tried and rejected on an earlier set: it put
+the shade lighter than the animal, which describes light that cannot happen.
 
 [FD] Fixed roles, which is what `Color.kt` set them for. They hold one value in
 light and dark, so there is one artwork rather than a light one and a dark one
@@ -523,14 +566,15 @@ colour.
 [IMPL] `MascotImage` owns all of that, plus the sizing. Each pose file is its
 frame, its builder, and its exported path data, and nothing else.
 
-[FD] **The pale tone keeps its fixed role, and it is not symmetric.** At
-`primaryFixed` it sits 8.0 L* below the page in light and 83.8 above it in dark,
-so the faintest part of a drawing in light is the brightest in dark. That reads
-correctly for the card and the ball, which are objects, and less so for the
-ground shadow. Binding the shadow to `surfaceContainerHighest` instead was tried
-and reverted: that holds the light rendering exactly, both roles being 89.9
-against a page at 97.9, and brings dark back to 15.9. Whoever revisits this
-should measure that pair rather than re-deriving it.
+[FD] **The light tone is not symmetric across themes.** At `primaryFixed` it
+sits 8.0 L* below the page in light and 83.8 above it in dark. That was a
+problem when it drew the dachshund's ground shadow, since the faintest part of
+the drawing in light became the brightest in dark; binding the shadow to
+`surfaceContainerHighest` was tried and reverted, and the measurements are worth
+keeping because they are the ones to start from if it recurs. It matters less
+now: the light tone draws the cat and its objects, which are meant to be the
+brightest things in the drawing, and the shade beneath them is the separate
+`mid` tone.
 
 [FD] **The mascot gives way before the copy does.** It is 102dp tall in a column
 that does not scroll, so it is capped at its drawn width and shrinks on a window
@@ -545,9 +589,20 @@ the board is ever right about this, the type table in
 `expressive-design-system.md` is what has to change first, since it names the
 three places emphasis is allowed.
 
-[FD] Two tones. `Neutral` explains an empty collection. `Error` explains a read
-that failed, and is the only one that takes a button beside it: a separate M3
-medium 56dp Try again, sitting below the component rather than inside it.
+[FD] Two tones, and they are a parameter now rather than a description:
+`EmptyStateTone.Neutral` explains an empty collection, `EmptyStateTone.Error`
+explains a read that failed. `Error` is the only one that takes an action, and
+`TaskListErrorState` is the assembled form the four screens call.
+
+[FD] **The icon container is gone, and the headline carries the colour.** This
+section used to describe an 80dp `errorContainer` icon with the glyph on
+`onErrorContainer`, and called that plus the button "the signal". No such
+container was ever built; when the error state was finally implemented the
+illustrated variant already existed, so the error state took the mascot like
+every other state. A mascot draws in the fixed primary tones, so it says nothing
+about severity. The headline takes `MaterialTheme.colorScheme.error` instead.
+That is the whole colour signal, and without it a failed read would look like an
+ordinary empty list worded oddly.
 
 ## No container, in any state
 
@@ -577,7 +632,53 @@ and swapped to a filled `schedule`, which rendered a near-black disc on a pink
 container while the other two were dark red outlines.
 
 [FD] The copy is plain. An empty list is not an achievement, and nothing here
-congratulates the user.
+congratulates the user. That holds for the finished-day state too, which is the
+closest this app comes to a celebration and is kept on the right side of
+`PRODUCT.md` principle 7 by the same rule as everything else: the line states a
+fact and points somewhere.
+
+[FD] **A supporting line states a fact, and never instructs.** The headline names
+the state; the line under it says something true about the app. It does not tell
+the user what to do next, and it does not comment on how they feel about it.
+Today's read "Add a task when you are ready", which was the only one aimed at the
+user rather than at the screen, and the mildest form of the motivational noise
+`PRODUCT.md` principle 7 rules out. It also sat under a cat drawn asleep, so the
+picture and the words wanted different things.
+
+[FD] Today has two of these, and D-033 turns on the difference. `today_empty_*`
+is a day that never had anything on it. `today_all_done_*` is a day that had work
+and finished it:
+
+    All done for today
+    Tomorrow's tasks are in Upcoming.
+
+[FD] The finished-day one is not an empty state and does not draw like the
+others. It heads the list through `TaskListDoneHeader`, with the Completed
+disclosure directly beneath it, because a finished day is full rather than empty
+and those rows are how a task completed today is reopened. Both forms share one
+body composable. Its supporting line points at Upcoming rather than at the rows
+below it, since those are already on screen and do not need announcing.
+
+[FD] Today is the screen where the pattern is hardest, because it is the only one
+that explains itself. `logbook.md` gives the supporting line its job, teaching a
+user what lands on a screen they have no other way to learn about, and nobody
+needs to be told what Today is for. So the useful fact is the one the headline
+cannot carry: a blank Today does not mean a blank app.
+
+    Nothing scheduled for today
+    Tasks without a day wait in your Inbox.
+
+[FD] It mirrors `inbox_empty_supporting`, "Anything you capture without a day
+waits here", with the same vocabulary pointing the other way. It stays true when
+the Inbox is empty too, because it says where such tasks live rather than
+claiming any exist.
+
+[FD] **"Nothing overdue, either" was tried first and is wrong.** Overdue is one of
+Today's own bands, and the empty state only renders on `tasks.isEmpty()`, so the
+line restates what the blank screen already proves. It also enumerates a category
+of absence, which is an anxious thing to do on a clear day. Whether the app is
+silently missing work is a real question, and the reminder health screen is where
+it is answered.
 
 ## Error copy says what did not happen
 

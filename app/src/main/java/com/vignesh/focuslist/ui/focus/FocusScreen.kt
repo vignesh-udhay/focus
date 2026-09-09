@@ -23,7 +23,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -94,10 +93,14 @@ import java.time.LocalDate
  * Top to bottom: the task title, the shape with the remaining time inside it,
  * one status line, and one row of two controls.
  *
- * **Leaving never destroys anything.** D-015: the chevron and the back gesture
- * both pause. The control cannot tell "I am finished with this" from "I need to
- * look at something else for a minute", and of the two mistakes, stopping when
- * the user meant to pause is the unrecoverable and invisible one.
+ * **Leaving never destroys anything.** D-015: the drag, the scrim and the back
+ * gesture all pause. None of them can tell "I am finished with this" from "I
+ * need to look at something else for a minute", and of the two mistakes,
+ * stopping when the user meant to pause is the unrecoverable and invisible one.
+ *
+ * There is no dismiss button. D-032 removed it: Material's drag handle sits
+ * directly above where it was and says the same thing, and two collapse
+ * affordances stacked is one more than the sheet needs.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -128,9 +131,9 @@ fun FocusSheet(
     val current = task ?: return
 
     ModalBottomSheet(
-        // Pauses. Covers the chevron, the scrim, the drag and the back gesture,
-        // because ModalBottomSheet routes all four here, and D-015 wants the
-        // same non-destructive answer from every one of them.
+        // Pauses. Covers the drag handle, the drag, the scrim and the back
+        // gesture, because ModalBottomSheet routes all of them here, and D-015
+        // wants the same non-destructive answer from every one.
         onDismissRequest = viewModel::leaveFocusSheet,
         sheetState = rememberBottomSheetState(
             initialValue = SheetValue.Hidden,
@@ -148,7 +151,6 @@ fun FocusSheet(
             onPause = viewModel::pauseFocusSession,
             onResume = viewModel::resumeFocusSession,
             onExtend = viewModel::extendFocusSession,
-            onDismiss = viewModel::leaveFocusSheet,
             snackbarHostState = snackbarHostState
         )
     }
@@ -173,7 +175,6 @@ private fun FocusSheetContent(
     onPause: () -> Unit,
     onResume: () -> Unit,
     onExtend: () -> Unit,
-    onDismiss: () -> Unit,
     snackbarHostState: SnackbarHostState,
     modifier: Modifier = Modifier
 ) {
@@ -195,8 +196,6 @@ private fun FocusSheetContent(
             // of the work.
             .semantics { paneTitle = paneTitleText }
     ) {
-        FocusDismissButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopStart))
-
         Column(
             modifier = Modifier
                 .align(Alignment.Center)
@@ -241,32 +240,6 @@ private fun FocusSheetContent(
         hasEstimate = task.estimatedDurationMinutes != null,
         enabled = reading.state.isClockRunning
     )
-}
-
-/**
- * The way out: a chevron down, at the start of the bar, and nothing else there.
- *
- * **A chevron rather than a close X, and that is D-015 showing through.** The
- * control pauses and hands the session to the Focus now card, so it discards
- * nothing. An X claims the thing is finished; a chevron says it has been put
- * away, which is what actually happens, and where it went is on the screen
- * underneath. It also agrees with the gesture: a bottom sheet is dismissed by
- * dragging down, and the control in the corner should not mean something
- * different from the drag that does the same job.
- */
-@Composable
-private fun FocusDismissButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    IconButton(
-        onClick = onClick,
-        modifier = modifier
-            .padding(FocuslistSpacing.xs)
-            .size(FocuslistDimensions.TouchTargetMin)
-    ) {
-        Icon(
-            painter = painterResource(R.drawable.ic_expand_more),
-            contentDescription = stringResource(R.string.focus_dismiss)
-        )
-    }
 }
 
 /**
@@ -693,7 +666,6 @@ private fun FocusStatePreview(task: Task, session: FocusSession?) {
             onPause = {},
             onResume = {},
             onExtend = {},
-            onDismiss = {},
             snackbarHostState = SnackbarHostState()
         )
     }
