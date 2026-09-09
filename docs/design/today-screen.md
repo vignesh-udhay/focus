@@ -320,6 +320,17 @@ Named as the token rather than a number so the two move together. Neither had
 chosen a corner, which is precisely how they drifted apart: each inherited a
 different Material default and nothing recorded that they were meant to match.
 
+**The board drew 28dp and now draws 16dp.** That was found after the code
+changed, and it means this was not a case of code lagging the design: the board
+said 28, the code said 12, and the rows said 16 in both. The board moved to 16
+rather than the code to 28, because the rule above decides it. Shape here
+communicates component identity, not hierarchy, and D-012 lifts this card's task
+out of the bands below so it appears on Today exactly once, which makes the card
+a promoted task rather than a different kind of object. A card and a list item
+may legitimately differ; these two may not, because the eye compares them at the
+same left edge. The component set in Figma carries the same reasoning in its
+description.
+
 ---
 
 # Completed-task behavior
