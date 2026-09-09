@@ -9,6 +9,48 @@ scope it delivers is in `PRODUCT.md`.
 
 ## Current phase
 
+**Reminder Health now says when a missed-reminder notice clears.** The seven-day
+`ConcernWindow` was defensible and invisible: the Today banner could not be
+dismissed, a successful test did not remove it, and nowhere did the app tell the
+user that it expires. The missed-state body now says it clears automatically
+seven days after the incident, with the number read from `ConcernWindow` so copy
+and behaviour cannot drift. The Today banner stays concise and opens the screen
+that explains the rule.
+
+**That missed incident can now be acknowledged from Today, under D-044.** Its
+close button persists the current delivery ID, so the matching banner stays out
+of the task list across restarts while the unmodified incident remains in
+Reminder Health for the rest of the seven-day window. A newer miss has a new ID
+and appears again. `ActionNeeded` still has no dismiss action because it names an
+active delivery failure rather than a past incident; if one sits underneath the
+miss in the health priority order, acknowledging the miss reveals it.
+
+Verified: 668 JVM tests with zero failures, including the incident-ID and
+overlapping-failure rules; a successful debug build and Android-test compile;
+and all 30 `TodayScreenSemanticsTest` cases on the Pixel 10 emulator, covering
+independent open and dismiss targets at 100% and 200% font scale. On the OnePlus
+8T, the close target was exposed as “Dismiss missed reminder notice”, removed
+the banner immediately, retained the incident and seven-day explanation in
+Reminder Health, persisted its delivery ID to disk, and remained dismissed
+after the final replacement install restarted the process without clearing data.
+
+**OnePlus reminders now use the alarm-clock delivery path, under D-042.** The
+reported phone was the same OnePlus 8T D-009 measured, and the failure had moved
+from a probe into ordinary use: reminders chosen on minute boundaries posted
+about five seconds, two minutes and two and a half minutes late. Permissions,
+standby, notification access and the Doze allowlist were all healthy. OxygenOS
+was again turning `setExactAndAllowWhileIdle` into an inexact alarm.
+
+On OnePlus only, exact reminders now use `setAlarmClock`; every other vendor
+keeps the ordinary exact path. A five-minute probe on the phone scheduled with
+`window=0`, equal earliest and latest trigger times, and the alarm-clock record
+present. A 30-second end-to-end test then posted its notification 1,478ms after
+the target, including receiver and notification-service work, against the
+multi-minute drift reported on the old path. The cost is Android showing the
+earliest task reminder as the device's next alarm, so the branch does not extend
+by guess to OPPO or realme. The test reminder shares the production path, and
+JVM tests pin the manufacturer boundary.
+
 **The widget fills its space and can be dragged again, under D-041.** Reported
 from a phone: a lot of blank space at the bottom where a row would clearly fit,
 and resize handles that did nothing.
@@ -103,8 +145,8 @@ line is D-021's and it matters more here than on the health screen: a
 permanently on the default screen of every OnePlus, OPPO, Realme, Xiaomi, Redmi,
 POCO, Samsung, Huawei and Honor, unclearable by anything the owner does. A label,
 one sentence and a chevron, all of it in the health screen's own strings, opening
-the health screen. It cannot be dismissed, because every state that draws it is
-fixable and fixing it is what removes it.
+the health screen. At the time it could not be dismissed; D-044 later supersedes
+that rule for `Missed` only, while keeping `ActionNeeded` non-dismissible.
 
 This is Phase 2 reliability work landing after Phase 5 design work, which is out
 of order and was asked for directly. D-029 is not superseded: it removed Reminder

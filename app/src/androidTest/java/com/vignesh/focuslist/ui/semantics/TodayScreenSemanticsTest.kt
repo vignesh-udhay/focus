@@ -17,8 +17,13 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.waitUntilExactlyOneExists
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vignesh.focuslist.core.domain.HealthCheck
+import com.vignesh.focuslist.core.domain.DeliveryOutcome
+import com.vignesh.focuslist.core.domain.ReminderDelivery
 import com.vignesh.focuslist.core.domain.ReminderHealthState
 import com.vignesh.focuslist.ui.today.TodayScreen
+import java.time.Duration
+import java.time.Instant
+import java.time.LocalDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -65,7 +70,8 @@ class TodayScreenSemanticsTest {
         fontScale: Float,
         dao: FakeTaskDao,
         health: ReminderHealthState?,
-        onOpenHealth: () -> Unit = {}
+        onOpenHealth: () -> Unit = {},
+        onDismissHealth: () -> Unit = {}
     ) {
         val viewModel = testViewModel(dao)
 
@@ -74,7 +80,8 @@ class TodayScreenSemanticsTest {
                 viewModel = viewModel,
                 onOpenTask = {},
                 reminderHealth = health,
-                onOpenReminderHealth = onOpenHealth
+                onOpenReminderHealth = onOpenHealth,
+                onDismissReminderHealth = onDismissHealth
             )
         }
     }
@@ -325,6 +332,68 @@ class TodayScreenSemanticsTest {
     @Test
     fun reminderBanner_opensHealth_at200() = assertTheBannerOpensHealth(FontScale200)
 
+    /** A past incident can be acknowledged without losing its detail route. */
+    private fun assertMissedBannerCanBeDismissed(fontScale: Float) {
+        var dismissed = false
+
+        setToday(
+            fontScale,
+            withOneTask(),
+            missedHealth(),
+            onDismissHealth = { dismissed = true }
+        )
+
+        rule.onNodeWithContentDescription(BANNER_DISMISS)
+            .assertIsDisplayed()
+            .performClick()
+
+        assertTrue("The missed-reminder notice was not dismissed", dismissed)
+    }
+
+    @Test
+    fun missedReminderBanner_canBeDismissed_at100() =
+        assertMissedBannerCanBeDismissed(FontScale100)
+
+    @Test
+    fun missedReminderBanner_canBeDismissed_at200() =
+        assertMissedBannerCanBeDismissed(FontScale200)
+
+    /** The banner body remains the route to the full, retained incident. */
+    private fun assertMissedBannerStillOpensHealth(fontScale: Float) {
+        var opened = false
+
+        setToday(
+            fontScale,
+            withOneTask(),
+            missedHealth(),
+            onOpenHealth = { opened = true }
+        )
+
+        rule.onNodeWithText(BANNER_MISSED_LABEL).performClick()
+
+        assertTrue("The missed-reminder banner did not open Reminder health", opened)
+    }
+
+    @Test
+    fun missedReminderBanner_stillOpensHealth_at100() =
+        assertMissedBannerStillOpensHealth(FontScale100)
+
+    @Test
+    fun missedReminderBanner_stillOpensHealth_at200() =
+        assertMissedBannerStillOpensHealth(FontScale200)
+
+    /** An active delivery failure cannot be acknowledged away. */
+    @Test
+    fun actionNeededBanner_hasNoDismissAction() {
+        setToday(
+            FontScale100,
+            withOneTask(),
+            ReminderHealthState.ActionNeeded(HealthCheck.Notifications)
+        )
+
+        rule.onNodeWithContentDescription(BANNER_DISMISS).assertDoesNotExist()
+    }
+
     /**
      * It survives the empty screen, which is the case D-040 says matters most.
      *
@@ -395,6 +464,21 @@ class TodayScreenSemanticsTest {
         rule.onNodeWithText(BANNER_MISSED_LABEL).assertDoesNotExist()
     }
 
+    private fun missedHealth(): ReminderHealthState.Missed = ReminderHealthState.Missed(
+        ReminderDelivery(
+            id = "missed-delivery",
+            taskId = "task-with-missed-reminder",
+            taskTitle = "Take medication",
+            dueAt = LocalDateTime.of(2026, 9, 9, 23, 15),
+            scheduledWallAt = Instant.parse("2026-09-09T17:45:00Z"),
+            scheduledElapsedAt = 1_000_000L,
+            arrivedWallAt = Instant.parse("2026-09-09T17:48:00Z"),
+            arrivedElapsedAt = 1_180_000L,
+            scheduledAhead = Duration.ofHours(8),
+            outcome = DeliveryOutcome.Announced
+        )
+    )
+
     private companion object {
         const val TITLE = "Write the report"
         const val ADD_TASK = "Add task"
@@ -417,6 +501,7 @@ class TodayScreenSemanticsTest {
         const val BANNER_MISSED_LABEL = "Missed reminder"
         const val BANNER_NO_NOTIFICATIONS = "Focuslist cannot show notifications"
         const val BANNER_LATE = "Reminders may arrive late"
+        const val BANNER_DISMISS = "Dismiss missed reminder notice"
         const val TIMEOUT_MILLIS = 5_000L
     }
 }

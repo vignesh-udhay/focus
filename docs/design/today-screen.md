@@ -359,23 +359,30 @@ Samsung, Huawei and Honor from first launch and stay there, on a phone where
 nothing may be wrong and where no action the user takes can clear it. That
 warning belongs on the health screen, which the user opened to ask.
 
-**What it draws.** The state's label, one sentence naming the cause, and a
-chevron. Both strings come from the health screen's own `reminder_health_*` set,
-unchanged, so tapping through never produces a second wording of the same fact.
-No body copy and no button: the banner's job is to get the user to the screen
-that can fix the problem, not to become that screen on top of their day.
+**What it draws.** The state's label, one sentence naming the cause, and one
+trailing action. Both strings come from the health screen's own
+`reminder_health_*` set, unchanged, so tapping through never produces a second
+wording of the same fact. No body copy: the banner's job is to get the user to
+the screen that explains the problem, not to become that screen on top of their
+day.
 
 - container: `errorContainer` on `onErrorContainer`, matching the health
   screen's headline for the same two states
 - shape: `MaterialTheme.shapes.large`, the corner the bands and the Focus now
   card round to
-- one semantics node, merged, with an `onClickLabel` naming where the tap goes
+- `ActionNeeded`: one merged semantics node with a chevron and an
+  `onClickLabel` naming where the tap goes
+- `Missed`: that same detail target beside an independently labelled 48dp close
+  button
 
-**It cannot be dismissed.** Every state that draws it is fixable, and fixing it
-removes it. A dismiss control would let someone clear the notice and keep the
-silence that caused it, which `PRODUCT.md` calls the most severe class of bug in
-this product. That is defensible only because the banner is rare and always
-actionable; if it were ever neither, remove it rather than making it dismissible.
+**Only a past incident can be dismissed.** D-044 supersedes D-040's blanket
+rule. A `Missed` banner describes one immutable delivery, so its close button
+acknowledges that delivery ID on Today. The delivery remains in Reminder Health,
+the acknowledgement survives process death, and a later missed delivery has a
+different ID and returns. `ActionNeeded` describes an active permission or
+system-setting failure and has no dismiss action; fixing its cause removes it.
+When a miss and an active failure overlap, acknowledging the miss reveals the
+`ActionNeeded` banner underneath it.
 
 **It does not animate.** `expressive-motion.md` gives it no token, and the
 implementation gives its list item no `animateItem`. It appears because a check
@@ -394,12 +401,14 @@ found something, not because the user did anything.
   action, and a second message with a second action underneath competes for a
   user who cannot see their tasks at all
 
-[IMPL] `TodayScreen` takes the state as a parameter and does not read a view
-model for it. `FocuslistNavHost` owns one `ReminderHealthViewModel` above the
-graph and hands it to both Today and the health screen, and calls `refresh()`
-from a `LifecycleResumeEffect` on the Today destination: permissions change while
-the user is away in Settings, Android offers nothing to observe, and without the
-re-read the banner would outlive the problem.
+[IMPL] `TodayScreen` takes the Today-filtered state and callbacks as parameters
+and does not read a health view model itself. `FocuslistNavHost` owns one
+`ReminderHealthViewModel` above the graph and hands its full state to Reminder
+Health and its acknowledgement-filtered state to Today. The acknowledged
+delivery ID lives in a small process-scoped SharedPreferences store. The host
+calls `refresh()` from a `LifecycleResumeEffect` on the Today destination:
+permissions change while the user is away in Settings, Android offers nothing
+to observe, and without the re-read the banner would outlive the problem.
 
 
 ---

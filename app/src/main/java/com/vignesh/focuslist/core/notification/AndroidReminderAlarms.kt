@@ -32,12 +32,11 @@ import java.util.UUID
 /**
  * The real reminder alarm, from the device.
  *
- * `setExactAndAllowWhileIdle`, not the inexact call `AndroidFocusAlarms` uses.
- * Exactness is what the user was promised when they picked a time, and it is
- * free here: the exact-alarm spike found `USE_EXACT_ALARM` auto-granted on
- * Android 14 with no prompt, because reminders are this app's core function.
- * `AndAllowWhileIdle` so Doze cannot hold a reminder until the user next picks
- * up the phone, which is exactly when they no longer need telling.
+ * `setExactAndAllowWhileIdle`, not the inexact call `AndroidFocusAlarms` uses,
+ * except on OnePlus. D-009 measured OxygenOS removing exactness from that call
+ * despite granting the permission, and D-042 records the device evidence that
+ * made the exception necessary. There, `setAlarmClock` is the only public API
+ * whose delivery time Android promises never to adjust.
  *
  * If the system refuses exact alarms, this falls back to the inexact call
  * rather than dropping the reminder. Late is a poor outcome; silence is the
@@ -55,7 +54,15 @@ class AndroidReminderAlarms(private val context: Context) : ReminderAlarms {
         val intent = pendingIntent(taskId, at)
 
         if (canScheduleExact()) {
-            alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at.toEpochMilli(), intent)
+            if (usesAlarmClockDelivery(Build.MANUFACTURER)) {
+                alarms.setAlarmClock(reminderAlarmClockInfo(context, at), intent)
+            } else {
+                alarms.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    at.toEpochMilli(),
+                    intent
+                )
+            }
         } else {
             // `AGENTS.md`: never silently swallow a scheduling failure. This is
             // a degraded promise, not a working one, and the Phase 2 health
@@ -125,6 +132,41 @@ class AndroidReminderAlarms(private val context: Context) : ReminderAlarms {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
     }
+}
+
+/**
+ * Whether reminders need Android's alarm-clock delivery path on this vendor.
+ *
+ * Kept narrower than the OxygenOS/ColorOS family: only OnePlus has been
+ * measured demoting `setExactAndAllowWhileIdle`, and the alarm-clock path has a
+ * user-visible system cost. A manufacturer guess is enough to show a health
+ * caution; changing how the whole device presents its next alarm needs direct
+ * evidence.
+ */
+internal fun usesAlarmClockDelivery(manufacturer: String): Boolean =
+    manufacturer.trim().equals("OnePlus", ignoreCase = true)
+
+/**
+ * What Android opens from its system-owned "next alarm" affordance.
+ *
+ * Shared by real and test reminders so D-042's device path cannot diverge.
+ * It cannot honestly pick one task when several reminders exist, so it opens
+ * the app rather than guessing. The reminder notification still opens its
+ * task.
+ */
+internal fun reminderAlarmClockInfo(
+    context: Context,
+    at: Instant
+): AlarmManager.AlarmClockInfo {
+    val show = PendingIntent.getActivity(
+        context,
+        0,
+        Intent(context, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP),
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
+
+    return AlarmManager.AlarmClockInfo(at.toEpochMilli(), show)
 }
 
 /**

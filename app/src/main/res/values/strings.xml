@@ -38,6 +38,7 @@
          so one fact is never worded two ways. This is the only string the banner
          adds: what the tap does, announced rather than drawn. -->
     <string name="today_reminder_health_open">Open Reminder health</string>
+    <string name="today_reminder_health_dismiss">Dismiss missed reminder notice</string>
 
     <!-- Compact durations, for places where a total sits beside other text.
          Spoken forms exist because "3h 20m" read aloud is not a sentence. -->
@@ -412,8 +413,8 @@
     <string name="reminder_health_missed_title">A reminder arrived %1$s late</string>
     <string name="reminder_health_missed_silent_title">A reminder arrived and said nothing</string>
     <!-- "Take medication, due 3:30 PM. Arrived 4:11 PM." -->
-    <string name="reminder_health_missed_body">%1$s, due %2$s. Arrived %3$s.</string>
-    <string name="reminder_health_missed_silent_body">%1$s was due %2$s. Notifications were switched off, so nothing appeared.</string>
+    <string name="reminder_health_missed_body">%1$s, due %2$s. Arrived %3$s. This notice clears automatically %4$d days after this happened.</string>
+    <string name="reminder_health_missed_silent_body">%1$s was due %2$s. Notifications were switched off, so nothing appeared. This notice clears automatically %3$d days after this happened.</string>
     <string name="reminder_health_check_notifications">Notifications</string>
     <string name="reminder_health_check_exact">Exact alarms</string>
     <string name="reminder_health_check_background">Battery restrictions</string>

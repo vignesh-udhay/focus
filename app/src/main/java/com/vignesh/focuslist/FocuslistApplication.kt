@@ -7,6 +7,7 @@ import com.vignesh.focuslist.data.local.FocuslistDatabase
 import com.vignesh.focuslist.data.local.FocuslistMigrations
 import com.vignesh.focuslist.data.local.FocuslistPreferences
 import com.vignesh.focuslist.data.local.FocusSessionPreferences
+import com.vignesh.focuslist.data.local.ReminderHealthAcknowledgements
 import com.vignesh.focuslist.data.local.WidgetInteractionPreferences
 import com.vignesh.focuslist.data.local.debugSeedCallback
 import com.vignesh.focuslist.core.notification.AndroidFocusAlarms
@@ -78,6 +79,11 @@ class FocuslistApplication : Application() {
     /** Completion evidence that remains on the widget until its next refresh. */
     val widgetInteractions: WidgetInteractionPreferences by lazy {
         WidgetInteractionPreferences(this)
+    }
+
+    /** The one missed-delivery notice the user has acknowledged on Today. */
+    val reminderHealthAcknowledgements: ReminderHealthAcknowledgements by lazy {
+        ReminderHealthAcknowledgements(this)
     }
 
     /** User-controlled JSON continuity, kept separate from Android cloud backup. */

@@ -8,9 +8,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,7 +42,7 @@ import java.time.Duration
  * default screen of every phone from four vendors. `Checking` and `Ready` say
  * nothing worth interrupting a day for.
  *
- * A label, a sentence and a chevron, and no more than that. The screen behind it
+ * A label, a sentence and one trailing action, and no more than that. The screen behind it
  * holds the body copy, the three checks and the button that fixes the problem;
  * repeating any of that here would be the health screen growing a second copy of
  * itself on top of the user's work. Both strings it draws are the health
@@ -53,6 +55,7 @@ import java.time.Duration
 fun ReminderHealthBanner(
     state: ReminderHealthState?,
     onOpen: () -> Unit,
+    onDismissMissed: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     // Two exits rather than one, because `bannerLabel` is an extension on a
@@ -71,47 +74,78 @@ fun ReminderHealthBanner(
         // The corner the bands and the Focus now card round to, so the banner
         // reads as another thing on the day rather than as system chrome.
         shape = MaterialTheme.shapes.large,
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(
-                role = Role.Button,
-                // Announced rather than drawn. The chevron says this goes
-                // somewhere to a user who can see it, and this says where.
-                onClickLabel = stringResource(R.string.today_reminder_health_open),
-                onClick = onOpen
-            )
-            // One node, not three. A banner read out as a label, then a
-            // sentence, then an unnamed chevron is three stops on the way past
-            // the only thing on it that does anything.
-            .semantics(mergeDescendants = true) {}
+        modifier = modifier.fillMaxWidth()
     ) {
         Row(
-            modifier = Modifier.padding(FocuslistSpacing.md),
+            modifier = Modifier.padding(
+                start = FocuslistSpacing.md,
+                end = if (shown is ReminderHealthState.Missed) {
+                    FocuslistSpacing.xs
+                } else {
+                    FocuslistSpacing.md
+                },
+                top = FocuslistSpacing.md,
+                bottom = FocuslistSpacing.md
+            ),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(FocuslistSpacing.sm)
         ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(LabelToTitleGap)
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .minimumInteractiveComponentSize()
+                    .clickable(
+                        role = Role.Button,
+                        // Announced rather than drawn. The chevron says this
+                        // goes somewhere to a user who can see it, and this
+                        // says where. A missed banner keeps this target beside
+                        // its independent dismiss button.
+                        onClickLabel = stringResource(R.string.today_reminder_health_open),
+                        onClick = onOpen
+                    )
+                    // The label and sentence are one route to the detail
+                    // screen. The dismiss button remains its own semantics
+                    // node, so neither action obscures the other.
+                    .semantics(mergeDescendants = true) {},
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(FocuslistSpacing.sm)
             ) {
-                Text(
-                    text = stringResource(label),
-                    style = MaterialTheme.typography.labelMedium
-                )
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(LabelToTitleGap)
+                ) {
+                    Text(
+                        text = stringResource(label),
+                        style = MaterialTheme.typography.labelMedium
+                    )
 
-                Text(
-                    text = bannerTitle(shown),
-                    style = MaterialTheme.typography.titleMedium
-                )
+                    Text(
+                        text = bannerTitle(shown),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+
+                if (shown !is ReminderHealthState.Missed) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_chevron_forward),
+                        // The sentence beside it already says what this opens,
+                        // and the click label says where it goes.
+                        contentDescription = null,
+                        modifier = Modifier.size(ChevronSize)
+                    )
+                }
             }
 
-            Icon(
-                painter = painterResource(R.drawable.ic_chevron_forward),
-                // The sentence beside it already says what this opens, and the
-                // click label says where it goes.
-                contentDescription = null,
-                modifier = Modifier.size(ChevronSize)
-            )
+            if (shown is ReminderHealthState.Missed) {
+                IconButton(onClick = onDismissMissed) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_close),
+                        contentDescription = stringResource(
+                            R.string.today_reminder_health_dismiss
+                        )
+                    )
+                }
+            }
         }
     }
 }

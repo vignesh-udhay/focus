@@ -2690,3 +2690,103 @@ keeps the measured design and fixes the measurement.
 which would show as clipped rows rather than as empty space. That is the same
 failure D-036 named, and it is now reachable for the first time, because the
 number is finally the launcher's rather than one of two constants.
+
+## D-042. OnePlus reminders take the alarm-clock path
+
+**Decision.** On a device whose manufacturer is OnePlus, a reminder that has
+exact-alarm access is scheduled with `AlarmManager.setAlarmClock`. Every other
+device keeps `setExactAndAllowWhileIdle`, and every device still falls back to
+`setAndAllowWhileIdle` when exact access is unavailable. The built-in test
+reminder follows the same branch as a real one.
+
+This is a delivery workaround, not the full-screen alarm D-038 deferred. It
+adds no lock-screen activity, per-task setting, permission, or second delivery
+surface. The notification remains the thing that interrupts the user.
+
+**Why D-009's measurement is no longer enough.** That entry measured this
+OnePlus 8T turning `setExactAndAllowWhileIdle` into an inexact alarm with a
+window 0.75 times its futurity, and accepted roughly fifty seconds of drift as
+usable for a task reminder. The phone then produced the product failure rather
+than only the probe: reminders selected on minute boundaries posted at
+23:07:04.924, 23:11:59.973 and 23:17:28.510, about five seconds, two minutes and
+two and a half minutes late. `PRODUCT.md` says a reminder fires at the time it
+was set for. Two minutes is not that time.
+
+The surrounding checks were green: notifications granted, `USE_EXACT_ALARM`
+granted, `canScheduleExactAlarms()` true, app standby bucket `active`, and the
+app on the device-idle allowlist. That rules out the permission, standby, Doze
+allowlisting, timezone conversion and the notification channel. It leaves the
+same OxygenOS demotion D-009 saw in `dumpsys alarm`.
+
+**The replacement was measured on the failing phone.** A five-minute probe
+through the production `AndroidReminderAlarms` path produced:
+
+    type=RTC_WAKEUP window=0 flags=0x9
+    whenElapsed=+4m47s163ms maxWhenElapsed=+4m47s163ms
+    Alarm clock: triggerTime=2026-09-09 23:35:38.285
+
+There is no delivery window and the earliest and latest trigger are the same
+instant. Android documents `setAlarmClock` as the most critical exact-alarm
+path: it leaves low-power modes if necessary and never adjusts the delivery
+time. That is the guarantee this product already makes.
+
+The end-to-end path agrees. A built-in test reminder targeted
+23:37:49.238 and its notification was posted at elapsed time 178822568 against
+the alarm's 178821090 target: 1,478 milliseconds later, including the receiver's
+work and the notification-service handoff. That is ordinary dispatch overhead
+rather than the multi-minute delivery window reported against the old path.
+
+**The cost is visible and is why the branch is narrow.** Android exposes the
+earliest task reminder as the device's next alarm, including in system surfaces
+that show that value. Tapping that affordance opens Focuslist rather than one
+task, because several reminders can exist and the system supplies one shared
+show intent. A false positive therefore changes the phone outside the app, so
+OPPO and realme do not inherit the branch merely because they share ColorOS
+ancestry. They have not been measured. Samsung and Xiaomi already produced
+zero-width exact alarms under the ordinary call and need no workaround.
+
+**What would reverse this.** A measured OnePlus release that gives
+`setExactAndAllowWhileIdle` a zero window, or evidence that presenting task
+reminders as the next system alarm costs more trust than the late delivery it
+prevents. There is no public API for an app to inspect its scheduled window, so
+until Android exposes one the boundary cannot be learned at runtime.
+
+## D-044. A missed-reminder notice can be acknowledged on Today
+
+**Decision.** The missed-reminder banner on Today has a dismiss action. Dismissal
+acknowledges one delivery incident: Focuslist stores that delivery's ID and hides
+the matching banner on Today across process restarts. It does not delete or alter
+the delivery record, so the incident remains visible in Reminder Health until
+the existing seven-day concern window expires. A later missed delivery has a
+different ID and shows the banner again.
+
+Only `Missed` can be dismissed. An `ActionNeeded` banner means Android cannot
+currently deliver reminders as promised and remains visible until its cause is
+fixed. The rest of a missed banner still opens Reminder Health; its trailing
+action dismisses it. If that missed incident had been masking a simultaneous
+active failure in Reminder Health's priority order, dismissal reveals the
+`ActionNeeded` banner rather than leaving Today silent.
+
+**Why this supersedes one clause of D-040.** D-040 made the Today banner
+non-dismissible so an unresolved reliability problem could not be hidden. That
+treated two unlike states as one. A permission or system-setting failure is an
+active condition and must stay visible. A missed delivery is an immutable past
+incident: repeating it on the primary task screen for seven days after the user
+has understood it adds interruption without adding safety. Reminder Health is
+still the durable record and explains when the notice clears.
+
+The acknowledgement is keyed to the delivery rather than a boolean or date.
+That gives it the narrowest meaning available: "I have seen this incident."
+It cannot accidentally suppress the next miss, and it does not change reminder
+health calculations.
+
+**What this costs.** Today no longer forces a previously acknowledged incident
+back into view. A user can therefore dismiss the only prompt that points to
+Reminder Health, although the screen remains available from Settings. Keeping
+active delivery failures non-dismissible and resurfacing every new miss retains
+the warnings that can still lead to action.
+
+**What would reverse this.** Evidence that users dismiss missed incidents before
+understanding them and consequently overlook repeated delivery failures. The
+first response would be clearer action copy or placement, not suppressing newer
+incidents with a broader acknowledgement.

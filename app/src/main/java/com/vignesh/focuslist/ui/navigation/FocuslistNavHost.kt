@@ -81,7 +81,8 @@ fun FocuslistNavHost(
     val reminderHealthViewModel: ReminderHealthViewModel = viewModel(
         factory = ReminderHealthViewModel.Factory(
             deliveries = application.reminderDeliveryRepository,
-            checks = application.reminderHealthChecks
+            checks = application.reminderHealthChecks,
+            acknowledgements = application.reminderHealthAcknowledgements
         )
     )
 
@@ -158,7 +159,7 @@ fun FocuslistNavHost(
                     onPauseOrDispose {}
                 }
 
-                val reminderHealth by reminderHealthViewModel.state
+                val reminderHealth by reminderHealthViewModel.todayState
                     .collectAsStateWithLifecycle()
 
                 TodayScreen(
@@ -179,7 +180,8 @@ fun FocuslistNavHost(
                     // reached from.
                     onOpenReminderHealth = {
                         navController.openSecondary(FocuslistRoutes.REMINDER_HEALTH)
-                    }
+                    },
+                    onDismissReminderHealth = reminderHealthViewModel::dismissTodayBanner
                 )
             }
 

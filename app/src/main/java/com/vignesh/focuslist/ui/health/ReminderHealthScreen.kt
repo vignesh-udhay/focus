@@ -48,6 +48,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vignesh.focuslist.R
 import com.vignesh.focuslist.core.design.FocuslistSpacing
 import com.vignesh.focuslist.core.domain.CheckState
+import com.vignesh.focuslist.core.domain.ConcernWindow
 import com.vignesh.focuslist.core.domain.DeviceRestriction
 import com.vignesh.focuslist.core.domain.HealthCheck
 import com.vignesh.focuslist.core.domain.ReminderDelivery
@@ -558,13 +559,15 @@ private fun describe(delivery: ReminderDelivery): String {
             R.string.reminder_health_missed_body,
             delivery.taskTitle,
             context.formatTime(delivery.scheduledWallAt),
-            context.formatTime(delivery.arrivedWallAt)
+            context.formatTime(delivery.arrivedWallAt),
+            ConcernWindow.toDays()
         )
     } else {
         stringResource(
             R.string.reminder_health_missed_silent_body,
             delivery.taskTitle,
-            context.formatTime(delivery.scheduledWallAt)
+            context.formatTime(delivery.scheduledWallAt),
+            ConcernWindow.toDays()
         )
     }
 }

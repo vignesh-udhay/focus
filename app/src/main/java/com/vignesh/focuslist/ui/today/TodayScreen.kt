@@ -89,6 +89,7 @@ fun TodayScreen(
     // state that draws nothing, so a caller with no opinion gets no banner.
     reminderHealth: ReminderHealthState? = null,
     onOpenReminderHealth: () -> Unit = {},
+    onDismissReminderHealth: () -> Unit = {},
     // The three dots at the end of the header row. A slot rather than a route,
     // because navigating is the host's job and this screen only has to leave
     // room for it.
@@ -157,7 +158,8 @@ fun TodayScreen(
         bottomBar = bottomBar,
         overflow = overflow,
         reminderHealth = reminderHealth,
-        onOpenReminderHealth = onOpenReminderHealth
+        onOpenReminderHealth = onOpenReminderHealth,
+        onDismissReminderHealth = onDismissReminderHealth
     )
 
 
@@ -225,7 +227,8 @@ private fun TodayContent(
     bottomBar: @Composable () -> Unit = {},
     overflow: @Composable RowScope.() -> Unit = {},
     reminderHealth: ReminderHealthState? = null,
-    onOpenReminderHealth: () -> Unit = {}
+    onOpenReminderHealth: () -> Unit = {},
+    onDismissReminderHealth: () -> Unit = {}
 ) {
     // The collection runs away from the page rather than sitting a step above
     // it: toward white in light, toward black in dark. The page is the tinted
@@ -307,6 +310,7 @@ private fun TodayContent(
                 ReminderHealthBanner(
                     state = reminderHealth,
                     onOpen = onOpenReminderHealth,
+                    onDismissMissed = onDismissReminderHealth,
                     modifier = Modifier.padding(
                         start = FocuslistSpacing.md + gutter,
                         end = FocuslistSpacing.md + gutter,
@@ -347,6 +351,7 @@ private fun TodayContent(
                         ReminderHealthBanner(
                             state = reminderHealth,
                             onOpen = onOpenReminderHealth,
+                            onDismissMissed = onDismissReminderHealth,
                             // The collection's own gap is for segments of one
                             // list. The banner is not one of them, so it takes
                             // a little more room below itself.

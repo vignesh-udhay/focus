@@ -192,6 +192,13 @@ neutral, and primary/secondary and tertiary/error each collapse into one.
 A late delivery is an error, because it happened. So a user who ignores the
 caution and then misses a reminder still gets the red screen.
 
+**The missed state names its lifetime.** The delivery remains concerning for
+seven days, which was previously a rule only the code knew. Its body now says
+that the notice clears automatically seven days after the incident. The Today
+banner stays short: tapping it already opens this explanation, and putting the
+retention policy into the day's headline would make the banner explain itself
+instead of naming the failure.
+
 **Why not stay silent until something actually goes wrong.** Considered and
 rejected. It is the more honest position and it accepts one missed reminder as
 the price of learning, which principle 1 forbids. The warning is pre-emptive; it

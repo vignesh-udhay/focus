@@ -56,6 +56,7 @@ notification must agree on, belongs here.
 - `preferences`, the observable dynamic-colour and theme choices
 - `focusSessionStore`, the resumable Focus clock and task pointer
 - `widgetInteractions`, the transient just-completed row evidence
+- `reminderHealthAcknowledgements`, the missed delivery already dismissed on Today
 - `backupRepository`, coordinating versioned JSON with Room and preferences
 
 It is deliberately not a service locator. It holds these and nothing else. If
@@ -125,6 +126,10 @@ The active Focus session is four scalar values in SharedPreferences rather
 than a Room table: one task pointer and one clock, atomically replaced together.
 The widget's completion evidence is another small preference record and is
 retired on the first later task or day snapshot.
+
+Today's missed-reminder acknowledgement is also one SharedPreferences scalar:
+the delivery ID. It filters only the banner presentation; the delivery remains
+in Room as Reminder Health evidence, and any newer delivery ID is visible.
 
 ## Navigation
 

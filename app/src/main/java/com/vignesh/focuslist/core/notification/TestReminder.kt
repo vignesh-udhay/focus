@@ -6,6 +6,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.SystemClock
 import android.util.Log
 import androidx.core.content.getSystemService
@@ -50,10 +51,9 @@ object TestReminder {
     /**
      * Schedules the test, exactly as a real reminder is scheduled.
      *
-     * Exact where the system allows it and inexact where it does not, so the
-     * test is subject to the same demotion a real reminder would be. A test
-     * that asked for special treatment would report health the user does not
-     * have.
+     * It uses the same vendor-specific delivery mode as a real reminder. A
+     * test that stayed on `setExactAndAllowWhileIdle` after OnePlus reminders
+     * moved to `setAlarmClock` would be testing a path the user no longer has.
      */
     fun schedule(context: Context) {
         val alarms = context.getSystemService<AlarmManager>() ?: run {
@@ -64,10 +64,21 @@ object TestReminder {
         val at = Instant.now().plus(Delay)
         val intent = pendingIntent(context, at)
 
-        if (context.applicationContext.let { it as? FocuslistApplication }
-                ?.reminderAlarms?.canScheduleExact() == true
-        ) {
-            alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at.toEpochMilli(), intent)
+        val canScheduleExact = context.applicationContext
+            .let { it as? FocuslistApplication }
+            ?.reminderAlarms
+            ?.canScheduleExact() == true
+
+        if (canScheduleExact) {
+            if (usesAlarmClockDelivery(Build.MANUFACTURER)) {
+                alarms.setAlarmClock(reminderAlarmClockInfo(context, at), intent)
+            } else {
+                alarms.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    at.toEpochMilli(),
+                    intent
+                )
+            }
         } else {
             alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at.toEpochMilli(), intent)
         }
