@@ -6,8 +6,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.CreationExtras
-import com.vignesh.focuslist.core.domain.FocusNow
-import com.vignesh.focuslist.core.domain.FocusNowReason
 import com.vignesh.focuslist.core.domain.FocusSession
 import com.vignesh.focuslist.core.domain.FocusSessionStore
 import com.vignesh.focuslist.core.domain.StoredFocusSession
@@ -18,7 +16,7 @@ import com.vignesh.focuslist.core.domain.TaskCompletion
 import com.vignesh.focuslist.core.time.CurrentDay
 import com.vignesh.focuslist.core.time.SystemCurrentDay
 import com.vignesh.focuslist.core.domain.completedTasks as queryCompletedTasks
-import com.vignesh.focuslist.core.domain.focusNow as queryFocusNow
+import com.vignesh.focuslist.core.domain.pausedFocusTask
 import com.vignesh.focuslist.core.domain.inboxTasks as queryInboxTasks
 import com.vignesh.focuslist.core.domain.todayTasks as queryTodayTasks
 import com.vignesh.focuslist.core.domain.upcomingTasks as queryUpcomingTasks
@@ -426,19 +424,6 @@ class TaskListViewModel(
         writeFocusSession(_focusSession.value?.resumed(Instant.now()))
     }
 
-    /** Opens and resumes the paused session named by a widget action. */
-    fun resumeFocusFromWidget(id: String) {
-        val session = _focusSession.value ?: focusSessionStore?.current
-            ?.takeIf { stored -> stored.taskId == id }
-            ?.session
-            ?: return
-        if (!session.isPaused) return
-
-        focusTask(id)
-        writeFocusSession(session.resumed(Instant.now()))
-        _isFocusSheetOpen.value = true
-    }
-
     /**
      * Gives the session another five minutes, at the estimate.
      *
@@ -559,45 +544,39 @@ class TaskListViewModel(
     }
 
     /**
-     * The task the Focus now card holds, or null when nothing qualifies.
+     * The task the paused session card holds, or null when no session is paused.
      *
-     * `docs/decisions.md` D-012. The rule is a pure function in `core/domain`;
-     * this only supplies it with the three things it cannot read for itself:
-     * the stored tasks, the current day, and which task a paused session is on.
+     * `docs/decisions.md` D-048. The rule is a pure function in `core/domain`;
+     * this only supplies it with the two things it cannot read for itself: the
+     * stored tasks, and which task a paused session is on.
      *
      * **It reads every task, not Today's list.** A paused session's task need
      * not be scheduled for today: a task focused from Inbox and paused is still
      * the thing the user was doing, and sending them back to find it would be
      * the app losing their place.
      *
-     * The clock is read at collection time rather than injected, unlike
-     * [today]. The reminder reason turns on the time of day, and `CurrentDay` is
-     * a day: it emits on a date change and nothing finer. What that costs is
-     * that a reminder passing does not re-run the rule on its own; the card
-     * appears the next time anything else emits, which in practice is the next
-     * write or the next time the screen is opened. Making it exact would mean a
-     * timer per reminder on the screen the app opens to, and the reminder itself
-     * is what is responsible for interrupting the user. The card is where the
-     * task goes afterwards.
+     * **The clock is gone from here, and it used to be a documented weakness.**
+     * This flow read `LocalDateTime.now()` at collection time and combined
+     * `currentDay.today` purely as a trigger, because `ReminderPassed` turned on
+     * the time of day while `CurrentDay` emits on a date change and nothing finer.
+     * The cost, written down at the time, was that a reminder passing did not
+     * re-run the rule on its own: the card appeared the next time anything else
+     * emitted. D-048 removed that reason, and a paused session is paused whatever
+     * the time, so the day trigger and the clock both go. The card can no longer
+     * be late, because there is no moment it is waiting for.
      */
-    val focusNow: StateFlow<FocusNow?> =
+    val pausedFocusTask: StateFlow<Task?> =
         combine(
             repository.observeTasks(),
-            currentDay.today,
             _focusSession,
             _focusedTaskId
-            // The day is a trigger, not an input. D-035 left the rule with no
-            // dependency on the date, so `focusNow` no longer takes one, but a
-            // date change is still one of the few moments this flow re-reads the
-            // clock and so re-checks whether a reminder has passed.
-        ) { tasks, _, session, focusedId ->
-            queryFocusNow(
+        ) { tasks, session, focusedId ->
+            pausedFocusTask(
                 tasks = tasks,
-                now = LocalDateTime.now(),
-                // Only a *paused* session earns the card's strongest reason. A
-                // running one is already on screen in the sheet, and a card
-                // pointing at it would be the app telling the user to go where
-                // they already are.
+                // Only a *paused* session draws the card. A running one is
+                // already on screen in the sheet, and a card pointing at it
+                // would be the app telling the user to go where they already
+                // are.
                 pausedTaskId = focusedId?.takeIf { session?.isPaused == true }
             )
         }
@@ -608,35 +587,24 @@ class TaskListViewModel(
             )
 
     /**
-     * Opening Focus from the card.
+     * Resuming from the paused session card.
      *
-     * Two behaviours behind one action, and the card's label says which is
-     * which. A paused session resumes, because the user pressed Resume and
-     * making them press it again inside the sheet would be a confirmation of a
-     * confirmation. Anything else chooses the task without starting a clock,
-     * which lands the sheet on Ready.
+     * One behaviour, where there used to be two. D-012's card could land the sheet
+     * on Ready as well, for a task the *app* had chosen, and Ready was the user
+     * agreeing with that choice before the clock ran. D-048 leaves the card
+     * speaking only for a session the user started and paused themselves, so there
+     * is nothing to agree to: the button already read Resume, and asking them to
+     * press play inside the sheet would be a confirmation of a confirmation.
      *
-     * **Ready is why this is not `beginFocus`.** `focus.md` has a task row skip
-     * Ready on the grounds that picking one task out of a list is the deciding
-     * already done. The card is the opposite case: the *app* picked, and Ready
-     * is where the user agrees with the choice before the clock runs. That is
-     * also the entry Ready lost when Focus left the navigation bar in Phase 3,
-     * which is what left D-013's sixth state unreachable.
+     * The sheet is opened before the session resumes so the clock is running by
+     * the time it is on screen, rather than starting under the user's eyes.
      */
-    fun openFocusFromCard() {
-        val card = focusNow.value ?: return
+    fun resumeFocusFromCard() {
+        val task = pausedFocusTask.value ?: return
 
-        if (card.reason == FocusNowReason.ResumePaused) {
-            // The card's button already read Resume, so the user has pressed it.
-            // Making them press play inside the sheet would be a confirmation of
-            // a confirmation.
-            focusTask(card.task.id)
-            _isFocusSheetOpen.value = true
-            resumeFocusSession()
-            return
-        }
-
-        openFocus(card.task.id)
+        focusTask(task.id)
+        _isFocusSheetOpen.value = true
+        resumeFocusSession()
     }
 
     /**

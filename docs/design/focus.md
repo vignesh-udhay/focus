@@ -17,15 +17,17 @@ asked for it. It is not two screens, and it has not been a destination since
 `docs/decisions.md` D-004 removed the queue a bar entry would have landed on.
 `navigation.md` holds the current arrangement.
 
-    Ready              4-sided    45:00    45 min focus       play  · Complete
-    Running           12-sided    44:37    45 min focus       pause · Complete
-    Paused             4-sided    32:18    32 min left        play  · Complete
-    Estimate reached  12-sided    00:00    Estimate reached   Complete · +5 min
-    Open-ended        12-sided    12:43    No time limit      pause · Complete
-    Open-ended paused  4-sided    12:43    No time limit      play  · Complete
+    Ready              sit    45:00 · 45 min focus       Complete · play
+    Running            nap    44:37 · 45 min focus       Complete · pause
+    Paused             sit    32:18 · 32 min left        Complete · play
+    Estimate reached   nap    00:00 · Estimate reached   Complete · +5 min
+    Open-ended         nap    12:43 · No time limit      Complete · pause
+    Open-ended paused  sit    12:43 · No time limit      Complete · play
 
 D-013 added the pause, the resume and the extension. D-014 settled what the
-shape says. D-015 settled what leaving does.
+shape says. D-015 settled what leaving does. **D-046 replaced the shape with the
+cat and moved the clock onto the status line**, so the middle two columns above
+read differently from every earlier version of this document.
 
 **An earlier version of this document split Focus into Ready and Session**, two
 states with different navigation: Ready kept the bar, because a user who had
@@ -40,42 +42,56 @@ leaving never destroys anything.
 
 # What it shows
 
-Top to bottom: the task title, the shape with the remaining time inside it, one
-status line, and one row of two controls.
+Top to bottom: the task title, the cat, one status line carrying the clock and
+the budget, and one row of two controls.
 
 **The title is the heading, and the largest thing on the screen.** It sits above
-the shape rather than inside it, capped at four lines. D-014 carries the
-measurements: a cookie yields about 70% of its box as usable area, so four lines
-at 200% font scale would need a 514dp square on a 412dp screen, and the 240dp
-column inside the shape fills at 24 characters. Outside it the title has the
-full width and the cap holds at every font scale.
+the cat, capped at four lines.
 
-The cap exists because a title that overruns a fixed shape is cut through the
-middle of a line and reads as broken rather than as shortened. The full title is
-one tap away in Task Details.
+The cap is older than the cat and it outlived what it was for. D-014 put the
+title outside the shape with an arithmetic argument: a cookie yields about 70%
+of its box as usable area, so four lines at 200% font scale would have needed a
+514dp square on a 412dp screen, and the 240dp column inside it filled at 24
+characters. Nothing is inside anything now, so that argument is spent, and the
+cap stays for the other half of it. A title that overruns a fixed container is
+cut through the middle of a line and reads as broken rather than as shortened,
+and four lines is what the column holds at the largest system font scale. The
+full title is one tap away in Task Details.
 
-**The time is second, at Headline Small, inside the shape.** It is a real
-readout rather than an ornament: an estimate counts down, an open-ended session
-counts up, and a paused session has to be able to say what is left or resuming
-it means nothing. D-014 records why it is not Display Large, which is what the
-board drew first. The largest object on a screen built to stop clock-watching
-should not be the clock.
+**The cat is second, and it is the app's own mascot rather than a shape.**
+D-046. Two poses, `cat-sit-front` when the clock is stopped and `cat-nap` while
+it runs, drawn from the same board and at the same scale factor as the five
+empty-state poses. What it says is what the shape said: whether the clock is
+moving. It is not a gauge and it does not track progress.
+
+**The time is third now, on the status line at body size.** It is a real readout
+rather than an ornament: an estimate counts down, an open-ended session counts
+up, and a paused session has to be able to say what is left or resuming it means
+nothing. D-013 requires it, because three of the six states cannot be told apart
+without it.
+
+D-014 already argued that the largest object on a screen built to stop
+clock-watching should not be the clock, and cut it from Display Large to
+Headline Small. D-046 finished that: at Headline Small inside the shape the
+countdown was still the second largest thing here, and on the status line it has
+stopped being a display object. The task title is now unambiguously the largest.
 
 The estimate is shown because Today already shows it. A screen about doing the
 work should not be the one place the size of it is withheld, and the number is
 the user's own answer to how long this will take.
 
-**The status line carries only what the controls cannot say.** The button
-already reads Pause or Resume, so putting the state in text would say it twice.
-What is left is the budget, and the one moment with no control to announce it:
+**The status line is the clock, then whatever the controls cannot say.** The
+button already reads Pause or Resume, so putting the state in text would say it
+twice. What is left is the budget, and the one moment with no control to
+announce it:
 
-    Ready, Running       45 min focus
-    Paused               32 min left
-    Estimate reached     Estimate reached
-    Open-ended, paused   No time limit
+    Ready, Running       45:00 · 45 min focus
+    Paused               32:18 · 32 min left
+    Estimate reached     00:00 · Estimate reached
+    Open-ended, paused   12:43 · No time limit
 
-Ready and Running read the same line, deliberately. What tells them apart is the
-shape, the icon on the button, and the digits moving.
+Ready and Running read the same budget, deliberately. What tells them apart is
+the pose, the icon on the button, and the digits moving.
 
 **The clock control is a round icon button.** 56dp, filled, carrying play or
 pause. Holding no text, it does not grow with the font scale, and that is what
@@ -96,8 +112,22 @@ the primary there and +5 min the secondary: a timer running out is more often
 the moment work is finished than the moment it needs extending, and the control
 that reads as the default should be the likelier one.
 
+**Complete leads and the clock control trails.** D-046, and the ordering had
+never been decided before it: the row was built clock-first and stayed that way.
+
+Two reasons. Complete now sits in the same place in all six states, where before
+it trailed in five and led in Estimate reached, which is the one state with no
+clock control for it to trail. And the clock is the control pressed repeatedly
+inside a session, start then pause then resume, where Complete is pressed once
+at the end; the repeated one belongs where the thumb already is.
+`expressive-components.md` makes exactly that argument for the Start focus pill
+on Task Details, "the pill sits where the thumb rests".
+
 **Complete keeps its lower standing through tone.** It is the tonal button in
 every state, beside a filled control, because it is the second of two actions.
+Position and emphasis are separate here and only emphasis carries the ranking,
+which is also the ordinary Material arrangement: the lower-emphasis action
+leads, the filled one trails.
 
 An earlier version made Complete a quiet text action below Start, on the grounds
 that starting is the constructive act and completing without starting is the
@@ -129,51 +159,52 @@ floating action button.
 
 ---
 
-# The shape
+# The cat
 
-`MaterialShapes.Cookie4Sided` at rest and `MaterialShapes.Cookie12Sided` while
-running, drawn behind the time, morphing between the two on a state change and
-not moving in between.
+`cat-sit-front` when the clock is stopped and `cat-nap` while it runs, drawn
+where the shape used to be and crossing between the two on a state change.
 
 **What it says is whether the clock is running.** That is the whole of it. It is
 not a gauge and does not track progress. The digits do that.
 
-This is D-014, and it replaced a design in which the shape was the progress
-indicator: a determinate walk from `Circle` to `Clover8Leaf` against the
-estimate, and a ring of six shapes for a session with no estimate to walk
-against. That design was never drawn. What the board actually carried was one
-frozen shape in all six states, at full extension whether the estimate was
-untouched or spent.
+This is D-046, and it replaced the `Cookie4Sided` / `Cookie12Sided` morph D-014
+had reduced to exactly this one sentence. Once the shape's whole job was "is the
+clock moving", the job belonged to the animal the app already had: five poses
+drawn on the same board, resolved against three colour roles so they follow
+dynamic colour, and decorative to a screen reader by an argument already made.
 
-The reason it went is worth keeping here. Once D-013 put a readable number on
-the screen, the shape and the digits measured the same quantity, and the shape
-was the worse of the two at it: it cannot be read to a value, and it publishes
-nothing to a screen reader. A second channel that says what the first says, less
-well, is decoration, and `expressive-motion.md` bans decoration.
+Before D-014 the shape had been a progress indicator, a determinate walk from
+`Circle` to `Clover8Leaf` against the estimate with a ring of six shapes for a
+session that had no estimate to walk against. That design was never drawn, and
+the reason it went is worth keeping: once D-013 put a readable number on the
+screen, the shape and the digits measured the same quantity and the shape was
+worse at it. A second channel that says what the first says, less well, is
+decoration, and `expressive-motion.md` bans decoration. D-046 changes what draws
+the state; it does not reopen what the state channel is for.
 
-Saying whether the clock is running is a different job, and one the shape is
-good at. It is the question a glance at this screen asks, and the digits answer
-it only by being watched for a second.
+**Two poses cover six states.** Ready, Paused and Open-ended paused sit.
+Running, Estimate reached and Open-ended nap. That is D-014's own partition, so
+nothing new had to be decided about which state looks like what.
 
-**The rule that governs it is unchanged: the morph carries information or it
-does not happen.** Only what counts as information has moved, from a fraction to
-a state.
+**The cat does not wake up when the estimate runs out.** Estimate reached naps
+like any other running state. Running past the estimate is ordinary: the digits
+reach zero, the status line says so, and nothing completes the task by itself.
+Overrunning is not failure and the screen does not say it is, which an animal
+sitting up at the buzzer would.
 
-`expressive-motion.md` still allows exactly one shape morph in this app and this
-is still it. It is cheaper than it was: two shapes rather than a walk through
-many, and it runs on a state change rather than continuously, so nothing on this
-screen animates while a session is merely running.
+**Both poses share a ground line and are scaled about their own feet**, so the
+floor under the cat does not move while the body compresses. Nothing translates.
+The poses are 192.72 x 178.87 and 202.55 x 119.13, they are drawn at those sizes
+inside the union of the two rather than filling a common width, and the box is
+bottom-aligned. Letting each fill the same width would shrink the wider one by
+about five percent, which is the one thing that stops them reading as one
+animal.
 
-**Material's shape principles say shape is versatile and not semantic**, and
-warn against giving a particular shape a particular meaning. This sits close to
-that line and stays inside it. Nothing claims four lobes means stopped in the
-abstract. What carries the meaning is that the shape changes when the state
-changes, and the state is named in text beside it either way.
-
-Running past the estimate is ordinary. The digits reach zero, the status line
-says so, and nothing completes the task by itself. Overrunning is not failure
-and the screen does not say it is.
-
+**`cat-sit-front` is a fourth sitting pose and that is deliberate.** The three
+shipped sits are empty-state poses on list screens, where posture says why a
+list is empty. This pair is in a sheet, is not an empty state, and is read
+against its own partner. D-046 has the argument, and the ceiling that goes with
+it: no prop, no third Focus pose, and nothing outside a session.
 ---
 
 # The container transform, and why it is gone
@@ -302,12 +333,30 @@ one entry that has to work. The repository only emits once it has really read.
 
 Three ways in:
 
-- **the Focus now card on Today**, which opens the sheet in **Ready** on the
-  task the card names
-- **Start focus on Task Details**, which opens the sheet in **Ready** on the
-  task being edited
+- **the paused session card on Today**, which opens the sheet on the session it
+  names, **already running**
+- **Start focus on Task Details**, which opens the sheet on the task being
+  edited, with the clock started
+- **Focus on a Today row**, the same, on the task the row is for
 
-Both are `PRODUCT.md`'s "choose task, tap Focus", and **both land on Ready**.
+**None of them lands on Ready, and this paragraph used to say two of them did.**
+D-048 removed the card's other behaviour: it spoke for a paused session or a
+reminder that had passed, and only the second had no session yet, so only the
+second needed a state where a task is chosen and no clock is running. With that
+reason gone the card always resumes.
+
+The Task Details claim was wrong before D-048 and is worth naming separately:
+`TaskDetailsScreen` calls `beginFocus`, which starts the clock, not `openFocus`,
+which is the one that lands on Ready. The document said Ready and the code has
+gone straight into the session for as long as that call has been there.
+
+**So Ready is currently unreachable**, and `openFocus` has no caller outside an
+instrumented test. This document argues two sections below that "a drawn state
+nothing can arrive at is a state that should not exist", which makes this a
+question for a decision rather than something to quietly patch here: either an
+entry point lands on Ready again, or D-013's six states become five. It is
+recorded in `docs/decisions.md` D-048 as a consequence that entry did not
+foresee.
 
 **A third way used to exist**, Focus in a Today row's long-press menu, and it was
 the one that skipped Ready and started the session directly, "because picking one
@@ -328,8 +377,11 @@ arrive at is a state that should not exist.
 opening on whatever a queue resolved to. D-004 removed the queue and
 `navigation.md` removed the bar item. Landing a user on whichever task happened
 to head a list, with nothing to say why that one, is precisely what both
-decisions were getting rid of. The Focus now card is its replacement and differs
-in the one way that mattered: it says why this task.
+decisions were getting rid of. The paused session card is its replacement and
+differs in the one way that mattered: it names a session the user started and
+paused themselves, so there is no choice being made on their behalf at all. Under
+D-012 the card made one and stated its reason; D-048 left it with nothing to
+choose between.
 
 Only Today rows offer it. A row on Upcoming or the Logbook would have to
 either do nothing or silently
@@ -385,10 +437,11 @@ quietly clears that bar by not saying anything at all.
 
 The task title is the heading a screen reader lands on, in every state.
 
-The shape publishes nothing, and under D-014 that is no longer a difficult
-call. What it says is whether the clock is running, and that is already said
-twice in text: the button reads Pause or Resume, and the status line names the
-state. The shape is never the only channel, so it needs no semantics of its own.
+The cat publishes nothing, and it is decorative for the same reason every other
+mascot is. What it says is whether the clock is running, and that is already
+said twice in text: the button reads Pause or Resume, and the status line names
+the state. It is never the only channel, so it needs no semantics of its own.
+The shape it replaced was silent on the same grounds, under D-014.
 
 An earlier version of this document said the shape carried `progressSemantics`.
 It never did, and it should not have: announcing a deliberately unreadable gauge
@@ -396,18 +449,18 @@ to the decimal would have handed a screen reader exactly the clock-watching this
 screen exists to prevent. That whole problem is now gone, because the number is
 on the screen as text for everyone.
 
-Reduced motion is respected, and D-014 makes it cheap. The morph is a brief
-state change rather than a running animation, so under reduced motion the shape
-simply swaps. Nothing is withheld by that: the state it was expressing is in the
-button label and the status line either way. Nothing else on this screen moves
-while a session is running. See `expressive-motion.md`.
+Reduced motion is respected, and D-046 keeps it cheap. The crossing is a brief
+state change rather than a running animation, so under reduced motion the pose
+simply swaps and the scale does not happen. Nothing is withheld by that: the
+pose is information and it still changes, the settle is decoration and it does
+not. Nothing else on this screen moves while a session is running. See
+`expressive-motion.md`.
 
 The title is capped at four lines with an ellipsis. It is the one piece of text
 in the app with a hard ceiling. The cap exists because a title that overruns a
 fixed container is cut through the middle of a line and reads as broken rather
 than as shortened, and four lines is what the column holds at the largest system
-font scale once the title sits outside the shape. D-014 has the arithmetic for
-why it could not stay inside it. The full title is one tap away in Task Details.
+font scale. The full title is one tap away in Task Details.
 
 ---
 
@@ -480,10 +533,16 @@ rather than watched to pass the time.
 
 **Ready comes back too**, as a state. D-013 lists it among the six, and the code
 had removed it when Focus left the navigation bar and the only entry left was a
-task row, which went straight into the session on purpose. Ready is reached from
-the Focus now card instead, which is the replacement for the navigation-bar entry
-this document originally gave it: the card names a task the app chose, and Ready
-is where the user agrees with the choice before the clock runs.
+task row, which went straight into the session on purpose. Ready was then reached
+from the Focus now card, which was the replacement for the navigation-bar entry
+this document originally gave it: the card named a task the app had chosen, and
+Ready was where the user agreed with the choice before the clock ran.
+
+**That route is gone, and Ready is unreachable again.** D-048 left the card
+speaking only for a session the user started themselves, which is a choice already
+made, so the card resumes rather than offering Ready. See "Entry" above: nothing
+in the app now calls `openFocus`. The state is still drawn and still tested; what
+it lacks is a way in.
 
 This paragraph used to end by saying a row long-press still skipped Ready. D-023
 removed the row menu, so nothing skips it any more and every entry lands there.

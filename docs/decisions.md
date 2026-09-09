@@ -2751,6 +2751,77 @@ reminders as the next system alarm costs more trust than the late delivery it
 prevents. There is no public API for an app to inspect its scheduled window, so
 until Android exposes one the boundary cannot be learned at runtime.
 
+## D-043. The widget's task list scrolls, and stops measuring itself
+
+**Decision.** The rows become a Glance `LazyColumn`, which is a `ListView` in
+RemoteViews terms, so every outstanding task for today is in the widget and the
+overflow scrolls. `+N more` is removed. `rowCapacity` and the composable heights
+it divided are removed, along with the `heightDp` and `fontScale` inputs to
+`focuslistWidgetModel`. Nothing reads `LocalSize` any more, so `sizeMode` becomes
+`SizeMode.Single`.
+
+The lead card is the list's first item rather than a pinned header, so it scrolls
+with everything else.
+
+**Why. The count was a dead end.** `+N more` told the user work existed and gave
+them no way to reach it: the only route was opening the app, which is the thing
+the widget exists to save. D-041 made the widget fill its space and that helped,
+but it cannot solve this. A full day overflows any widget, and the smaller the
+widget the sooner. The disclosure was honest about hiding something and that is
+not the same as being useful.
+
+**What this supersedes in D-031, and what it does not.** D-031 allows the widget
+one count, "disclosing rows that did not fit", and that clause goes with the
+thing it described. The argument underneath it does not.
+
+That argument is that a surface nobody asked to look at needs a higher bar to
+speak up than a screen deliberately opened. It governs what the widget
+**asserts** unprompted: the lead card still speaks only for a paused session or a
+passed reminder, the end states are still two quiet lines, and the resting view
+is unchanged. Scrolling is not an assertion. It is the user deciding to look
+further, which is exactly the deliberate act D-031 contrasts a widget against.
+Restraint about what a surface says is not the same as refusing to show more when
+asked.
+
+**D-036 and D-041 are not reversed, they are made unnecessary.** Both were
+corrections to arithmetic that only had to exist because the widget was deciding
+how many rows to draw. D-036 replaced a breakpoint table with division; D-041
+discovered the division had been fed one of two constants for its whole life. The
+honest reading of that sequence is that measuring was the liability: two entries
+and three bugs went into computing a number the platform will work out for
+itself if asked. `ListView` fills the height and stops. Nothing to keep in step
+with the composables, and the obligation `FocuslistWidgetModel` carried, that a
+row changing height without changing `RowHeight` silently breaks the
+calculation, goes with it.
+
+**`SizeMode.Single` supersedes D-041's `SizeMode.Exact`, one entry later.** That
+is not a retraction of D-041's finding, which was correct and is what exposed
+this. With no reader of the size, `Exact` would rebuild RemoteViews on every
+resize to produce a layout that does not depend on the result. `Single` builds
+once and lets the views stretch. D-041's guard, that `rowCapacity` is the only
+reader of the size, is satisfied in the strongest available way: there is no
+reader and no `rowCapacity`.
+
+**The lead scrolls rather than pinning.** Pinning it would reserve 94dp of every
+widget for a card that is absent most of the time, and it was the pinned lead
+that produced D-036's original bug, a Compact widget with a lead card and no room
+for a single row. As the first item it costs nothing when it is not there, and a
+user who has scrolled past it is browsing rather than glancing.
+
+**Precedent.** TickTick's task list is a `RemoteViewsService` collection, checked
+by pulling its APK on the emulator. D-041 recorded that as the road not taken;
+this takes it. Their widget never measures and has no equivalent of `+N more`.
+
+**What this costs.** Row order is now the only thing telling the user what to do
+first, over a list that may be longer than the screen. Today's bands are not
+reproduced in the widget and are not going to be. If the widget starts reading as
+an undifferentiated list, the answer is fewer rows rather than a returning count.
+
+**What would reverse this.** A launcher that renders the collection badly, or
+evidence that scrolling on a home screen goes unused, which would show as users
+reporting they did not know the rest was there. `+N more` would then come back as
+a footer under a fixed list, and this entry is the one to supersede.
+
 ## D-044. A missed-reminder notice can be acknowledged on Today
 
 **Decision.** The missed-reminder banner on Today has a dismiss action. Dismissal
@@ -2790,3 +2861,631 @@ the warnings that can still lead to action.
 understanding them and consequently overlook repeated delivery failures. The
 first response would be clearer action copy or placement, not suppressing newer
 incidents with a broader acknowledgement.
+
+## D-045. The widget reads its data as a stream, because a Glance session outlives one read
+
+**Decision.** `FocuslistWidget.provideGlance` stops capturing a snapshot and
+starts observing one. The tasks, the day, the stored Focus session and the
+completion evidence become a single `Flow<WidgetSnapshot>`, seeded once so the
+first frame is real, then collected inside `provideContent` with
+`collectAsState`. The widget follows the data for as long as its session is
+alive.
+
+`WidgetSnapshot` and the flow that builds it move to `FocuslistWidgetModel.kt`,
+which is the file that exists so this kind of decision can be covered by JVM
+tests.
+
+**Why. The widget was frozen for the first 45 seconds after every refresh, and
+had been since it shipped.** Everything above `provideContent` runs once per
+Glance session, not once per update. `runGlance` is a `channelFlow` that calls
+`provideGlance` a single time, `AppWidgetSession` holds it in a `remember`, and
+`provideContent` suspends and never returns. A session lives 45 seconds past its
+first composition and takes five more for each event.
+
+`updateAll()` does not re-enter any of that. It posts `UpdateGlanceState`, which
+reassigns Glance's own state object and forces a recomposition. Recomposing
+re-rendered a captured local, so it drew the same data again. The read never
+happened twice.
+
+So an update arriving while a session was open changed nothing, and an update
+arriving after one had expired started a fresh session and looked perfect. That
+is the whole of the bug, and it is why it read as intermittent.
+
+**What it looked like.** Three complaints, one cause. Tasks added in the app did
+not appear on the widget. Unchecking a row the user had just checked did nothing,
+because the check had opened the session that the uncheck was then trapped
+inside. A widget showing one task of four caught up the moment the user tapped
+it, because the tap landed after that session had already died.
+
+**Measured, not reasoned.** Two completions in the app eight seconds apart, one
+session: the first reached the widget and the second did not, and the two home
+screen captures were byte-identical. Waiting sixty seconds for the session to
+expire and writing once more brought every missed change through at once.
+
+**This is older than D-043.** `git log -L` puts the shape at `e4f493c`, the
+widget's first commit. Scrolling did not cause it. Scrolling exposed it: a stale
+list is visibly stale, where a stale list truncated to `+N more` looked like the
+widget simply being small.
+
+**Why not close the session before each update.** `GlanceAppWidget.close` would
+force a re-read by destroying the thing that caches it. That treats the session
+as the problem when the session is the framework working as designed, it races
+with any update already in flight, and it pays a full worker start for every
+change. Reading observable state inside a composition is what the composition is
+for, and it is what Glance's own `AppWidgetSession` does.
+
+**Precedent.** TickTick runs no session. Its widgets are classic
+`AppWidgetProvider` and `RemoteViewsService` pairs, twenty of them on the
+emulator, and a data change calls `notifyAppWidgetViewDataChanged`, which makes
+the launcher ask the factory for rows and the factory query the database at that
+moment. There is no cached snapshot to go stale because the read *is* the
+refresh. Glance can have the same property by making the read observable, and
+keeps the composable rows D-043 relies on.
+
+**`keepWidgetInStepWithState` stays and keeps its job.** While a session is open
+the flow now carries the change on its own and the collector's `updateAll` is a
+cheap event. While no session is open, that `updateAll` is the only thing that
+starts one, so nothing reaches the widget without it. Its `drop(1)` and the
+reasoning behind it are untouched.
+
+**What this costs.** A widget session now recomposes on every task write for as
+long as it lives, where before it did the work once. The snapshot is
+`distinctUntilChanged`, so identical states do not republish, but a busy minute
+in the app will push more RemoteViews than it used to. That is the correct trade:
+the alternative is being wrong quietly.
+
+**What would reverse this.** Evidence of battery or jank cost from the extra
+recompositions, which would be answered by debouncing the flow rather than by
+capturing it again. Capturing it again is the bug.
+
+---
+
+## D-046. Focus draws the cat instead of the shape, and the clock moves to the status line
+
+**Decision.** The Focus sheet's 180dp shape is replaced by the app's own mascot,
+in two poses. `cat-sit-front` while the clock is stopped, `cat-nap` while it
+runs. The remaining time leaves the shape and joins the status line at body
+size, so the line reads as the clock, then the budget:
+
+    Ready              sit    45:00 · 45 min focus     Complete · Start focus
+    Running            nap    44:37 · 45 min focus     Complete · Pause
+    Paused             sit    32:18 · 32 min left      Complete · Resume
+    Estimate reached   nap    00:00 · Estimate reached Complete · +5 min
+    Open-ended         nap    12:43 · No time limit    Complete · Pause
+    Open-ended paused  sit    12:43 · No time limit    Complete · Resume
+
+Two drawings cover six states, on the partition D-014 already drew.
+
+**The action row is reordered too, and it had never been decided.** Complete
+leads and the clock control trails, where the row had been built clock-first and
+left that way. Complete now sits in the same place in all six states, instead of
+trailing in five and leading in the one state that has no clock control for it
+to trail. And the clock is the control pressed repeatedly inside a session while
+Complete is pressed once at the end, so the repeated one goes where the thumb
+already is, which is the argument `expressive-components.md` already makes for
+the Start focus pill on Task Details. Emphasis still carries the ranking and is
+unchanged: Complete stays tonal beside a filled control, which is also the
+ordinary Material arrangement of the two.
+
+**What this supersedes.** D-014's shape, entirely: the `Cookie4Sided` at rest,
+the `Cookie12Sided` while running, and the morph between them. Also D-014's
+placement of the readout inside the shape at Headline Small.
+`expressive-motion.md`'s rule that the app permits exactly one shape morph now
+permits none, because the one it allowed was this.
+
+**Why the cat rather than the shape.** D-014 reduced the shape's job to a single
+sentence: it says whether the clock is running. That is a job an animal does
+better than a polygon. The app already has the animal, drawn in five poses, and
+`EmptyStateMascot.kt` already resolves it against three colour roles so it
+follows dynamic colour. Nothing new had to be invented; a sixth and seventh pose
+were drawn on the board that the other five came from.
+
+It is also the warmth the product has been missing without buying anything
+`PRODUCT.md` principle 7 forbids. There is no gift, no currency, no shop, no
+achievement and no session history. The cat settles when you start and gets up
+when you stop, and that is the whole of it.
+
+**Why the clock moves.** D-014 already made this argument and stopped one step
+short: "the largest object on a screen built to stop clock-watching should not
+be the clock." At Headline Small inside the shape the countdown was still the
+second largest thing on the screen. On the status line at body size it is still
+a real readout, which D-013 requires because three of the six states cannot be
+told apart without it, and the task title is now unambiguously the largest
+object here. That is `PRODUCT.md` principle 2 finally getting the whole way.
+
+**The cat does not wake up when the estimate runs out.** Estimate reached naps
+like every other running state. `focus.md` already says overrunning is ordinary
+and that the screen does not call it failure; an animal that sat up at the
+buzzer would say it was. Only the status line changes.
+
+**The ceiling, which is the point of writing this down.** The cat gains no prop.
+It gains no third Focus pose. It never appears anywhere a session is not open.
+Every version of this idea fails the same way, by growing a wardrobe, and the
+failure is not the first pose, it is the fourth. Adding to this set requires
+superseding this paragraph and saying what changed.
+
+**Two smaller things it settles.** `cat-sit-front` makes a fourth sitting cat,
+and that is deliberate: the three shipped sits are empty-state poses on list
+screens, where posture says why a list is empty. This pair is in a sheet, is not
+an empty state, and is read against its own partner rather than against that
+vocabulary. And `EmptyStateMascot.kt`'s note that a `mid` nose is a sitting-pose
+exception was wrong: `cat-nap` is a lying pose whose nose is also lighter than
+its eyes, so the rule follows how a pose was drawn rather than what posture it
+holds.
+
+**The board's "Ear shading" layer is the far ear, and both poses draw it as a
+subpath of the body.** Found on a device, and found twice. A hairline showed
+across one ear on the phone, which read as an artefact between two same-coloured
+paths, since the ear layer and the body both bind to `primaryFixed` and the
+board's few percent of luminance between them collapses to nothing in the app.
+Dropping the layer removed the seam and the ear with it: rendering the body path
+alone shows it stops short and leaves a notch, so that layer is geometry rather
+than shade, whatever it is called.
+
+Merging it into the body path fixes both. One `addPath` holding both subpaths
+fills as a union under nonzero winding, so the ear is present and there is no
+join left to antialias twice. The five empty-state poses still add theirs
+separately and are untouched; whether they show the same seam is a question
+about those poses.
+
+**The lesson is about layer names.** A name exported from a board describes what
+the designer was thinking, not what the path covers. Anything binding two layers
+to the same colour role should be rendered and looked at before one of them is
+called redundant.
+
+**The crossfade is one gesture on one spec.** The alpha is an effect and the
+scale is spatial, and `Motion.kt` is right that those are different kinds of
+animation. They are not two animations here. `focus.md` already records the
+lesson from the container transform it deleted: "two things animating on
+separate specs arrive at separate times, and the fix is to make one a function
+of the other rather than to tune both until they agree." Both halves run off one
+value on `mascotSettle`, the default spatial spec.
+
+Nothing translates. Both poses share a ground line and are scaled about their
+own feet, so the floor under the cat does not move while the body compresses.
+The prototype this came from moved each pose a few pixels; moving either one
+breaks the anchor that makes the pair read as one animal rather than as two
+drawings dissolving.
+
+**What it costs.** The app's shape work stops being a thing the app does. That
+was distinctive, and D-014 had already reduced it to a two-state toggle, but it
+is a real loss and this is where it is recorded. `FocuslistDimensions.FocusShapeSize`
+is gone with it, and the poses take the mascot scale, 192.72 x 178.87 and
+202.55 x 119.13, rather than a 180dp box.
+
+**Timing, and the rule this bends.** This is Focus work landing while Phase 4 is
+still open, which is exactly the tripwire D-013 set: "if Phase 4 slips while
+Focus grows, this was the wrong call." It was sequenced here deliberately and
+for one reason: Phase 5 ships the Play listing, the Focus screen is in those
+screenshots, and shipping the Cookie means reshooting them. The code is small
+because `MascotImage` already carries the colour resolution, the theming and the
+accessibility decision.
+
+**What would reverse this.** The nap not reading as *running* at a glance. That
+is the one thing no test can answer, because it is a question about how fast a
+posture reads, and it needs a device. If it fails, the answer is to swap the
+poses — alert while running, curled when idle — and accept that it is duller.
+
+## D-047. The widget's list takes the height it needs, so the space below it belongs to the widget again
+
+**Decision.** The rows' `LazyColumn` drops `defaultWeight()` and measures to its
+content. The header stays a fixed 60dp, the list takes what it needs up to what
+is left, and any remainder belongs to the root `Column`, which carries the
+whole-widget click.
+
+**Why. D-043 quietly broke a documented target.** `widget.md`'s interaction table
+has said from the start that tapping anywhere on the widget that is not a
+checkbox, a row, Resume or add opens Today. Reported as "pressing the bottom
+empty space on the widget does not open the app", and that is exactly what had
+happened.
+
+A weighted `LazyColumn` is a `ListView` stretched to fill every pixel below the
+header whether or not it has rows to put there, and `AbsListView.onTouchEvent`
+returns true unconditionally while the view is enabled, regardless of whether
+anything in it is clickable. It swallowed every touch in that region. The root's
+click listener never saw them, and there was no row under the finger to carry a
+fill-in intent either, so nothing fired at all.
+
+Measured on a launcher with three tasks on the default widget: the list was
+handed 638px and its rows ended after 420, leaving 218px, about a quarter of the
+widget, inert. The 8dp strip below the list still worked, which is what made it
+read as arbitrary rather than as a rule.
+
+**What this changes about D-043, and what it does not.** D-043 chose
+`defaultWeight` "because the header above is a fixed 60dp and the list takes what
+is left". That reasoning was about not colliding with the header and it survives.
+What it did not consider is that "what is left" and "what the list needs" are
+different numbers, and that the difference is a live region belonging to a view
+that eats touches. The collection, the scrolling and the absence of any capacity
+arithmetic are untouched: the platform still decides how many rows fit, and when
+the rows exceed the space the list is capped and scrolls exactly as before.
+
+**This is not measuring, which is the thing D-043 removed.** No code reads a
+size, computes a row count or keeps a copy of any composable's height. Dropping
+the weight asks the platform for one more thing it already knows, on the same
+measure pass it was already doing.
+
+**Verified on the minSdk floor, because there was a real reason to doubt it.**
+`GlanceRemoteViewsService` branches on `SDK_INT > S`: API 32 and up carry the
+rows inside the RemoteViews, while 29, 30 and 31 fetch them from a bound
+`RemoteViewsService` that fills the adapter asynchronously. A `wrap_content`
+`ListView` measured before its adapter has anything in it is zero tall, and a
+widget that renders as a bare header is the worst failure this product has.
+
+An API 29 emulator was installed to answer it rather than guess. On Android 10,
+with the service-backed adapter: a long list still caps at the available height
+and scrolls, a short list measures to its rows, a freshly dropped widget renders
+its rows within a second and a half, and the region that was inert now opens
+Today. Checkboxes still complete without leaving the home screen. The same
+checks pass on API 37.
+
+**What this costs.** A short list now leaves visible empty background rather than
+an invisible empty list, which is the same pixels either way but is now honestly
+part of the widget rather than part of a list. If that reads as unfinished, the
+answer is what the widget puts there, not giving the space back to a `ListView`
+that will not use it.
+
+**What would reverse this.** A launcher or API level where a content-height
+`ListView` collapses or fails to scroll. The fallback is not the weight again but
+gating on the same boundary Glance uses, content height above API 31 and weight
+at or below it, which keeps the fix where the adapter is synchronous.
+
+## D-048. The Focus now card becomes the paused session card, and stops promoting its task
+
+**Decision.** Four changes, and the first forces the rest.
+
+`FocusNowReason.ReminderPassed` goes. The card appears for a paused focus
+session and for nothing else. `FocusNowReason` and `FocusNow` go with it: a rule
+with one reason has no reason to state, so the query returns the paused task or
+null instead of a task paired with a justification.
+
+The card stops promoting. Its task stays in whichever band it belongs to, so
+Today's call to `todaySections` loses `promotedTaskId`.
+
+The card loses its checkbox, its reason line and its whole-card tap target. What
+is left is a label, the title, and Resume.
+
+The label carries what the reason line carried: `Paused · 15 min remaining`, or
+`Paused` for a session with no estimate behind it. "Focus now" as a label goes,
+along with the question it was answering.
+
+The widget follows the rule and leads on a paused session only. It keeps its
+checkbox, its tap target and its promotion, for a reason given below.
+
+**Why the reason had to go once the promotion did.** D-035 cut `NoTimeToday`
+because the card under it *was* the first row of the band immediately below,
+lifted out and drawn at double size, explained by that band's own label.
+`ReminderPassed` survived that argument on one technicality: the promotion. The
+promoted task was not in the band below, because D-012 had taken it out, so the
+card duplicated nothing.
+
+Take the promotion away and the technicality goes with it. The card would name a
+task sitting in Overdue directly beneath it, under a label that already says the
+work is late, carrying a time the row's own metadata already prints. That is
+D-035's argument arriving, thirteen entries later, at the reason D-035 spared.
+
+**Why the promotion goes.** Every awkward thing about this card exists because of
+it. The checkbox is there because the row's checkbox was taken away. The
+whole-card tap target is there because D-012 found that the promoted task had
+become unreachable, "not in a band, not in Upcoming, which holds later days, not
+in Inbox, which holds undated work". The empty branch tests
+`tasks.isEmpty() && focusNow == null` because a screen holding a card is not
+empty. `todaySections` carries a parameter for it. Four accommodations for one
+rule.
+
+The rule was not paying for them. D-012 promoted so the task would be on Today
+exactly once, and that was right for the card D-012 described, which was a task
+drawn large with a checkbox on it. This is not that card. With no checkbox it
+cannot be completed, and with no reason line it asserts nothing about priority; it
+says one thing the row cannot say and offers one action the row cannot offer. A
+control about a task and a row for that task are not the same task twice.
+
+**What the card is for now.** It narrows from "what should I do now" to "you were
+in the middle of something". The first is a question the bands already answer by
+ordering, past, present, future, with the answer at the top of the screen, which
+is D-035's own defence of removing a card rather than adding to one. The second is
+the single fact on Today that no arrangement of rows can produce: no row can say
+that work was started on this task and has fifteen minutes left in it. D-035 said
+exactly that when it chose what to keep, and then stopped one reason short of the
+conclusion.
+
+**The remaining minutes stay, and they cost no line.** The card is a title and a
+button, and the number survives inside the label because it is the number the
+decision turns on. A forty-five minute task paused two thirds of the way through
+has fifteen minutes left, and a card showing the estimate would overstate the work
+threefold. The label line already existed to hold "Focus now", which is what
+vacates it, so `today_focus_now_paused_remaining` moves up a line unchanged and
+the card is shorter than before rather than longer.
+
+**Why the widget keeps promoting when Today stops.** The reachability argument
+retires on Today and does not retire there. `WidgetLeadCard` is still a row: it
+draws the checkbox, it takes a tap through to task details, and it adds a Resume
+button on the end. It *is* the task, so leaving it in the list as well would be
+the same task twice on a surface where a row is scarce. Today's card stopped being
+a row; the widget's was never only a card.
+
+The shared rule is untouched, which is the thing D-035 unified and this entry
+keeps unified. One rule, `ReminderPassed` gone from both readers, and the
+`lead.reason == FocusNowReason.ResumePaused` branch in `FocuslistWidget.kt`
+disappears because it is now always true.
+
+**Superseded by D-049, written the same day.** The two paragraphs above are kept
+as written because they were the reasoning at the time, and they are now wrong on
+the outcome rather than on the argument. D-049 removed the widget's lead card
+outright and gave the widget labelled bands instead, so there is no lead to promote
+and no Resume button on the home screen. What survives of this entry on that
+surface is only the deletion: the widget reads no clock and no Focus session, which
+is what removing `ReminderPassed` made possible and what D-049 then completed.
+
+The rule is still shared in the sense that mattered, because there is no longer a
+second reader to disagree with. `pausedFocusTask` has one consumer, Today.
+
+**A documented wart retires with the reason.** `TaskListViewModel`'s `focusNow`
+flow carried a caveat saying that a reminder passing does not re-run the rule on
+its own, because `currentDay.today` "emits on a date change and nothing finer", so
+the card "appears the next time anything else emits, which in practice is the next
+write or the next time the screen is opened". `ReminderPassed` was the only reason
+that read a clock. A paused session is paused whatever the time, so the flow loses
+the day trigger, the query loses its `now` parameter the way D-035 already removed
+its `today`, and the card can no longer be late.
+
+**The cost, taken deliberately.** The card gets rarer, and by more than D-035 cost
+it. `ReminderPassed` fired for any user who sets reminder times and lets one pass,
+which is a normal week; a paused session requires having started work inside the
+app and then left it. D-035 already accepted that "a card seen rarely is a card
+that is learned slowly" and named the consequence, that the card's button is
+Today's only one-tap route into a session. That route now exists only after a
+pause.
+
+Accepted, and the compensation is deliberately not a card. Task rows already open
+Focus directly and skip Ready, per `focus.md`, so the route exists on every task
+and is merely not at the top of the screen. If Focus turns out to be
+undiscoverable, the fix is an entry point that does not depend on state, not a card
+that goes looking for something to say. That is written down here so the next
+session reaches for the entry point rather than for the reason.
+
+**Overdue gains nothing.** A count on its label, of the kind Completed carries,
+was considered and cut. The band is already first, already labelled, and already
+holds the rows themselves, so a count would make it the third thing on Today
+counting lateness, after the band's own contents and the reminder health banner.
+The reason for removing `ReminderPassed` is that Today says this twice, and the fix
+for that is not a third phrasing.
+
+**What this supersedes.** D-012's promotion clause and its "the card opens its
+task" clause, which stand or fall together and fall together here. D-035's second
+surviving reason, leaving that entry with one. Neither is contradicted on its
+reasoning: D-012 was right about the card it described, and this finishes the
+argument D-035 started.
+
+Two design documents state behaviour that stops being true.
+`docs/design/today-screen.md` lists "Tap Focus now card body | Opens task details"
+in its interaction table, and that row goes. `docs/design/focus.md` lists the card
+as an entry that "opens the sheet in **Ready** on the task the card names", which
+is now wrong for the only path left: a paused session resumes on the button press,
+because the user has already decided and already started.
+
+**A consequence this entry did not foresee: Ready is now unreachable.** Found while
+correcting `focus.md`, and recorded here rather than fixed, because it is a product
+question.
+
+D-013 lists Ready among Focus's six states: a task chosen, with no clock running.
+`openFocus` is the only function that lands there, and after this entry nothing in
+the app calls it. Both remaining entry points, a Today row and Start focus on Task
+Details, call `beginFocus`, which starts the clock. The card's non-paused branch was
+the last caller of `openFocus`, and removing `ReminderPassed` removed the branch.
+
+`focus.md` argues that "a drawn state nothing can arrive at is a state that should
+not exist", which makes this a decision to take rather than a gap to leave open:
+either something lands on Ready again, or D-013's six states become five and the
+state comes out. Not decided here, because this entry is about Today's card and
+that question is about Focus.
+
+Worth separating from it: `focus.md` also claimed Start focus on Task Details lands
+on Ready, and that was already untrue before this entry. `TaskDetailsScreen` has
+called `beginFocus` for as long as the call has been there. The document has been
+corrected; the code was not touched.
+
+**What would reverse this.** Users pausing a session and then not finding it
+again, which would mean the card is too quiet rather than too rare. Or overdue work
+sitting unactioned in a way it did not before, which would mean the card had been
+carrying the Overdue band and the band needs the voice this entry declined to give
+it. The first shows up as sessions abandoned mid-task, the second as tasks overdue
+for days.
+
+Restoring the reason is no longer an enum value and a branch, which is the real
+price of collapsing the type: it would be the enum, the data class, and both call
+sites coming back. That is the trade this entry makes on purpose, because a type
+that can only express one thing should not be shaped like a choice.
+
+## D-049. The widget is a compact Today, with bands and without Focus
+
+**Decision.** The widget drops the lead card and everything behind it, and draws
+Today's bands instead. Overdue, No time set and Later today, each with the label
+Today uses, over rows in the order `todaySections` already produces. No Focus
+surface of any kind: no promoted task, no reason line, no Resume.
+
+Completed stays out. On Today it is a collapsed disclosure the user can open;
+a widget has nothing cheap to open into, and finished work is the one thing a
+glanceable surface never needs to carry. The just-completed row is unaffected and
+still holds its place, because that is evidence of what the user did rather than
+a list of what they have finished.
+
+**Why. The lead card had already lost its subject.** D-048 removed
+`ReminderPassed` from the Focus now card and deleted `FocusNow`,
+`FocusNowReason` and `focusNow` with the ranking, leaving `pausedFocusTask`.
+That took away both of the two reasons D-031 gave the widget: `ReminderPassed`
+was cut outright, and `ResumePaused` is the one D-048 keeps for a screen the user
+deliberately opened. Carrying it onto the home screen would have been a new
+argument, not a surviving one, and nobody made it.
+
+**What D-031 loses, and what survives.** Its lead-card bullet goes. Its argument
+does not, and it is the reason Completed is excluded and the bands are labels
+rather than counts: a surface crossed involuntarily has to earn the right to
+assert, so the widget still shows work and never comments on it. Bands are not an
+assertion. They are the order the rows were already in, named. The user had to
+infer that order before and now does not.
+
+**This reverses D-043's closing line**, which said Today's bands are not
+reproduced in the widget and are not going to be, and offered fewer rows as the
+answer if the list read as undifferentiated. That was written when the rows were
+one run under a card that explained the top of it. With the card gone the run has
+nothing explaining it at all, and the honest reading is that D-043 was defending
+a layout the lead card justified rather than the bands themselves. Fewer rows was
+never a real option: the widget scrolls precisely so it does not have to withhold
+work.
+
+**The completion evidence stops carrying an index.** It recorded the row's
+position because completing a task moved it to the bottom of a flat list. With
+bands the task is shown as though it were still outstanding, which returns it to
+its own band in its own place without anyone remembering where that was.
+`widgetCompletionIndex` and `WidgetCompletion.previousIndex` go.
+
+**A band heading needs its own tap target.** The root carries "anywhere else
+opens Today" and `AbsListView` eats every touch inside the collection before the
+root sees it, so a heading is inert without one. Rows never showed this, having
+targets of their own. It is the second thing lost to that rule after D-047, which
+makes it a rule worth stating: anything drawn inside the list needs its own
+action.
+
+**The widget no longer reads the Focus session at all**, so `storedFocus` leaves
+`WidgetSnapshot` and the focus-change flow leaves `widgetSnapshots`. D-045's
+stream and D-047's content-height list are untouched, and one input is gone from
+each. `WidgetLaunchCommand.ResumeFocus` goes with the Resume button.
+
+**What this costs.** A reminder that fired and was swiped away no longer gets a
+card on the home screen naming it. D-031 called that the durable backstop for
+D-005's promise, and it is a real loss. What replaces it is weaker and not
+nothing: the task is in the widget under a band that says the work is late, which
+is the same thing D-048 concluded was enough on Today. If missed reminders start
+going unnoticed, the answer is reminder health work, which the app already has,
+rather than a card that was restating its neighbour.
+
+**What would reverse this.** Evidence that the bands read as clutter at widget
+size, where the answer is fewer bands rather than none: Overdue is the one
+carrying the product's defining failure and would be the last to go.
+
+## D-050. The widget's checkbox carries both colours, because the launcher picks and this process cannot
+
+**Decision.** `WidgetCheckbox` stops resolving its colour roles to a single
+`Color` and passes a `DayNightColorProvider` instead, built by resolving the role
+against a day configuration and a night one. Glance then writes both
+`ColorStateList`s into the RemoteViews and the launcher picks, which is what
+every other colour in the widget already did.
+
+**Why. The checkbox was the only thing in the widget that could not follow the
+system.** Reported as invisible in light mode. It is invisible in whichever mode
+the widget was not built in.
+
+`ColorProvider.getColor(context)` collapses a day/night pair by reading
+`context.resources.configuration.uiMode`. That context is the app process at
+composition time; the RemoteViews are drawn later by the launcher, in whatever
+mode the system is in then. Everything else Glance emits as a pair and defers.
+The checkbox was handed a `FixedColorProvider`, which has no night variant, so
+Glance wrote the same colour into both slots and the value froze at whatever the
+app process happened to be when the Glance session last ran.
+
+The two agree until the system changes mode without the widget being rebuilt,
+which on a phone with scheduled dark mode is every sunrise. The container flips,
+the text flips, and the checkbox keeps yesterday evening's colour: a pale outline
+on a pale surface, or a dark one on a dark surface.
+
+**What the original workaround was actually avoiding.**
+`CheckedUncheckedColorProvider` requires that neither colour is a
+`ResourceColorProvider`, and dynamic Glance roles are exactly that, so the roles
+cannot be handed over as they arrive. Resolving to a `Color` satisfied the check.
+It also threw away the day/night pair, which was not what the check was asking
+for: the same class explicitly supports `DayNightColorProvider` and reads it with
+`getColor(isNightMode)` rather than from a context. Two colours were always
+allowed. Only the resource form was not.
+
+**Resolving twice is the supported way to build that pair.** A configuration
+copied from the real one with the night bits set, through
+`createConfigurationContext`, which is the same technique Glance's own
+`resolveCheckedColor` uses for this. Copied rather than blank, because a dynamic
+colour resolves against the whole configuration and an empty one would lose the
+density and locale the lookup needs.
+
+**Measured both ways.** Widget built in dark, switched to light with nothing
+touched: fixed, the outlines turn dark with the surface; unfixed, they stay pale
+and vanish. Built in light and switched to dark: fixed, they turn pale; unfixed,
+they stay dark navy on a dark navy container. The unfixed captures were taken by
+putting the old two lines back and running the same toggle, so this entry
+describes a bug that was seen rather than one that was reasoned about.
+
+**What this costs.** Two extra resource lookups per checkbox composition, on a
+configuration-corrected context that has to be created each time. Both happen on
+the Glance session's own dispatcher during composition, not on any frame.
+
+**What would reverse this.** Glance gaining a compound-button API that accepts
+resource-backed providers, at which point the roles could be passed straight
+through and neither this helper nor the double resolve would be needed.
+
+## D-051. The widget draws before it reads, because a session that has not drawn can be timed out
+
+**Decision.** `provideGlance` stops awaiting a first snapshot and calls
+`provideContent` straight away. The snapshot flow is collected with a null
+initial value, and the null is a state the widget draws: `WidgetBody.Loading`,
+which is the header alone. The bands arrive by recomposition a beat later.
+
+`WidgetBody.Sections` carries the day it was built for, so the content no longer
+needs a date passed alongside a model that may not have one yet.
+
+**Why. A widget that never drew was reported stuck on "loading" for hours, and
+the loading layout is the launcher's, not ours.** `dumpsys appwidget` on the
+device showed the instance with no `views=` line at all, next to other widgets
+that had one. Nothing had ever been published to it.
+
+WorkManager's own diagnostics showed why nothing ever would: the
+`SessionWorker` for that widget had already run and returned SUCCEEDED. A Glance
+session that times out is a successful worker, because `doWork` ends
+`Result.success(TimeoutExitReason=true)`.
+
+**The timer that expired is the five second one.** `runSession` starts the
+45-second `initialTimeout` only after the first `processEmittableTree` succeeds.
+Before that the only timer that can be running is the one `observeIdleEvents`
+starts when the device signals idle, and that is `idleTimeout`, five seconds.
+Until `provideContent` is reached, `AppWidgetSession` emits `IgnoreResult()`
+every frame and publishes nothing, so the whole window before the first read
+completes is a window in which the widget can be killed having drawn nothing.
+
+**This is D-045's seeding, and the reasoning in that entry was wrong.** It said
+the initial value existed so the first frame would be real, because an empty list
+would draw "nothing scheduled" and correct itself. That weighed a flash against
+nothing, and chose to risk nothing. The flash was never the alternative either:
+"not read yet" and "nothing scheduled" are different states and only one of them
+was ever going to be drawn for a frame.
+
+D-045's substance stands. The data is still a stream collected inside the
+composition, which is what fixed the widget being frozen for a session's life.
+Only the blocking read in front of it goes.
+
+**Why this was invisible until a real phone.** An emulator is plugged in, awake,
+and never signals idle, so the five second timer never starts and a slow first
+read merely delays the first paint. A phone that idles aggressively starts that
+timer while the session is still opening a database. The same code paints every
+time on one and never on the other.
+
+**Nothing retried, and that is what made it permanent.** `updatePeriodMillis` is
+zero by design, and the application observer fires only on a task or Focus write
+and drops its first emission. One lost session leaves the widget on the
+launcher's loading layout until the user happens to change a task. Publishing on
+the first composition closes the window rather than adding a retry: there is no
+longer a period during which the session has nothing to show.
+
+**Measured, by making the read slow on purpose.** With a twenty second delay in
+front of the snapshot flow and everything else unchanged, the first publish
+lands at t+7.8s on the new shape and t+27.7s on the old one. Those 7.8 seconds
+are the cold start; the old shape spent the whole twenty on top of it having
+published nothing, and that is the window a five second idle timer takes.
+Measured by polling `dumpsys appwidget` for the widget gaining a `views=` line,
+which is what an actual publish looks like from outside the process.
+
+**What this costs.** One extra publish per session, the header alone, before the
+data lands. On a warm process that is one frame. The residual risk is that the
+flow never emits at all, in which case the widget shows an empty header rather
+than the launcher's spinner, which is a state the user can at least recognise as
+this app.
+
+**What would reverse this.** Evidence that the header-only frame is visible long
+enough to read as a broken widget, which would be answered by giving `Loading`
+something to say rather than by waiting for data before drawing.

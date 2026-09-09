@@ -8,12 +8,7 @@
     <string name="today_empty_supporting">Tasks without a day wait in your Inbox.</string>
     <string name="widget_description">Today’s tasks from Focuslist</string>
     <string name="widget_all_done">All done for today</string>
-    <string name="widget_resume">Resume</string>
     <string name="widget_add_task">Add a task</string>
-    <plurals name="widget_more_tasks">
-        <item quantity="one">+%1$d more</item>
-        <item quantity="other">+%1$d more</item>
-    </plurals>
     <string name="today_section_overdue">Overdue</string>
     <string name="today_section_no_time_set">No time set</string>
     <string name="today_section_later_today">Later today</string>
@@ -21,16 +16,13 @@
     <string name="today_section_completed_count">Completed \u00b7 %1$d</string>
     <string name="today_completed_expand">Show completed tasks</string>
     <string name="today_completed_collapse">Hide completed tasks</string>
-    <!-- The Focus now card, per D-012. -->
-    <string name="today_focus_now">Focus now</string>
-    <string name="today_focus_now_focus">Focus</string>
+    <!-- The paused session card, per D-048. Three strings, where D-012's Focus
+         now card needed nine: the label carries the state and what is left of
+         it, and the button always resumes. The reason lines went with the
+         reason, and "Focus now" went with the question the card stopped asking. -->
     <string name="today_focus_now_resume">Resume focus</string>
     <string name="today_focus_now_paused">Paused</string>
     <string name="today_focus_now_paused_remaining">Paused \u00b7 %1$d min remaining</string>
-    <string name="today_focus_now_due">Due now</string>
-    <string name="today_focus_now_scheduled_at">Scheduled for %1$s</string>
-    <string name="today_focus_now_was_due_at">Was due at %1$s</string>
-    <string name="today_focus_now_reason_and_estimate">%1$s \u00b7 %2$s</string>
     <string name="today_section_completed">Completed</string>
 
     <!-- The reminder health banner, D-040. The label and the sentence it draws
@@ -81,6 +73,11 @@
     <string name="focus_status_remaining">%1$d min left</string>
     <string name="focus_status_estimate_reached">Estimate reached</string>
     <string name="focus_status_no_limit">No time limit</string>
+    <!--
+      D-046 moved the clock out of the shape and onto this line, so the status
+      line now reads as the clock, then the budget: "44:37 · 45 min focus".
+    -->
+    <string name="focus_status_line">%1$s \u00b7 %2$s</string>
     <!-- The readout is digits, so it carries a spoken form for TalkBack. -->
     <string name="focus_readout_remaining">%1$s remaining</string>
     <string name="focus_readout_elapsed">%1$s elapsed</string>

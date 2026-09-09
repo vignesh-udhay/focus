@@ -8,7 +8,6 @@ import androidx.glance.appwidget.updateAll
 import com.vignesh.focuslist.FocuslistApplication
 import com.vignesh.focuslist.core.domain.TaskCompletion
 import kotlinx.coroutines.flow.first
-import java.time.LocalDateTime
 
 internal val WidgetTaskIdKey = ActionParameters.Key<String>("task_id")
 
@@ -24,20 +23,15 @@ class CompleteWidgetTaskAction : ActionCallback {
         val task = before.firstOrNull { it.id == taskId && !it.isCompleted && !it.isDeleted }
             ?: return
         val today = application.currentDay.today.value
-        val previousIndex = widgetCompletionIndex(
-            tasks = before,
-            today = today,
-            now = LocalDateTime.now(),
-            storedFocus = application.focusSessionStore.current,
-            taskId = task.id
-        )
 
         TaskCompletion(application.taskRepository, application.currentDay).complete(task.id)
 
+        // No index is recorded. D-049 draws the just-completed task as though it
+        // were still outstanding, which puts it back in its own band in its own
+        // place, so there is nothing to remember about where it was.
         val after = application.taskRepository.observeTasks().first()
         application.widgetInteractions.recordCompletion(
             taskId = task.id,
-            previousIndex = previousIndex,
             tasks = after,
             today = today
         )

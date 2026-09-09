@@ -20,9 +20,15 @@ new component because an existing one is nearly right; say what is missing.
 
 [FD] Do not introduce, unless a later product decision explicitly requires one:
 
-    FloatingToolbar        SplitButton     ButtonGroup
-    MaterialShapes polygons                shape morphing
+    SplitButton            MaterialShapes polygons         shape morphing
     navigation drawer      bottom sheet scaffold           cards
+
+Two have since been required and have left that list rather than been smuggled
+past it. `ButtonGroup` holds the Duration sheet's five options, per D-026.
+`FloatingToolbar` holds Task Details' two actions, per D-037, which is also the
+entry that noticed `ButtonGroup` was still listed here and said the line needed
+correcting either way. The exclusion was always "Focuslist has no use for them",
+not "they are unsound", so a use is what removes them.
 
 [M3] The first three are real Material 3 Expressive components. They are
 excluded because Focuslist has no use for them, not because they are unsound.
@@ -1025,31 +1031,40 @@ One surface, six states, in a sheet. Centred on a 364dp column, top to bottom:
 | Element | Treatment |
 | --- | --- |
 | Title | Headline Medium Emphasized, `onSurface`, centred, four-line cap |
-| Shape | 180dp, `primaryContainer` |
-| Time | Headline Small, `onPrimaryContainer`, centred in the shape |
-| Status | Body Medium, `onSurfaceVariant`, centred |
-| Clock control | 56dp round filled icon button, play or pause |
-| Complete | 56dp tonal button |
+| Cat | `cat-sit-front` or `cat-nap`, mascot colour roles, bottom-aligned |
+| Status | Body Medium, `onSurfaceVariant`, centred: clock, then budget |
+| Complete | 56dp tonal button, leading |
+| Clock control | 56dp round filled icon button, play or pause, trailing |
 
 [FD] Gaps are 20dp throughout. The column is centred in the content area between
 the app bar and the bottom inset rather than pinned under the app bar: this is a
 single-purpose mode screen with one column on it, and hanging that column from
 the top left the lower half of the screen empty for no reason.
 
-[FD] The shape is `MaterialShapes.Cookie4Sided` at rest and `Cookie12Sided`
-while running. On the board the geometry comes from the M3 Design Kit Shape Set,
-variants "4-sided cookie" and "12-sided cookie", which are the same shapes.
+[FD] The second row is the cat, not a shape. D-046. `cat-sit-front` at rest and
+`cat-nap` while running, board nodes `1119:5624` and `1119:5634`, drawn at
+192.72 x 178.87 and 202.55 x 119.13 inside the union of the two and aligned to
+the bottom so the ground line does not move between them. It takes the same
+0.3643 scale factor as the five empty-state poses.
 
-[FD] It is a fixed 180dp and does not grow with the window. It holds a
-fixed-size readout rather than content, so scaling it would only make the
-digits look lost. An earlier version capped it at 320dp "so a wide window gets a
-shape, not a wall", which was solving a problem this size does not have.
+[FD] It does not grow with the window, for the reason the shape it replaced did
+not: the row beside it holds a fixed-size readout, and scaling the drawing while
+the digits stay put would only make them look lost. An earlier version capped
+the shape at 320dp "so a wide window gets a shape, not a wall", which was solving
+a problem this size does not have.
 
-[FD] The title sits outside the shape rather than inside it, and that change has
-an arithmetic reason rather than a taste one. A cookie yields about 70% of its
-box as usable area, so four lines at 200% font scale would need a 514dp square
-on a 412dp screen, and three lines would need 411dp with nothing left for
-margins. D-014 has the working.
+[FD] **What used to be here** was `MaterialShapes.Cookie4Sided` at rest and
+`Cookie12Sided` while running, taken on the board from the M3 Design Kit Shape
+Set variants "4-sided cookie" and "12-sided cookie", at a fixed 180dp holding the
+readout inside it. D-014 had reduced its job to saying whether the clock was
+running; D-046 gave that job to the mascot and moved the readout onto the status
+line.
+
+[FD] The title sat outside the shape for an arithmetic reason rather than a taste
+one, and the arithmetic is worth keeping even though the shape is gone. A cookie
+yields about 70% of its box as usable area, so four lines at 200% font scale
+would have needed a 514dp square on a 412dp screen, and three lines 411dp with
+nothing left for margins. D-014 has the working. The four-line cap survives it.
 
 [FD] The shape is drawn, not clipped to. A `Shape` would have to be a new object
 every tick to change, which puts the work in layout; drawing reads the state in

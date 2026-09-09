@@ -87,18 +87,20 @@ class TodayScreenSemanticsTest {
     }
 
     /**
-     * The Focus now card opens the task it is about.
+     * A task with a passed reminder is a row, and the row opens it.
      *
-     * The card used to take no click at all, on the argument that a clickable
-     * container behind two controls is a target the user cannot see the edges
-     * of. What that missed is D-012: the promoted task leaves the bands below,
-     * so an unclickable card left the one task this screen is built around with
-     * no route to its details from Today at all.
+     * **This pair of tests used to be about the card.** D-012 promoted such a task
+     * out of its band and made the card clickable, because that promotion left the
+     * one task the screen was built around with no route to its details from Today
+     * at all. D-048 removes both halves: the reason that drew the card for a passed
+     * reminder, and the promotion. So the title appears exactly once, in the list,
+     * and the thing carrying the open action is the row.
      *
-     * The task carries a reminder that has passed, which since D-035 is the only
-     * one of the card's reasons a test can reach without starting a session.
+     * The single match is the assertion that matters. Two would mean the card came
+     * back without the promotion going with it, which is the one arrangement D-048
+     * rules out.
      */
-    private fun assertTheCardOpensItsTask(fontScale: Float) {
+    private fun assertThePassedReminderIsARow(fontScale: Float) {
         var opened: String? = null
         val viewModel = testViewModel(withOneTask())
 
@@ -107,22 +109,19 @@ class TodayScreenSemanticsTest {
         }
 
         rule.waitUntilExactlyOneExists(hasText(TITLE), TIMEOUT_MILLIS)
-
-        // One match, which is the other half of the argument: the title is on
-        // this screen once, in the card, and nowhere in the list beneath it.
         rule.onNodeWithText(TITLE).performClick()
 
         assertEquals("1", opened)
     }
 
     @Test
-    fun focusNowCard_opensItsTask_at100() = assertTheCardOpensItsTask(FontScale100)
+    fun passedReminder_isARow_at100() = assertThePassedReminderIsARow(FontScale100)
 
     @Test
-    fun focusNowCard_opensItsTask_at200() = assertTheCardOpensItsTask(FontScale200)
+    fun passedReminder_isARow_at200() = assertThePassedReminderIsARow(FontScale200)
 
-    /** And says what tapping it does, since it is not a control that looks like one. */
-    private fun assertTheCardNamesItsAction(fontScale: Float) {
+    /** And the row says what tapping it does, in the words every row uses. */
+    private fun assertTheRowNamesItsAction(fontScale: Float) {
         setToday(fontScale, withOneTask())
 
         rule.waitUntilExactlyOneExists(hasText(TITLE), TIMEOUT_MILLIS)
@@ -131,18 +130,18 @@ class TodayScreenSemanticsTest {
     }
 
     @Test
-    fun focusNowCard_namesItsAction_at100() = assertTheCardNamesItsAction(FontScale100)
+    fun taskRow_namesItsAction_at100() = assertTheRowNamesItsAction(FontScale100)
 
     @Test
-    fun focusNowCard_namesItsAction_at200() = assertTheCardNamesItsAction(FontScale200)
+    fun taskRow_namesItsAction_at200() = assertTheRowNamesItsAction(FontScale200)
 
     /**
      * One task, carrying a reminder that has passed.
      *
-     * The reminder is what puts the task in the card. It used to be enough that
-     * the task was scheduled for today, which was D-012's third reason; D-035
-     * removed that reason, so a fixture without a time now draws a plain list
-     * and every assertion about the card here would be asserting about a row.
+     * The reminder used to be what put the task in the card, and since D-048 it
+     * puts the task in the Overdue band instead. Kept as the fixture because it is
+     * an ordinary row with metadata on it, which is a better default for the
+     * assertions below than a task with nothing set.
      */
     private fun withOneTask() = FakeTaskDao(
         listOf(

@@ -9,6 +9,285 @@ scope it delivers is in `PRODUCT.md`.
 
 ## Current phase
 
+**Quick Add from the widget opened once and then kept reopening.** Reported as:
+tap add on the widget, close the drawer without typing, go to Inbox, come back,
+and the drawer is open again. The request travels from the widget as a counter
+the nav host keeps in `rememberSaveable`, and Today read it with
+`LaunchedEffect(quickAddRequest) { if (quickAddRequest > 0) ... }` and never
+retired it. Today is a navigation destination, so it is disposed on leaving and
+built again on returning, and every one of those compositions replayed a request
+the user had made once and already answered. `rememberSaveable` meant it survived
+process death as well, so the drawer would have kept coming back the next day.
+
+Today now calls `onQuickAddRequestHandled` when it opens the sheet and the host
+sets the counter back to zero. Still a counter rather than a flag, so pressing
+add again while Today is open changes the key and fires the effect a second
+time; `QuickAddRequestTest` covers both halves, and the replay half was run
+against the unfixed screen first, where it fails on `assertDoesNotExist`.
+
+No decision entry: nothing about what the product does changed. The interaction
+table already said the add button opens Quick Add, and it now does that once.
+
+**The widget was stuck on "loading" on the phone, and could have stayed that way
+forever.** D-051. `dumpsys appwidget` showed the instance with no `views=` line
+at all, next to other widgets that had one: nothing had ever been published to
+it, so the launcher was still drawing `initialLayout`.
+
+WorkManager's diagnostics said why nothing ever would. The `SessionWorker` for
+that widget had already run and returned SUCCEEDED, because a Glance session that
+times out is a successful worker. And the timer that expired is the five second
+idle one: `runSession` starts the 45-second clock only after the first
+`processEmittableTree`, so the whole period before the first draw is unprotected.
+D-045 put a blocking read in exactly that period.
+
+**Nothing retried it.** `updatePeriodMillis` is zero and the application observer
+fires only on a task or Focus write, dropping its first emission. One lost
+session left the widget on the spinner until the user happened to change a task.
+
+`provideContent` is now called immediately and the null snapshot is a drawn
+state, `WidgetBody.Loading`, which is the header alone. **Measured by making the
+read slow on purpose**: with twenty seconds in front of the flow, the first
+publish lands at t+7.8s on the new shape and t+27.7s on the old one, timed by
+polling for the widget gaining a `views=` line. The 7.8s is cold start; the old
+shape spent the whole twenty on top of it having published nothing.
+
+**The widget checkbox now carries both colours, so it follows the system.**
+D-050. Reported as invisible in light mode, and it was invisible in whichever
+mode the widget was not built in. `ColorProvider.getColor(context)` collapses a
+day/night pair using the app process at composition time, while the RemoteViews
+are drawn later by the launcher in whatever mode the system is in then.
+Everything else in the widget is emitted as a pair and deferred; the checkbox was
+resolved to one `Color`, which has no night variant, so Glance wrote the same
+value into both slots and it froze.
+
+On a phone with scheduled dark mode that breaks every sunrise: the container
+flips, the text flips, the outline keeps last night's colour. The fix passes a
+`DayNightColorProvider`, which the same Glance check explicitly allows. Only the
+resource-backed form was ever rejected, and resolving to a single colour threw
+away more than the check was asking for.
+
+**Seen, not reasoned about.** Built in dark and switched to light with nothing
+touched: fixed, the outlines darken with the surface; unfixed, they stay pale and
+vanish. Then the mirror, by putting the old two lines back and running the same
+toggle: dark navy outlines on a dark navy container.
+
+**The widget is a compact Today now, with bands and no Focus at all.** D-049.
+Asked for directly, and it lands where D-048 was already pointing: that entry
+deleted `FocusNow`, `FocusNowReason` and `focusNow`, which took away both of the
+reasons D-031 had given the widget a lead card for. `ReminderPassed` was cut
+outright and `ResumePaused` is kept for a screen the user opened, so carrying it
+onto a home screen would have been a new argument rather than a surviving one.
+
+Overdue, No time set and Later today, labelled with Today's own strings, over
+rows in the order `todaySections` already produced. Completed stays off: on Today
+it is a disclosure the user can open and a widget has nothing cheap to open into.
+The lead card, the reason line, Resume and `WidgetLaunchCommand.ResumeFocus` are
+all gone, and the widget reads no Focus session anywhere.
+
+**Two things got simpler rather than more complicated.** The completion evidence
+stopped carrying an index: the just-completed task is drawn as though it were
+still outstanding, which returns it to its own band in its own place, so
+`widgetCompletionIndex` and `WidgetCompletion.previousIndex` are deleted rather
+than adapted. And `widgetSnapshots` lost an input, because nothing in the widget
+depends on Focus any more.
+
+**A band heading needed its own tap target**, found by probing rather than by
+reading. `AbsListView` eats every touch inside the collection before the root's
+"anywhere else opens Today" can see it, so a heading is inert without an action
+of its own. That is the second thing lost to the same rule after D-047, which is
+why it is now written down as a rule: anything drawn inside that list needs its
+own action or it is dead.
+
+**Verified on a launcher.** The bands render, scroll, complete, uncheck, keep the
+checked row in its own band with its scroll position held, and the empty space and
+the headings both open Today. The main source set compiles clean.
+
+This paragraph used to end by saying the JVM suite was blocked on D-048's
+leftovers: `FocusNowTest.kt` and about a dozen cases in `TaskListViewModelTest.kt`
+still calling the deleted `focusNow`, and `pausedFocusTask` with no test of its
+own. All three were finished in the D-048 entry below, and the whole unit suite is
+green again.
+
+**Today's Focus now card is the paused session card, and it stopped taking its
+task out of the list.** D-048. Asked for as a redesign, and most of the work was
+deletion: the card said "what should I do now" for two reasons, and the second of
+them named a task sitting in the Overdue band directly below it, under a label that
+already said the work was late.
+
+`ReminderPassed` is gone, and with one reason left there was no reason to state, so
+`FocusNow` and `FocusNowReason` went too. `focusNow` is `pausedFocusTask`, which
+takes tasks and a paused id and returns a task. The card is a label, a title and
+Resume: no checkbox, no reason line, no tap on the body, all three of which only
+existed because D-012 lifted the task out of its band and left the row's
+affordances with nowhere to live. The remaining minutes moved up into the label,
+because that is the number the resume decision turns on and the label line was
+already there holding "Focus now".
+
+**Two side effects worth knowing about.** `todaySections` lost `promotedTaskId`, so
+every task Today holds is now in exactly one band with no exception to carry. And
+the `focusNow` flow lost its clock: it read `LocalDateTime.now()` and combined the
+day purely as a trigger, with a documented cost that a reminder passing did not
+re-run the rule on its own. `ReminderPassed` was the only reason that read a clock,
+so the card can no longer be late.
+
+**Ready is now unreachable, and that is an open question rather than a bug fixed
+here.** `openFocus` is the only route to it and nothing in the app calls it any
+more: both remaining entry points call `beginFocus`, which starts the clock. The
+card's non-paused branch was the last caller. `focus.md` says a drawn state nothing
+can arrive at should not exist, so either something lands on Ready again or D-013's
+six states become five. Recorded in D-048 and in `focus.md`; not decided.
+
+Separately, `focus.md` claimed Start focus on Task Details lands on Ready and that
+was already untrue before any of this. The document is corrected, the code was not
+touched.
+
+**Verified: 667 unit tests pass, and 30 Today instrumented tests pass on the
+emulator**, including the pair that used to assert the card opened its task and now
+assert the title appears exactly once, in the row. **Not verified by eye:** nobody
+has looked at the new card on a device. The thing to check is whether a card with no
+checkbox still reads as being about the task whose row sits below it, or whether the
+two now look like they are competing.
+
+**The empty space below a short list stopped opening the app, and now does
+again.** D-047. Reported as "pressing the bottom empty space on the widget does
+not open the app", and the interaction table in `widget.md` has always said it
+should.
+
+D-043's weighted `LazyColumn` is a `ListView` stretched over every pixel below
+the header whether or not it has rows for them, and `AbsListView.onTouchEvent`
+returns true whenever the view is enabled, regardless of whether anything in it
+is clickable. It ate the touches, and there was no row under the finger to carry
+a fill-in intent either, so nothing fired. With three tasks on the default widget
+the list was handed 638px and used 420, leaving about a quarter of the widget
+inert. The list measures to its content now and the remainder belongs to the root
+again. Scrolling a long list is unchanged.
+
+**An API 29 emulator was installed rather than guessing.** Glance branches on
+`SDK_INT > S`: 32 and up carry the rows inside the RemoteViews, while 29, 30 and
+31 fetch them from a bound service that fills the adapter asynchronously, where a
+content-height list could in principle measure zero and render a bare header. It
+does not. On Android 10 a long list still caps and scrolls, a short one measures
+to its rows, a freshly dropped widget draws them within about a second, and the
+dead region opens Today.
+
+**That emulator also closed a gap the docs had been carrying, and opened a
+smaller one.** API 29 had never been looked at. It renders, but Glance's
+`cornerRadius` is a no-op below API 31, so the widget is a hard-edged rectangle
+there and the add button is a square. Cosmetic, unfixed, and now written down.
+
+**Focus draws the cat now, and the shape is gone. D-046.** The Cookie said
+whether the clock was running and nothing else, which is a job the app's own
+mascot does better and warmer. Two poses, `cat-sit-front` at rest and `cat-nap`
+while running, exported from the same board as the five empty-state poses and on
+the same 0.3643 scale factor. The remaining time left the shape and joined the
+status line at body size, so the line now reads `44:37 · 45 min focus` and the
+task title is finally the largest thing on a screen built to stop clock-watching.
+
+**It was almost free because the mascot system already existed.**
+`EmptyStateMascot.kt` resolves a pose against `primaryFixed`, `primaryFixedDim`
+and `onPrimaryFixedVariant` at runtime, which is what makes the cat follow
+dynamic colour where baked artwork could not. One function came out of it,
+`rememberMascotImage`, because `FocusMascot` lays its two poses out itself and
+cannot use `MascotImage`'s sizing. Everything else is two path sets, a crossfade
+and a moved `Text`. `FocuslistMotion.mascotSettle` is the one new token;
+`FocuslistDimensions.FocusShapeSize` is gone.
+
+**Sequenced deliberately against D-013's tripwire**, which said that if Phase 4
+slipped while Focus grew, D-004 was right about sequencing after all. The reason
+it landed here anyway: Phase 5 ships the Play listing, the Focus screen is in
+those screenshots, and shipping the Cookie means reshooting them.
+
+Verified: the debug build compiles, the Focus unit tests pass, and
+`FocusSessionSemanticsTest` now matches the budget as a substring because every
+state's line begins with a readout. **Not verified by eye:** nobody has watched
+the crossfade on a device, and nobody has checked the thing that actually
+decides this — whether a napping cat reads as *running* at a glance. If it does
+not, the fix is to swap the poses and accept that it is duller.
+
+**The widget was frozen for 45 seconds after every refresh, and had been since
+it shipped.** D-045. Reported as three separate complaints, which turned out to
+be one bug: tasks added in the app did not appear, unchecking a row the user had
+just checked did nothing, and a widget showing one task of four caught up the
+moment it was tapped.
+
+Everything above `provideContent` runs once per *Glance session*, not once per
+update. `runGlance` calls `provideGlance` a single time, `provideContent` then
+suspends and never returns, and a session lives 45 seconds past its first
+composition. `updateAll` does not re-enter any of it: it posts an event that
+forces a recomposition, and recomposing re-rendered the value captured up there
+rather than reading again. An update arriving during a session changed nothing;
+one arriving after a session expired started a fresh one and looked perfect,
+which is why it read as intermittent. The data is now a `Flow` collected inside
+the composition.
+
+**Measured on a launcher, both before and after.** Two completions in the app
+eight seconds apart produced byte-identical home screen captures; waiting sixty
+seconds for the session to expire and writing once more brought every missed
+change through at once. After the fix the same second write lands, and a check
+followed four seconds later by an uncheck now returns the row to normal instead
+of sticking for minutes.
+
+**Older than D-043.** `git log -L` puts the shape at `e4f493c`, the widget's
+first commit. Scrolling did not cause it, it exposed it: a stale list is visibly
+stale where a stale list truncated to `+N more` just looked like a small widget.
+
+**Two smaller things went with it.** `LeadItemId` was `Long.MIN_VALUE`, which is
+exactly `LazyListScope.UnspecifiedItemId`, so the constant named for a stable id
+was asking Glance to invent one; it is `Long.MAX_VALUE` now. And the widget
+picker's preview image still advertised `+N more`, a feature D-043 deleted, so it
+has been regenerated from the current widget.
+
+**Verified, including that the new test can fail.** `WidgetSnapshotsTest` asserts
+six times that a change to a source reaches a collector already listening. Four
+of the six fail when the flow is reduced to a single read, which was checked
+before they were trusted. Full unit suite green.
+
+**The widget's task list scrolls, and stopped measuring itself.** D-043.
+Reported as "why can't I scroll through the tasks", and the answer was that it
+was never built to: a `Column` drew what fit and a `+N more` line named the rest,
+which told the user work existed and gave them no way to reach it. The rows are a
+Glance `LazyColumn` now, a `ListView` in RemoteViews terms, so every outstanding
+task is handed over and the overflow scrolls.
+
+**This deletes the arithmetic that three entries had been arguing about**, and
+that is the finding rather than a side effect. D-036 replaced a breakpoint table
+with division over the reported height. D-041 found the division had been fed one
+of two constants for its whole life, because `SizeMode.Responsive` also decides
+what `LocalSize` reports. Both were corrections to a calculation that only had to
+exist because the widget was deciding how many rows to draw. A `ListView` works
+that out without being told the height. `rowCapacity`, the `heightDp` and
+`fontScale` inputs, the private copy of every composable's height, and the
+obligation to keep that copy in step are all gone, and `sizeMode` is
+`SizeMode.Single` because nothing reads the size at all.
+
+**That supersedes D-041's `SizeMode.Exact` one entry after it shipped**, which is
+worth stating plainly rather than burying. D-041 was not wrong; `Exact` was the
+right answer while `rowCapacity` existed, and finding that it had never received
+a real height is what exposed the measuring itself as the liability.
+
+**D-031's count clause goes, its argument does not.** That entry allows the
+widget one count, "disclosing rows that did not fit", and the clause goes with
+the thing it described. The reasoning underneath, that a surface nobody asked to
+look at needs a higher bar to speak up, governs what the widget *asserts*: the
+lead still speaks only for a paused session or a passed reminder, the end states
+are still two quiet lines, and the resting view is unchanged. Scrolling is the
+user deciding to look further, which is the deliberate act D-031 contrasts a
+widget against.
+
+**Verified, including that the new test can fail.** 665 unit tests. `WidgetScrollTest`
+composes the widget to `RemoteViews`, inflates them and asserts an `AdapterView`
+is in the tree; it was run against a `Column` first and fails there with
+"FrameLayout / LinearLayout", so it is measuring the collection rather than
+passing vacuously. That check was worth doing: earlier in this session a
+notification test passed against a shade that had never received anything.
+
+**Since verified on a launcher**, while chasing D-045. The Pixel launcher's view
+hierarchy reports an `android.widget.ListView` inside the hosted widget, seven
+tasks scroll, and a row's checkbox does complete and reopen from inside a lazy
+item, which was the part worth doubting. The one thing still unverified is a
+resize drag: the handles appear on all four edges, but synthesised input could
+not complete the drag itself.
+
 **Reminder Health now says when a missed-reminder notice clears.** The seven-day
 `ConcernWindow` was defensible and invisible: the Today banner could not be
 dismissed, a successful test did not remove it, and nowhere did the app tell the

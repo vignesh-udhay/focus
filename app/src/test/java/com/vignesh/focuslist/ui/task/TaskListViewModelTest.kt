@@ -3,7 +3,6 @@ package com.vignesh.focuslist.ui.task
 import androidx.lifecycle.SavedStateHandle
 import com.vignesh.focuslist.MainDispatcherRule
 import com.vignesh.focuslist.core.notification.FocusAlarms
-import com.vignesh.focuslist.core.domain.FocusNowReason
 import com.vignesh.focuslist.core.domain.FocusSession
 import com.vignesh.focuslist.core.domain.FocusSessionStore
 import com.vignesh.focuslist.core.domain.StoredFocusSession
@@ -3238,14 +3237,15 @@ class TaskListViewModelTest {
     }
 
     /**
-     * The card opens Ready: a task chosen, and no clock running yet.
+     * A reminder that fired and was not acted on draws no card, per D-048.
      *
-     * The reminder is what earns the card at all. Since D-035 a task scheduled
-     * for today carrying no time is not promoted, so the fixture has to be a
-     * reminder that passed.
+     * This was `theCardOpensFocusOnReady`, which asserted the opposite: the card
+     * appeared for the passed reminder and landed the sheet on Ready so the user
+     * could agree with the app's pick. Neither the reason nor Ready survives, and
+     * the task stays in the Overdue band where the row can act on it.
      */
     @Test
-    fun theCardOpensFocusOnReady() {
+    fun aPassedReminderDrawsNoCard() {
         store(
             task(
                 id = "a",
@@ -3255,71 +3255,28 @@ class TaskListViewModelTest {
             )
         )
         val model = viewModel()
-        runBlocking { model.focusNow.first { it?.task?.id == "a" } }
+        runBlocking { model.todayTasks.first { it.any { task -> task.id == "a" } } }
 
-        model.openFocusFromCard()
-
-        assertTrue(model.isFocusSheetOpen.value)
-        assertEquals("a", awaitFocusedTaskId(model, "a"))
-        // Ready. The user agrees with the card's pick before the clock runs.
-        assertNull(model.focusSession.value)
+        assertNull(model.pausedFocusTask.value)
     }
 
     /**
-     * Except for the paused reason, where the card's button already read Resume.
-     * Making the user press play inside the sheet would be a confirmation of a
-     * confirmation.
+     * The card's one action. The button already read Resume, so making the user
+     * press play inside the sheet would be a confirmation of a confirmation.
      */
     @Test
-    fun theCardResumesAPausedSessionRatherThanOpeningReady() {
+    fun theCardResumesThePausedSession() {
         store(task(id = "a", scheduledDate = today, estimatedDurationMinutes = 45))
         val model = viewModel()
         model.beginFocus("a")
         awaitFocusedTaskId(model, "a")
         model.leaveFocusSheet()
 
-        runBlocking {
-            model.focusNow.first { it?.reason == FocusNowReason.ResumePaused }
-        }
-        model.openFocusFromCard()
+        runBlocking { model.pausedFocusTask.first { it?.id == "a" } }
+        model.resumeFocusFromCard()
 
         assertTrue(model.isFocusSheetOpen.value)
         assertEquals(false, model.focusSession.value!!.isPaused)
-    }
-
-    @Test
-    fun widgetCanRestoreAndResumeThePersistedTaskAndSessionTogether() {
-        store(task(id = "a", scheduledDate = today, estimatedDurationMinutes = 45))
-        val sessionStore = FakeFocusSessionStore()
-        val first = TaskListViewModel(
-            repository,
-            currentDay,
-            SavedStateHandle(),
-            alarms,
-            sessionStore
-        )
-        first.beginFocus("a")
-        awaitFocusedTaskId(first, "a")
-        first.leaveFocusSheet()
-
-        assertEquals("a", sessionStore.current?.taskId)
-        assertTrue(sessionStore.current?.session?.isPaused == true)
-
-        val restored = TaskListViewModel(
-            repository,
-            currentDay,
-            SavedStateHandle(),
-            RecordingFocusAlarms(),
-            sessionStore
-        )
-        runBlocking {
-            restored.focusNow.first { it?.reason == FocusNowReason.ResumePaused }
-        }
-        restored.resumeFocusFromWidget("a")
-
-        assertTrue(restored.isFocusSheetOpen.value)
-        assertEquals("a", awaitFocusedTaskId(restored, "a"))
-        assertEquals(false, restored.focusSession.value?.isPaused)
     }
 
     @Test

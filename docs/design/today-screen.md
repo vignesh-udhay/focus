@@ -143,8 +143,8 @@ together or not at all.
 ## Where the date went
 
 Nowhere. D-020 records why: nothing on Today needs it. The bands are relative,
-Overdue and No time set and Later today, and so is the Focus now card, so no
-row, band or card is harder to read for its absence. It was pleasant rather than
+Overdue and No time set and Later today, and so is the paused session card, so
+no row, band or card is harder to read for its absence. It was pleasant rather than
 load-bearing.
 
 If that turns out to be wrong, the answer is the date as the title in the
@@ -456,19 +456,21 @@ The move is not animated: the row simply appears in its new position.
 | --- | --- |
 | Tap checkbox | Toggles completion immediately |
 | Tap row body | Opens task details |
-| Tap Focus now card body | Opens task details |
-| Tap the card's own button | Opens Focus |
+| Tap the card's own button | Resumes the paused session |
 | Long press | Nothing, since D-023 |
 | Swipe | Nothing |
 
 Completing and opening stay separate, as specified in `task-row.md`.
 
-**The card had no entry here at all until it needed one**, and that is how a
-behaviour decided in a code comment turns into a defect report: the card took no
-click, on the argument that a clickable container behind two controls is a
-target whose edges the user cannot see. D-012 removes the promoted task from the
-bands, so that left its details unreachable from Today. The card's body opens the
-task now, with the same `Open task details` label the rows carry.
+**The card's body takes no click, and for a while it did.** The original argument
+was that a clickable container behind two controls is a target whose edges the
+user cannot see. That was overruled by D-012, which removed the promoted task from
+the bands and so left its details unreachable from Today: a rule that removes a
+row has to account for what the row could do.
+
+D-048 answers it the other way round. The task stays in its band, so the row opens
+it and the card does not have to. What is left on the card is a label, a title and
+Resume, and the only thing on it that takes a tap is the button.
 
 The row's `onClick` opens Task Details, the full screen editing the fields a
 task carries about itself: title, notes, scheduled date, due date, estimated
@@ -686,8 +688,8 @@ Built and working:
 - the three-band ordering described above
 - soft deletion from Task Details' overflow, with undo offered in a
   snackbar
-- starting Focus from the Focus now card or from Task Details, described in
-  `focus.md`
+- resuming a paused session from the paused session card, and starting Focus
+  from a task row or from Task Details, described in `focus.md`
 - Task Details, editing title, notes, scheduled date, due date, and
   estimated duration, described in `task-details.md`
 - the reminder health banner, for `ActionNeeded` and `Missed` only, opening
@@ -699,6 +701,7 @@ The schema, its versions, and its migrations are described in `storage.md`.
 
 Cut, not pending: Areas and Projects. See `docs/decisions.md`, D-003.
 
-Not built yet: Settings, which Phase 5 adds.
+Settings is built, and reachable from this screen's overflow. D-028. This line
+used to say it was waiting on Phase 5.
 
 `TaskRowPlayground` remains a temporary harness, separate from this screen.

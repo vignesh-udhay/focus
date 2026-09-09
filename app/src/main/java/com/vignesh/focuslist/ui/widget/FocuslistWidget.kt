@@ -1,8 +1,11 @@
 package com.vignesh.focuslist.ui.widget
 
 import android.content.Context
+import android.content.res.Configuration
 import android.os.Build
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.ColorFilter
@@ -12,7 +15,6 @@ import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.LocalContext
-import androidx.glance.LocalSize
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.CheckBox
@@ -20,6 +22,8 @@ import androidx.glance.appwidget.CheckboxDefaults
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
+import androidx.glance.appwidget.lazy.LazyColumn
+import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.appWidgetBackground
@@ -39,6 +43,7 @@ import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.layout.size
 import androidx.glance.layout.width
+import androidx.glance.color.ColorProvider
 import androidx.glance.material3.ColorProviders
 import androidx.glance.semantics.contentDescription
 import androidx.glance.semantics.semantics
@@ -51,15 +56,10 @@ import com.vignesh.focuslist.FocuslistApplication
 import com.vignesh.focuslist.R
 import com.vignesh.focuslist.core.design.FocuslistDarkColorScheme
 import com.vignesh.focuslist.core.design.FocuslistLightColorScheme
-import com.vignesh.focuslist.core.domain.FocusNow
-import com.vignesh.focuslist.core.domain.FocusNowReason
-import com.vignesh.focuslist.core.domain.StoredFocusSession
-import com.vignesh.focuslist.data.local.WidgetCompletion
+import com.vignesh.focuslist.core.domain.TodayBand
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.flowOn
 import java.time.LocalDate
-import java.time.LocalDateTime
 
 /**
  * Where text begins and ends, on both edges.
@@ -83,58 +83,86 @@ private val ContentInset = 24.dp
  * is below perception and it is what lets the target keep all 48dp of itself
  * while its contents still read as one column with the text.
  *
- * The lead card takes the same 8, so its edge and the rows' targets start
- * together, the way `today-screen.md` has the Focus now card and the bands share
- * one left edge.
+ * Every row's checkbox target starts here, which is the one left edge the rows
+ * share. Band headers do not: they sit on [ContentInset] with the widget title,
+ * because a heading belongs in the text column rather than in the target column.
  */
 private val SurfaceInset = 8.dp
+
+/**
+ * A band header's id in the lazy list.
+ *
+ * Rows are keyed on their task's hash code, which is an `Int`, so anything
+ * outside that range cannot collide with one. Headers take the top of the range
+ * downwards, one per band, so a band keeps its identity across a refresh and the
+ * list holds its scroll position.
+ *
+ * `Long.MAX_VALUE` and not `Long.MIN_VALUE`, which reads like the obvious pick
+ * for "no task could be this" and is in fact `LazyListScope.UnspecifiedItemId`.
+ * Passing it asks Glance to invent an id, which is the opposite of what a stable
+ * id is for. The lead card was spelled that way from D-043 until D-045, and the
+ * lead card is gone as of D-049.
+ */
+private val TodayBand.itemId: Long get() = Long.MAX_VALUE - ordinal
 
 private val WidgetFallbackColors = ColorProviders(
     light = FocuslistLightColorScheme,
     dark = FocuslistDarkColorScheme
 )
 
-private data class WidgetSnapshot(
-    val tasks: List<com.vignesh.focuslist.core.domain.Task>,
-    val today: LocalDate,
-    val storedFocus: StoredFocusSession?,
-    val completion: WidgetCompletion?
-)
-
 class FocuslistWidget : GlanceAppWidget() {
 
     /**
-     * The widget's real dimensions, per D-041.
+     * One layout, built once, per D-043.
      *
-     * This was `SizeMode.Responsive` over the two board sizes, under which
-     * `LocalSize` reports the matched member of the declared set rather than
-     * what the launcher actually gave the widget. D-036 had already replaced the
-     * breakpoint table with arithmetic over the reported height, on the argument
-     * that a dragged widget is rarely either declared size, and then fed that
-     * arithmetic one of two constants. A widget with room for five rows drew
-     * three.
+     * Nothing reads the widget's size any more. The rows are a `LazyColumn`, so
+     * the platform fills the height and scrolls the remainder, and the layout
+     * stretches to whatever the launcher gives it.
      *
-     * **The rule the old mode was protecting still holds**: row count is the
-     * only thing size may affect. `Exact` does not weaken it, it only makes the
-     * number true. The guard is that `rowCapacity` is the sole reader of this
-     * size, and any second reader is the thing to refuse.
+     * This supersedes D-041's `SizeMode.Exact` one entry later, and that is not
+     * a retraction: `Exact` was the correct answer while `rowCapacity` existed,
+     * and finding out it had never been given a real height is what exposed the
+     * measuring as the liability. With no reader, `Exact` would rebuild
+     * RemoteViews on every resize to produce a layout that does not depend on
+     * the result.
      */
-    override val sizeMode: SizeMode = SizeMode.Exact
+    override val sizeMode: SizeMode = SizeMode.Single
 
+    /**
+     * Observed, not captured, per D-045. Drawn before it is read, per D-051.
+     *
+     * This function body runs once per Glance session rather than once per
+     * update, and a session lives 45 seconds past its first composition. A
+     * snapshot read here was therefore the only data the widget had for that
+     * whole window: `updateAll` forces a recomposition, and recomposing
+     * re-rendered the same captured value. Collecting the stream inside
+     * `provideContent` is what lets a change during the session reach the
+     * screen.
+     *
+     * **Nothing is awaited before `provideContent`, and that is deliberate.**
+     * Until it is called, `AppWidgetSession` emits `IgnoreResult()` and publishes
+     * nothing, and the 45-second clock has not started either: the only timer
+     * that can be running is the five-second idle one. A phone that signals idle
+     * during a slow first read kills the session before it draws, and Glance
+     * reports that as a successful worker. With `updatePeriodMillis` at zero,
+     * nothing retries it.
+     */
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val application = context.applicationContext as FocuslistApplication
-        val snapshot = withContext(Dispatchers.IO) {
-            val tasks = application.taskRepository.observeTasks().first()
-            val today = LocalDate.now()
-            WidgetSnapshot(
-                tasks = tasks,
-                today = today,
-                storedFocus = application.focusSessionStore.current,
-                completion = application.widgetInteractions.completionFor(tasks, today)
-            )
-        }
+        val snapshots = widgetSnapshots(
+            tasks = application.taskRepository.observeTasks(),
+            // The app's one answer, so a rollover past midnight reaches a live
+            // session rather than waiting for it to expire.
+            today = application.currentDay.today,
+            completion = { tasks, today ->
+                application.widgetInteractions.completionFor(tasks, today)
+            }
+            // Room brings its own thread; the completion lambda reads prefs.
+        ).flowOn(Dispatchers.IO)
 
         provideContent {
+            val snapshot by snapshots.collectAsState(null)
+
             GlanceTheme(
                 colors = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     GlanceTheme.colors
@@ -142,25 +170,15 @@ class FocuslistWidget : GlanceAppWidget() {
                     WidgetFallbackColors
                 }
             ) {
-                val model = focuslistWidgetModel(
-                    tasks = snapshot.tasks,
-                    today = snapshot.today,
-                    now = LocalDateTime.now(),
-                    storedFocus = snapshot.storedFocus,
-                    completion = snapshot.completion,
-                    // The height this widget actually has, per D-036, and since
-                    // D-041 that is finally true rather than the nearer of two
-                    // declared sizes. Width has no say in how many rows fit, and
-                    // this is the only place the size is read at all.
-                    heightDp = LocalSize.current.height.value,
-                    fontScale = context.resources.configuration.fontScale
-                )
+                val model = snapshot?.let { read ->
+                    focuslistWidgetModel(
+                        tasks = read.tasks,
+                        today = read.today,
+                        completion = read.completion
+                    )
+                } ?: FocuslistWidgetModel(WidgetBody.Loading)
 
-                FocuslistWidgetContent(
-                    model = model,
-                    today = snapshot.today,
-                    storedFocus = snapshot.storedFocus
-                )
+                FocuslistWidgetContent(model)
             }
         }
     }
@@ -171,11 +189,7 @@ class FocuslistWidgetReceiver : GlanceAppWidgetReceiver() {
 }
 
 @Composable
-private fun FocuslistWidgetContent(
-    model: FocuslistWidgetModel,
-    today: LocalDate,
-    storedFocus: StoredFocusSession?
-) {
+private fun FocuslistWidgetContent(model: FocuslistWidgetModel) {
     val context = LocalContext.current
     Column(
         modifier = GlanceModifier
@@ -193,6 +207,12 @@ private fun FocuslistWidgetContent(
         WidgetHeader(context)
 
         when (val body = model.body) {
+            // The header and nothing under it, until the first snapshot lands.
+            // Drawn rather than waited for, per D-051: a session that has
+            // published nothing can be timed out having drawn nothing, and the
+            // launcher then keeps its loading layout with nothing to retry it.
+            WidgetBody.Loading -> Unit
+
             WidgetBody.EverythingDone -> WidgetEmptyBody(
                 text = context.getString(R.string.widget_all_done)
             )
@@ -202,11 +222,7 @@ private fun FocuslistWidgetContent(
             WidgetBody.NothingScheduled -> WidgetEmptyBody(
                 text = context.getString(R.string.today_empty_headline)
             )
-            is WidgetBody.Tasks -> WidgetTasksBody(
-                body = body,
-                today = today,
-                storedFocus = storedFocus
-            )
+            is WidgetBody.Sections -> WidgetSectionsBody(body)
         }
     }
 }
@@ -289,158 +305,94 @@ private fun ColumnScope.WidgetEmptyBody(text: String, supporting: String? = null
     }
 }
 
+/**
+ * Today's bands, as a collection rather than a column. D-043, D-049.
+ *
+ * `LazyColumn` is a `ListView` in RemoteViews terms, so every outstanding task
+ * is handed over and the platform draws what fits and scrolls the rest.
+ *
+ * **Each band contributes a header item and then its rows**, in the order
+ * `todaySections` produced them, which is the order the rows were already in.
+ * Before D-049 this was one unlabelled run under a lead card that explained the
+ * top of it; with the card gone, nothing explained the run at all.
+ *
+ * The list measures to its content rather than filling, per D-047, so the space
+ * below a short list belongs to the root and keeps opening Today.
+ */
 @Composable
-private fun WidgetTasksBody(
-    body: WidgetBody.Tasks,
-    today: LocalDate,
-    storedFocus: StoredFocusSession?
-) {
-    body.lead?.let { WidgetLeadCard(it, today, storedFocus) }
-    body.rows.forEach { row -> WidgetTaskRow(row, today) }
-    if (body.hiddenCount > 0) {
-        val context = LocalContext.current
-        Text(
-            text = context.resources.getQuantityString(
-                R.plurals.widget_more_tasks,
-                body.hiddenCount,
-                body.hiddenCount
-            ),
-            style = TextStyle(
-                color = GlanceTheme.colors.onPrimaryContainer,
-                fontSize = 12.sp
-            ),
-            maxLines = 1,
-            // On the row titles it stands in for, not on the text column. It is
-            // a row that did not fit rather than a label heading the group, so
-            // it lines up with the titles above it: the target, then its 2dp
-            // gap. `today-screen.md` draws the same distinction the other way
-            // round for a band label, which heads a group and so sits at its
-            // edge instead.
-            modifier = GlanceModifier.padding(start = SurfaceInset + 50.dp, top = 4.dp)
-        )
-    }
-}
+private fun ColumnScope.WidgetSectionsBody(body: WidgetBody.Sections) {
+    LazyColumn(modifier = GlanceModifier.fillMaxWidth()) {
+        body.sections.forEach { section ->
+            item(itemId = section.band.itemId) { WidgetBandHeader(section.band) }
 
-@Composable
-private fun WidgetLeadCard(
-    lead: FocusNow,
-    today: LocalDate,
-    storedFocus: StoredFocusSession?
-) {
-    val context = LocalContext.current
-    val text = widgetTaskText(context, lead.task, today)
-    val completeAction = actionRunCallback<CompleteWidgetTaskAction>(
-        actionParametersOf(WidgetTaskIdKey to lead.task.id)
-    )
-    val taskAction = actionStartActivity(
-        widgetLaunchIntent(context, WidgetLaunchCommand.TaskDetails(lead.task.id))
-    )
-
-    // **The inset is on this Box, and it used to be on the card itself.** Glance
-    // takes `padding` as a view's own padding rather than as a margin, so
-    // `.padding(horizontal = 8.dp).background(surface)` on the card put the 8dp
-    // *inside* it and drew the surface edge to edge. On a launcher that reads as
-    // the card having escaped the widget: its corners sit outside the rounded
-    // container that is supposed to hold them.
-    //
-    // A parent carrying the padding is how Glance expresses a margin. The card's
-    // own contents are unchanged and still land where the board puts them,
-    // because they were already written against an 8dp offset.
-    Box(
-        modifier = GlanceModifier
-            .fillMaxWidth()
-            // Clear of the header, which is a filled surface arriving directly
-            // under a title with no separation of its own.
-            .padding(start = SurfaceInset, end = SurfaceInset, bottom = SurfaceInset)
-    ) {
-        Row(
-            modifier = GlanceModifier
-                .fillMaxWidth()
-                .height(86.dp)
-                .background(GlanceTheme.colors.surface)
-                .cornerRadius(R.dimen.widget_inner_radius),
-            verticalAlignment = Alignment.Vertical.CenterVertically
-        ) {
-            WidgetCheckbox(
-                checked = false,
-                action = completeAction,
-                description = context.getString(R.string.task_row_mark_complete, lead.task.title),
-                uncheckedColor = GlanceTheme.colors.onSurface
-            )
-            Column(
-                modifier = GlanceModifier.defaultWeight().clickable(taskAction)
-            ) {
-                Text(
-                    text = widgetLeadReason(context, lead, storedFocus),
-                    style = TextStyle(
-                        color = GlanceTheme.colors.onSurfaceVariant,
-                        fontSize = 12.sp
-                    ),
-                    maxLines = 1
-                )
-                Text(
-                    text = text.title,
-                    style = TextStyle(
-                        color = GlanceTheme.colors.onSurface,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium
-                    ),
-                    maxLines = 1,
-                    modifier = GlanceModifier.padding(top = 2.dp)
-                )
-            }
-            if (lead.reason == FocusNowReason.ResumePaused) {
-                Box(
-                    modifier = GlanceModifier
-                        .width(80.dp)
-                        .height(32.dp)
-                        .background(GlanceTheme.colors.primary)
-                        .cornerRadius(16.dp)
-                        .clickable(
-                            actionStartActivity(
-                                widgetLaunchIntent(
-                                    context,
-                                    WidgetLaunchCommand.ResumeFocus(lead.task.id)
-                                )
-                            )
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = context.getString(R.string.widget_resume),
-                        style = TextStyle(
-                            color = GlanceTheme.colors.onPrimary,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            textAlign = TextAlign.Center
-                        ),
-                        maxLines = 1
-                    )
-                }
-                // Lands the pill's edge on `ContentInset`, measured from the
-                // widget rather than from the card, since the card itself is
-                // already `SurfaceInset` in.
-                Spacer(GlanceModifier.width(ContentInset - SurfaceInset))
-            } else {
-                text.duration?.let { duration ->
-                    Text(
-                        text = duration.text,
-                        style = TextStyle(
-                            color = GlanceTheme.colors.onSurfaceVariant,
-                            fontSize = 12.sp,
-                            textAlign = TextAlign.End
-                        ),
-                        maxLines = 1,
-                        modifier = GlanceModifier
-                            .width(54.dp)
-                            .semantics { contentDescription = duration.spoken }
-                    )
-                }
-                Spacer(GlanceModifier.width(ContentInset - SurfaceInset))
+            // Keyed on the task, so the list holds its scroll position across a
+            // refresh instead of jumping to the top every time Room emits.
+            items(
+                items = section.rows,
+                itemId = { row -> row.task.id.hashCode().toLong() }
+            ) { row ->
+                WidgetTaskRow(row, body.today)
             }
         }
     }
 }
+
+/**
+ * A band label, in Today's words.
+ *
+ * **The strings are Today's own**, because the widget naming these groups
+ * differently would make them look like different groups.
+ *
+ * **Bold at 12 rather than quieter at 14**, which is the opposite of how Today
+ * draws them. Today can reach for `onSurfaceVariant`; D-031 rules colour and
+ * opacity out here on the grounds that a widget's hierarchy has to survive
+ * whatever wallpaper is behind it, leaving size and weight. Smaller and heavier
+ * than a row title reads as a label rather than as a louder row.
+ *
+ * Aligned to [ContentInset] with the widget's title, not to the row titles
+ * inset past their checkboxes, so the headings sit in one column with "Today".
+ */
+@Composable
+private fun WidgetBandHeader(band: TodayBand) {
+    val context = LocalContext.current
+    Row(
+        modifier = GlanceModifier
+            .fillMaxWidth()
+            .height(28.dp)
+            .padding(start = ContentInset, bottom = 2.dp)
+            // **Its own action, because it is inside the collection.** The root
+            // carries "anywhere else opens Today", and `AbsListView` consumes
+            // every touch within its bounds before the root can see it. Rows
+            // have their own targets and so did not notice; a header had none
+            // and was inert until this was added.
+            .clickable(actionStartActivity(widgetLaunchIntent(context, WidgetLaunchCommand.Today))),
+        // Bottom, so the space in the item sits above the label and groups it
+        // with the rows beneath rather than with the band it follows.
+        verticalAlignment = Alignment.Vertical.Bottom
+    ) {
+        Text(
+            text = context.getString(band.labelRes),
+            style = TextStyle(
+                color = GlanceTheme.colors.onPrimaryContainer,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
+            ),
+            maxLines = 1
+        )
+    }
+}
+
+/**
+ * Completed is absent from the widget, per D-049, and named rather than thrown
+ * so a band added above cannot crash a home screen.
+ */
+private val TodayBand.labelRes: Int
+    get() = when (this) {
+        TodayBand.OVERDUE -> R.string.today_section_overdue
+        TodayBand.NO_TIME_SET -> R.string.today_section_no_time_set
+        TodayBand.LATER_TODAY -> R.string.today_section_later_today
+        TodayBand.COMPLETED -> R.string.today_section_completed
+    }
 
 @Composable
 private fun WidgetTaskRow(row: WidgetRow, today: LocalDate) {
@@ -547,14 +499,22 @@ private fun WidgetCheckbox(
         checked = checked,
         onCheckedChange = action,
         text = "",
-        // Dynamic Glance roles are resource-backed providers. CheckBoxColors
-        // rejects those providers when checked and unchecked colors are
-        // supplied separately, so resolve them in the app process first and
-        // pass the concrete colors. This keeps dynamic colour while allowing
-        // the first non-empty widget state to render.
+        // **Both colours, not the one this process happens to be in.** D-050.
+        //
+        // `CheckedUncheckedColorProvider` rejects resource-backed providers,
+        // which is what dynamic Glance roles are, so they cannot be handed over
+        // as they arrive. Resolving them to a single `Color` satisfied that and
+        // cost the other half of the answer: a fixed colour has no night
+        // variant, so Glance wrote the same `ColorStateList` into both the day
+        // and the night slot and the checkbox stopped following the launcher
+        // while every other colour in the widget kept following it.
+        //
+        // A `DayNightColorProvider` is the form the same check explicitly
+        // allows, and [dayNight] builds one by resolving the role against both
+        // configurations rather than against this one.
         colors = CheckboxDefaults.colors(
-            checkedColor = GlanceTheme.colors.primary.getColor(context),
-            uncheckedColor = uncheckedColor.getColor(context)
+            checkedColor = GlanceTheme.colors.primary.dayNight(context),
+            uncheckedColor = uncheckedColor.dayNight(context)
         ),
         modifier = GlanceModifier
             .size(48.dp)
@@ -570,4 +530,39 @@ private fun WidgetCheckbox(
         maxLines = 1
     )
     Spacer(GlanceModifier.width(2.dp))
+}
+
+/**
+ * The same colour role, resolved for both day and night. D-050.
+ *
+ * Glance emits most colours as a day/night pair and lets the launcher pick,
+ * which is why the widget's text and background follow the system while a
+ * colour resolved here does not: `ColorProvider.getColor(context)` reads
+ * `context.resources.configuration.uiMode`, and that is the app process at
+ * composition time, not the launcher at draw time. The two agree until the
+ * system changes mode without the widget being rebuilt, and then the resolved
+ * colour is a day colour on a night surface or the reverse.
+ *
+ * Resolving twice against a configuration-corrected context gives back the pair
+ * Glance wanted, which its own `resolveCheckedColor` does the same way.
+ */
+private fun androidx.glance.unit.ColorProvider.dayNight(
+    context: Context
+): androidx.glance.unit.ColorProvider = ColorProvider(
+    day = getColor(context.withNightMode(false)),
+    night = getColor(context.withNightMode(true))
+)
+
+/**
+ * [context] with the night bits set and everything else left alone.
+ *
+ * Copied from the real configuration rather than built empty, because a dynamic
+ * colour is resolved against the whole of it and a blank `Configuration` would
+ * drop the density and locale the resource lookup needs.
+ */
+private fun Context.withNightMode(night: Boolean): Context {
+    val configuration = Configuration(resources.configuration)
+    configuration.uiMode = (configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or
+        if (night) Configuration.UI_MODE_NIGHT_YES else Configuration.UI_MODE_NIGHT_NO
+    return createConfigurationContext(configuration)
 }

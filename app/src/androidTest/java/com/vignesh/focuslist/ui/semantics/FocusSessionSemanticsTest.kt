@@ -122,7 +122,7 @@ class FocusSessionSemanticsTest {
         ready(withEstimate(), fontScale)
         rule.waitUntilExactlyOneExists(hasText(FIRST), TIMEOUT_MILLIS)
         rule.onNodeWithContentDescription(START).assertIsDisplayed()
-        rule.onNodeWithText(ESTIMATE_STATUS).assertIsDisplayed()
+        rule.onNodeWithText(ESTIMATE_STATUS, substring = true).assertIsDisplayed()
         rule.onNodeWithText(COMPLETE).assertIsDisplayed()
     }
 
@@ -137,7 +137,7 @@ class FocusSessionSemanticsTest {
         running(withEstimate())
 
         rule.waitUntilExactlyOneExists(hasContentDescription(PAUSE), TIMEOUT_MILLIS)
-        rule.onNodeWithText(ESTIMATE_STATUS).assertIsDisplayed()
+        rule.onNodeWithText(ESTIMATE_STATUS, substring = true).assertIsDisplayed()
         rule.onNodeWithText(COMPLETE).assertIsDisplayed()
     }
 
@@ -148,14 +148,14 @@ class FocusSessionSemanticsTest {
         rule.waitUntilExactlyOneExists(hasContentDescription(RESUME), TIMEOUT_MILLIS)
         // The budget, which is the question someone deciding whether to resume
         // is actually asking. "Paused" on its own could not answer it.
-        rule.onNodeWithText(REMAINING).assertIsDisplayed()
+        rule.onNodeWithText(REMAINING, substring = true).assertIsDisplayed()
     }
 
     @Test
     fun anOpenEndedSessionSaysItHasNoLimit() {
         running(withoutEstimate())
 
-        rule.waitUntilExactlyOneExists(hasText(NO_LIMIT), TIMEOUT_MILLIS)
+        rule.waitUntilExactlyOneExists(hasText(NO_LIMIT, substring = true), TIMEOUT_MILLIS)
         rule.onNodeWithContentDescription(PAUSE).assertIsDisplayed()
     }
 
@@ -164,7 +164,25 @@ class FocusSessionSemanticsTest {
         paused(withoutEstimate())
 
         rule.waitUntilExactlyOneExists(hasContentDescription(RESUME), TIMEOUT_MILLIS)
-        rule.onNodeWithText(NO_LIMIT).assertIsDisplayed()
+        rule.onNodeWithText(NO_LIMIT, substring = true).assertIsDisplayed()
+    }
+
+    /**
+     * **The clock is on the status line, and D-046 put it there.**
+     *
+     * It used to be its own node inside the shape. The budget assertions above
+     * match on a substring for that reason: every state's line now begins with
+     * a readout, and in five of the six it is ticking.
+     *
+     * Ready is the one state where the whole line can be asserted exactly.
+     * Nothing is running, so the readout is the estimate and it does not move.
+     */
+    @Test
+    fun readyPutsTheClockOnTheStatusLine() {
+        ready(withEstimate())
+
+        rule.waitUntilExactlyOneExists(hasText(FIRST), TIMEOUT_MILLIS)
+        rule.onNodeWithText(READY_LINE).assertIsDisplayed()
     }
 
     // --- D-015, which is the assertion that matters most ---------------------
@@ -229,6 +247,9 @@ class FocusSessionSemanticsTest {
         const val ESTIMATE_STATUS = "45 min focus"
         const val REMAINING = "45 min left"
         const val NO_LIMIT = "No time limit"
+
+        /** Ready, whole: the clock the session is about to spend, then the budget. */
+        const val READY_LINE = "45:00 · 45 min focus"
 
         /** The queue's old footer, asserted absent so it cannot come back. */
         const val NEXT_PREFIX = "Next: "

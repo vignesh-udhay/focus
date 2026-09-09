@@ -321,11 +321,11 @@ expressive additions.
 [M3] `MaterialShapes` provides thirty-five morphable polygons (Burst, Flower,
 Sunny, Puffy and so on) for shape morphing.
 
-[FD] Focuslist uses **two**, and both are on one screen. The Focus session's
-shape is `Cookie4Sided` at rest and `Cookie12Sided` while running. Nothing else
-in the app uses a polygon at all: no expressive shape as an interaction pattern,
-no shape change for novelty. A task list still has nothing to gain from a button
-that becomes a flower.
+[FD] Focuslist uses **none**. It used two until D-046, both on one screen: the
+Focus session's `Cookie4Sided` at rest and `Cookie12Sided` while running. That
+screen draws the app's own cat now, so no polygon is left anywhere in the app.
+No expressive shape as an interaction pattern, no shape change for novelty. A
+task list still has nothing to gain from a button that becomes a flower.
 
 [FD] It used to be seven, and the count coming back down belongs here, because
 this is where the worry was written. An earlier version of this document said

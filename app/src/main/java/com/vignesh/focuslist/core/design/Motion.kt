@@ -104,6 +104,27 @@ object FocuslistMotion {
     @ReadOnlyComposable
     fun <T> focusSession(): FiniteAnimationSpec<T> =
         MaterialTheme.motionScheme.slowSpatialSpec()
+
+    /**
+     * The Focus mascot settling, or getting up.
+     *
+     * D-046. The cat crosses between its two poses when the clock starts or
+     * stops, and the crossing is one gesture rather than two animations: the
+     * alpha is an effect and the scale is spatial, and driving them from
+     * separate specs would let the two halves of one movement arrive at
+     * different times. `focus.md` records that lesson from the container
+     * transform it deleted, so both run on this.
+     *
+     * The default spatial spec rather than [focusSession]'s slow one. That
+     * belongs to the sheet arriving and leaving, where the user is changing
+     * what the screen is for. This is a state change inside a session that is
+     * already open, and taking a beat over it would put a pause between the
+     * tap and the clock starting.
+     */
+    @Composable
+    @ReadOnlyComposable
+    fun <T> mascotSettle(): FiniteAnimationSpec<T> =
+        MaterialTheme.motionScheme.defaultSpatialSpec()
 }
 
 /**

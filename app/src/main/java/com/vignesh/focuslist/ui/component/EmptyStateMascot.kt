@@ -73,19 +73,35 @@ internal fun MascotImage(
     modifier: Modifier = Modifier,
     build: (light: Color, mid: Color, dark: Color) -> ImageVector
 ) {
-    val light = MaterialTheme.colorScheme.primaryFixed
-    val mid = MaterialTheme.colorScheme.primaryFixedDim
-    val dark = MaterialTheme.colorScheme.onPrimaryFixedVariant
-
     Image(
-        // Keyed on the colours alone. The builder is a reference to a top-level
-        // function and the two sizes are constants, so nothing else here can
-        // change without the call site itself changing.
-        imageVector = remember(light, mid, dark) { build(light, mid, dark) },
+        imageVector = rememberMascotImage(build),
         contentDescription = null,
         modifier = modifier
             .widthIn(max = width.dp)
             .fillMaxWidth()
             .aspectRatio(width / height)
     )
+}
+
+/**
+ * A pose, resolved against the three colour roles every mascot shares.
+ *
+ * Lifted out of [MascotImage] for [FocusMascot], which lays its two poses out
+ * itself and so cannot use the sizing that composable applies. Which three
+ * roles a mascot takes is the policy this file exists to hold, and a second
+ * copy of it elsewhere would be a second place for it to drift.
+ *
+ * Keyed on the colours alone. The builder is a reference to a top-level
+ * function and the sizes around it are constants, so nothing else here can
+ * change without the call site itself changing.
+ */
+@Composable
+internal fun rememberMascotImage(
+    build: (light: Color, mid: Color, dark: Color) -> ImageVector
+): ImageVector {
+    val light = MaterialTheme.colorScheme.primaryFixed
+    val mid = MaterialTheme.colorScheme.primaryFixedDim
+    val dark = MaterialTheme.colorScheme.onPrimaryFixedVariant
+
+    return remember(light, mid, dark) { build(light, mid, dark) }
 }

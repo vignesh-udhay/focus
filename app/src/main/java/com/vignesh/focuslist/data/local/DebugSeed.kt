@@ -73,7 +73,14 @@ private fun seedTasks(today: LocalDate): List<SeedTask> = listOf(
     SeedTask("Review the quarterly budget", today, 45),
     SeedTask("Call the plumber about the leak", today, 15),
     SeedTask("Reply to Priya about the contract", today, 20),
+    // No estimate, so Focus can be entered open-ended without editing a task
+    // first. It is the only way to reach two of the six states.
     SeedTask("Book the dentist", today),
+    // One minute, so Estimate reached is a state someone can sit and watch
+    // arrive. Every other estimate here is fifteen minutes or more, which made
+    // the slowest state to reach the one D-046 most wants looking at: the cat
+    // has to stay asleep when the clock runs out.
+    SeedTask("Steep the tea", today, 1),
     SeedTask("Renew the car insurance", today.minusDays(5), 30),
     SeedTask("Send the invoice to Meridian", today.minusDays(3), 10),
     SeedTask("Quarterly review with the team", today.plusDays(3), 60),

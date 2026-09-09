@@ -1,50 +1,59 @@
 package com.vignesh.focuslist.ui.widget
 
-import com.vignesh.focuslist.core.domain.FocusNow
-import com.vignesh.focuslist.core.domain.StoredFocusSession
 import com.vignesh.focuslist.core.domain.Task
-import com.vignesh.focuslist.core.domain.focusNow
+import com.vignesh.focuslist.core.domain.TodayBand
+import com.vignesh.focuslist.core.domain.todaySections
 import com.vignesh.focuslist.core.domain.todayTasks
 import com.vignesh.focuslist.data.local.WidgetCompletion
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import java.time.LocalDate
-import java.time.LocalDateTime
 import java.time.ZoneId
-import kotlin.math.floor
-
-/**
- * The heights the widget's composables declare, in dp.
- *
- * They exist here so row capacity can be arithmetic rather than a table, per
- * D-036. The obligation that comes with them is that they and
- * `FocuslistWidget.kt` have to stay in step: a row that changes height without
- * changing [RowHeight] puts the calculation out of agreement with the thing it
- * is measuring, and nothing but a render will say so.
- */
-private const val HeaderHeight = 60f
-private const val RowHeight = 48f
-private const val LeadCardHeight = 86f
-private const val LeadCardGap = 8f
-private const val BottomInset = 8f
-
-/**
- * Reserved whether or not `+N more` appears.
- *
- * It costs 20dp on a widget with nothing to hide, and it buys that the
- * disclosure can never be the thing that gets clipped. It is the only thing on
- * the surface that says rows exist which are not being shown.
- */
-private const val DisclosureHeight = 20f
 
 internal sealed interface WidgetBody {
+
+    /**
+     * Nothing has been read yet, per D-051.
+     *
+     * **A state rather than a wait**, and that is the whole point of it. Until
+     * `provideContent` is called, `AppWidgetSession` emits `IgnoreResult()` and
+     * the widget publishes nothing, and a session that has published nothing can
+     * be timed out after five seconds of device idle and reported as a success.
+     * The widget then keeps the launcher's loading layout with nothing left to
+     * retry it. Drawing something immediately, even the header alone, is what
+     * takes the widget out of that window.
+     *
+     * Distinct from [NothingScheduled] on purpose: one is the app not knowing
+     * yet, the other is the app knowing the day is empty.
+     */
+    data object Loading : WidgetBody
+
     data object NothingScheduled : WidgetBody
     data object EverythingDone : WidgetBody
 
-    data class Tasks(
-        val lead: FocusNow?,
-        val rows: List<WidgetRow>,
-        val hiddenCount: Int
+    /**
+     * Today's outstanding bands, labelled, in the order `todaySections` gives.
+     *
+     * **There is no lead and no capacity.** D-049 removed the Focus card, which
+     * is what left the rows as one unexplained run and is why the bands are here
+     * at all. D-043 removed the truncation: the rows are a `LazyColumn`, so the
+     * platform draws what fits and scrolls the rest, and nothing in this file
+     * has an opinion about how tall the widget is.
+     */
+    data class Sections(
+        // The day the rows were banded for, carried here since D-051 because the
+        // content can now be drawn before any day is known.
+        val today: LocalDate,
+        val sections: List<WidgetSection>
     ) : WidgetBody
 }
+
+/** One band and its rows, carrying the band so the view can label it. */
+internal data class WidgetSection(
+    val band: TodayBand,
+    val rows: List<WidgetRow>
+)
 
 internal data class WidgetRow(
     val task: Task,
@@ -53,61 +62,93 @@ internal data class WidgetRow(
 
 internal data class FocuslistWidgetModel(val body: WidgetBody)
 
+/** Everything the widget draws from, as one value. */
+internal data class WidgetSnapshot(
+    val tasks: List<Task>,
+    val today: LocalDate,
+    val completion: WidgetCompletion?
+)
+
 /**
- * The widget's six states, derived without Android so the important decisions
- * can be covered by JVM tests.
+ * The widget's data, for as long as something is collecting it. D-045.
+ *
+ * **A stream rather than a read, because a Glance session outlives a read.**
+ * Everything above `provideContent` runs once per session, not once per update:
+ * `runGlance` calls `provideGlance` a single time and `provideContent` then
+ * suspends and never returns. A session lives 45 seconds past its first
+ * composition. `updateAll` does not re-enter any of that, it only forces a
+ * recomposition, so a value captured up there was re-rendered rather than
+ * re-read and the widget was frozen for the session's whole life.
+ *
+ * Collected inside the composition instead, a change reaches the widget by
+ * recomposing it, which is what makes the session an asset rather than a cache.
+ *
+ * Takes its sources as arguments so this is answerable without Android. The
+ * two lambdas are `SharedPreferences` reads, and `completion` retires the
+ * evidence when storage has moved past it, so it is called on every emission
+ * rather than only when the result is about to be used.
+ */
+internal fun widgetSnapshots(
+    tasks: Flow<List<Task>>,
+    today: Flow<LocalDate>,
+    completion: (List<Task>, LocalDate) -> WidgetCompletion?
+): Flow<WidgetSnapshot> =
+    combine(tasks, today) { currentTasks, currentToday ->
+        WidgetSnapshot(
+            tasks = currentTasks,
+            today = currentToday,
+            completion = completion(currentTasks, currentToday)
+        )
+    }.distinctUntilChanged()
+
+/**
+ * The widget's states, derived without Android so the decisions in them can be
+ * covered by JVM tests.
+ *
+ * Reads no clock and no Focus session, per D-049. Both left with the lead card:
+ * `now` existed only for `ReminderPassed`, which D-048 deleted, and the paused
+ * session is a thing Today says on a screen the user opened.
  */
 internal fun focuslistWidgetModel(
     tasks: List<Task>,
     today: LocalDate,
-    now: LocalDateTime,
-    storedFocus: StoredFocusSession?,
     completion: WidgetCompletion?,
-    // The height the launcher says this widget has, in dp. D-036: a widget is
-    // resized by dragging, so most are neither of the two declared responsive
-    // sizes, and capacity is a function of this rather than of which breakpoint
-    // was matched.
-    heightDp: Float,
-    fontScale: Float = 1f,
     zoneId: ZoneId = ZoneId.systemDefault()
 ): FocuslistWidgetModel {
-    val todayTasks = todayTasks(tasks, today)
     val completedTask = completion?.let { evidence ->
         tasks.firstOrNull { task -> task.id == evidence.taskId && task.isCompleted && !task.isDeleted }
     }
 
-    // A completion is the state change the user just asked to see. Suppress a
-    // newly selected lead until the next refresh rather than replacing their
-    // evidence with a different assertion in the same tap.
-    // No threshold of its own any more. D-031 filtered `NoTimeToday` out here
-    // because a home screen has to earn the right to assert; D-035 accepted the
-    // same argument for the app and removed the reason outright, so the widget
-    // and Today now lead on the same two events.
-    val lead = if (completedTask == null) {
-        focusNow(
-            tasks = tasks,
-            now = now,
-            pausedTaskId = storedFocus
-                ?.takeIf { stored -> stored.session.isPaused }
-                ?.taskId
-        )
+    // **The just-completed task is banded as though it were still outstanding.**
+    // D-031 keeps a checked row in place because on this surface a row that
+    // vanishes on tap erases the only evidence of what the user just did, and
+    // completing it would otherwise move it into Completed at the bottom.
+    // Presenting it as unfinished returns it to its own band in its own place,
+    // which is why nothing has to remember where that was.
+    val banded = if (completedTask == null) {
+        tasks
     } else {
-        null
+        tasks.map { task ->
+            if (task.id == completedTask.id) task.copy(completedAt = null) else task
+        }
     }
 
-    val outstanding = todayTasks.filterNot { task -> task.isCompleted || task.id == lead?.task?.id }
-        .map(::WidgetRow)
-        .toMutableList()
+    val sections = todaySections(banded, today)
+        // Finished work is the one thing a glanceable surface never needs to
+        // carry, and on Today this band is a disclosure the user opens. A widget
+        // has nothing cheap to open into. D-049.
+        .filterNot { section -> section.band == TodayBand.COMPLETED }
+        .map { section ->
+            WidgetSection(
+                band = section.band,
+                rows = section.tasks.map { task ->
+                    WidgetRow(task = task, justCompleted = task.id == completedTask?.id)
+                }
+            )
+        }
 
-    if (completedTask != null && completion != null) {
-        outstanding.add(
-            index = completion.previousIndex.coerceIn(0, outstanding.size),
-            element = WidgetRow(task = completedTask, justCompleted = true)
-        )
-    }
-
-    if (lead == null && outstanding.isEmpty()) {
-        val hadWorkToday = todayTasks.any { task ->
+    if (sections.isEmpty()) {
+        val hadWorkToday = todayTasks(tasks, today).any { task ->
             task.isCompleted && (
                 task.scheduledDate == today ||
                     task.completedAt?.atZone(zoneId)?.toLocalDate() == today
@@ -119,65 +160,5 @@ internal fun focuslistWidgetModel(
         )
     }
 
-    val capacity = rowCapacity(heightDp = heightDp, hasLead = lead != null, fontScale = fontScale)
-    val visible = outstanding.take(capacity)
-
-    return FocuslistWidgetModel(
-        WidgetBody.Tasks(
-            lead = lead,
-            rows = visible,
-            hiddenCount = (outstanding.size - visible.size).coerceAtLeast(0)
-        )
-    )
-}
-
-/** Where a row was before its completion changed Today's ordering. */
-internal fun widgetCompletionIndex(
-    tasks: List<Task>,
-    today: LocalDate,
-    now: LocalDateTime,
-    storedFocus: StoredFocusSession?,
-    taskId: String
-): Int {
-    val lead = focusNow(
-        tasks = tasks,
-        now = now,
-        pausedTaskId = storedFocus?.takeIf { it.session.isPaused }?.taskId
-    )
-
-    if (lead?.task?.id == taskId) return 0
-
-    return todayTasks(tasks, today)
-        .asSequence()
-        .filterNot { it.isCompleted || it.id == lead?.task?.id }
-        .indexOfFirst { it.id == taskId }
-        .coerceAtLeast(0)
-}
-
-/**
- * How many rows fit under everything else, per D-036.
- *
- * This was a seven-branch `when` over `WidgetLayout` and a `largeText` flag,
- * which treated the two declared responsive sizes as the only two shapes a
- * widget can have. A widget is resized by dragging, so most are neither: one
- * taller than Compact and slightly narrower than Medium fell to Compact, and
- * Compact with a lead card is no rows at all, which left a large widget mostly
- * empty with one card at the top.
- *
- * The arithmetic reproduces that table exactly at both declared sizes, across
- * lead and no lead and normal and large text. `FocuslistWidgetModelTest` pins
- * all eight, so changing a constant here has to say which case it moved.
- *
- * Text scale multiplies the row and the lead card rather than switching on a
- * threshold, which is what the `largeText` flag was approximating. Never below
- * 1: a user who has made text smaller does not thereby get more rows than the
- * layout was drawn for.
- */
-private fun rowCapacity(heightDp: Float, hasLead: Boolean, fontScale: Float): Int {
-    val textScale = fontScale.coerceAtLeast(1f)
-
-    var available = heightDp - HeaderHeight - BottomInset - DisclosureHeight
-    if (hasLead) available -= (LeadCardHeight * textScale) + LeadCardGap
-
-    return floor(available / (RowHeight * textScale)).toInt().coerceAtLeast(0)
+    return FocuslistWidgetModel(WidgetBody.Sections(today = today, sections = sections))
 }

@@ -74,7 +74,6 @@ object FocuslistDimensions {
      * at 320dp "so a wide window gets a shape, not a wall", which was solving a
      * problem this size does not have.
      */
-    val FocusShapeSize = 180.dp
 
     /**
      * The height of a worded action button, anywhere in the app.

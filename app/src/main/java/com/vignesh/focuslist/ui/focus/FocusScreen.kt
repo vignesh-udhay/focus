@@ -5,8 +5,6 @@ import android.content.res.Configuration
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,14 +21,12 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetState
-import androidx.compose.material3.toPath
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -41,12 +37,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Matrix
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -56,16 +46,13 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.graphics.shapes.Morph
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vignesh.focuslist.R
 import com.vignesh.focuslist.core.design.FocuslistDimensions
-import com.vignesh.focuslist.core.design.FocuslistMotion
 import com.vignesh.focuslist.core.design.FocuslistSpacing
-import com.vignesh.focuslist.core.design.focuslistMotionEnabled
 import com.vignesh.focuslist.core.domain.FocusSession
 import com.vignesh.focuslist.core.domain.FocusState
 import com.vignesh.focuslist.core.domain.Task
@@ -74,6 +61,7 @@ import com.vignesh.focuslist.core.domain.focusStateOf
 import com.vignesh.focuslist.core.domain.isClockRunning
 import com.vignesh.focuslist.core.notification.FocusSessionVisibility
 import com.vignesh.focuslist.core.notification.canPostNotifications
+import com.vignesh.focuslist.ui.component.FocusMascot
 import com.vignesh.focuslist.ui.component.UndoSnackbarHost
 import com.vignesh.focuslist.ui.task.TaskListViewModel
 import com.vignesh.focuslist.ui.task.UndoSnackbarEffect
@@ -87,11 +75,17 @@ import java.time.LocalDate
  * Focus, the execution mode.
  *
  * One surface with six states, opened as a sheet over the screen that asked for
- * it. `focus.md` holds the design; `docs/decisions.md` D-013, D-014 and D-015
+ * it. `focus.md` holds the design; `docs/decisions.md` D-013, D-015 and D-046
  * hold the decisions behind it.
  *
- * Top to bottom: the task title, the shape with the remaining time inside it,
- * one status line, and one row of two controls.
+ * Top to bottom: the task title, the cat, one status line carrying the clock
+ * and the budget, and one row of two controls.
+ *
+ * **The shape is gone and D-046 took it.** The Cookie said whether the clock
+ * was running and nothing else, which is a thing the app's own mascot says
+ * better and warmer; the digits came out of it and joined the status line at
+ * body size, which finally makes the task title the largest object on a screen
+ * built to stop clock-watching.
  *
  * **Leaving never destroys anything.** D-015: the drag, the scrim and the back
  * gesture all pause. None of them can tell "I am finished with this" from "I
@@ -206,7 +200,7 @@ private fun FocusSheetContent(
         ) {
             FocusTaskTitle(title = task.title)
 
-            FocusShape(readout = reading.readout, running = reading.state.isClockRunning)
+            FocusMascot(running = reading.state.isClockRunning)
 
             FocusStatusLine(reading = reading, estimateMinutes = task.estimatedDurationMinutes)
 
@@ -277,119 +271,25 @@ private fun FocusTaskTitle(title: String) {
 }
 
 /**
- * The shape, and the time inside it.
+ * The one line under the cat: the clock, then the budget.
  *
- * `Cookie4Sided` at rest and `Cookie12Sided` while running, morphing between the
- * two on a state change and not moving in between. **What it says is whether the
- * clock is running.** That is the whole of it, and it is D-014.
+ * **The clock lives here now, and D-046 moved it.** It used to be Headline
+ * Small inside the shape, which made the countdown the second largest thing on
+ * a screen whose stated purpose is to stop clock-watching. At body size beside
+ * the budget it is still a real readout, and three of the six states still
+ * cannot be told apart without it, but it has stopped being a display object
+ * and the task title is now unambiguously the largest thing here.
  *
- * It used to be a progress indicator, walking from a circle to a clover across
- * the estimate. Once D-013 put a readable number on the screen, the shape and
- * the digits measured the same quantity and the shape was the worse of the two
- * at it: it cannot be read to a value and it publishes nothing to a screen
- * reader. A second channel that says what the first says, less well, is
- * decoration, and `expressive-motion.md` bans decoration.
+ * **The budget carries only what the controls cannot say.** The button already
+ * reads Pause or Resume, so putting the state in text would say it twice. What
+ * is left is the budget, and the one moment that has no control to announce it.
  *
- * Drawn rather than clipped to. A `Shape` would have to be a new object to
- * change, which puts the work in layout; drawing reads the morph in the draw
- * phase, where a changed value costs one redraw of one node.
- */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun FocusShape(readout: String, running: Boolean) {
-    // Rest to running, and the animated value walks between them. Built once:
-    // the two shapes are constants, so nothing here depends on `MaterialShapes`
-    // memoising its polygons.
-    val morph = remember { Morph(MaterialShapes.Cookie4Sided, MaterialShapes.Cookie12Sided) }
-    val path = remember { Path() }
-
-    val containerColor = MaterialTheme.colorScheme.primaryContainer
-    val extension = rememberShapeExtension(running)
-
-    Box(
-        modifier = Modifier
-            .size(FocuslistDimensions.FocusShapeSize)
-            .drawBehind {
-                drawFocusShape(
-                    morph = morph,
-                    progress = extension.value,
-                    path = path,
-                    color = containerColor,
-                    bounds = Rect(0f, 0f, size.width, size.height)
-                )
-            },
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = readout,
-            // Headline Small, not the Display Large the board drew first. The
-            // largest object on a screen built to stop clock-watching should not
-            // be the clock; the task is.
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
-            maxLines = 1
-        )
-    }
-}
-
-/**
- * How far the shape has travelled between its two forms.
- *
- * Zero is 4-sided and one is 12-sided. On `focusSession`, which is the app's
- * only sanctioned shape morph and is much cheaper than it was: two shapes rather
- * than a walk through many, and a state change rather than a tick, so nothing on
- * this screen animates while a session is merely running.
- *
- * Under reduced motion it snaps. Nothing is withheld by that, because the state
- * the shape expresses is in the button's label and in the status line either
- * way.
- */
-@Composable
-private fun rememberShapeExtension(running: Boolean): Animatable<Float, AnimationVector1D> {
-    val animate = focuslistMotionEnabled()
-    val target = if (running) 1f else 0f
-    val extension = remember { Animatable(target) }
-    val spec = FocuslistMotion.focusSession<Float>()
-
-    LaunchedEffect(target, animate) {
-        if (animate) extension.animateTo(target, spec) else extension.snapTo(target)
-    }
-
-    return extension
-}
-
-/** Draws the morph at [progress], scaled onto [bounds]. */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-private fun DrawScope.drawFocusShape(
-    morph: Morph,
-    progress: Float,
-    path: Path,
-    color: Color,
-    bounds: Rect
-) {
-    morph.toPath(progress = progress.coerceIn(0f, 1f), path = path)
-
-    // The polygons are normalised, so the path arrives in a unit box and has to
-    // be scaled to the rectangle and recentred on it, exactly as the Material
-    // shape helper does it.
-    path.transform(Matrix().apply { scale(x = bounds.width, y = bounds.height) })
-    path.translate(bounds.center - path.getBounds().center)
-    drawPath(path, color)
-}
-
-/**
- * The one line under the shape.
- *
- * **It carries only what the controls cannot say.** The button already reads
- * Pause or Resume, so putting the state in text here would say it twice. What is
- * left is the budget, and the one moment that has no control to announce it.
- *
- * Ready and Running read the same line, deliberately. What tells them apart is
- * the shape, the icon on the button, and the digits moving.
+ * Ready and Running read the same budget, deliberately. What tells them apart is
+ * the pose, the icon on the button, and the digits moving.
  */
 @Composable
 private fun FocusStatusLine(reading: FocusReading, estimateMinutes: Int?) {
-    val text = when (reading.state) {
+    val budget = when (reading.state) {
         FocusState.Ready, FocusState.Running ->
             stringResource(R.string.focus_status_estimate, estimateMinutes ?: 0)
 
@@ -409,7 +309,7 @@ private fun FocusStatusLine(reading: FocusReading, estimateMinutes: Int?) {
     }
 
     Text(
-        text = text,
+        text = stringResource(R.string.focus_status_line, reading.readout, budget),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         textAlign = TextAlign.Center
@@ -422,6 +322,15 @@ private fun FocusStatusLine(reading: FocusReading, estimateMinutes: Int?) {
  * Complete is in all six states, because finishing is the thing this screen is
  * for and it must never be more than one tap away. What changes is the control
  * beside it.
+ *
+ * **Complete leads and the clock control trails.** D-046. Two reasons, and the
+ * second is the stronger one. Complete now sits in the same place in all six
+ * states, where before it trailed in five and led in Estimate reached, which is
+ * the one state that has no clock control to trail. And the clock is the control
+ * pressed repeatedly inside a session, start then pause then resume, where
+ * Complete is pressed once at the end, so the repeated one belongs where the
+ * thumb already is. `expressive-components.md` makes the same argument for the
+ * Start focus pill on Task Details.
  *
  * **The clock control is an icon button, and that is a width decision.** Holding
  * no text it does not grow with the font scale: at 200% two worded buttons come
@@ -483,6 +392,12 @@ private fun FocusActions(
             }
         }
 
+        FocusWordedButton(
+            text = stringResource(R.string.focus_complete),
+            primary = false,
+            onClick = onComplete
+        )
+
         FilledIconButton(
             onClick = onClock,
             modifier = Modifier.size(FocuslistDimensions.FocusControlSize)
@@ -495,12 +410,6 @@ private fun FocusActions(
                 contentDescription = stringResource(label)
             )
         }
-
-        FocusWordedButton(
-            text = stringResource(R.string.focus_complete),
-            primary = false,
-            onClick = onComplete
-        )
     }
 }
 

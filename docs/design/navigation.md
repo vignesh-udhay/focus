@@ -68,8 +68,9 @@ board is outlined, and the board is the one that is constrained. Do not
 "correct" the code to match a frame. If a filled calendar ever reaches the kit,
 update the board and delete this section.
 
-`ic_upcoming_filled` is the one asset the app still needs; until it exists the
-bar cannot be consistent either way.
+`ic_upcoming_filled` has since been drawn and is in `res/drawable`, so the bar
+can be consistent. This paragraph used to say it was the one asset the app still
+needed.
 
 ---
 

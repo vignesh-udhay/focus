@@ -5,20 +5,26 @@ import androidx.core.content.edit
 import com.vignesh.focuslist.core.domain.Task
 import java.time.LocalDate
 
-data class WidgetCompletion(
-    val taskId: String,
-    val previousIndex: Int
-)
+/**
+ * The task the user just checked from the widget, while that is still the most
+ * recent thing to have happened.
+ *
+ * **No position.** It carried the row's index until D-049, because completing a
+ * task moved it to the bottom of a flat list and the widget had to put it back.
+ * The widget draws bands now and shows this task as though it were unfinished,
+ * which returns it to its own band in its own place without anyone recording
+ * where that was.
+ */
+data class WidgetCompletion(val taskId: String)
 
 /** The one transient interaction the widget must keep visible: completion. */
 class WidgetInteractionPreferences(context: Context) {
 
     private val preferences = context.getSharedPreferences(Name, Context.MODE_PRIVATE)
 
-    fun recordCompletion(taskId: String, previousIndex: Int, tasks: List<Task>, today: LocalDate) {
+    fun recordCompletion(taskId: String, tasks: List<Task>, today: LocalDate) {
         preferences.edit {
             putString(TaskIdKey, taskId)
-            putInt(IndexKey, previousIndex)
             putInt(SnapshotKey, widgetSnapshotHash(tasks, today))
         }
     }
@@ -40,10 +46,7 @@ class WidgetInteractionPreferences(context: Context) {
             return null
         }
 
-        return WidgetCompletion(
-            taskId = taskId,
-            previousIndex = preferences.getInt(IndexKey, 0)
-        )
+        return WidgetCompletion(taskId = taskId)
     }
 
     fun clearCompletion() {
@@ -53,7 +56,6 @@ class WidgetInteractionPreferences(context: Context) {
     private companion object {
         const val Name = "widget_interaction"
         const val TaskIdKey = "task_id"
-        const val IndexKey = "previous_index"
         const val SnapshotKey = "snapshot"
     }
 }

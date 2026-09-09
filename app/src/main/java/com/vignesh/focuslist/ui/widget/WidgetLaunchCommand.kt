@@ -10,7 +10,6 @@ sealed interface WidgetLaunchCommand {
     data object Today : WidgetLaunchCommand
     data object Add : WidgetLaunchCommand
     data class TaskDetails(val taskId: String) : WidgetLaunchCommand
-    data class ResumeFocus(val taskId: String) : WidgetLaunchCommand
 }
 
 internal fun widgetLaunchIntent(context: Context, command: WidgetLaunchCommand): Intent {
@@ -18,7 +17,6 @@ internal fun widgetLaunchIntent(context: Context, command: WidgetLaunchCommand):
         WidgetLaunchCommand.Today -> "today" to null
         WidgetLaunchCommand.Add -> "add" to null
         is WidgetLaunchCommand.TaskDetails -> "task" to command.taskId
-        is WidgetLaunchCommand.ResumeFocus -> "resume" to command.taskId
     }
 
     return Intent(context, MainActivity::class.java).apply {
@@ -41,7 +39,6 @@ fun Intent.widgetLaunchCommand(): WidgetLaunchCommand? {
         "today" -> WidgetLaunchCommand.Today
         "add" -> WidgetLaunchCommand.Add
         "task" -> parts.getOrNull(1)?.let(WidgetLaunchCommand::TaskDetails)
-        "resume" -> parts.getOrNull(1)?.let(WidgetLaunchCommand::ResumeFocus)
         else -> null
     }
 }

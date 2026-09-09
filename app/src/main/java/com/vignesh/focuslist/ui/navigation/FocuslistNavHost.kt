@@ -71,6 +71,11 @@ fun FocuslistNavHost(
     // entry, which would give each list its own view model and split the undo
     // offer five ways.
     val viewModel = taskListViewModel()
+    // A count rather than a flag, so pressing add on the widget again while
+    // Today is already open changes the key and fires the effect a second time.
+    // Zero means nothing is pending: Today sets it back there once it has
+    // opened the sheet, because a request left standing is replayed by every
+    // later composition of a destination that gets disposed on every navigation.
     var quickAddRequest by rememberSaveable { mutableIntStateOf(0) }
 
     // Built here for the same reason, and now for a second one: since D-040 two
@@ -98,10 +103,6 @@ fun FocuslistNavHost(
                 navController.navigate(FocuslistRoutes.taskDetails(command.taskId)) {
                     launchSingleTop = true
                 }
-            }
-            is WidgetLaunchCommand.ResumeFocus -> {
-                navController.openTopLevel(FocuslistRoutes.TODAY)
-                viewModel.resumeFocusFromWidget(command.taskId)
             }
         }
         onWidgetCommandHandled(command)
@@ -165,6 +166,7 @@ fun FocuslistNavHost(
                 TodayScreen(
                     viewModel = viewModel,
                     quickAddRequest = quickAddRequest,
+                    onQuickAddRequestHandled = { quickAddRequest = 0 },
                     onOpenTask = { id ->
                         navController.navigate(FocuslistRoutes.taskDetails(id))
                     },

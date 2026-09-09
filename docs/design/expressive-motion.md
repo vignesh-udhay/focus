@@ -110,8 +110,7 @@ licence to invent a fifth.
 | The reminder health banner | **nothing** | None |
 | The focused task changing on Focus | `stateColor` | Restrained |
 | Entering or leaving the Focus session | `focusSession` | Deliberate |
-| The Focus session shape, starting or resuming | `focusSession` | Restrained |
-| The Focus session shape, pausing | `focusSession` | Restrained |
+| The Focus cat, settling or getting up | `mascotSettle` | Restrained |
 | Pressing a row or button | Material ripple and state layer | Material default |
 | Sheets opening and closing | Material default | Material default |
 | The undo snackbar | Material default | Material default |
@@ -160,8 +159,8 @@ Three things claim it here, and it needs no sixth token.
 **Promotion is two movements, not one.** When D-012's rule promotes a task, the
 row leaves its band on `listChange` and the card arrives on `reveal`. It is not
 a container transform from the row into the card, and it must not become one.
-The rules below allow exactly one shape morph, the Focus session shape, and a
-row growing into a card would be a second. It would also be a lie about the
+The rules below allow no shape morph at all since D-046, so a row growing into a
+card is out on its face. It would also be a lie about the
 mechanism: the card is not that row relocated, it is a different component that
 happens to be about the same task. Releasing a task back into its band is the
 same pair in reverse.
@@ -200,13 +199,23 @@ now no behaviour to override. See `today-screen.md`.
 
 [FD] One thing moves on this screen, and it moves only when the state changes.
 
-**The shape** is `MaterialShapes.Cookie4Sided` at rest and
-`MaterialShapes.Cookie12Sided` while running. It morphs between the two on
-`focusSession` when the state changes, and does not move in between.
+**The cat** is `cat-sit-front` at rest and `cat-nap` while running. It crosses
+between the two on `mascotSettle` when the state changes, and does not move in
+between. The crossing is an opacity crossfade with a two percent scale, both
+driven off one value so the two halves of one gesture cannot arrive at different
+times, and both poses are scaled about their own feet so the ground line under
+the cat never moves.
 
 [FD] **What it says is whether the clock is running. It never says anything
-else.** That sentence is the exception to the no-shape-morphing rule below, and
-it is the whole of the exception. `docs/decisions.md` D-014 is the entry.
+else.** `docs/decisions.md` D-046 is the entry.
+
+[FD] **A shape used to do this, and its removal is why the rule below has no
+exception left.** It was `MaterialShapes.Cookie4Sided` at rest and
+`MaterialShapes.Cookie12Sided` while running, morphing on `focusSession`. D-014
+had already cut its job to the one sentence above, and D-046 observed that a job
+that small is done better by the animal the app already draws in five poses.
+What follows is kept because the reasoning generalises, not because any of it
+still runs.
 
 [FD] It used to say more, and the reversal is worth keeping. The shape was a
 progress indicator: a determinate walk from `Circle` to `Clover8Leaf` across the
@@ -288,12 +297,13 @@ easiest one to get wrong.
 **No decorative motion.** No pulsing, no attention-seeking idle animation,
 nothing that plays without the user having done something.
 
-**No shape morphing, with one exception.** The Focus session shape, saying the
-one thing it is allowed to say: whether the clock is running. Shape morphing for its own sake remains banned;
-`expressive-design-system.md` says Focuslist takes almost none of what Material
-3 Expressive offers here, and that stands. If a second morph is ever proposed,
-it has to clear the same bar: what does it tell the user that nothing else on
-screen does?
+**No shape morphing, and there is no longer an exception.** The one carve-out was
+the Focus session shape, and D-046 replaced it with the cat, which crossfades
+rather than morphing. `expressive-design-system.md` says Focuslist takes almost
+none of what Material 3 Expressive offers here, and that now holds without a
+footnote. If a morph is ever proposed, it has to clear the bar the exception
+cleared once and then lost: what does it tell the user that nothing else on
+screen does, and does it say it better than whatever is already saying it?
 
 This paragraph used to carve out an exemption for growing the Start button into
 the session's circle, on the grounds that a rounded rectangle whose corners stay

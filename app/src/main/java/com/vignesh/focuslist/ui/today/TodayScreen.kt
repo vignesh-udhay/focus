@@ -39,8 +39,6 @@ import com.vignesh.focuslist.core.design.FocuslistDimensions
 import com.vignesh.focuslist.core.design.FocuslistMotion
 import com.vignesh.focuslist.core.design.FocuslistSpacing
 import com.vignesh.focuslist.core.design.focuslistContentGutter
-import com.vignesh.focuslist.core.domain.FocusNow
-import com.vignesh.focuslist.core.domain.FocusNowReason
 import com.vignesh.focuslist.core.domain.ReminderHealthState
 import com.vignesh.focuslist.core.domain.Task
 import com.vignesh.focuslist.core.domain.TodayBand
@@ -81,6 +79,10 @@ fun TodayScreen(
     onOpenTask: (String) -> Unit,
     modifier: Modifier = Modifier,
     quickAddRequest: Int = 0,
+    // Called once the request above has been acted on, so the host can retire
+    // it. Without this the request is a latch rather than an event: see the
+    // effect below.
+    onQuickAddRequestHandled: () -> Unit = {},
     bottomBar: @Composable () -> Unit = {},
     onOpenFocus: () -> Unit = {},
     // Whether reminders can currently be relied on, read from the health view
@@ -97,7 +99,7 @@ fun TodayScreen(
 ) {
     val tasks by viewModel.todayTasks.collectAsStateWithLifecycle()
     val today by viewModel.today.collectAsStateWithLifecycle()
-    val focusNow by viewModel.focusNow.collectAsStateWithLifecycle()
+    val pausedTask by viewModel.pausedFocusTask.collectAsStateWithLifecycle()
     val focusSession by viewModel.focusSession.collectAsStateWithLifecycle()
     val readFailed by viewModel.readFailed.collectAsStateWithLifecycle()
 
@@ -105,8 +107,18 @@ fun TodayScreen(
     // whether Inbox has its own sheet open.
     var isQuickAddVisible by rememberSaveable { mutableStateOf(false) }
 
+    // **The request is retired as soon as it is acted on**, because this screen
+    // is a navigation destination and is disposed the moment the user leaves it.
+    // A request that stays above zero is therefore replayed by every later
+    // composition: open Quick Add from the widget, dismiss it, visit Inbox, come
+    // back, and the sheet opens again on a request the user made once and had
+    // already answered. The host holds the counter in `rememberSaveable`, so
+    // that survived process death too.
     LaunchedEffect(quickAddRequest) {
-        if (quickAddRequest > 0) isQuickAddVisible = true
+        if (quickAddRequest > 0) {
+            isQuickAddVisible = true
+            onQuickAddRequestHandled()
+        }
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -115,14 +127,16 @@ fun TodayScreen(
     TodayContent(
         tasks = tasks,
         today = today,
-        focusNow = focusNow,
+        pausedTask = pausedTask,
         // Read once here rather than inside the card, so the card stays a
         // stateless thing that renders what it is handed. A paused session is
         // stopped, so this value does not move and needs no ticking.
-        pausedRemainingMinutes = focusNow?.takeIf { card ->
-            card.reason == FocusNowReason.ResumePaused
-        }?.let { card ->
-            focusSession?.remaining(Instant.now(), card.task.estimatedDurationMinutes)?.toMinutes()
+        //
+        // No guard on the reason any more. The task is only non-null when a
+        // session is paused on it, which is the whole of what D-048 left the card
+        // speaking for.
+        pausedRemainingMinutes = pausedTask?.let { task ->
+            focusSession?.remaining(Instant.now(), task.estimatedDurationMinutes)?.toMinutes()
         },
         onToggleComplete = viewModel::toggleComplete,
         onOpenTask = onOpenTask,
@@ -139,15 +153,17 @@ fun TodayScreen(
             viewModel.beginFocus(id)
             onOpenFocus()
         },
-        // The card's action, which is labelled for the state it opens.
+        // The card's one action. It resumes, and the sheet opens on a session
+        // already running.
         //
-        // A paused session resumes and the sheet shows it running. Everything
-        // else lands on Ready, where the user presses Start focus. That
-        // difference is the point: a task the user picked out of a list has had
-        // the deciding done, and `focus.md` skips Ready for it, but a task the
-        // *app* picked has not. Ready is where the user agrees with the card.
-        onFocusNow = {
-            viewModel.openFocusFromCard()
+        // There is no longer a second behaviour behind it. D-012's card could also
+        // land on Ready, for a task the *app* had picked, where Ready was the user
+        // agreeing with the choice before the clock ran. D-048 leaves only the
+        // task the user picked and started themselves, so there is nothing left to
+        // agree to and pressing Resume twice would be a confirmation of a
+        // confirmation.
+        onResumeFocus = {
+            viewModel.resumeFocusFromCard()
             onOpenFocus()
         },
         onAddTask = { isQuickAddVisible = true },
@@ -211,14 +227,14 @@ fun TodayScreen(
 private fun TodayContent(
     tasks: List<Task>,
     today: LocalDate,
-    focusNow: FocusNow?,
+    pausedTask: Task?,
     pausedRemainingMinutes: Long? = null,
     onToggleComplete: (String) -> Unit,
     onOpenTask: (String) -> Unit,
     onDelete: (String) -> Unit,
     onReschedule: (String, LocalDate?) -> Unit,
     onFocusTask: (String) -> Unit,
-    onFocusNow: () -> Unit = {},
+    onResumeFocus: () -> Unit = {},
     onAddTask: () -> Unit,
     readFailed: Boolean = false,
     onRetry: () -> Unit = {},
@@ -241,17 +257,21 @@ private fun TodayContent(
     // The bands todayTasks already sorted into. Reading them here, rather than
     // re-deriving the rule, keeps the ordering owned by TaskQueries.
     //
-    // The card's task leaves its band, so it is never on screen twice. That is
-    // done in the query rather than here, because a screen that filtered the
-    // list it was handed would be a second place the ordering is decided.
-    val sections = todaySections(tasks, today, promotedTaskId = focusNow?.task?.id)
+    // Nothing is held back. D-048 leaves the paused session's task in its band,
+    // so every task Today shows is in exactly one of them.
+    val sections = todaySections(tasks, today)
 
     // A day that had work and finished it, which D-033 separates from a day
     // that never had any. Read off the bands rather than the tasks, so the one
-    // place that decides what is outstanding stays `todaySections`. A promoted
-    // Focus card is outstanding work by definition, so its presence rules this
-    // out the same way it rules out the empty state.
-    val isEverythingDone = focusNow == null &&
+    // place that decides what is outstanding stays `todaySections`.
+    //
+    // A paused session still rules it out, and now for a narrower reason. When the
+    // paused task is on today's list it sits in a band that is not Completed, so
+    // the bands rule it out on their own. When it is not on today's list at all,
+    // which happens to a task focused from Inbox, the bands cannot see it: "all
+    // done" above a card reading "Paused, 15 min remaining" would be the two
+    // halves of the screen disagreeing.
+    val isEverythingDone = pausedTask == null &&
         sections.isNotEmpty() &&
         sections.all { it.band == TodayBand.COMPLETED }
 
@@ -299,7 +319,7 @@ private fun TodayContent(
                 onRetry = onRetry,
                 modifier = Modifier.padding(innerPadding)
             )
-        } else if (tasks.isEmpty() && focusNow == null) {
+        } else if (tasks.isEmpty() && pausedTask == null) {
             // The banner survives the empty screen, and D-040 says this is
             // where it matters most: a user who has just declined the
             // notification permission and owns no tasks yet is exactly the user
@@ -380,22 +400,19 @@ private fun TodayContent(
                     }
                 }
 
-                if (focusNow != null) {
-                    item(key = "focus-now") {
-                        FocusNowCard(
-                            focusNow = focusNow,
-                            today = today,
-                            onToggleComplete = { onToggleComplete(focusNow.task.id) },
-                            onOpenFocus = onFocusNow,
-                            onOpen = { onOpenTask(focusNow.task.id) },
-                            pausedRemainingMinutes = pausedRemainingMinutes,
+                if (pausedTask != null) {
+                    item(key = "paused-session") {
+                        PausedSessionCard(
+                            task = pausedTask,
+                            onResume = onResumeFocus,
+                            remainingMinutes = pausedRemainingMinutes,
                             // The card arrives and leaves on `reveal`, which is
-                            // what that token is for and what it had no user of
-                            // until now. Not a container transform out of the
-                            // row: the card is not that row relocated, it is a
-                            // different component that happens to be about the
-                            // same task, and `expressive-motion.md` allows the
-                            // app exactly one shape morph, which Focus has.
+                            // what that token is for. Not a container transform
+                            // out of the row, and since D-048 the row is still
+                            // there to make the point: the card is a control
+                            // about a task, not that task relocated, and
+                            // `expressive-motion.md` allows the app exactly one
+                            // shape morph, which Focus has.
                             modifier = Modifier.animateItem(
                                 fadeInSpec = FocuslistMotion.reveal(),
                                 placementSpec = FocuslistMotion.reveal(),
@@ -599,25 +616,22 @@ private fun sampleTodayTasks(): List<Task> {
             scheduledDate = today.minusDays(2),
             estimatedDurationMinutes = 15
         ),
-        // The card's task, and the only kind of task that can be one since
-        // D-035: a reminder that fired on an earlier day and was not acted on.
-        // Dated rather than timed today so it is reliably in the past whenever a
-        // preview renders. It leaves the Overdue band, which task 7 keeps
-        // populated.
+        // The paused session's task. Scheduled for today with no time, so it
+        // shows up in the "No time set" band as well as on the card: since D-048
+        // the card no longer takes its task out of the list, and a preview that
+        // hid the overlap would hide the thing worth looking at.
         Task(
             id = "8",
             title = "Confirm the venue booking",
             createdAt = SampleTimestamp,
-            scheduledDate = today.minusDays(1),
-            reminderAt = today.minusDays(1).atTime(9, 0),
+            scheduledDate = today,
             estimatedDurationMinutes = 20
         )
     )
 }
 
-/** The sample task the Focus now previews promote. */
-private fun sampleFocusNow(): FocusNow =
-    FocusNow(sampleTodayTasks().first { it.id == "8" }, FocusNowReason.ReminderPassed)
+/** The sample task the paused session card is drawn for. */
+private fun samplePausedTask(): Task = sampleTodayTasks().first { it.id == "8" }
 
 @Preview(name = "Today light", heightDp = 640)
 @Preview(name = "Today dark", heightDp = 640, uiMode = Configuration.UI_MODE_NIGHT_YES)
@@ -628,7 +642,8 @@ private fun TodayScreenPreview() {
         TodayContent(
             tasks = todayTasks(sampleTodayTasks(), today),
             today = today,
-            focusNow = sampleFocusNow(),
+            pausedTask = samplePausedTask(),
+            pausedRemainingMinutes = 12,
             onToggleComplete = {},
             onOpenTask = {},
             onDelete = {},
@@ -647,7 +662,7 @@ private fun TodayScreenEmptyPreview() {
         TodayContent(
             tasks = emptyList(),
             today = LocalDate.now(),
-            focusNow = null,
+            pausedTask = null,
             onToggleComplete = {},
             onOpenTask = {},
             onDelete = {},
@@ -666,7 +681,8 @@ private fun TodayScreenLargeFontPreview() {
         TodayContent(
             tasks = todayTasks(sampleTodayTasks(), today),
             today = today,
-            focusNow = sampleFocusNow(),
+            pausedTask = samplePausedTask(),
+            pausedRemainingMinutes = 12,
             onToggleComplete = {},
             onOpenTask = {},
             onDelete = {},

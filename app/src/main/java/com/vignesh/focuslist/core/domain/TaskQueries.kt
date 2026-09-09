@@ -117,18 +117,19 @@ data class TodaySection(val band: TodayBand, val tasks: List<Task>)
  *
  * Empty bands produce no section, so a day with nothing overdue has no empty
  * heading to explain.
+ *
+ * **There was a `promotedTaskId`, and D-048 removed it.** D-012 took the Focus
+ * now card's task out of its band so it was never on screen twice. That was right
+ * for the card D-012 described, which was a task drawn large with a checkbox on
+ * it. The paused session card is not one: it cannot complete a task and it
+ * asserts nothing about priority, so it and the row are not the same task twice.
+ * Every task Today holds is now in exactly one band, with no exceptions to carry.
  */
 fun todaySections(
     tasks: List<Task>,
-    today: LocalDate,
-    // The task the Focus now card is holding, or null when the card is absent.
-    // It leaves its band, so it is never on screen twice: D-012 says the
-    // promoted task leaves the list, and a task appearing in both places would
-    // make the card look like a duplicate rather than a promotion.
-    promotedTaskId: String? = null
+    today: LocalDate
 ): List<TodaySection> =
     todayTasks(tasks, today)
-        .filterNot { task -> task.id == promotedTaskId }
         .fold(mutableListOf<Pair<TodayBand, MutableList<Task>>>()) { sections, task ->
             val band = todayBandOf(task, today)
             val current = sections.lastOrNull()
