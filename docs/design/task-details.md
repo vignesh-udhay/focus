@@ -283,7 +283,7 @@ Grammar, in order: `Every {interval}` then optionally `on {days}` then
 optionally the end clause. `Every day`. `Every 2 weeks on Tue, 10 times`.
 `Every week on Mon, Wed and Fri, until Aug 17`. No end condition adds no clause.
 
-**Not "Repeats everyâ€¦"**, because the sheet is already titled Repeat and the row
+**Not "Repeats every…"**, because the sheet is already titled Repeat and the row
 is already labelled Repeat. The verb would echo the label immediately above it.
 
 **Only on the main state.** The Every and Ends substates are titled for the part

@@ -1,6 +1,7 @@
 package com.vignesh.focuslist.core.notification
 
 import android.app.Notification
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -34,6 +35,16 @@ import java.util.Date
  * One notification per task, keyed on the task id, so several reminders at
  * once read as several things to do rather than the last one overwriting the
  * rest.
+ *
+ * Those several sit in one group under a summary, per `docs/decisions.md`
+ * D-039. The summary discloses how many are stacked behind it and says nothing
+ * else, which is the same exception D-031 makes for the widget's `+N more` and
+ * the reason it does not contradict D-016's refusal of counts. The test
+ * reminder is deliberately outside the group.
+ *
+ * The summary is posted whenever any reminder is on screen, including one. That
+ * is not how it was first written, and [ReminderGroupSummaryId] carries the
+ * reason it had to change.
  */
 
 /** The reminder, as `notify/Collapsed` and `notify/Expanded` draw it. */
@@ -60,7 +71,9 @@ internal fun Context.postReminder(task: Task): Boolean {
         )
     }
 
-    return notifyIfAllowed(task.notificationId, builder.build())
+    val posted = notifyIfAllowed(task.notificationId, builder.build())
+    updateReminderGroupSummary(justPosted = task.id)
+    return posted
 }
 
 /**
@@ -83,7 +96,9 @@ internal fun Context.postSnoozeOptions(task: Task, now: LocalDateTime): Boolean 
         )
     }
 
-    return notifyIfAllowed(task.notificationId, builder.build())
+    val posted = notifyIfAllowed(task.notificationId, builder.build())
+    updateReminderGroupSummary(justPosted = task.id)
+    return posted
 }
 
 /**
@@ -137,7 +152,134 @@ internal fun Context.notifyIfAllowed(notificationId: Int, notification: Notifica
 /** Takes the reminder off screen once it has been dealt with. */
 internal fun Context.cancelReminder(taskId: String) {
     NotificationManagerCompat.from(this).cancel(taskId.notificationId)
+    updateReminderGroupSummary(justCancelled = taskId)
 }
+
+// --- the group ----------------------------------------------------------------
+
+/**
+ * Posts, updates or removes the summary so it always agrees with the shade.
+ *
+ * Called after every post and every cancel rather than only on the way up,
+ * because a summary left behind by the last reminder being dealt with is a
+ * notification about nothing.
+ *
+ * The count starts from the shade rather than from state of our own, so it
+ * cannot drift from what is really on screen: a reminder dismissed by swipe, by
+ * another process, or by the system is already gone from [NotificationManager]
+ * and was never going to tell us.
+ *
+ * **[justPosted] and [justCancelled] are not optimisations, they are the
+ * correctness of the whole function.** Both `notify` and `cancel` hand the work
+ * to the notification service, which processes it on its own handler, so the
+ * shade read a microsecond later may still be missing the reminder just posted
+ * or still holding the one just cancelled. Reading it raw makes the summary
+ * count whatever the race happened to produce: it was observed announcing "1
+ * reminder" over two. The caller knows which one it just moved, so the answer
+ * is taken from the shade and then corrected by that one id.
+ */
+private fun Context.updateReminderGroupSummary(
+    justPosted: String? = null,
+    justCancelled: String? = null
+) {
+    val count = postedReminderCount(including = justPosted, excluding = justCancelled)
+
+    // Only ever cancelled once the group is empty. See [ReminderGroupSummaryId]
+    // for why cancelling it while a reminder survives is destructive.
+    if (count == 0) {
+        NotificationManagerCompat.from(this).cancel(ReminderGroupSummaryId)
+        return
+    }
+
+    val summary = NotificationCompat.Builder(this, ReminderChannelId)
+        .setSmallIcon(R.drawable.ic_notifications)
+        // The count alone. Android draws the app name in the header already, so
+        // the board's "Focuslist · 3 reminders" would say Focuslist twice.
+        .setContentTitle(resources.getQuantityString(R.plurals.reminder_group_summary, count, count))
+        .setContentIntent(openAppIntent())
+        .setGroup(ReminderGroup)
+        .setGroupSummary(true)
+        // The children alert; the summary does not. Without this the default is
+        // GROUP_ALERT_ALL and the summary would sound on top of the reminder
+        // that just sounded. It is the single most consequential line here: get
+        // the behaviour backwards and grouping silences the reminders
+        // themselves, which D-005 ranks above a crash.
+        .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
+        .setAutoCancel(true)
+        .setCategory(NotificationCompat.CATEGORY_REMINDER)
+        .build()
+
+    notifyIfAllowed(ReminderGroupSummaryId, summary)
+}
+
+/**
+ * How many reminders are on screen, not counting the summary over them.
+ *
+ * Only this app's own notifications are visible here, and the group tag is what
+ * keeps the focus-session estimate and the test reminder out of the total.
+ *
+ * Counted as a set of ids rather than as a running total, because [including]
+ * has to be idempotent: the reminder just posted may or may not have reached
+ * the shade already, and adding one to a count that already contains it is how
+ * a summary ends up claiming a reminder that is not there.
+ */
+private fun Context.postedReminderCount(including: String?, excluding: String?): Int {
+    val manager = getSystemService(NotificationManager::class.java) ?: return 0
+
+    val ids = manager.activeNotifications
+        .filter { it.notification.group == ReminderGroup && it.id != ReminderGroupSummaryId }
+        .mapTo(mutableSetOf()) { it.id }
+
+    including?.let { ids += it.notificationId }
+    excluding?.let { ids -= it.notificationId }
+
+    return ids.size
+}
+
+/**
+ * Where the summary goes when tapped.
+ *
+ * Modern Android expands the stack instead of launching, so this is the
+ * fallback rather than the usual path. It carries no task id because a summary
+ * over several reminders cannot pick one of them without guessing.
+ */
+private fun Context.openAppIntent(): PendingIntent = PendingIntent.getActivity(
+    this,
+    0,
+    Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP),
+    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+)
+
+/** The tag that binds the reminders together. D-039. */
+private const val ReminderGroup = "focuslist.reminders"
+
+/**
+ * The summary's own id.
+ *
+ * **Cancelling this while reminders remain destroys them.** The notification
+ * service cancels a group's children along with its summary, so the obvious
+ * implementation, drop the summary once fewer than two reminders are left,
+ * takes the surviving reminder off the screen with it. The user is then not
+ * told about work they never dealt with, which `CLAUDE.md` ranks above a crash.
+ * It cost nothing to find and would have cost a great deal to ship: it is
+ * invisible until a second reminder exists and the first is handled.
+ *
+ * So the summary is posted whenever the group is not empty and cancelled only
+ * when it is, at which point there are no children left to take down. The cost
+ * is that a single reminder carries a summary counting one. SystemUI flattens a
+ * group holding one child and does not draw the summary over it, so this is not
+ * expected to be visible, but that is a rendering behaviour rather than a
+ * guarantee: `activeNotifications` still reports the summary, and
+ * `ReminderGroupTest` asserts it there rather than pretending to know what was
+ * drawn. A redundant header on some skin is the price; the alternative deletes
+ * a reminder nobody dealt with.
+ *
+ * Task notifications are keyed on `String.hashCode`, so this is a value one
+ * could in principle collide with. Left undefended on the same terms as the
+ * focus estimate's fixed id: the odds are one in 2^32, and the cost is a
+ * reminder sharing a slot rather than a reminder failing to arrive.
+ */
+private const val ReminderGroupSummaryId = Int.MIN_VALUE
 
 // --- internals ----------------------------------------------------------------
 
@@ -147,6 +289,7 @@ private fun Context.reminderBuilder(task: Task, summary: String) =
         .setContentTitle(task.title)
         .setContentText(summary)
         .setContentIntent(openIntent(task.id))
+        .setGroup(ReminderGroup)
         .setAutoCancel(true)
         .setPriority(NotificationCompat.PRIORITY_HIGH)
         .setCategory(NotificationCompat.CATEGORY_REMINDER)

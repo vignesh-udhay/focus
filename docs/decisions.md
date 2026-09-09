@@ -2446,3 +2446,95 @@ specifically, once the reminder pipeline has been observed working in the wild.
 That is the trigger the After 1.0 list already runs on, and D-007 says the same
 thing in general terms: let the app's own reviews set the order. Nothing about
 this entry survives that evidence arriving.
+
+## D-039. The reminder group summary counts what it hides, and nothing else
+
+**Decision.** Reminder notifications carry `setGroup`, and a summary notification
+carrying `setGroupSummary(true)` is posted whenever any reminder is on screen.
+The summary says how many, and says nothing else. It is cancelled only when the
+last reminder has gone, for the reason below.
+
+The summary carries `GROUP_ALERT_CHILDREN`, so the reminders alert and the
+summary does not. The default is `GROUP_ALERT_ALL`, which would have the summary
+sound on top of the reminder that just sounded, and the inverse setting would
+move the alert off the reminders entirely.
+
+The test reminder stays outside the group.
+
+**Why this needed an entry at all.** It is two platform calls, which is exactly
+why it could have gone in without one. The product question is not whether to
+call `setGroup`; it is what the summary is allowed to say, and that question has
+been answered twice already in this app in the restrictive direction.
+
+D-016 kept the Logbook's day grouping and drew the line at "a heading naming a
+day and nothing more: a count beside it is the step that turns a record into the
+scoreboard". D-031 refuses the widget "a count of anything, beyond disclosing
+rows that did not fit". A summary reading "3 reminders" is a count, and a
+consistent reading of those two entries has to say why this one is allowed when
+those were not.
+
+**It is allowed because it is the exception D-031 already carves out.** The
+count is not a measure of throughput and not a judgement about the user's day.
+It is the disclosure of what the collapsed stack is hiding, which is the one
+thing a collapsed stack cannot say for itself, and the same reason D-031 lets
+`+N more` survive on the widget. Remove the number and the summary is a row that
+announces there is something behind it without saying how much, which is worse
+than not grouping at all.
+
+The test that keeps this honest: the number counts notifications currently on
+screen, not reminders that fired today, not tasks outstanding, not anything the
+user would read as a score. If it ever counts something the shade does not
+currently hold, it has become a statistic and this entry no longer covers it.
+
+**The board draws the app name and should not.** `notify/Grouped` reads
+"Focuslist · 3 reminders". Android already renders the app name in the
+notification header, so posting that string produces the name twice. The summary
+text is the count alone. This is the same class of finding as the duration
+strings D-018 normalised: the board drew what it saw on a phone, including the
+parts the system supplies.
+
+**The summary is posted from one reminder upward, and the first version of this
+entry said two.** The board's frame draws three because three is what the
+illustration needed, not because three is a threshold, and two looked like the
+honest answer: a summary over a single reminder is a header for a list of one.
+
+Building it proved that wrong in the worst available way. **The notification
+service cancels a group's children along with its summary.** So dropping the
+summary at one remaining reminder took that reminder off the screen with it, and
+the user was never told about work they had not dealt with. `CLAUDE.md` ranks
+exactly that above a crash, and it is invisible until a second reminder exists
+and the first is handled, so it would have shipped.
+
+The summary is therefore cancelled only when the group is empty, at which point
+there are no children left to take down. The cost is that one reminder carries a
+summary counting one. SystemUI flattens a group holding a single child and does
+not draw the summary over it, so this should never be seen, but that is a
+rendering behaviour rather than a guarantee and `ReminderGroupTest` asserts what
+was posted rather than pretending to know what was drawn. A redundant header on
+some skin is a fair price for not deleting a reminder.
+
+**The open cost: grouping doubles the enqueue rate.** Every reminder now costs
+two posts, itself and its summary, and `NotificationManagerService` sheds posts
+from a package that exceeds a few per second. Reminders falling due in the same
+minute produce that burst. A shed summary is cosmetic and corrects itself on the
+next post or cancel; a shed reminder is not, and this halves the burst that fits
+before shedding begins. It was found because the test could not get a truthful
+count out of back-to-back posts, and confirmed by isolating the case: the same
+assertion passes with a pause between posts and fails without one.
+
+Nothing here fixes that, and it is recorded rather than solved because the fix is
+coalescing a burst into one summary update, which is a larger change than the two
+platform calls this entry is about. If reminders are ever observed going missing
+when several fall due together, this is the first place to look.
+
+**Why the test reminder is excluded.** It exists so someone can watch it arrive.
+Putting it in the group makes it eligible to be collapsed behind a summary at
+the exact moment its whole purpose is to be seen, and it would make the count
+say two when the user has one real reminder. `reminders.md` already calls it
+"deliberately plain: no Done, no Snooze, nothing to act on"; not grouped belongs
+on that list.
+
+**What would reverse this.** A shade where the summary is the only thing visible
+and the count is read as a workload rather than as a disclosure. That would show
+up as users reporting the app nags, and the fix is the summary losing its number
+rather than the group being removed.

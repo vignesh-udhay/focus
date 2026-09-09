@@ -435,6 +435,17 @@
     <string name="reminder_test_scheduled_done">Done</string>
     <string name="reminder_test_title">Test reminder</string>
     <string name="reminder_test_body">Arrived at %1$s.</string>
+    <!--
+      The group summary, per D-039. The count alone: Android already draws the
+      app name in the notification header, so the board's "Focuslist · 3
+      reminders" would say Focuslist twice. The number is a disclosure of what
+      the collapsed stack is hiding, which is the only count this app allows
+      itself outside the widget's "+N more".
+    -->
+    <plurals name="reminder_group_summary">
+        <item quantity="one">%1$d reminder</item>
+        <item quantity="other">%1$d reminders</item>
+    </plurals>
     <string name="reminder_channel_name">Reminders</string>
     <string name="reminder_channel_description">Tasks you asked to be reminded about, at the time you chose.</string>
     <string name="reminder_action_done">Done</string>

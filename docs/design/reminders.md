@@ -31,8 +31,8 @@ light and dark:
 - **Lock screen** — the same notification, drawn by the system.
 - **Full-screen alarm** — a design held past 1.0 under D-038, not behaviour. See
   below.
-- **Grouped** — several at once. Not built, and not yet decided either way. See
-  below.
+- **Grouped** — several at once. Built under D-039, with the app name dropped
+  from the summary. See below.
 
 `notify/Opened from reminder` was the seventh and is retired. It drew a bespoke
 Task screen with a card round the title and two full-width buttons, which D-018
@@ -98,11 +98,27 @@ Keyed on the task id, so several reminders at once read as several things to do
 rather than the last one overwriting the rest. Re-posting the same task touches
 the same notification.
 
-**The app does not group them.** `notify/Grouped` draws a "Focuslist · 3
-reminders" summary, and nothing calls `setGroup` or `setGroupSummary`. Android
-bundles automatically at four or more, so at three the drawn summary does not
-appear. The frame is a design for work not done rather than a record of
-behaviour.
+**They are collected under one summary**, per D-039. Every reminder carries
+`setGroup`, and a summary carrying `setGroupSummary(true)` counts them. Before
+that the app relied on Android bundling at four or more on its own, so the
+board's frame at three drew something that could not happen.
+
+**The summary says the count and nothing else.** `notify/Grouped` draws
+"Focuslist · 3 reminders", and Android already renders the app name in the
+notification header, so the string is the count alone. The count is allowed here
+under D-031's carve-out, disclosing what a collapsed stack hides, and it counts
+notifications on screen rather than reminders fired or tasks outstanding.
+
+**It never alerts.** `GROUP_ALERT_CHILDREN` keeps the sound on the reminders.
+The default would have the summary sound over the reminder that just sounded,
+and the opposite setting would silence the reminders themselves.
+
+**It is removed only when the last reminder goes.** Cancelling a summary cancels
+its children, so dropping it while one reminder survives takes that reminder off
+the screen too. A single reminder therefore keeps a summary counting one, which
+SystemUI does not draw over a group of one child. D-039 has the full argument and
+records the one open cost: two posts per reminder rather than one, against a
+platform that sheds posts arriving faster than a few per second.
 
 ---
 
@@ -164,10 +180,13 @@ Not part of delivery:
 **Built:** collapsed, expanded, snooze options, and the lock screen as a
 consequence of them. `ReminderNotification.kt` names the frames it draws.
 
-**Not built:** the full-screen alarm, held past 1.0 by D-038, and grouping,
-which is unbuilt and still undecided. Grouping is the smaller of the two by a
-wide margin: `setGroup` and `setGroupSummary`, no schema change, no permission
-and no policy question. It wants an answer of its own rather than being carried
-along by D-038.
+**Not built:** the full-screen alarm, held past 1.0 by D-038.
+
+**Grouping is built**, under D-039, and was the smaller of the two by a wide
+margin: `setGroup` and `setGroupSummary`, no schema change, no permission and no
+policy question. It was decided on its own rather than carried along by D-038,
+and building it turned up two platform behaviours worth knowing, both recorded in
+that entry: cancelling a summary cancels its children, and the notification
+service sheds posts from a package that exceeds a few per second.
 
 **Retired:** `notify/Opened from reminder`, on the Archive page.
