@@ -2962,6 +2962,131 @@ class TaskListViewModelTest {
         assertNotNull(model.focusSession.value)
     }
 
+    // D-057: Start focus asks before it discards a session
+
+    /**
+     * **The assertion this whole entry exists for.** `beginFocus` used to call
+     * `restartFocusClock` unconditionally, writing a fresh `FocusSession` over
+     * whatever was there and taking the saved state and the store with it. A
+     * paused forty-minute session went silently, with no undo and nothing on
+     * Today left pointing at it.
+     *
+     * That is the unrecoverable half of the pair D-015 ranked. D-015 guarded the
+     * exit from Focus and left the entrance open, and the entrance is where the
+     * loss actually happened.
+     */
+    @Test
+    fun startingFocusOnAnotherTaskKeepsTheSessionUntilItIsAnswered() {
+        store(
+            task(id = "a", scheduledDate = today, estimatedDurationMinutes = 45),
+            task(id = "b", scheduledDate = today, estimatedDurationMinutes = 15)
+        )
+        val model = viewModel()
+        model.beginFocus("a")
+        awaitFocusedTaskId(model, "a")
+        val running = model.focusSession.value
+
+        val entered = model.beginFocus("b")
+
+        assertEquals(false, entered)
+        assertEquals("b", model.focusSwitchTaskId.value)
+        // Nothing moved: same session, same task, same clock.
+        assertEquals(running, model.focusSession.value)
+        assertEquals("a", model.focusedTaskId.value)
+    }
+
+    /** Answering yes does exactly what the unguarded call used to do. */
+    @Test
+    fun confirmingTheSwitchStartsTheNewTask() {
+        store(
+            task(id = "a", scheduledDate = today, estimatedDurationMinutes = 45),
+            task(id = "b", scheduledDate = today, estimatedDurationMinutes = 15)
+        )
+        val model = viewModel()
+        model.beginFocus("a")
+        awaitFocusedTaskId(model, "a")
+        model.beginFocus("b")
+
+        val entered = model.confirmFocusSwitch()
+
+        assertTrue(entered)
+        assertNull(model.focusSwitchTaskId.value)
+        assertEquals("b", awaitFocusedTaskId(model, "b"))
+        assertTrue(model.isFocusSheetOpen.value)
+        assertNotNull(model.focusSession.value)
+    }
+
+    /**
+     * Cancelling leaves everything alone and enters nothing.
+     *
+     * Deliberately not a navigation. Landing the user in Focus on a different
+     * task, from a screen about this one, is a surprise; the paused card on
+     * Today is one tap away and is the route D-015 built for it.
+     */
+    @Test
+    fun cancellingTheSwitchChangesNothing() {
+        store(
+            task(id = "a", scheduledDate = today, estimatedDurationMinutes = 45),
+            task(id = "b", scheduledDate = today, estimatedDurationMinutes = 15)
+        )
+        val model = viewModel()
+        model.beginFocus("a")
+        awaitFocusedTaskId(model, "a")
+        model.leaveFocusSheet()
+        val paused = model.focusSession.value
+        model.beginFocus("b")
+
+        model.dismissFocusSwitch()
+
+        assertNull(model.focusSwitchTaskId.value)
+        assertEquals(paused, model.focusSession.value)
+        assertEquals("a", model.focusedTaskId.value)
+        assertEquals(false, model.isFocusSheetOpen.value)
+    }
+
+    /**
+     * The quieter half of the same bug. Start focus on the task you are already
+     * focusing on used to reset its clock to zero, and there is no reading of
+     * that tap under which the user wanted their progress cleared. So it needs
+     * no question: it is the Resume the paused card already offers, reached from
+     * a different screen.
+     */
+    @Test
+    fun startingFocusOnTheSameTaskResumesRatherThanRestarting() {
+        store(task(id = "a", scheduledDate = today, estimatedDurationMinutes = 45))
+        val model = viewModel()
+        model.beginFocus("a")
+        awaitFocusedTaskId(model, "a")
+        model.leaveFocusSheet()
+        val pausedAtStart = model.focusSession.value!!.startedAt
+
+        val entered = model.beginFocus("a")
+
+        assertTrue(entered)
+        assertNull(model.focusSwitchTaskId.value)
+        assertTrue(model.isFocusSheetOpen.value)
+
+        val resumed = model.focusSession.value
+        assertNotNull(resumed)
+        // Resumed, not restarted: the clock is moving again and the origin was
+        // carried forward by the length of the pause rather than reset to now.
+        assertEquals(false, resumed!!.isPaused)
+        assertTrue(!resumed.startedAt.isBefore(pausedAtStart))
+    }
+
+    /** With nothing running there is nothing to ask about. */
+    @Test
+    fun startingFocusWithNoSessionAsksNothing() {
+        store(task(id = "a", scheduledDate = today))
+        val model = viewModel()
+
+        val entered = model.beginFocus("a")
+
+        assertTrue(entered)
+        assertNull(model.focusSwitchTaskId.value)
+        assertNotNull(model.focusSession.value)
+    }
+
     /**
      * Ending Focus clears everything, and only two things end it: completing the
      * task, and the task being deleted from somewhere else. D-015 took away the
@@ -3147,7 +3272,10 @@ class TaskListViewModelTest {
         val firstStart = model.focusSession.value!!.startedAt
         awaitScheduled()
 
+        // Through the question now, per D-057. The switch itself is unchanged;
+        // what changed is that it happens on an answer rather than on the tap.
         model.beginFocus("b")
+        model.confirmFocusSwitch()
         awaitFocusedTaskId(model, "b")
 
         // The clock measures this task against its own estimate, not the

@@ -27,11 +27,33 @@ class BackupRepository(
         return tasks.liveCount()
     }
 
+    /**
+     * How many tasks the device holds right now, for the screen to compare
+     * against a backup before replacing them.
+     *
+     * Counted the same way [liveCount] counts, so the two numbers in the
+     * confirmation are measured by one rule.
+     */
+    suspend fun currentTaskCount(): Int = dao.countLiveTasks()
+
+    /**
+     * Parses [input] without writing anything.
+     *
+     * Split out from [applyRestore] for `docs/decisions.md` D-056: the
+     * confirmation dialog has to name how many tasks the file holds, which it
+     * cannot do before the file is read, and the user has to be able to say no
+     * afterwards. A damaged or foreign file therefore fails here, before anyone
+     * is asked to confirm a restore that was never going to work.
+     *
+     * The ordering itself is not new. This half already ran before the first
+     * local write so that a bad file left the task list alone; what changed is
+     * that the gap between the two halves is now where the user stands.
+     */
+    suspend fun readBackup(input: InputStream): FocuslistBackup =
+        FocuslistBackupCodec.read(input)
+
     /** @return how many tasks were restored, for the screen to report. */
-    suspend fun restoreFrom(input: InputStream): Int {
-        // Parse and validate before the first local write. A foreign or damaged
-        // file therefore leaves the current task list exactly as it was.
-        val backup = FocuslistBackupCodec.read(input)
+    suspend fun applyRestore(backup: FocuslistBackup): Int {
         val previousPreferences: AppearancePreferences = preferences.state.value
 
         preferences.replace(backup.preferences)

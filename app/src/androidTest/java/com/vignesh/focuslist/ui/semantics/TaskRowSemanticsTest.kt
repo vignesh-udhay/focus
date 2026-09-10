@@ -148,7 +148,15 @@ class TaskRowSemanticsTest {
         // A date reads as "Today" rather than a formatted day, and the two
         // segments have to survive to the tree as one readable line.
         rule.onNode(hasText("Today", substring = true)).assertExists()
-        rule.onNode(hasText("45 min", substring = true)).assertExists()
+
+        // **The estimate is drawn compact and spoken in full.** This asserted
+        // "45 min" against both, and had been failing since `TaskListRow`
+        // stopped formatting its own `%1$d min` and went through `durationLabel`
+        // for the row to read 45m like the Duration sheet. The spoken form is
+        // the half this file is actually about, and it was never checked: "45m"
+        // read aloud is not a duration.
+        rule.onNode(hasText("45m", substring = true)).assertExists()
+        rule.onNodeWithContentDescription("45 minutes", substring = true).assertExists()
     }
 
     @Test
@@ -156,6 +164,81 @@ class TaskRowSemanticsTest {
 
     @Test
     fun metadata_isReadable_at200() = assertMetadataIsReadable(FontScale200)
+
+    /**
+     * `docs/decisions.md` D-059. A due date could be set on Task Details and no
+     * list ever showed it again, so a user could record a deadline and never see
+     * it a second time.
+     *
+     * The word is the point. A scheduled date and a due date both render "Today"
+     * through the same helper, and on one line the two are indistinguishable
+     * without it.
+     */
+    private fun assertDueDateReadsAsADeadline(fontScale: Float) {
+        setRow(fontScale, outstanding().copy(dueDate = TestToday))
+
+        rule.onNode(hasText("Due today", substring = true)).assertExists()
+    }
+
+    @Test
+    fun dueDate_readsAsADeadline_at100() = assertDueDateReadsAsADeadline(FontScale100)
+
+    @Test
+    fun dueDate_readsAsADeadline_at200() = assertDueDateReadsAsADeadline(FontScale200)
+
+    /**
+     * A deadline that has gone by says so rather than naming the day. A date
+     * three weeks past tells the user nothing they need; that it has passed is
+     * the whole content, and it is also the one value on this line that is not a
+     * date, which is what stops it reading as a scheduled day.
+     */
+    private fun assertPastDueDateReadsAsOverdue(fontScale: Float) {
+        setRow(fontScale, outstanding().copy(dueDate = TestToday.minusDays(3)))
+
+        rule.onNode(hasText("Overdue", substring = true)).assertExists()
+    }
+
+    @Test
+    fun pastDueDate_readsAsOverdue_at100() = assertPastDueDateReadsAsOverdue(FontScale100)
+
+    @Test
+    fun pastDueDate_readsAsOverdue_at200() = assertPastDueDateReadsAsOverdue(FontScale200)
+
+    /**
+     * Overdue is a live state, so it ends when the task does. The Logbook is a
+     * record of what was finished, and calling a deadline late after the fact is
+     * the app grading work that is already done.
+     */
+    @Test
+    fun completedTask_withAPastDueDate_readsTheDayRatherThanOverdue() {
+        setRow(FontScale100, completed().copy(dueDate = TestToday.minusDays(3)))
+
+        rule.onNode(hasText("Overdue", substring = true)).assertDoesNotExist()
+        rule.onNode(hasText("Due ", substring = true)).assertExists()
+    }
+
+    /**
+     * The two past-day conditions are kept apart, and D-059 says why: a task
+     * that is merely late still has a reminder that has not fired. Folding them
+     * into one flag would have hidden a live reminder from an overdue task.
+     */
+    @Test
+    fun aPastDueDate_doesNotHideAReminderThatHasNotFired() {
+        setRow(
+            FontScale100,
+            outstanding().copy(
+                dueDate = TestToday.minusDays(3),
+                reminderAt = TestToday.plusDays(1).atTime(18, 0)
+            )
+        )
+
+        rule.onNode(hasText("Overdue", substring = true)).assertExists()
+        // The minutes rather than the hour, because the row formats a time in
+        // the reader’s own locale and clock: the same instant is "6:00 PM" on a
+        // 12-hour device and "18:00" on a 24-hour one, and only one of those
+        // contains the hour this test could name.
+        rule.onNode(hasText(":00", substring = true)).assertExists()
+    }
 
     private fun outstanding(): Task = testTask(
         id = "1",

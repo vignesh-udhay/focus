@@ -52,6 +52,14 @@ manufacturer.
     Ready            →  all three pass
     Checking         →  nothing has been read yet
 
+**Ready says which of two good answers it is**, per `docs/decisions.md` D-058.
+"Not yet verified" is the permissions being in place with nothing observed
+arriving; "Ready" proper is a reminder having been seen to land on time inside
+the recency window. Same frame, same colour, same place in the ordering above:
+not-yet-measured is not worse than measured-fine, and D-009 is the reason the
+screen has to tell them apart at all. The screen used to claim the second on the
+evidence for the first.
+
 **A missed reminder outranks a failing check**, even though the failing check is
 usually its cause. The user experienced the late reminder; the permission is the
 explanation, and it is still on screen underneath. Leading with the explanation

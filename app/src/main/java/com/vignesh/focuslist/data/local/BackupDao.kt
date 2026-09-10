@@ -12,6 +12,17 @@ interface BackupDao {
     @Query("SELECT * FROM tasks ORDER BY createdAt, id")
     suspend fun snapshotTasks(): List<TaskEntity>
 
+    /**
+     * How many tasks a restore would replace.
+     *
+     * `docs/decisions.md` D-056: the confirmation dialog weighs this against
+     * the count in the file, and a mismatch is what identifies the mistake it
+     * exists to catch. Soft-deleted rows are excluded, matching every list in
+     * the app and the count the success snackbar reports.
+     */
+    @Query("SELECT COUNT(*) FROM tasks WHERE deletedAt IS NULL")
+    suspend fun countLiveTasks(): Int
+
     @Query("DELETE FROM tasks")
     suspend fun deleteTasks()
 

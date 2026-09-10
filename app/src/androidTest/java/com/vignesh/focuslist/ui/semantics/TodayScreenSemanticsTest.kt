@@ -496,7 +496,7 @@ class TodayScreenSemanticsTest {
     /** And a healthy app says nothing at all on Today. */
     @Test
     fun reminderBanner_isAbsent_whenRemindersAreHealthy() {
-        setToday(FontScale100, withOneTask(), ReminderHealthState.Ready)
+        setToday(FontScale100, withOneTask(), ReminderHealthState.Ready(verified = true))
 
         rule.onNodeWithText(BANNER_ACTION_LABEL).assertDoesNotExist()
         rule.onNodeWithText(BANNER_MISSED_LABEL).assertDoesNotExist()

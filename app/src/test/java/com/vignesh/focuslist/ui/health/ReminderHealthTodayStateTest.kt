@@ -17,7 +17,12 @@ class ReminderHealthTodayStateTest {
 
     @Test
     fun `the acknowledged missed delivery is hidden on Today`() {
-        assertEquals(ReminderHealthState.Ready, health("delivery-1").visibleOnToday("delivery-1"))
+        assertEquals(
+            // Unverified: the one recorded delivery is the concerning one being
+            // acknowledged, so nothing recent has been seen to arrive on time.
+            ReminderHealthState.Ready(verified = false),
+            health("delivery-1").visibleOnToday("delivery-1")
+        )
     }
 
     @Test

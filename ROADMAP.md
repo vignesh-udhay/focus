@@ -9,6 +9,118 @@ scope it delivers is in `PRODUCT.md`.
 
 ## Current phase
 
+**A UI and UX audit found four high-severity defects, and all four are fixed.**
+Each one reversed something written down, so each has a decision entry, D-056 to
+D-059, written before the code. What they have in common is worth naming: three
+of the four were the app quietly claiming something it had not done.
+
+**A restore replaced the whole database with no confirmation, D-056.** Choosing a
+file in the picker was the last decision the user made; the write happened
+immediately and the snackbar afterwards reported the damage rather than checking
+it. `settings.md` had argued no confirmation was needed because "the tonal button
+already carries that weight", which is the right rule applied to the wrong
+action: a delete needs no dialog because a delete can be undone, and
+`BackupDao.replaceTasks` empties the table inside one transaction with nothing to
+put it back.
+
+The parse now happens before the question rather than just before the write, and
+the dialog says the two counts the user can weigh: "This backup holds 12 tasks.
+Restoring replaces the 13 tasks on this device, and cannot be undone." That
+mismatch is the mistake it exists to catch, and it is the one that appeared on the
+emulator when a real pre-rename backup was selected against the seeded database.
+An "Export current data first" action was considered and refused as a second flow
+that wants designing, not bolting onto a confirmation.
+
+**Starting Focus on a second task destroyed the first session, D-057.**
+`beginFocus` called `restartFocusClock` unconditionally, which writes a fresh
+`FocusSession` over whatever was there and takes the saved state and the
+`FocusSessionStore` with it. A paused forty-minute session went silently, with no
+undo and nothing on Today left pointing at it.
+
+This is not D-015 reversed, it is D-015 applied to the door it did not guard.
+That entry ranked the two ways of being wrong about a Focus control and called the
+silent unrecoverable loss the worse one; it then protected the exit from the sheet
+and left the entrance open, and the entrance is where the loss actually happened.
+Three outcomes now: no session starts one, a session on **the same task resumes
+it**, and a session on another task asks. Confirmed on the emulator, including the
+resume, which came back at 44:45 rather than resetting to 45:00.
+
+The same-task case was the quieter half of the same bug and needs no dialog. There
+is no reading of that tap under which the user wanted their clock reset.
+
+**The health screen said "Reminders are healthy" before a reminder had ever
+arrived, D-058.** On a fresh install with three permissions granted, the entire
+evidence for that sentence and for "Exact reminders can currently be delivered"
+was `canScheduleExactAlarms()`, the call `AGENTS.md` says outright is not evidence
+that an alarm will be exact and which D-009 measured wrong on a real OnePlus. The
+product's central claim, asserted on a check this project had already written down
+as unreliable.
+
+`Ready` now carries whether a delivery has been observed. Unverified reads "Not
+yet verified / Permissions are in place / Catimo has not seen a reminder arrive on
+this device yet"; verified reads "Ready / Reminders are arriving on time". Same
+frame, same colour, same place in D-021's ordering, because not-yet-measured is
+not worse than measured-fine.
+
+**A fifth headline state was asked for and refused**, on the grounds that it
+would be D-021 in reverse. A screen that almost never says Ready teaches people to
+ignore it as fast as one that is always red, and most users would sit in the new
+state indefinitely. The distinction is a flag inside Ready, where it changes the
+sentence and nothing else.
+
+Any punctual delivery inside the week counts, deliberately a lower bar than
+`backgroundWorkState`, which still wants three idle-exposed ones before it will
+clear a manufacturer warning. Requiring idle exposure here would put the answer
+out of reach of the Test reminder button sitting on the same screen. The two
+questions are different sizes and now have different answers.
+
+**A due date could be set and was then invisible, D-059.** `task-row.md` has
+listed due date as row metadata since it was written and `PRODUCT.md` lists it as
+a field a task may have. It was never built, so Task Details could record a
+deadline and no list ever showed it again. Rows now read "Due today", "Due
+tomorrow", "Due Sep 14" or "Overdue".
+
+The word "Due" is the whole point: a scheduled date and a due date both render
+"Today" through `scheduledDateLabel`, and on one line the two are
+indistinguishable without it. Overdue names the state rather than the day, because
+a date three weeks gone tells the user nothing they need, and it ends when the task
+does — the Logbook falls back to the day rather than grading finished work.
+
+**The two past-day conditions are kept apart, and that was the trap here.** The row
+suppresses its reminder time when the scheduled day has passed, since a reminder
+that already fired describes nothing that will happen. A past *due* date says
+nothing about whether the reminder fired, so folding them into one `isOverdue` flag
+would have hidden a live reminder from a task that is merely late. Colour takes
+both; suppression takes only the scheduled one. Nothing moves between lists: no
+band, section or query reads a due date.
+
+**Coverage, and one test that had been failing unnoticed.** 673 JVM tests green,
+up from 665, with five new ones pinning the Focus switch and five the health split.
+Forty-six instrumented tests green on the emulator, including five new row cases
+and two on the backup split, one asserting that reading a file writes nothing —
+the half the dialog now sits behind.
+
+`TaskRowSemanticsTest.metadata_isReadable` was **already failing at HEAD** and had
+been since `TaskListRow` stopped formatting its own `%1$d min` and went through
+`durationLabel` so the row would read 45m like the Duration sheet. The assertion
+still said "45 min" and nobody had run it. It now checks both halves, the compact
+text and the spoken description, and the spoken one had never been checked at all,
+which is the half this file is actually about.
+
+**What the audit found and this session did not fix.** Eight medium findings and
+six low ones, none touched. Two are worth naming because they are close to the
+work above: there is still **no way to end a paused Focus session** without
+completing its task or replacing it, which is D-015's recorded cost and which
+D-057 does not address, it only stops the replacement being silent. And Today's
+"No time set" band means "no reminder" while showing rows that display 45m and
+20m, which reads as a contradiction.
+
+Also untouched: Task Details can be left permanently blank by a stale deep link
+when the repository holds zero tasks, the four lists initialise on an empty loaded
+list so a slow read shows a false empty state, `SectionLabel` is documented as a
+heading and exposes no heading semantics, and the reminder-health banner is not a
+live region. The last two belong with the TalkBack pass below rather than here.
+
 **The dark theme audit is done, and it found nothing to fix.** That is a result
 rather than a shrug, and the two halves of it are worth keeping.
 

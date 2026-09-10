@@ -171,7 +171,11 @@ private fun ReminderHealthState?.bannerLabel(): Int? = when (this) {
     is ReminderHealthState.ActionNeeded -> R.string.reminder_health_action_label
     is ReminderHealthState.Missed -> R.string.reminder_health_missed_label
     is ReminderHealthState.WorthChecking -> null
-    ReminderHealthState.Checking, ReminderHealthState.Ready, null -> null
+    // Both halves of Ready are silent here. D-058 split the words the health
+    // screen says, not the question this banner asks: an unverified Ready is
+    // still nothing wrong, and D-040 keeps this banner for what the app knows.
+    is ReminderHealthState.Ready -> null
+    ReminderHealthState.Checking, null -> null
 }
 
 /**

@@ -3720,3 +3720,299 @@ renamed before it rather than after.
 watching is the split: if the package name showing through somewhere a user can
 see it turns out to be confusing, that is a bug in the surface that leaked it,
 not an argument for the migration.
+
+---
+
+## D-056. Restore confirms before it replaces
+
+**Decision.** Choosing a file on the Backup page no longer restores it. The file
+is parsed first, and a Material alert dialog says what is about to happen in
+numbers the user can check:
+
+    Restore this backup?
+
+    This backup holds 47 tasks. Restoring replaces the 12 tasks on this
+    device, and cannot be undone.
+
+    [Cancel]  [Restore]
+
+Only the Restore button writes. Cancel leaves the database untouched and drops
+the parsed file.
+
+**What this supersedes.** `settings.md`'s "No confirmation step before a
+restore. The tonal button already carries that weight, per the ordering above. A
+destructive action that announces itself afterwards and a weaker button before
+it is the whole of the protection here."
+
+**Why that reasoning does not hold.** It is the right rule applied to the wrong
+action. `AGENTS.md` says to minimise confirmation dialogs and to "provide undo
+for reversible destructive actions where appropriate", and those two clauses go
+together: the reason a delete needs no dialog is that a delete can be undone.
+This cannot. `BackupDao.replaceTasks` deletes every row and every delivery
+record inside one transaction, and nothing in the app puts them back.
+
+So the protection settings.md described was a button weight and a message that
+arrives after the loss. Between the tap and the write there was one system file
+picker, and a file picker is not a decision about this app: a user who opens the
+wrong `.json`, or the right filename from three months ago, has already
+committed by the time they find out. "Restored 47 tasks" is then a report of the
+damage rather than a check on it.
+
+**Why numbers rather than a warning.** "This will replace your data" is a claim
+the user cannot weigh. Two counts can be weighed against each other, and the
+mismatch is exactly what identifies the mistake this dialog exists to catch: a
+user restoring a stale file sees a smaller number than the one on their phone.
+This is the same standard the success snackbar is held to and for the same
+reason, that an assertion the user cannot check is one they cannot disagree
+with.
+
+The counts exclude soft-deleted rows on both sides, matching the snackbar. A
+device with no tasks at all says so in a sentence instead, because "replaces the
+0 tasks on this device" is a sentence no one writes.
+
+**Parse first, then ask, then write.** The dialog cannot name a count it has not
+read, so the parse moves ahead of it, and the parsed backup is held in the view
+model until the user answers. That ordering was already half true:
+`BackupRepository.restoreFrom` parsed and validated before the first local write
+specifically so a damaged file left the task list alone. The change is that the
+gap between parsing and writing is now where the user stands, rather than a
+comment about transaction safety.
+
+A damaged or foreign file therefore fails before the dialog appears, and still
+raises the existing "Couldn't restore this file" error. That is the better
+order: the user is never asked to confirm a restore that was never going to
+work.
+
+**What was considered and rejected.** An "Export current data first" action
+inside the dialog, which the audit that produced this entry suggested. It is a
+real protection and it is a second flow: dismissing the dialog, launching the
+`CreateDocument` picker, holding the parsed backup across it, and coming back.
+That wants designing rather than bolting onto a confirmation, and the dialog
+without it already closes the finding.
+
+**What would reverse this.** Users dismissing the dialog without reading it and
+restoring the wrong file anyway, which would mean the counts are not being read
+and the protection is theatre. The check is whether anyone ever cancels.
+
+---
+
+## D-057. Starting Focus on another task asks before it discards a session
+
+**Decision.** `beginFocus` no longer always creates a new session. Three cases:
+
+    no session at all              start one, open the sheet
+    a session on this same task    resume it, open the sheet
+    a session on another task      ask, and write nothing until answered
+
+The question is a Material alert dialog over Task Details, naming both tasks:
+
+    Switch focus?
+
+    Draft the quarterly note has 12 minutes on its clock. Starting Book
+    the dentist ends that session, and the time on it is not kept.
+
+    [Cancel]  [Switch focus]
+
+**Both names are in the body, and neither is in the title or on a button.** A
+task title is user text of no fixed length. Material draws a dialog title in
+`headlineSmall` and a button label on one line, and neither survives a sentence
+someone typed into a capture field, whereas body text wraps. So the title says
+what is being decided, the body says which two tasks and what it costs, and the
+buttons stay short enough to read at a glance.
+
+The elapsed time is in there because it is what actually decides the answer: two
+minutes and forty minutes are different questions. Under a minute there is
+nothing worth reporting and the sentence drops it rather than saying "0
+minutes".
+
+**Why this follows D-015 rather than reversing it.** D-015 ranked the two ways
+of being wrong about a Focus control: "Stopping when the user meant to pause
+loses the elapsed time and the sense of progress with it, silently, with nothing
+that puts it back. Pausing when the user meant to stop leaves one card on Today
+that they can ignore. One failure is unrecoverable and invisible; the other is
+visible and costs a glance."
+
+Starting Focus on a second task committed the unrecoverable one. `beginFocus`
+called `restartFocusClock`, which writes `FocusSession(startedAt = Instant.now())`
+over whatever was there, and `writeFocusSession` overwrites the saved state and
+the `FocusSessionStore` with it. A paused forty-minute session went, silently,
+with no undo and nothing on Today left pointing at it.
+
+D-015 protected the exit from Focus and left the entrance open, and the entrance
+is where the same loss actually happens. The principle is unchanged; it is being
+applied to the second door.
+
+**Why not simply refuse, or simply keep both.** Refusing would make the paused
+session a trap, which is the objection D-015 raised against the running one.
+Keeping both is a Focus queue, and D-004 cut that.
+
+**Why a dialog here and not elsewhere.** `AGENTS.md` says to minimise
+confirmation dialogs, and D-023 and D-054 both hold that picking a task and
+choosing Focus on it is the deciding already done, so a screen that asks the
+user to confirm it again is friction. That is still right, and it is about the
+ordinary case: the dialog does not appear when there is no session, which is
+almost every time anyone taps Start focus. It appears only when the tap would
+destroy something, and only then is there a second thing for the user to know.
+
+**Same task resumes rather than restarts, which was the quieter half of the same
+bug.** Opening Task Details for the task you are already focusing on and tapping
+Start focus reset its clock to zero. There is no reading of that tap under which
+the user wanted their progress cleared, so it needs no dialog: it is the Resume
+the paused card already offers, reached from a different screen.
+
+**Cancel does not navigate.** It closes the dialog and leaves the user on Task
+Details for the task they did not start. Landing them in Focus on a
+different task, from a screen about this one, is a surprise, and the paused card
+on Today is one tap away and is the route D-015 built for exactly this.
+
+**A session whose task is gone is replaced without asking.** Completing or
+deleting the focused task from outside the sheet leaves the pointer behind, and
+there is nothing to preserve and no name to put in the dialog. The screen
+resolves the current task before it asks, and switches straight through when it
+cannot find one.
+
+**What this does not fix.** There is still no way to end a paused session
+without completing its task or replacing it. That is D-015's recorded cost and
+it is unchanged here; this entry stops the replacement from being silent, it
+does not add the missing control.
+
+**What would reverse this.** The dialog appearing often enough to be noise,
+which would mean users routinely run one session while starting another and the
+real answer is different. The check is which button gets pressed.
+
+---
+
+## D-058. The health screen says whether a reminder has been seen to arrive
+
+**Decision.** `ReminderHealthState.Ready` carries whether the app has actually
+observed a reminder land on this device. The frame, the colour and D-021's
+ordering are unchanged; the words are not:
+
+    unverified   Not yet verified   Permissions are in place
+                                    Catimo has not seen a reminder arrive
+                                    on this device yet.
+
+    verified     Ready              Reminders are arriving on time
+                                    The last reminder Catimo sent arrived
+                                    when it was due.
+
+A recent delivery that was not concerning makes it verified. The recency window
+is `ConcernWindow`, the same week the rest of the screen works in, so a device
+that was fine a year ago is not still trading on it.
+
+`No restrictions detected` becomes `No known restrictions detected` in the same
+change.
+
+**Why.** D-009 says the screen has to answer "is this device actually delivering
+exact alarms" rather than "is this app allowed to ask for them", and it says a
+screen built on permission checks alone "would report green on a device that
+silently drops reminders". The screen was doing the second thing while claiming
+the first. On a fresh install with three permissions granted and no reminder
+ever sent, it said **Reminders are healthy** and **Exact reminders can currently
+be delivered**, and the entire evidence for both sentences was
+`canScheduleExactAlarms()` — the call `AGENTS.md` says outright is "not evidence
+that an alarm will be exact", measured wrong on a real OnePlus in D-009.
+
+That is the product's central claim, asserted on a check the project has already
+written down as unreliable, on the one screen whose whole value is that the user
+believes it.
+
+**Why not a fifth headline state.** The audit that produced this entry asked for
+a neutral "Not yet verified" state of its own, between Ready and Worth checking.
+Refused, because it would be D-021 in reverse. D-021's argument is that a
+reliability screen which is always red teaches people to ignore it; a screen
+that almost never says Ready teaches the same lesson at the same speed, and most
+users would sit in the new state indefinitely, since most people never send a
+test reminder and a real one only arrives when they scheduled one. Adding a
+severity level to an ordering built on certainty, for a difference that is not
+about severity, would also make `state` wrong: not-yet-measured is not worse
+than measured-fine, it is less known about the same good news.
+
+So the distinction lives inside Ready, where it changes the sentence and nothing
+else.
+
+**Why any on-time delivery counts, and not an idle-exposed one.** The screen
+already has a stricter test: `backgroundWorkState` requires `EvidenceOfHealth`
+consecutive deliveries that each pass `testsIdleDelivery`, because clearing a
+manufacturer warning is a claim about a phone that has been left alone. This
+flag answers a smaller question, whether a reminder from this app has ever
+arrived at all, and the copy is written to claim only that. Requiring idle
+exposure here would mean the Test reminder button, which fires in thirty
+seconds, could never move the screen off "Not yet verified", and a check the
+user cannot satisfy from the screen it is on is a check that reads as broken.
+
+The two live side by side on purpose: one says a reminder has been seen to
+arrive, the other says whether this device delays the ones set far enough ahead
+to be worth measuring.
+
+**What stays true.** Verified is not a promise. A phone that delivered
+punctually last Tuesday can miss tomorrow, which is why `Missed` still outranks
+everything and why the window expires. The change is that the screen now
+distinguishes what it was permitted from what it has seen, which is the
+distinction D-009 exists to make.
+
+**What would reverse this.** Users reading "Not yet verified" as a fault and
+going looking for a problem that is not there. The check is whether anyone opens
+a settings screen from that state.
+
+---
+
+## D-059. The task row shows a due date
+
+**Decision.** A due date joins the row's metadata line, worded so it cannot be
+read as the scheduled day:
+
+    Due today          the deadline is today
+    Due tomorrow       the deadline is tomorrow
+    Due Sep 14         further out
+    Overdue            the deadline has passed and the task is not done
+
+It sits after the scheduled date and before the recurrence, so the line reads
+reminder, then when it is planned, then when it is owed, then whether it comes
+back. A past due date also colours the metadata line, through the same
+`isOverdue` cue a past scheduled date already uses.
+
+**This is a defect, not a scope change.** `task-row.md` has listed due date as
+row metadata since it was written, and `PRODUCT.md` lists it as a field a task
+may have. It was never built. Task Details could set a due date and nothing in
+Today, Inbox, Upcoming or the Logbook ever showed it again, so a user could
+record a deadline and never see it a second time.
+
+**Why "Due" is on the front of every one of them.** The scheduled date renders
+as "Today" and "Tomorrow" through the same `scheduledDateLabel` helper, and two
+bare day names on one line cannot be told apart. The word is what makes the
+second one a deadline rather than a repetition. The two are different things:
+`PRODUCT.md` says a reminder is independent of a scheduled date and of a due
+date, and the same holds between those two, since a task planned for Monday can
+be owed on Friday.
+
+**Overdue names the state rather than the day.** A date three weeks gone tells
+the user nothing they need; that it has passed is the whole content, and the
+exact day is one tap away in Task Details. This is also the only value on the
+line that is not a date, which is what stops it reading as a scheduled day.
+
+**Colour follows the existing rule and nothing moves.** `tertiary` on an overdue
+date is already the app's cue, argued in `expressive-design-system.md` as a
+second channel on top of a distinction that is already textual, and the words
+here differ first. What does not change is which list the task is in: a due date
+is not a scheduled date, and no band, section or query reads it. A task owed
+yesterday and planned for Friday stays on Friday, coloured.
+
+**The reminder is still suppressed only by a past scheduled date.** The row
+hides its reminder time when the scheduled day has passed, because a reminder
+that already fired describes nothing that is going to happen. A past *due* date
+says nothing about whether the reminder has fired, so the two conditions are
+kept apart rather than folded into one flag. Folding them would have hidden a
+live reminder from a task that is merely late.
+
+**A completed task shows its due date plainly.** The Logbook is a record of what
+was finished, and colouring a deadline that was met, or missed, after the fact
+is the app grading work that is already done. Overdue is a live state, so it
+ends when the task does, and the row falls back to the day.
+
+**What would reverse this.** Rows becoming crowded, which is the risk the design
+doc names when it says metadata should stay compact. A due date is rare in
+practice and mutually exclusive with nothing, so the line grows by one segment
+on the tasks that have one. If that turns out to be too much, the answer is to
+drop the scheduled date where a heading already carries it, not to hide the
+deadline again.

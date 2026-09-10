@@ -40,6 +40,14 @@
     <string name="duration_spoken_hours_minutes">%1$s %2$s</string>
     <string name="task_due_today">Today</string>
     <string name="task_due_tomorrow">Tomorrow</string>
+    <!-- A due date on a task row, D-059. Worded separately from the two above
+         rather than wrapped around them: a scheduled date and a due date both
+         render "Today", and on one metadata line the word Due is the only thing
+         telling a deadline apart from the day the work is planned for. -->
+    <string name="task_row_due_today">Due today</string>
+    <string name="task_row_due_tomorrow">Due tomorrow</string>
+    <string name="task_row_due_on">Due %1$s</string>
+    <string name="task_row_overdue">Overdue</string>
     <string name="task_open">Open task details</string>
     <!-- The row's actions menu had five more strings here: Show task actions,
          Focus, and three Move to... entries. D-023 removed the menu and left them
@@ -83,6 +91,16 @@
     <string name="focus_readout_remaining">%1$s remaining</string>
     <string name="focus_readout_elapsed">%1$s elapsed</string>
     <string name="focus_status_line_spoken">%1$s, %2$s</string>
+    <!-- Starting Focus on a second task, D-057. Both task titles are in the body
+         and neither is in the title or on a button: a title is user text of no
+         fixed length, body text wraps and a button label does not. The elapsed
+         time is there because it is what decides the answer, and it is dropped
+         under a minute rather than reported as zero. -->
+    <string name="focus_switch_title">Switch focus?</string>
+    <string name="focus_switch_body">%1$s has %2$s on its clock. Starting %3$s ends that session, and the time on it is not kept.</string>
+    <string name="focus_switch_body_unstarted">%1$s has a focus session open. Starting %2$s ends it.</string>
+    <string name="focus_switch_confirm">Switch focus</string>
+    <string name="focus_switch_cancel">Cancel</string>
     <string name="focus_estimate_reached_title">Estimated time is up</string>
     <string name="focus_channel_name">Focus sessions</string>
     <string name="focus_channel_description">When a focus session reaches the time you estimated for the task.</string>
@@ -160,6 +178,26 @@
         <item quantity="one">Restored %1$d task</item>
         <item quantity="other">Restored %1$d tasks</item>
     </plurals>
+    <!-- The restore confirmation, D-056. Two counts rather than a warning: "this
+         will replace your data" is a claim the user cannot weigh, and a stale
+         file shows a smaller number than the phone it is about to overwrite.
+         Two sentences rather than one, because Android cannot put two plurals in
+         a single string and both numbers need their own. -->
+    <string name="backup_restore_confirm_title">Restore this backup?</string>
+    <plurals name="backup_restore_confirm_incoming">
+        <item quantity="one">This backup holds %1$d task.</item>
+        <item quantity="other">This backup holds %1$d tasks.</item>
+    </plurals>
+    <plurals name="backup_restore_confirm_current">
+        <item quantity="one">Restoring replaces the %1$d task on this device, and cannot be undone.</item>
+        <item quantity="other">Restoring replaces the %1$d tasks on this device, and cannot be undone.</item>
+    </plurals>
+    <!-- A count of zero has no plural of its own in English, and "replaces the 0
+         tasks on this device" is a sentence no one writes. -->
+    <string name="backup_restore_confirm_current_none">This device has no tasks yet, so nothing will be replaced.</string>
+    <string name="backup_restore_confirm_body">%1$s %2$s</string>
+    <string name="backup_restore_confirm_action">Restore</string>
+    <string name="backup_restore_confirm_cancel">Cancel</string>
     <string name="backup_restore_error_title">Couldn\'t restore this file</string>
     <string name="backup_restore_error_body">The file may not be a Catimo backup, or it may be damaged.</string>
     <string name="backup_restore_error_choose_another">Choose another file</string>
@@ -397,9 +435,16 @@
     <string name="logbook_back">Back</string>
     <string name="reminder_health_checking_label">Checking reminder health…</string>
     <string name="reminder_health_checking_body">Checking notification access, exact alarms, and battery restrictions.</string>
+    <!-- Two halves of Ready, D-058. The first says a reminder has been seen to
+         arrive on this device; the second says only that nothing is blocking one.
+         They used to be a single set claiming the first on the evidence for the
+         second, which is the claim D-009 says a permission check cannot support. -->
     <string name="reminder_health_ready_label">Ready</string>
-    <string name="reminder_health_ready_title">Reminders are healthy</string>
-    <string name="reminder_health_ready_body">Exact reminders can currently be delivered.</string>
+    <string name="reminder_health_ready_title">Reminders are arriving on time</string>
+    <string name="reminder_health_ready_body">The last reminder Catimo sent arrived when it was due.</string>
+    <string name="reminder_health_unverified_label">Not yet verified</string>
+    <string name="reminder_health_unverified_title">Permissions are in place</string>
+    <string name="reminder_health_unverified_body">Catimo has not seen a reminder arrive on this device yet. Send a test reminder to check.</string>
     <string name="reminder_health_action_label">Action needed</string>
     <!-- A risk the app inferred rather than a refusal it was told about. D-021. -->
     <string name="reminder_health_caution_label">Worth checking</string>
@@ -418,7 +463,7 @@
     <string name="reminder_health_check_background">Battery restrictions</string>
     <string name="reminder_health_allowed">Allowed</string>
     <string name="reminder_health_not_allowed">Not allowed</string>
-    <string name="reminder_health_no_restrictions">No restrictions detected</string>
+    <string name="reminder_health_no_restrictions">No known restrictions detected</string>
     <string name="reminder_health_last_checked">Last checked just now</string>
     <string name="reminder_health_test">Test reminder in 30 seconds</string>
     <string name="reminder_health_open_battery">Open battery settings</string>

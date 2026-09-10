@@ -60,16 +60,74 @@ class ReminderHealthTest {
 
     // 1. Nothing wrong
 
+    /**
+     * The fresh install, and `docs/decisions.md` D-058's whole subject. Three
+     * permissions granted and no reminder ever sent is Ready, because nothing is
+     * wrong, and unverified, because nothing has been seen to arrive. The screen
+     * used to say "Reminders are healthy" here on the strength of
+     * `canScheduleExactAlarms()` alone.
+     */
     @Test
-    fun `everything allowed and nothing gone wrong reads as ready`() {
-        assertEquals(ReminderHealthState.Ready, health().state)
+    fun `everything allowed and nothing delivered yet is ready but unverified`() {
+        assertEquals(ReminderHealthState.Ready(verified = false), health().state)
     }
 
     @Test
-    fun `a history of punctual deliveries is still ready`() {
+    fun `a history of punctual deliveries is ready and verified`() {
         assertEquals(
-            ReminderHealthState.Ready,
+            ReminderHealthState.Ready(verified = true),
             health(deliveries = listOf(delivery("a"), delivery("b"))).state
+        )
+    }
+
+    /**
+     * The Test reminder button fires in thirty seconds, which is far short of
+     * `EvidenceHorizon` and so proves nothing about a device that has been left
+     * alone. It still counts here, because this flag answers the smaller
+     * question of whether anything arrives at all, and a check the user cannot
+     * satisfy from the screen it sits on is a check that reads as broken.
+     */
+    @Test
+    fun `a punctual delivery that tested no idle time still verifies`() {
+        val health = health(
+            deliveries = listOf(delivery(scheduledAhead = Duration.ofSeconds(30)))
+        )
+
+        assertEquals(ReminderHealthState.Ready(verified = true), health.state)
+    }
+
+    /**
+     * Verified is not a permanent claim. A device that behaved a fortnight ago
+     * and has delivered nothing since is one the app has no current evidence
+     * about, and the window is the same week the rest of the screen works in.
+     */
+    @Test
+    fun `a punctual delivery older than the window stops verifying`() {
+        val health = health(
+            deliveries = listOf(delivery(arrivedAgo = ConcernWindow.plusDays(1)))
+        )
+
+        assertEquals(ReminderHealthState.Ready(verified = false), health.state)
+    }
+
+    /**
+     * The two delivery questions are separate, and D-058 says why: clearing a
+     * manufacturer warning is a claim about a phone that was left alone, and
+     * needs `EvidenceOfHealth` idle-exposed deliveries. Saying a reminder has
+     * been seen to arrive needs one of any kind.
+     */
+    @Test
+    fun `one punctual delivery verifies without clearing a restriction warning`() {
+        val health = health(
+            restriction = DeviceRestriction.SleepStandby,
+            deliveries = listOf(delivery())
+        )
+
+        assertEquals(true, health.verifiedDelivery)
+        assertEquals(CheckState.Warning, health.backgroundWork)
+        assertEquals(
+            ReminderHealthState.WorthChecking(HealthCheck.BackgroundWork),
+            health.state
         )
     }
 
@@ -159,7 +217,7 @@ class ReminderHealthTest {
     fun `a warning is still raised before anything is missed`() {
         val state = health(restriction = DeviceRestriction.SleepStandby).state
 
-        assertNotEquals(ReminderHealthState.Ready, state)
+        assertEquals(false, state is ReminderHealthState.Ready)
     }
 
     /**
@@ -271,7 +329,9 @@ class ReminderHealthTest {
             )
         ).state
 
-        assertEquals(ReminderHealthState.Ready, state)
+        // Unverified rather than verified: the punctual record aged out with
+        // the failure, so there is nothing recent to have seen arrive.
+        assertEquals(ReminderHealthState.Ready(verified = false), state)
     }
 
     @Test
@@ -311,7 +371,7 @@ class ReminderHealthTest {
         val health = health(restriction = DeviceRestriction.SleepStandby, deliveries = punctual)
 
         assertEquals(CheckState.Ok, health.backgroundWork)
-        assertEquals(ReminderHealthState.Ready, health.state)
+        assertEquals(ReminderHealthState.Ready(verified = true), health.state)
     }
 
     @Test

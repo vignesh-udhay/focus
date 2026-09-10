@@ -173,9 +173,16 @@ The count excludes soft-deleted tasks. A backup carries them so a restore can pu
 the trash back as it was, but every list filters them with `WHERE deletedAt IS
 NULL`, so counting them would report a number found nowhere in the app.
 
-**No confirmation step before a restore.** The tonal button already carries that
+**Superseded by `docs/decisions.md` D-056: a restore confirms.** The paragraph
+below is kept for the argument it made and is no longer what the app does. It is
+the right rule applied to the wrong action: a delete needs no dialog because a
+delete can be undone, and `BackupDao.replaceTasks` empties the table inside one
+transaction with nothing to put it back. The file is parsed first now, and a
+dialog names how many tasks it holds against how many are on the device.
+
+~~**No confirmation step before a restore.** The tonal button already carries that
 weight, per the ordering above. A destructive action that announces itself
-afterwards and a weaker button before it is the whole of the protection here.
+afterwards and a weaker button before it is the whole of the protection here.~~
 
 ## Restore errors
 

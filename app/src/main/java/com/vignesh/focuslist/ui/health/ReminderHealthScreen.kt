@@ -460,7 +460,9 @@ private fun Context.hasVendorScreen(restriction: DeviceRestriction?): Boolean =
 private val ReminderHealthState.label: Int
     get() = when (this) {
         ReminderHealthState.Checking -> R.string.reminder_health_checking_label
-        ReminderHealthState.Ready -> R.string.reminder_health_ready_label
+        is ReminderHealthState.Ready ->
+            if (this.verified) R.string.reminder_health_ready_label
+            else R.string.reminder_health_unverified_label
         is ReminderHealthState.ActionNeeded -> R.string.reminder_health_action_label
         is ReminderHealthState.WorthChecking -> R.string.reminder_health_caution_label
         is ReminderHealthState.Missed -> R.string.reminder_health_missed_label
@@ -480,7 +482,10 @@ private val ReminderHealthState.label: Int
 @Composable
 private fun stateTitle(state: ReminderHealthState): String = when (state) {
     ReminderHealthState.Checking -> stringResource(R.string.reminder_health_checking_label)
-    ReminderHealthState.Ready -> stringResource(R.string.reminder_health_ready_title)
+    is ReminderHealthState.Ready -> stringResource(
+        if (state.verified) R.string.reminder_health_ready_title
+        else R.string.reminder_health_unverified_title
+    )
 
     is ReminderHealthState.ActionNeeded -> when (state.cause) {
         HealthCheck.Notifications ->
@@ -525,7 +530,10 @@ private fun stateTitle(state: ReminderHealthState): String = when (state) {
 private fun stateBody(state: ReminderHealthState, restriction: DeviceRestriction?): String? =
     when (state) {
         ReminderHealthState.Checking -> stringResource(R.string.reminder_health_checking_body)
-        ReminderHealthState.Ready -> stringResource(R.string.reminder_health_ready_body)
+        is ReminderHealthState.Ready -> stringResource(
+            if (state.verified) R.string.reminder_health_ready_body
+            else R.string.reminder_health_unverified_body
+        )
 
         is ReminderHealthState.ActionNeeded -> when (state.cause) {
             HealthCheck.Notifications ->

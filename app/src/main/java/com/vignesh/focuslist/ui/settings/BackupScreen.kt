@@ -109,6 +109,23 @@ fun BackupScreen(
         modifier = modifier
     )
 
+    // **Choosing a file asks before it writes.** `docs/decisions.md` D-056.
+    // `settings.md` argued no confirmation was needed because the tonal button
+    // carried the weight, which is the right rule for an action that can be
+    // undone. This one deletes every task and every delivery record in one
+    // transaction and nothing puts them back, so the announcement afterwards
+    // was a report of the damage rather than a check on it.
+    //
+    // Drawn before the error dialog because the two cannot both be present: a
+    // file that failed to parse never reached a pending state.
+    state.pendingRestore?.let { pending ->
+        RestoreConfirmDialog(
+            pending = pending,
+            onConfirm = viewModel::confirmRestore,
+            onCancel = viewModel::cancelRestore
+        )
+    }
+
     state.error?.let { error ->
         BackupErrorDialog(
             error = error,
@@ -240,6 +257,63 @@ private fun BackupAction(
         )
         action()
     }
+}
+
+/**
+ * The question between choosing a file and replacing the database.
+ *
+ * `docs/decisions.md` D-056. Two counts, because "this will replace your data"
+ * is a claim the user cannot weigh and these can be weighed against each other:
+ * a stale file shows fewer tasks than the phone it is about to overwrite, which
+ * is the mistake this dialog exists to catch.
+ *
+ * It is the same standard the success snackbar is held to. An assertion the user
+ * cannot check is one they cannot disagree with.
+ *
+ * **Restore is the confirm action even though it is the destructive one**,
+ * because it is the one the user asked for by opening a file. Cancel is a plain
+ * dismissal and writes nothing.
+ */
+@Composable
+private fun RestoreConfirmDialog(
+    pending: PendingRestore,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit
+) {
+    val incoming = pluralStringResource(
+        R.plurals.backup_restore_confirm_incoming,
+        pending.incomingTaskCount,
+        pending.incomingTaskCount
+    )
+
+    // An empty device gets its own sentence rather than a plural, because
+    // English has no quantity for zero and "replaces the 0 tasks on this
+    // device" is a sentence no one writes.
+    val current = if (pending.currentTaskCount == 0) {
+        stringResource(R.string.backup_restore_confirm_current_none)
+    } else {
+        pluralStringResource(
+            R.plurals.backup_restore_confirm_current,
+            pending.currentTaskCount,
+            pending.currentTaskCount
+        )
+    }
+
+    AlertDialog(
+        onDismissRequest = onCancel,
+        title = { Text(stringResource(R.string.backup_restore_confirm_title)) },
+        text = { Text(stringResource(R.string.backup_restore_confirm_body, incoming, current)) },
+        dismissButton = {
+            TextButton(onClick = onCancel) {
+                Text(stringResource(R.string.backup_restore_confirm_cancel))
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(stringResource(R.string.backup_restore_confirm_action))
+            }
+        }
+    )
 }
 
 @Composable

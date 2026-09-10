@@ -324,6 +324,17 @@ class TaskListViewModel(
             )
 
     /**
+     * The task Focus is pointed at, whether or not it still exists.
+     *
+     * Exposed alongside [focusedTask] because the two answer different
+     * questions. That one resolves through the repository and goes null when the
+     * task is completed or deleted; this one is the pointer itself, and D-057's
+     * dialog needs it to tell "a session on another task" from "a session on
+     * this one" without waiting for a stream.
+     */
+    val focusedTaskId: StateFlow<String?> = _focusedTaskId.asStateFlow()
+
+    /**
      * Points Focus at [id].
      *
      * Recorded as given, without checking anything. An id that matches no
@@ -341,11 +352,84 @@ class TaskListViewModel(
      * between choosing and starting for anything to happen in. That is what
      * removed the Ready state, and it is also what answers "why this task":
      * because you said so.
+     *
+     * **It no longer always starts a fresh clock.** `docs/decisions.md` D-057.
+     * This called [restartFocusClock] unconditionally, which writes a new
+     * `FocusSession` over whatever was there and takes the saved state and the
+     * `FocusSessionStore` with it, so starting Focus on a second task destroyed
+     * a paused session silently, with no undo and nothing on Today left
+     * pointing at it. That is the unrecoverable half of the pair D-015 ranked;
+     * D-015 protected the exit from Focus and left the entrance open, and the
+     * entrance is where the loss actually happened.
+     *
+     * Three cases now. No session starts one. A session on this same task
+     * resumes rather than restarting, because no reading of that tap wanted the
+     * progress cleared. A session on another task writes nothing and raises
+     * [focusSwitchTaskId] for the screen to ask about.
+     *
+     * @return whether Focus was entered, which is what the caller navigates on.
+     * False means the question is on screen and the answer decides.
      */
-    fun beginFocus(id: String) {
+    fun beginFocus(id: String): Boolean {
+        val hasSession = _focusSession.value != null
+        val current = _focusedTaskId.value
+
+        if (hasSession && current != null && current != id) {
+            _focusSwitchTaskId.value = id
+            return false
+        }
+
+        if (hasSession && current == id) {
+            resumeFocusSession()
+        } else {
+            focusTask(id)
+            restartFocusClock()
+        }
+
+        _isFocusSheetOpen.value = true
+        return true
+    }
+
+    private val _focusSwitchTaskId = MutableStateFlow<String?>(null)
+
+    /**
+     * The task a Start focus is waiting to switch to, or null when none is.
+     *
+     * `docs/decisions.md` D-057. Set when a tap would discard a session on
+     * another task, and nothing is written while it is set. The id rather than
+     * the task, because the screen that asks already has the list and can name
+     * both sides of the question from it.
+     *
+     * Not persisted. A process that died was not showing a dialog, and the
+     * session it left behind is intact, which is the whole point of deferring.
+     */
+    val focusSwitchTaskId: StateFlow<String?> = _focusSwitchTaskId.asStateFlow()
+
+    /**
+     * Goes ahead with the switch the user was asked about.
+     *
+     * @return whether Focus was entered, so the caller navigates on the same
+     * answer [beginFocus] gives.
+     */
+    fun confirmFocusSwitch(): Boolean {
+        val id = _focusSwitchTaskId.value ?: return false
+        _focusSwitchTaskId.value = null
+
         focusTask(id)
         restartFocusClock()
         _isFocusSheetOpen.value = true
+        return true
+    }
+
+    /**
+     * Keeps the existing session and enters nothing.
+     *
+     * A cancel, and deliberately not a navigation. Landing the user in Focus on
+     * a different task, from a screen about this one, is a surprise; the paused
+     * card on Today is one tap away and is the route D-015 built for it.
+     */
+    fun dismissFocusSwitch() {
+        _focusSwitchTaskId.value = null
     }
 
     private val _focusSession = MutableStateFlow(storedFocus?.session ?: restoreFocusSession())

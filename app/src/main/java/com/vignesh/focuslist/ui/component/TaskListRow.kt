@@ -92,9 +92,28 @@ internal fun TaskListRow(
         },
         // A day that has already passed. The date text already says so on its
         // own; the colour is the second cue on top of it.
-        isOverdue = task.scheduledDate?.isBefore(today) == true && !task.isCompleted
+        //
+        // Either day counts, per D-059: a deadline that has gone by is late
+        // whether or not the task was also planned for a past day. Which list
+        // the task sits in does not move, because no band or query reads a due
+        // date.
+        isOverdue = task.isPastScheduled(today) || task.isPastDue(today)
     )
 }
+
+/**
+ * Whether the day the task was planned for has gone by.
+ *
+ * Kept apart from [isPastDue] rather than folded into one flag, and D-059 says
+ * why: this one also suppresses the reminder time, and a task that is merely
+ * late still has a reminder that has not fired.
+ */
+private fun Task.isPastScheduled(today: LocalDate): Boolean =
+    scheduledDate?.isBefore(today) == true && !isCompleted
+
+/** Whether the day the task was owed has gone by. */
+private fun Task.isPastDue(today: LocalDate): Boolean =
+    dueDate?.isBefore(today) == true && !isCompleted
 
 /**
  * Turns the domain fields of a [Task] into the row's display metadata.
@@ -109,7 +128,6 @@ private fun taskMetadata(
     showDate: Boolean
 ): List<String> {
     val segments = mutableListOf<String>()
-    val isOverdue = task.scheduledDate?.isBefore(today) == true && !task.isCompleted
 
     // **First, because it is the one that will interrupt you.** `PRODUCT.md`
     // principle 1 makes the reminder the product, and `TodayBand.LATER_TODAY`
@@ -120,7 +138,7 @@ private fun taskMetadata(
     // on a row from last Tuesday describes nothing that is going to happen. It
     // also keeps the date first on exactly the rows where being overdue is the
     // point, which is what `metadataText` colours.
-    if (!isOverdue) {
+    if (!task.isPastScheduled(today)) {
         task.reminderAt?.let { at ->
             segments += at.toLocalTime().format(rememberTimeFormat())
         }
@@ -131,6 +149,19 @@ private fun taskMetadata(
     // thing twice.
     if (showDate) {
         task.scheduledDate?.let { segments += scheduledDateLabel(it, today) }
+    }
+
+    // **After the scheduled date, because it answers the next question.** The
+    // line reads when the task will announce itself, then when it is planned,
+    // then when it is owed. `docs/decisions.md` D-059: Task Details could set a
+    // due date and no list ever showed it again, so a user could record a
+    // deadline and never see it a second time.
+    //
+    // Never omitted with `showDate`. A section heading names the day the task is
+    // *scheduled* for, which is a different day and a different claim, so there
+    // is nothing here for a heading to be repeating.
+    task.dueDate?.let { due ->
+        segments += dueDateLabel(date = due, today = today, isCompleted = task.isCompleted)
     }
 
     // Last, because it says something about the task's future rather than

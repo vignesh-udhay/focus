@@ -30,6 +30,34 @@ fun scheduledDateLabel(date: LocalDate, today: LocalDate): String = when (date) 
 }
 
 /**
+ * A due date as a row says it: "Due today", "Due Sep 14", or "Overdue".
+ *
+ * `docs/decisions.md` D-059. Beside [scheduledDateLabel] because the two are
+ * read on the same line and must not drift, and separate from it because they
+ * are different claims: a scheduled date says when the work is planned, a due
+ * date says when it is owed. Both render "Today" through the same helper, so
+ * without the word in front the second one is indistinguishable from the first.
+ *
+ * **Overdue names the state, not the day.** A date three weeks gone tells the
+ * user nothing they need; that it has passed is the whole content, and the day
+ * itself is one tap away in Task Details.
+ *
+ * [isCompleted] because overdue is a live state. A finished task is not late,
+ * whenever it was owed, so the Logbook falls back to the day rather than
+ * grading work that is already done.
+ */
+@Composable
+fun dueDateLabel(date: LocalDate, today: LocalDate, isCompleted: Boolean): String = when {
+    date.isBefore(today) && !isCompleted -> stringResource(R.string.task_row_overdue)
+    date == today -> stringResource(R.string.task_row_due_today)
+    date == today.plusDays(1) -> stringResource(R.string.task_row_due_tomorrow)
+    else -> stringResource(
+        R.string.task_row_due_on,
+        date.format(rememberDateFormat(DayMonthSkeleton, date.year != today.year))
+    )
+}
+
+/**
  * A day as a section heading: "Tomorrow", or "Fri, Sep 5".
  *
  * Named where naming helps and dated where it does not, the same rule

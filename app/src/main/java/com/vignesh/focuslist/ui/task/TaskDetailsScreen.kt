@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -25,6 +26,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -50,6 +52,7 @@ import com.vignesh.focuslist.R
 import com.vignesh.focuslist.core.design.FocuslistDimensions
 import com.vignesh.focuslist.core.design.FocuslistSpacing
 import com.vignesh.focuslist.core.design.focuslistContentGutter
+import com.vignesh.focuslist.core.domain.FocusSession
 import com.vignesh.focuslist.core.domain.Recurrence
 import com.vignesh.focuslist.core.domain.Task
 import com.vignesh.focuslist.core.text.recurrenceSummary
@@ -60,6 +63,7 @@ import com.vignesh.focuslist.ui.component.SectionLabel
 import com.vignesh.focuslist.ui.component.UndoSnackbarHost
 import com.vignesh.focuslist.ui.component.durationLabel
 import com.vignesh.focuslist.ui.component.scheduledDateLabel
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -95,6 +99,12 @@ fun TaskDetailsScreen(
 ) {
     val tasks by viewModel.allTasks.collectAsStateWithLifecycle()
     val today by viewModel.today.collectAsStateWithLifecycle()
+
+    // For D-057's question, below. Collected here rather than beside the dialog
+    // so the screen reads its inputs in one place.
+    val focusSwitchTaskId by viewModel.focusSwitchTaskId.collectAsStateWithLifecycle()
+    val focusedTaskId by viewModel.focusedTaskId.collectAsStateWithLifecycle()
+    val focusSession by viewModel.focusSession.collectAsStateWithLifecycle()
 
     val task = tasks.firstOrNull { it.id == taskId }
     var taskWasShown by rememberSaveable(taskId) { mutableStateOf(false) }
@@ -144,16 +154,117 @@ fun TaskDetailsScreen(
                 reminderAt = edited.reminderAt
             )
         },
-        onStartFocus = {
-            viewModel.beginFocus(current.id)
-            onOpenFocus()
-        },
+        // **Navigation follows the answer, not the tap.** `docs/decisions.md`
+        // D-057: a Start focus that would discard a session on another task
+        // writes nothing and raises a question instead, so leaving the screen
+        // here would land the user in Focus on a session that had not changed.
+        onStartFocus = { if (viewModel.beginFocus(current.id)) onOpenFocus() },
         // A soft delete raising the same single undo offer every list raises.
         // The screen does not navigate here: the task disappearing from
         // `allTasks` is what pops it, through the effect above, so deletion has
         // one exit rather than two that could disagree.
         onDelete = { viewModel.deleteTask(current.id) },
         modifier = modifier
+    )
+
+    // The Start focus above deferred to a question. D-057, and it only ever
+    // concerns this screen's own task: another Task Details asking about its own
+    // switch is a different id.
+    if (focusSwitchTaskId != current.id) return
+
+    // The session's task, resolved rather than assumed. Completing or deleting
+    // it from outside the sheet leaves the pointer behind, and then there is
+    // nothing to preserve and no name to put in the question, so the switch goes
+    // straight through. Read from `tasks`, which this screen already trusts for
+    // its own existence check, rather than from `focusedTask`, which begins on a
+    // placeholder that would read as gone.
+    val running = tasks.firstOrNull { candidate ->
+        candidate.id == focusedTaskId && !candidate.isDeleted && !candidate.isCompleted
+    }
+
+    if (running == null) {
+        LaunchedEffect(current.id) { if (viewModel.confirmFocusSwitch()) onOpenFocus() }
+        return
+    }
+
+    FocusSwitchDialog(
+        running = running,
+        next = current,
+        session = focusSession,
+        onConfirm = { if (viewModel.confirmFocusSwitch()) onOpenFocus() },
+        onCancel = viewModel::dismissFocusSwitch
+    )
+}
+
+/**
+ * The question between Start focus and a session that is already running.
+ *
+ * `docs/decisions.md` D-057. `beginFocus` used to write a fresh `FocusSession`
+ * over whatever was there, so starting Focus on a second task discarded a paused
+ * one silently, with no undo and nothing on Today pointing at it. That is the
+ * unrecoverable half of the pair D-015 ranked, and D-015 had only guarded the
+ * exit.
+ *
+ * **Both titles are in the body and neither is in the title or on a button.** A
+ * task title is user text of no fixed length; body text wraps and a dialog title
+ * and a button label do not. So the title says what is being decided, the body
+ * says which two tasks and what it costs, and the buttons stay readable.
+ *
+ * The elapsed time is what actually decides the answer, since two minutes and
+ * forty are different questions. Under a minute there is nothing worth
+ * reporting, so the sentence drops it rather than saying zero.
+ *
+ * The clock is read once, when the dialog appears, and does not tick. A number
+ * counting up behind a question about whether to discard it would be movement
+ * for its own sake, which `AGENTS.md` rules out.
+ */
+@Composable
+private fun FocusSwitchDialog(
+    running: Task,
+    next: Task,
+    session: FocusSession?,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit
+) {
+    val elapsedMinutes = remember(session) {
+        session?.elapsed(Instant.now())?.toMinutes()?.toInt() ?: 0
+    }
+
+    // The spoken form, not the compact one. This is a sentence, and "12m" in the
+    // middle of prose is a label that wandered out of a row.
+    val elapsed = durationLabel(elapsedMinutes).spoken
+
+    AlertDialog(
+        onDismissRequest = onCancel,
+        title = { Text(stringResource(R.string.focus_switch_title)) },
+        text = {
+            Text(
+                if (elapsedMinutes == 0) {
+                    stringResource(
+                        R.string.focus_switch_body_unstarted,
+                        running.title,
+                        next.title
+                    )
+                } else {
+                    stringResource(
+                        R.string.focus_switch_body,
+                        running.title,
+                        elapsed,
+                        next.title
+                    )
+                }
+            )
+        },
+        dismissButton = {
+            TextButton(onClick = onCancel) {
+                Text(stringResource(R.string.focus_switch_cancel))
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(stringResource(R.string.focus_switch_confirm))
+            }
+        }
     )
 }
 

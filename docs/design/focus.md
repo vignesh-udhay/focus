@@ -356,6 +356,14 @@ and nothing else. The callback is a leftover of D-023 removing the row menu, and
 the strings that menu used are still in `strings.xml` unreferenced. So Focus has
 one entry point that starts a session and one that resumes one.
 
+**Start focus does not always start a clock, and `docs/decisions.md` D-057 is
+why.** It used to write a fresh session over whatever was there, so starting
+Focus on a second task discarded a paused one silently. It now has three
+outcomes: no session starts one, a session on the same task resumes it, and a
+session on another task asks before it replaces anything. Every one of them
+still ends in a running clock; what changed is that the third waits for an
+answer, and the second stopped resetting a clock nobody asked it to reset.
+
 **Both start a clock, and there is no longer a state that does not.** This
 paragraph used to say two entries landed on Ready, a task chosen with nothing
 running. D-048 removed the card's other behaviour, which was the only one that

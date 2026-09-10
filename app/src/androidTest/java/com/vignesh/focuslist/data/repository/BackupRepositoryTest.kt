@@ -68,7 +68,7 @@ class BackupRepositoryTest {
         val file = ByteArrayOutputStream()
         val exported = repository.exportTo(file)
 
-        val restored = repository.restoreFrom(file.toByteArray().inputStream())
+        val restored = repository.restore(file.toByteArray())
 
         assertEquals(exported, restored)
         assertEquals(1, restored)
@@ -84,7 +84,7 @@ class BackupRepositoryTest {
 
         database.backupDao().replaceTasks(emptyList())
 
-        assertEquals(2, repository.restoreFrom(file.toByteArray().inputStream()))
+        assertEquals(2, repository.restore(file.toByteArray()))
         assertEquals(2, database.backupDao().snapshotTasks().size)
     }
 
@@ -93,7 +93,43 @@ class BackupRepositoryTest {
         val file = ByteArrayOutputStream()
         repository.exportTo(file)
 
-        assertEquals(0, repository.restoreFrom(file.toByteArray().inputStream()))
+        assertEquals(0, repository.restore(file.toByteArray()))
+    }
+
+    /**
+     * `docs/decisions.md` D-056 split restore into a parse and a write so the
+     * confirmation dialog can stand between them. Nothing in the app calls both
+     * halves back to back any more, and the round trips above are about the
+     * round trip rather than about the split, so they go through this.
+     */
+    private suspend fun BackupRepository.restore(file: ByteArray): Int =
+        applyRestore(readBackup(file.inputStream()))
+
+    /** The number the confirmation weighs the file against, per D-056. */
+    @Test
+    fun theCurrentCountExcludesTheTrash() = runBlocking {
+        database.taskDao().insert(task("live"))
+        database.taskDao().insert(task("binned", deletedAt = DeletedAt))
+
+        assertEquals(1, repository.currentTaskCount())
+    }
+
+    /**
+     * The half the dialog sits behind. Reading a file must leave the device
+     * exactly as it was, or a user who cancels has already lost.
+     */
+    @Test
+    fun readingABackupWritesNothing() = runBlocking {
+        database.taskDao().insert(task("a"))
+        database.taskDao().insert(task("b"))
+        val file = ByteArrayOutputStream()
+        repository.exportTo(file)
+
+        database.backupDao().replaceTasks(emptyList())
+        val backup = repository.readBackup(file.toByteArray().inputStream())
+
+        assertEquals(2, backup.tasks.size)
+        assertEquals(0, database.backupDao().snapshotTasks().size)
     }
 
     private fun task(id: String, deletedAt: Instant? = null) = TaskEntity(

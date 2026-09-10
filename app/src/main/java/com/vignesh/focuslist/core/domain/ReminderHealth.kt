@@ -33,7 +33,26 @@ data class ReminderHealth(
      * The recent delivery worth telling the user about, or null when there is
      * none. Already filtered for recency by [reminderHealth].
      */
-    val latestConcern: ReminderDelivery? = null
+    val latestConcern: ReminderDelivery? = null,
+
+    /**
+     * Whether a reminder from this app has recently been seen to arrive on
+     * time.
+     *
+     * `docs/decisions.md` D-058, and the smaller of the two questions this type
+     * answers about delivery. [backgroundWork] asks whether this device delays
+     * alarms it was given time to delay, and demands [EvidenceOfHealth]
+     * idle-exposed deliveries before it will say no. This asks only whether
+     * anything has arrived at all, and one punctual delivery inside the recency
+     * window settles it.
+     *
+     * The distinction exists because the three permission checks can all pass
+     * on a phone that has never delivered anything, which is every fresh
+     * install. D-009 is explicit that permission is not evidence, and the screen
+     * was claiming otherwise. This is the field that lets it say which of the
+     * two it has.
+     */
+    val verifiedDelivery: Boolean = false
 ) {
 
     /** The three rows the health screen draws, in the order it draws them. */
@@ -71,7 +90,7 @@ data class ReminderHealth(
             latestConcern != null -> ReminderHealthState.Missed(latestConcern)
             firstBlocked != null -> ReminderHealthState.ActionNeeded(firstBlocked!!)
             firstWarning != null -> ReminderHealthState.WorthChecking(firstWarning!!)
-            else -> ReminderHealthState.Ready
+            else -> ReminderHealthState.Ready(verified = verifiedDelivery)
         }
 
     /**
@@ -161,8 +180,21 @@ sealed interface ReminderHealthState {
     /** Nothing has been read yet. `reminder/Health Checking`. */
     data object Checking : ReminderHealthState
 
-    /** `reminder/Health Ready`. */
-    data object Ready : ReminderHealthState
+    /**
+     * Nothing the app can see is wrong. `reminder/Health Ready`.
+     *
+     * [verified] says which of two rather different good answers this is, and
+     * `docs/decisions.md` D-058 is the argument for splitting them. False means
+     * the permissions are in place and no reminder has been observed arriving;
+     * true means one has. Both are Ready, because not-yet-measured is not worse
+     * than measured-fine, it is less known about the same good news, and D-021
+     * orders this screen by certainty rather than by how much it knows.
+     *
+     * The screen used to say "Reminders are healthy" for the first of those, on
+     * the strength of `canScheduleExactAlarms()` alone, which is the call
+     * `AGENTS.md` says is not evidence that an alarm will be exact.
+     */
+    data class Ready(val verified: Boolean) : ReminderHealthState
 
     /**
      * Something is configured in a way that will cost the user.
@@ -278,7 +310,13 @@ fun reminderHealth(
         exactAlarms = exactAlarms,
         restriction = restriction,
         backgroundWork = backgroundWorkState(restriction, recent),
-        latestConcern = latestConcern(recent)
+        latestConcern = latestConcern(recent),
+        // One punctual delivery inside the window, which is a deliberately
+        // lower bar than `backgroundWorkState` sets. D-058: this answers "has a
+        // reminder from this app ever arrived", not "does this device delay
+        // them", and requiring idle exposure would put the answer out of reach
+        // of the Test reminder button that sits on the same screen.
+        verifiedDelivery = recent.any { delivery -> !delivery.isConcerning() }
     )
 }
 
