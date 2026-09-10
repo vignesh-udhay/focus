@@ -1,9 +1,9 @@
 # Motion
 
-What moves in Focuslist, how, and why. Read `expressive-design-system.md`
+What moves in Catimo, how, and why. Read `expressive-design-system.md`
 first for the tags and the principles.
 
-Focuslist takes more from Material 3 Expressive here than anywhere else. The
+Catimo takes more from Material 3 Expressive here than anywhere else. The
 visual language is deliberately restrained, so motion is where the product gets
 to have a character.
 
@@ -58,9 +58,9 @@ switched on; the specs simply have to be used.
 
 ---
 
-# Focuslist motion tokens
+# Catimo motion tokens
 
-[FD] Composables do not choose springs. They ask for a named intent, and the
+[CD] Composables do not choose springs. They ask for a named intent, and the
 token decides. Five tokens cover the whole app.
 
 | Token | Backed by | For |
@@ -71,18 +71,18 @@ token decides. Five tokens cover the whole app.
 | `reveal` | `defaultSpatialSpec()` | something appearing or expanding |
 | `focusSession` | `slowSpatialSpec()` | entering and leaving the Focus session |
 
-[FD] `focusSession` was the fifth, and adding it was a design decision taken
+[CD] `focusSession` was the fifth, and adding it was a design decision taken
 deliberately rather than a spec invented at a call site. `PRODUCT.md` names
 focus mode transitions as motion that earns its place, and none of the other
 four fit: the screen changes what it is *for*, which is not a list moving, a
 colour changing, or a thing appearing.
 
-[FD] The slow spec rather than the default. Every other transition in the app is
+[CD] The slow spec rather than the default. Every other transition in the app is
 something the user passes through and which should get out of the way. This one
 is the user settling into a task, and taking a beat over it is the difference
 between a mode and a flicker.
 
-[FD] Why tokens rather than direct calls: an animation spec is a design
+[CD] Why tokens rather than direct calls: an animation spec is a design
 decision, and design decisions belong in one place. A composable that writes
 its own spring is deciding how the product feels, from inside a file about
 laying out a row.
@@ -95,7 +95,7 @@ licence to invent a fifth.
 
 # What moves
 
-[FD] The complete list. Anything not here does not animate.
+[CD] The complete list. Anything not here does not animate.
 
 | Interaction | Token | Emphasis |
 | --- | --- | --- |
@@ -118,7 +118,7 @@ licence to invent a fifth.
 
 ## Completion
 
-[FD] The one place the app is allowed to be lively. It gets `completion`,
+[CD] The one place the app is allowed to be lively. It gets `completion`,
 backed by the expressive `fastSpatialSpec`, and the overshoot is the point.
 
 `PRODUCT.md` describes the reward as getting the work done and forbids
@@ -131,13 +131,13 @@ starts to, completion has stopped being special and the rule has been broken.
 
 ## Colour and strikethrough
 
-[FD] `stateColor`, an effects spec, because these change no bounds. The
+[CD] `stateColor`, an effects spec, because these change no bounds. The
 existing title-colour animation is the correct idea already; it simply needs to
 come from the token.
 
 ## Lists
 
-[FD] `listChange`, so a completed task visibly travels to the completed band
+[CD] `listChange`, so a completed task visibly travels to the completed band
 rather than teleporting. This is what makes Today's ordering legible as an
 ordering rather than a reshuffle.
 
@@ -151,7 +151,7 @@ rows move and a list where they vanish are two different products.
 
 ## Today's bands and the Focus now card
 
-[FD] `reveal` had no user until now. It was declared with the other four and
+[CD] `reveal` had no user until now. It was declared with the other four and
 nothing in the table above claimed it, which meant the one token for "something
 appearing" was sitting unused while the screen that needed it was undrawn.
 Three things claim it here, and it needs no sixth token.
@@ -197,7 +197,7 @@ now no behaviour to override. See `today-screen.md`.
 
 ## The Focus session
 
-[FD] One thing moves on this screen, and it moves only when the state changes.
+[CD] One thing moves on this screen, and it moves only when the state changes.
 
 **The cat** is `cat-sit-front` at rest and `cat-nap` while running. It crosses
 between the two on `mascotSettle` when the state changes, and does not move in
@@ -206,10 +206,10 @@ driven off one value so the two halves of one gesture cannot arrive at different
 times, and both poses are scaled about their own feet so the ground line under
 the cat never moves.
 
-[FD] **What it says is whether the clock is running. It never says anything
+[CD] **What it says is whether the clock is running. It never says anything
 else.** `docs/decisions.md` D-046 is the entry.
 
-[FD] **A shape used to do this, and its removal is why the rule below has no
+[CD] **A shape used to do this, and its removal is why the rule below has no
 exception left.** It was `MaterialShapes.Cookie4Sided` at rest and
 `MaterialShapes.Cookie12Sided` while running, morphing on `focusSession`. D-014
 had already cut its job to the one sentence above, and D-046 observed that a job
@@ -217,7 +217,7 @@ that small is done better by the animal the app already draws in five poses.
 What follows is kept because the reasoning generalises, not because any of it
 still runs.
 
-[FD] It used to say more, and the reversal is worth keeping. The shape was a
+[CD] It used to say more, and the reversal is worth keeping. The shape was a
 progress indicator: a determinate walk from `Circle` to `Clover8Leaf` across the
 estimate, and a ring of six shapes walked forever when there was no estimate to
 walk against, the two cases told apart by the kind of motion the way
@@ -225,14 +225,14 @@ walk against, the two cases told apart by the kind of motion the way
 It was derived from the clock rather than animated, and deliberately unreadable
 as a gauge so that it could not invite clock-watching.
 
-[FD] D-013 then put a readable number on the screen, and from that moment the
+[CD] D-013 then put a readable number on the screen, and from that moment the
 shape and the digits were measuring the same quantity. The shape was the worse of
 the two at it: it cannot be read to a value, and it publishes nothing to a screen
 reader. A second channel that says what the first says, less well, is decoration,
 and decoration is the thing the rules below exist to keep out. So it stopped
 measuring.
 
-[FD] Three things went with it and all three were gains. The screen no longer
+[CD] Three things went with it and all three were gains. The screen no longer
 holds a session that never stops moving and therefore never goes idle, which was
 a real testing burden `focus.md` had to describe. The shape became assertable,
 being a function of one boolean rather than of spring physics over forty-five
@@ -251,7 +251,7 @@ it regardless.
 skipped entirely under reduced motion. It is decoration in the strict sense: it
 says nothing the state does not already say.
 
-[FD] **There used to be a container transform here**, growing the Start button's
+[CD] **There used to be a container transform here**, growing the Start button's
 container into the session's shape. Material names that pattern and calls it the
 one that creates the strongest relationship between two states, and it replaced a
 scale-and-fade, which was itself a correction, since M3 says Android avoids scale
@@ -269,20 +269,20 @@ of the first.
 
 ## Navigation
 
-[FD] No transition animation between destinations, for now. The graph is flat,
+[CD] No transition animation between destinations, for now. The graph is flat,
 the bar switches between siblings, and the framework default is already
 appropriate. This is a deliberate absence, not an oversight.
 
 ## Sheets and the snackbar
 
-[FD] Material defaults, unchanged. There is no Focuslist-specific reason to
+[CD] Material defaults, unchanged. There is no Catimo-specific reason to
 override them, and overriding them would be motion for its own sake.
 
 ---
 
 # Rules
 
-[FD]
+[CD]
 
 **Do not animate a property unless the animation communicates a state change.**
 Movement that carries no meaning is decoration.
@@ -299,7 +299,7 @@ nothing that plays without the user having done something.
 
 **No shape morphing, and there is no longer an exception.** The one carve-out was
 the Focus session shape, and D-046 replaced it with the cat, which crossfades
-rather than morphing. `expressive-design-system.md` says Focuslist takes almost
+rather than morphing. `expressive-design-system.md` says Catimo takes almost
 none of what Material 3 Expressive offers here, and that now holds without a
 footnote. If a morph is ever proposed, it has to clear the bar the exception
 cleared once and then lost: what does it tell the user that nothing else on

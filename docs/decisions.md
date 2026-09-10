@@ -38,7 +38,7 @@ And the study is Android-only, because Apple retired its public review feed.
 
 ---
 
-## D-001. Focuslist is free, with no purchases of any kind
+## D-001. Catimo is free, with no purchases of any kind
 
 **Decision.** No subscription, no paid tier, no in-app purchases, no ads, no
 account. Not a free tier. No purchases at all.
@@ -73,7 +73,7 @@ are removed. Today is derived from scheduled date, never hand-curated.
 works in Things on iOS because Things inherited a decade of GTD-literate Mac
 users. Android's audience is broader and does not arrive with that training.
 
-Memorigi is the closest existing app to the original Focuslist plan: a
+Memorigi is the closest existing app to the original Catimo plan: a
 beautiful, Material-designed, Android-native, Things-shaped task manager. Its
 reviewers describe getting lost in exactly this structure:
 
@@ -91,7 +91,7 @@ And on manual Today curation, which the reviewer reads as a defect:
 Three destinations cover everything the five did. Each is explainable in one
 sentence without teaching a system.
 
-**What would reverse this.** Real Focuslist users asking for a place to put
+**What would reverse this.** Real Catimo users asking for a place to put
 undated work, repeatedly and unprompted, after 1.0 has shipped. The answer
 then is probably flat Lists (D-003), not the reinstatement of Someday.
 
@@ -193,7 +193,7 @@ Layer 3 is the differentiator. Layers 1 and 2 are table stakes that nobody
 has actually met.
 
 **Policy note.** Google Play permits `USE_EXACT_ALARM` for apps whose core
-user-facing function is alarms, timers or reminders. Focuslist qualifies
+user-facing function is alarms, timers or reminders. Catimo qualifies
 because of this decision. An app where reminders were a side feature would
 not.
 
@@ -511,7 +511,7 @@ An app has no API to read a scheduled alarm's window back, so it cannot tell
 these devices apart except by watching what arrives.
 
 **And the Xiaomi showed what the health screen is for.** Its Background
-autostart screen listed six apps allowed to start in the background. Focuslist
+autostart screen listed six apps allowed to start in the background. Catimo
 was not among them, so on that phone the app could not have rebuilt its alarms
 after a restart at all. The warning the health screen shows on a Xiaomi is not
 a precaution about what MIUI might do. It was, on this handset, a correct
@@ -1209,7 +1209,7 @@ own treatment, and that treatment is the absence of a tint.
 The body of a Warning says what the app cannot know:
 
     Sleep standby can delay reminders.
-    Focuslist cannot tell whether it is on.
+    Catimo cannot tell whether it is on.
 
 **Why.** `CheckState` already made this distinction and the screen threw it
 away. `Badge()` branched on `Ok` against not-`Ok`, so a feature the app is
@@ -1465,7 +1465,7 @@ rows, the headline card — and an outlined field was the one component asking t
 be read by its border instead. Filled also gives the field a larger touch
 target's worth of visible affordance at no cost in height.
 
-The `[FD]` notes under Inputs are unaffected and all still hold: trailing
+The `[CD]` notes under Inputs are unaffected and all still hold: trailing
 controls go in the trailing slot, clear is an icon whose description names its
 field, every field carries a label, a constrained format carries a placeholder,
 errors use the Material error treatment plus supporting text, and a single-line
@@ -2168,7 +2168,7 @@ repository.
 than the last good one, because a screen drawing stale rows beneath an error
 message makes two claims at once and the older one cannot be checked.
 
-**The copy must never mention a connection.** Focuslist has no account, no sync
+**The copy must never mention a connection.** Catimo has no account, no sync
 and no backend, all three permanently out of scope in `PRODUCT.md`, so every
 read is local. Earlier draft copy on Inbox and Upcoming read "Check your
 connection and try again", which sends the user to fix something that was never
@@ -2301,7 +2301,7 @@ assumed.
 
 `expressive-components.md` lists `FloatingToolbar` under "Do not introduce,
 unless a later product decision explicitly requires one", noting the exclusion
-was "because Focuslist has no use for them, not because they are unsound".
+was "because Catimo has no use for them, not because they are unsound".
 This is that decision. The list also still forbids `ButtonGroup`, which D-026
 introduced through the same escape hatch and nobody removed from the list; that
 line needs correcting either way.
@@ -2368,7 +2368,7 @@ scrolls.
 
 ## D-038. The full-screen alarm is deferred past 1.0, and the board frame stops looking built
 
-**Decision.** Focuslist ships 1.0 without `setFullScreenIntent`. The
+**Decision.** Catimo ships 1.0 without `setFullScreenIntent`. The
 `notify/Full screen alarm` frame is marked as a design held rather than as
 behaviour, and the item moves to the After 1.0 list in `ROADMAP.md`, ordered by
 review evidence like everything else there.
@@ -2409,7 +2409,7 @@ hold the launch.
 
 **Some of the demand is already met, which is easy to miss.** The reviews asking
 for an alarm are mostly people whose notifications were silent, late or absent.
-Focuslist answers that with `IMPORTANCE_HIGH`, `CATEGORY_REMINDER`, exact alarms
+Catimo answers that with `IMPORTANCE_HIGH`, `CATEGORY_REMINDER`, exact alarms
 that survive a restart and a clock change, the OEM layer, and the trust layer no
 competitor ships. The full-screen intent is one expression of alarm-like, not
 the whole of the ask, and shipping it is not the same as answering the
@@ -2418,7 +2418,7 @@ complaint.
 **The door is demonstrably open, and this is worth recording while it is fresh.**
 TickTick 8.1.3.6, installed from `com.android.vending` on the emulator, declares
 `USE_FULL_SCREEN_INTENT` alongside `SYSTEM_ALERT_WINDOW` and `WAKE_LOCK`, and
-holds it `granted=true` at `targetSdk=37`, the same target Focuslist builds
+holds it `granted=true` at `targetSdk=37`, the same target Catimo builds
 against. So a task app rather than an alarm clock does hold this permission
 through Play today. What the dump cannot say is how: the package app op reads
 `default` while the UID mode reads `allow`, and the op changed about four days
@@ -2487,7 +2487,7 @@ user would read as a score. If it ever counts something the shade does not
 currently hold, it has become a statistic and this entry no longer covers it.
 
 **The board draws the app name and should not.** `notify/Grouped` reads
-"Focuslist · 3 reminders". Android already renders the app name in the
+"Catimo · 3 reminders". Android already renders the app name in the
 notification header, so posting that string produces the name twice. The summary
 text is the count alone. This is the same class of finding as the duration
 strings D-018 normalised: the board drew what it saw on a phone, including the
@@ -2598,7 +2598,7 @@ strings the health screen already owns, and a chevron. No body copy, no button,
 no list of checks. Its job is to get the user to the screen that can fix the
 problem, not to become that screen on top of their day. Reusing the health
 screen's own strings is what stops the same fact being phrased two ways in two
-places, which is how "Focuslist cannot show notifications" and some second
+places, which is how "Catimo cannot show notifications" and some second
 wording of it end up disagreeing.
 
 **What would reverse this.** A user reporting the banner as noise would mean one
@@ -2683,7 +2683,7 @@ a scrolling `ListView` fed by an adapter, so the platform fills the height and
 the remainder scrolls. It never measures, which makes blank space impossible and
 `+N more` unnecessary. That is a sound design and it is not this one: D-031
 allows the widget one count, "disclosing rows that did not fit", and a scrolling
-home-screen surface cuts against the restraint that entry is built on. Focuslist
+home-screen surface cuts against the restraint that entry is built on. Catimo
 keeps the measured design and fixes the measurement.
 
 **What would reverse this.** A launcher reporting a size the widget does not get,
@@ -2738,7 +2738,7 @@ rather than the multi-minute delivery window reported against the old path.
 
 **The cost is visible and is why the branch is narrow.** Android exposes the
 earliest task reminder as the device's next alarm, including in system surfaces
-that show that value. Tapping that affordance opens Focuslist rather than one
+that show that value. Tapping that affordance opens Catimo rather than one
 task, because several reminders can exist and the system supplies one shared
 show intent. A false positive therefore changes the phone outside the app, so
 OPPO and realme do not inherit the branch merely because they share ColorOS
@@ -2825,7 +2825,7 @@ a footer under a fixed list, and this entry is the one to supersede.
 ## D-044. A missed-reminder notice can be acknowledged on Today
 
 **Decision.** The missed-reminder banner on Today has a dismiss action. Dismissal
-acknowledges one delivery incident: Focuslist stores that delivery's ID and hides
+acknowledges one delivery incident: Catimo stores that delivery's ID and hides
 the matching banner on Today across process restarts. It does not delete or alter
 the delivery record, so the incident remains visible in Reminder Health until
 the existing seven-day concern window expires. A later missed delivery has a
@@ -3657,3 +3657,66 @@ starting the clock, which is the capability named above. The fix then is an entr
 point that lands there and a reason written down for it, and the state itself is
 a `when` branch and an enum value: the expensive part of this entry is the
 argument, not the code.
+
+## D-055. The app is called Catimo, and only the parts a user reads were renamed
+
+**Decision.** The product is Catimo. Every string a user can read says so: the
+launcher label, the notification header, the widget picker, the backup copy, the
+reminder permission body, the reminder health screen and the manufacturer
+restriction lines. The exported file the system picker offers is
+`Catimo-backup-<date>.json`.
+
+Three things deliberately keep the old name, and each would cost something real
+to change:
+
+- **The package and the `applicationId`, `com.vignesh.focuslist`.** Android
+  identifies an app by this, not by its label. Changing it does not rename the
+  app, it publishes a second one: no upgrade path, and anyone holding the first
+  keeps it, along with their tasks. A rename in the UI is free; this is a
+  migration, and there is nothing to gain from it.
+- **The backup format marker, `focuslist-backup`.** It is written inside every
+  backup file that already exists, and `FocuslistBackupCodec` refuses a file
+  whose marker it does not recognise. Renaming it would make every backup a user
+  already holds unopenable, which is the failure Phase 5's exit criterion is
+  written to catch.
+- **Class and file names**, `FocuslistTheme`, `FocuslistWidget`,
+  `FocuslistApplication`, `focuslist.db`, `Theme.Focuslist`. These are internal,
+  no user sees them, and renaming them would be a very large diff across every
+  file in the project for no behaviour. Worth doing one day for tidiness, worth
+  nothing today.
+
+**The compatibility claim was tested, not reasoned.** A backup written by the app
+before the rename, `Focuslist-backup-2026-09-09.json`, was restored onto a wiped
+install afterwards and opened cleanly, swapping the task list to its own older
+snapshot. The same session verified the round trip in the other direction:
+export, `pm clear`, restore, export again, and the two files matched on format,
+version, settings and all fourteen task ids with no row differing on any field.
+
+**The documentation was renamed with the app, including the history.** Every
+`.md` in the project now says Catimo in prose. The entries above this one were
+written when the product was called Focuslist, and renaming the product inside
+them changes no argument any of them makes: "Focuslist has no account, no sync
+and no backend" and the same sentence with Catimo in it are the same claim about
+the same software. What was left alone is anything naming a thing that did not
+move, which in the documents means code identifiers in backticks and the Figma
+board frames, `Focuslist — Components` and its siblings, which are still called
+that in Figma.
+
+So a reader finding "Focuslist" in this repository is looking at one of four
+things: a package path, the backup marker, a code identifier, or a Figma board.
+None of them is the product's name.
+
+The design documents tag every rule as `[M3]`, `[FD]` or `[IMPL]`, and the middle
+one stood for the old name whether or not anything spelled it out. It is `[CD]`
+now, 227 of them, and the legend says what all three mean so the question does
+not come back.
+
+**What this does not decide.** Whether the Figma boards get renamed, whether the
+package is ever migrated, and what the Play listing says. The listing copy is
+Phase 5 work and is drafted from `PRODUCT.md`, which is why the documents were
+renamed before it rather than after.
+
+**What would reverse this.** Nothing about the name itself. The one thing worth
+watching is the split: if the package name showing through somewhere a user can
+see it turns out to be confusing, that is a bug in the surface that leaked it,
+not an argument for the migration.

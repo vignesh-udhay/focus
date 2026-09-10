@@ -104,7 +104,7 @@ that the app relied on Android bundling at four or more on its own, so the
 board's frame at three drew something that could not happen.
 
 **The summary says the count and nothing else.** `notify/Grouped` draws
-"Focuslist · 3 reminders", and Android already renders the app name in the
+"Catimo · 3 reminders", and Android already renders the app name in the
 notification header, so the string is the count alone. The count is allowed here
 under D-031's carve-out, disclosing what a collapsed stack hides, and it counts
 notifications on screen rather than reminders fired or tasks outstanding.

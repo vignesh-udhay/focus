@@ -619,8 +619,8 @@ bugs.** D-039. Every reminder carries `setGroup` and a summary counts them, whic
 closes the other frame the board drew and the app had never built. The count is
 allowed under D-031's carve-out, disclosing what a collapsed stack hides, and it
 counts notifications on screen rather than reminders fired or tasks outstanding.
-The board's "Focuslist · 3 reminders" lost its app name, because Android draws
-that in the header and the string would have said Focuslist twice.
+The board's "Catimo · 3 reminders" lost its app name, because Android draws
+that in the header and the string would have said Catimo twice.
 
 **The first bug would have shipped and would have been severe.** The summary was
 cancelled once fewer than two reminders remained, which is the obvious rule and
@@ -712,7 +712,7 @@ costing a feature.
 **Checked rather than recalled, which changed the shape of the entry.** TickTick
 8.1.3.6 on the emulator, installed by `com.android.vending`, declares
 `USE_FULL_SCREEN_INTENT` and holds it `granted=true` at `targetSdk=37`, the same
-target Focuslist builds against. So the permission is obtainable by a task app
+target Catimo builds against. So the permission is obtainable by a task app
 rather than reserved to alarm clocks, and D-038 defers on sequencing alone
 rather than on a policy wall that is not there. The dump cannot say whether Play
 pre-granted it or the user did; that is recorded as a lead.
@@ -1003,7 +1003,7 @@ inset without reducing the 48dp target. The pure widget model covers state selec
 capacity, completion evidence, urgency and large font scaling with JVM tests;
 manifest tests cover the provider and closed-app refresh wiring.
 
-**The three lists have their mascots, and Focuslist has a cat.** The empty
+**The three lists have their mascots, and Catimo has a cat.** The empty
 states had been two lines of text on an otherwise blank screen. Each now draws
 the same cat in a different posture, and the posture is what says why the screen
 is empty: curled asleep for a day with nothing on it, sitting upright for an
@@ -1142,7 +1142,7 @@ overflow, the appearance choices persist and drive `FocuslistTheme`, and Theme
 commits from its three-radio dialog without an extra confirmation step.
 
 Backup & restore uses the Storage Access Framework, so the user chooses the
-file and Focuslist never invents a cloud destination. Its versioned JSON carries
+file and Catimo never invents a cloud destination. Its versioned JSON carries
 every stored task field and both appearance settings. A restore validates the
 whole file before one row changes, then replaces the task set in a Room
 transaction. Reminder delivery history is cleared because it measures the old
@@ -1355,12 +1355,12 @@ The rule now is that **the app colours what it knows.** `Blocked` keeps the
 error container because the app was refused and can say so; `Warning` takes the
 ordinary row surface and a question mark because it is a guess. The headline
 follows: a device whose only problem is inferred reads "Worth checking" on a
-neutral card, and the body says what the app cannot know, "Focuslist cannot tell
+neutral card, and the body says what the app cannot know, "Catimo cannot tell
 whether it is on."
 
 **Tertiary was tried first and rejected on the render**, which surfaced a
 palette fact worth keeping: `tertiaryContainer` is `#FFD7E3` and `errorContainer`
-is `#FFD8D6`, one step apart in green. The Focuslist palette has three usable
+is `#FFD8D6`, one step apart in green. The Catimo palette has three usable
 container families, lavender, pink and neutral, because primary/secondary and
 tertiary/error each collapse into one. That constrains any future state colour,
 not just this screen's.
@@ -1524,7 +1524,7 @@ neutral, and the second cue is a question mark rather than a colour.
 
 Verified on the emulator with the manufacturer temporarily forced to OnePlus,
 since a Pixel infers no restriction. The Warning-only screen reads calm: no red
-anywhere, "Worth checking", and "Sleep standby can delay reminders. Focuslist
+anywhere, "Worth checking", and "Sleep standby can delay reminders. Catimo
 cannot tell whether it is on." The mixed state renders both at once, a red
 Notifications row and a neutral Sleep standby row on the same screen, which is
 the rule that certainty belongs to the check rather than to the headline. The
@@ -1723,7 +1723,7 @@ Today now matches them, carrying its own calendar icon the way they carry
 theirs.
 
 The copy bug is the more useful find. Inbox and Upcoming both read **"Check your
-connection and try again."** Focuslist has no accounts, no cloud sync and no
+connection and try again."** Catimo has no accounts, no cloud sync and no
 backend, all three permanently out of scope in `PRODUCT.md`, so every read is
 local and no connection is ever involved. The line sent users to fix something
 that was not the problem and implied a server the app does not have. All four
@@ -1865,7 +1865,7 @@ and a task row's trailing is a duration string and an icon button together.
 and are fixed. `focus.md`'s Completion section still described the session
 continuing onto the next task, which needs the queue D-004 removed and which its
 own "Which task" section already contradicted. And `expressive-design-system.md`
-still said Focuslist used seven Material shapes, recording a worry about that
+still said Catimo used seven Material shapes, recording a worry about that
 accumulation; it uses two now, and the worry is answered.
 
 ---
@@ -1875,7 +1875,7 @@ than the app.** No Kotlin was touched, none of it is reflected in code yet, and
 the work is in Figma on the `Focuslist — M3 Expressive` page.
 
 - **Colour.** Every M3 library component on the board was still bound to the
-  library's own `Schemes/*` variables, which carry no Focuslist modes, so the
+  library's own `Schemes/*` variables, which carry no Catimo modes, so the
   Start focus button and the FAB stayed baseline purple in the wallpaper
   frames. 929 bindings moved onto the `Focuslist Brand` collection. The Light
   value of `On Primary Container` was corrected from `#001356`, a blue that did
@@ -2066,7 +2066,7 @@ vocabulary, and the two frames that describe work not done.
 **Two frames describe work that does not exist, and the board makes it look
 done.** There is no `setFullScreenIntent` anywhere, though D-005 commits to
 "full-screen intents where warranted"; and nothing calls `setGroup`, so the
-"Focuslist · 3 reminders" summary never appears, Android bundling only at four
+"Catimo · 3 reminders" summary never appears, Android bundling only at four
 or more. Both are now recorded as unbuilt rather than left to be discovered.
 
 **What to settle before the full-screen alarm is built:** what warrants one.
@@ -2089,7 +2089,7 @@ The demotion is a minority behaviour, not how Android works.
 The decision stands and is stronger for it. All three reported the permission
 granted and all three said "Exact alarms: Allowed", while the behaviour
 differed by three orders of magnitude, so only measuring delivery tells them
-apart. The Xiaomi also showed the health screen earning its place: Focuslist
+apart. The Xiaomi also showed the health screen earning its place: Catimo
 was absent from MIUI's Background autostart list, so on that phone it could
 not have rebuilt its alarms after a restart at all.
 
@@ -2290,7 +2290,7 @@ is already open.
 
 Give the app the feature it is named for and does not have.
 
-Focuslist currently schedules exactly one kind of alarm, for a focus session
+Catimo currently schedules exactly one kind of alarm, for a focus session
 overrunning its estimate. There are no task reminders at all, the manifest
 declares only `POST_NOTIFICATIONS`, and there is no boot receiver, so a device
 restart would silently lose every alarm ever set.

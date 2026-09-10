@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The Task Row is the primary interaction surface in Focuslist.
+The Task Row is the primary interaction surface in Catimo.
 
 Its visual and motion specification now lives in `expressive-components.md`,
 under "Task row", with the tokens it spends in `expressive-design-system.md`.

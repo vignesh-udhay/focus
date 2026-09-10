@@ -1,6 +1,6 @@
-# Focuslist design system
+# Catimo design system
 
-The contract for how Focuslist looks. If you are building or changing a screen,
+The contract for how Catimo looks. If you are building or changing a screen,
 this file and its two companions decide the colours, type, shape, spacing and
 motion you use. Do not invent values; if something you need is not here, say so
 rather than choosing.
@@ -12,21 +12,21 @@ rather than choosing.
 Every rule is tagged:
 
     [M3]    a Material 3 or Material 3 Expressive capability
-    [FD]    a Focuslist decision, ours to make and ours to change
+    [CD]    a Catimo decision, ours to make and ours to change
     [IMPL]  how to build it in this codebase
 
 Material guidance and our decisions are tagged apart on purpose. Do not quote a
-[FD] rule as though Material required it.
+[CD] rule as though Material required it.
 
 ---
 
 # Principles
 
-[FD] All eight.
+[CD] All eight.
 
 **Expressiveness comes from motion and hierarchy, not decoration.** Material 3
 Expressive offers shape morphing, expressive shapes and playful componentry.
-Focuslist takes almost none of it. What it takes is the motion physics and the
+Catimo takes almost none of it. What it takes is the motion physics and the
 emphasized type scale.
 
 **Calm, focused, warm, deliberate.** In that order when they conflict.
@@ -60,7 +60,7 @@ too.
 
 ## Roles
 
-[M3] Material 3 supplies the role names. [FD] The assignments are ours.
+[M3] Material 3 supplies the role names. [CD] The assignments are ours.
 
 | Use | Role |
 | --- | --- |
@@ -76,7 +76,7 @@ too.
 | Navigation bar and rail container | `surfaceContainerHigh` |
 | Top app bar | `TopAppBar` default: `surface` at rest, `surfaceContainer` lifted |
 
-[FD] The page is the ground and the collection sits on it. That is the pairing
+[CD] The page is the ground and the collection sits on it. That is the pairing
 [M3] the colour-roles guidance describes in as many words: use `surface` for a
 background area, and container roles for the components on it.
 
@@ -104,7 +104,7 @@ emulator, in CIELAB. dE is the full colour difference; dL is lightness alone.
 
 Monotonic in both themes, and every pairing separates.
 
-[FD] Read dE, not dL, before calling a pairing too close. The nav bar and the
+[CD] Read dE, not dL, before calling a pairing too close. The nav bar and the
 selected pill are 1.8 apart in lightness in light, which looks alarming and is
 not: the pill is `secondaryContainer` at chroma 12.1 against the bar's 5.2, so
 it separates by colour rather than tone and comes out at dE 7.3, the most
@@ -112,7 +112,7 @@ distinct pairing in the chrome. This is the same lesson recorded in the
 navigation bar section of `expressive-components.md`, reached from the other
 direction.
 
-[FD] Do not add a third surface level to a list screen, and do not put a
+[CD] Do not add a third surface level to a list screen, and do not put a
 container inside the collection.
 
 ## The navigation bar is not a free variable
@@ -122,17 +122,17 @@ task collection, so taking both defaults renders them identically: measured 94.0
 against 94.0 in light and 8.8 against 8.8 in dark, with a row scrolled to the
 bottom edge meeting the bar and nothing between them.
 
-[FD] The **bar** moves, to `surfaceContainerHigh`, not the collection. Moving
+[CD] The **bar** moves, to `surfaceContainerHigh`, not the collection. Moving
 the collection would eat into a page-to-collection separation that is already
 only 3.9.
 
-[FD] The bar's own active indicator is the constraint on how far it can go. The
+[CD] The bar's own active indicator is the constraint on how far it can go. The
 indicator is `secondaryContainer`, and every step the bar takes toward it is
 separation lost. An earlier attempt put the bar on `surfaceContainerHighest`
 and landed 0.2 from its own pill, separated by nothing but chroma; that is the
 failure mode to check for. If the bar ever moves again, measure that pair first.
 
-[FD] The lesson generalises: when a surface role moves, check every component
+[CD] The lesson generalises: when a surface role moves, check every component
 whose default was chosen relative to it, including that component's own inner
 parts. Measure in CIELAB, use dE rather than L\* alone, and check the light
 theme specifically, because the light container roles are only two tones apart
@@ -146,10 +146,10 @@ so this follows for free.
 
 ## Semantic colour
 
-[FD] `error` means one thing: an action that destroys something. There is no
+[CD] `error` means one thing: an action that destroys something. There is no
 success colour and no warning colour.
 
-[FD] An overdue date takes `tertiary`, not `error`. It used to take `error`, and
+[CD] An overdue date takes `tertiary`, not `error`. It used to take `error`, and
 the change is deliberate.
 
 [M3] Material scopes `error` to error *states*, its own example being an
@@ -159,7 +159,7 @@ balance primary and secondary or bring heightened attention to an element",
 explicitly usable as text against a surface, and applied at the designer's
 discretion.
 
-[FD] An overdue task is not an error state. Nothing failed; a day passed. Three
+[CD] An overdue task is not an error state. Nothing failed; a day passed. Three
 things follow from moving it:
 
 - `error` was the app's only fixed hue, so it was the one thing that could not
@@ -169,13 +169,13 @@ things follow from moving it:
   telling the user off for a day passing.
 - `error` now carries a single meaning, which is what makes it mean anything.
 
-[FD] What it costs, measured on device across five system palettes: separation
+[CD] What it costs, measured on device across five system palettes: separation
 between the overdue date and the duration text beside it falls from about dE 65
 to about dE 24. Still clearly distinct, and about a third the shout. That trade
 was made knowingly. Contrast against the row is unaffected, 5.5:1 against
 error's 5.6:1, so both pass AA for text at this size.
 
-[FD] The safety net is what makes the trade affordable: overdue is readable
+[CD] The safety net is what makes the trade affordable: overdue is readable
 without colour at all, because an overdue task shows a date where a current one
 reads "Today". If that ever stops being true, this decision has to be revisited
 before the colour is weakened further.
@@ -195,7 +195,7 @@ most prominent thing in either theme. A container role does the opposite: pale
 on pale, dark on dark, so it never dominates. Neither is wrong; they are for
 different jobs.
 
-[FD] `tertiary` on an overdue date is the app's main base-role use, and it earns
+[CD] `tertiary` on an overdue date is the app's main base-role use, and it earns
 the family for the same reason: strong in light, pale in dark, prominent in
 either. `error` keeps the family too, on the one menu item that destroys
 something.
@@ -204,19 +204,19 @@ something.
 inversion and has been returned to the Material default. Material documents no
 base-role floating action button; see `expressive-components.md`.
 
-[FD] A *marker* takes a container role. The selected navigation item is a
+[CD] A *marker* takes a container role. The selected navigation item is a
 marker, not an action: it says where you are and should not compete with the
 content, so it keeps Material's container treatment. See the navigation bar
 section of `expressive-components.md`, and do not "fix" it to match the button.
 
 [IMPL] This is worth stating because Material's own component defaults do not
 always pick the family a given product wants. `FloatingActionButton` defaults
-to `primaryContainer`, and Focuslist keeps that default. See
+to `primaryContainer`, and Catimo keeps that default. See
 `expressive-components.md`.
 
 ## Never
 
-[FD] Never write a literal colour in a screen or component. Never read a colour
+[CD] Never write a literal colour in a screen or component. Never read a colour
 from anywhere but `MaterialTheme.colorScheme`. Never let colour be the only
 signal for completed, overdue, focused or selected.
 
@@ -225,15 +225,15 @@ signal for completed, overdue, focused or selected.
 [M3] Dynamic colour derives the scheme from the user's wallpaper on Android 12
 and above.
 
-[FD] It stays on by default. Focuslist is an Android-native product and a
+[CD] It stays on by default. Catimo is an Android-native product and a
 system-coloured task list feels like part of the device.
 
-[FD] Below API 31, and wherever dynamic colour is switched off, the app falls
-back to an intentional Focuslist scheme rather than the Material baseline. Both
+[CD] Below API 31, and wherever dynamic colour is switched off, the app falls
+back to an intentional Catimo scheme rather than the Material baseline. Both
 the light and the dark fallback come from one seed so the two themes are
 recognisably the same product.
 
-[FD] The seed is `#4F5DFF`. Its own chroma is unusually high, near 94, and the
+[CD] The seed is `#4F5DFF`. Its own chroma is unusually high, near 94, and the
 primary palette is generated at 48 instead. Carried through at full chroma the
 dark scheme's primary container came out a vivid blue that read as loud rather
 than calm, which is the opposite of the first principle. The hue is the brand;
@@ -245,7 +245,7 @@ known conflict, recorded at the end of this document.
 
 ## Light and dark
 
-[FD] What stays identical across themes: every role assignment above, the
+[CD] What stays identical across themes: every role assignment above, the
 surface relationship, strikethrough on completed tasks, `tertiary` on overdue
 dates. A screenshot of either theme should be describable by the same sentence.
 
@@ -261,7 +261,7 @@ ones and fifteen `*Emphasized` counterparts, which render the same size role at
 a heavier optical weight. `titleMediumEmphasized`, `headlineMediumEmphasized`
 and the rest are available through `MaterialTheme.typography`.
 
-[FD] Emphasized type is used in three places and nowhere else:
+[CD] Emphasized type is used in three places and nowhere else:
 
 | Where | Role |
 | --- | --- |
@@ -269,7 +269,7 @@ and the rest are available through `MaterialTheme.typography`.
 | Screen titles in the app bar | `titleLargeEmphasized` |
 | Empty-state headlines | `titleMediumEmphasized` |
 
-[FD] Everything else uses the standard scale:
+[CD] Everything else uses the standard scale:
 
 | Where | Role |
 | --- | --- |
@@ -301,11 +301,11 @@ draws `displaySmall` any more. The override is harmless and can go whenever
 
 ## Wrapping and scale
 
-[FD] Task titles wrap to at most two lines and then ellipsize. Metadata wraps
+[CD] Task titles wrap to at most two lines and then ellipsize. Metadata wraps
 freely onto a second line. A long title must never be allowed to push a list
 around.
 
-[FD] Everything must remain usable at 200% font scale. Content that cannot fit
+[CD] Everything must remain usable at 200% font scale. Content that cannot fit
 scrolls; it never truncates a value the user needs, and it never puts a
 confirming action out of reach.
 
@@ -321,32 +321,32 @@ expressive additions.
 [M3] `MaterialShapes` provides thirty-five morphable polygons (Burst, Flower,
 Sunny, Puffy and so on) for shape morphing.
 
-[FD] Focuslist uses **none**. It used two until D-046, both on one screen: the
+[CD] Catimo uses **none**. It used two until D-046, both on one screen: the
 Focus session's `Cookie4Sided` at rest and `Cookie12Sided` while running. That
 screen draws the app's own cat now, so no polygon is left anywhere in the app.
 No expressive shape as an interaction pattern, no shape change for novelty. A
 task list still has nothing to gain from a button that becomes a flower.
 
-[FD] It used to be seven, and the count coming back down belongs here, because
+[CD] It used to be seven, and the count coming back down belongs here, because
 this is where the worry was written. An earlier version of this document said
-Focuslist used none of them, which was true when it was written. Then Focus grew
+Catimo used none of them, which was true when it was written. Then Focus grew
 a ring of six shapes for a session with no estimate and a pair for one with an
 estimate, and this passage recorded the drift honestly: Focus is meant to be the
 calmest screen in the app and it had come to hold the most expressive thing in
 it. Each step was individually defensible. The accumulation was the cost, and
 the next proposal to add a shape was told it would have to answer for it.
 
-[FD] D-014 answered it from the other direction instead. Once D-013 put the
+[CD] D-014 answered it from the other direction instead. Once D-013 put the
 digits on screen, the shape stopped carrying progress, and a shape whose only
 job is to say whether the clock is running needs exactly two forms. The screen
 meant to be the calmest in the app is no longer the one holding the most
 expressive thing in it.
 
-[FD] The line that still holds is that both shapes serve a single question, and
+[CD] The line that still holds is that both shapes serve a single question, and
 that the question is narrower than it was: is this session running? Neither
 decorates anything, and `focus.md` records the reasoning.
 
-[FD] The Focuslist scale is softer than Material's at the small end and stops
+[CD] The Catimo scale is softer than Material's at the small end and stops
 where Material's does at the top:
 
     extraSmall           8dp
@@ -363,7 +363,7 @@ while `largeIncreased` is left at the Material default of 20dp, so a component
 reaching for the larger token gets a smaller radius. Recorded as a conflict
 below.
 
-[FD] Shape does not communicate hierarchy in Focuslist. It communicates
+[CD] Shape does not communicate hierarchy in Catimo. It communicates
 component identity: a row is a row, a sheet is a sheet. Two components at
 different levels of importance do not get different corner radii to say so.
 
@@ -371,7 +371,7 @@ different levels of importance do not get different corner radii to say so.
 
 # Spacing and layout
 
-[FD] One 4dp-based scale, already established and unchanged:
+[CD] One 4dp-based scale, already established and unchanged:
 
     xxs   4dp
     xs    8dp
@@ -381,7 +381,7 @@ different levels of importance do not get different corner radii to say so.
     xl   32dp
     xxl  48dp
 
-[FD] Applications:
+[CD] Applications:
 
 | Where | Value |
 | --- | --- |
@@ -395,7 +395,7 @@ different levels of importance do not get different corner radii to say so.
 | Section label above its group | `md` |
 | Section label below the group before it | `lg` |
 
-[FD] The screen margin stays at `md`, and 24dp has been tried. The design draws
+[CD] The screen margin stays at `md`, and 24dp has been tried. The design draws
 its rows at 364 in a 412 frame, which is `lg` a side, and it was adopted and
 reverted in the same session. Taken together with the row's new trailing button,
 `lg` cost enough width to push two of five seeded titles onto a second line and
@@ -410,7 +410,7 @@ from `FocuslistSpacing`, from `MaterialTheme.shapes`, or from a Material
 default such as `SegmentedGap`. The codebase currently has zero violations of
 this rule outside preview fixtures; keep it that way.
 
-[FD] Dimensions that are not spacing belong in a token too: minimum touch
+[CD] Dimensions that are not spacing belong in a token too: minimum touch
 target 48dp, floating-action-button clearance, and the eventual maximum content
 width. Two screens currently compute the FAB clearance separately.
 
@@ -421,7 +421,7 @@ width. Two screens currently compute the FAB clearance separately.
 `PRODUCT.md` requires adaptive layouts and says explicitly not to stretch the
 phone layout across a tablet. Both halves are built.
 
-[FD] What runs where:
+[CD] What runs where:
 
 | Width | Navigation | Content |
 | --- | --- | --- |
@@ -429,10 +429,10 @@ phone layout across a tablet. Both halves are built.
 | Medium, 600 to 839dp | Navigation rail | Constrained and centred |
 | Expanded, 840dp and over | Navigation rail | Constrained and centred |
 
-[FD] 600dp is the boundary, and it is ours. The Material navigation-rail
+[CD] 600dp is the boundary, and it is ours. The Material navigation-rail
 documentation describes the component fully and gives no breakpoint at all.
 
-[FD] Content is constrained to a maximum width and centred rather than
+[CD] Content is constrained to a maximum width and centred rather than
 stretched. A task list eight hundred pixels wide is a worse task list. Sheets
 remain bottom sheets at every width. Focus centres its task within the content
 column, not the window. No list-detail pane: Task Details is a sheet, and
@@ -455,12 +455,12 @@ width and nothing else, and `LocalWindowInfo.containerSize` already carries it.
 Reading the window rather than the display also measures a split-screen or
 freeform window as the app actually sees it.
 
-[FD] A list keeps taking touches across the full window. Only what it draws is
+[CD] A list keeps taking touches across the full window. Only what it draws is
 constrained, so a thumb at the edge of a tablet still scrolls.
 
 ## The navigation rail
 
-[FD] One navigation model, two presentations. The rail carries the same four
+[CD] One navigation model, two presentations. The rail carries the same four
 destinations in the same order as the bar, and More stays a menu inside it.
 Nothing becomes reachable or unreachable by resizing the window; only where the
 control sits changes. That is the whole rule, and it is what makes resizing
@@ -472,7 +472,7 @@ safe.
 single item composable; sharing the data and the menu is as close as the
 framework allows, and it is enough to stop them drifting apart.
 
-[FD] The rail container is `surfaceContainerHigh`, matching the bar rather than
+[CD] The rail container is `surfaceContainerHigh`, matching the bar rather than
 the rail's Material default of `surface`. The default sits about two tones from
 the task collection in both themes, and at the breakpoint the content column
 leaves no gutter, so rows would meet the rail at almost the same lightness.
@@ -480,7 +480,7 @@ Matching the bar also keeps the active indicator legible, for the same reason
 the bar does: the indicator is `secondaryContainer` at tone 90, and the
 container has to clear it.
 
-[FD] No header. Material offers the rail's header slot for a floating action
+[CD] No header. Material offers the rail's header slot for a floating action
 button, but this app's button is extended and carries a text label, and it
 belongs to Today and Inbox rather than to the chrome. It stays on the content
 column, where it lines up with the list it adds to.
@@ -499,7 +499,7 @@ the window. Everything that lines up on the content column keeps agreeing.
 
 # Accessibility
 
-[FD] Rules, all of which the design must satisfy:
+[CD] Rules, all of which the design must satisfy:
 
 - App bar titles carry heading semantics.
 - The Focus task title carries heading semantics.
@@ -520,7 +520,7 @@ blocked them is gone: espresso-core 3.5.1 reflected for the hidden static
 `Espresso.onIdle` threw before any assertion could run. Espresso 3.7.0 reaches
 the singleton the way the platform now exposes it.
 
-[FD] What that does and does not establish. The tests assert the semantics tree:
+[CD] What that does and does not establish. The tests assert the semantics tree:
 that a title is a heading, that a control publishes its selected state, that the
 snackbar sits in a polite live region, that an action carries its label. That is
 what an accessibility service reads, so it is the contract worth pinning.
@@ -529,7 +529,7 @@ It is not the same as listening to TalkBack. Announcement order, verbosity, and
 how a screen reader words what it finds are still unverified, and no test here
 can settle them. **Say "semantics are verified", not "TalkBack is verified".**
 
-[FD] Two polite live regions are nested once a snackbar is showing: ours on the
+[CD] Two polite live regions are nested once a snackbar is showing: ours on the
 shared host, and one Material's `Snackbar` publishes inside it. Recorded so it
 is not mistaken for a bug and quietly removed.
 
@@ -554,7 +554,7 @@ encodes Material's internals into our suite.
 | Motion tokens | the four semantic animation specs | to be built, see `expressive-motion.md` |
 | Dimension tokens | touch target, row height, FAB clearance, content width | to be built |
 
-[FD] Values that must never be scattered through composables: colours, corner
+[CD] Values that must never be scattered through composables: colours, corner
 radii, spacing, animation specs, and any dimension used by more than one
 screen.
 

@@ -75,12 +75,12 @@ Prefer simple, understandable code.
 
 Material 3 is the foundation of the visual system.
 
-Use the existing Focuslist theme and design tokens.
+Use the existing Catimo theme and design tokens.
 
 Before creating a new component:
 
 1. Check whether an existing Material 3 component can be used.
-2. Check whether an existing Focuslist component can be reused.
+2. Check whether an existing Catimo component can be reused.
 3. Only create a new component when there is a real design or behavioral need.
 
 Do not hard-code colors throughout the UI.
@@ -95,11 +95,11 @@ Use Material color roles such as:
 - onSurfaceVariant
 - outline
 
-Use the Focuslist typography definitions.
+Use the Catimo typography definitions.
 
-Use the Focuslist spacing definitions.
+Use the Catimo spacing definitions.
 
-Use the Focuslist shape definitions.
+Use the Catimo shape definitions.
 
 Do not introduce arbitrary spacing values when an existing spacing token
 is appropriate.

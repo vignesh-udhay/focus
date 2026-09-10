@@ -507,7 +507,7 @@ every filled surface in the widget is drawn and has not been made.
 # Implementation status
 
 **Built with Jetpack Glance.** One provider renders the six states,
-uses dynamic colour on API 31 and later with Focuslist light/dark fallbacks,
+uses dynamic colour on API 31 and later with Catimo light/dark fallbacks,
 keeps add at both sizes, and keeps a just-completed row in place until the next
 data or day change. Its checked row is the undo target the consultation chose.
 

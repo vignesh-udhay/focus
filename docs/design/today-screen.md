@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Today is the default view and the first real screen in Focuslist.
+Today is the default view and the first real screen in Catimo.
 
 It answers one question:
 
@@ -207,7 +207,7 @@ Use `FocuslistSpacing` for spacing the components do not own.
 - horizontal list padding: `FocuslistSpacing.md`
 - vertical padding at the top and bottom of the collection:
   `FocuslistSpacing.xs`
-- between segments: `ListItemDefaults.SegmentedGap`, never a Focuslist token
+- between segments: `ListItemDefaults.SegmentedGap`, never a Catimo token
 
 The bottom content padding must clear the floating action button, or the last
 task sits underneath it and cannot be tapped. Combine the Scaffold's bottom
