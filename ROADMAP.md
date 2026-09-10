@@ -355,6 +355,83 @@ internal now, because reaching the working state through `BackupScreen` means a
 real `ContentResolver`, a real picker and a real file, and none of them are part
 of the contract.
 
+**Start focus is the screen's floating action button now, D-067, and it says
+Resume when that is what it does, D-068.** Neither came from the audit. The first
+came from asking why the two actions needed a container at all.
+
+**The hierarchy stopped being a matter of styling.** The toolbar holds Delete
+alone and Start focus stands beside it as an `ExtendedFloatingActionButton`. The
+reason is not that a toolbar with room in it can hold more actions later; that is
+the drift guard's own shape and D-067 refuses it in as many words. It is that
+D-037 ranked these two by the attached FAB's extra diameter, and D-064, once that
+slot turned out not to hold a label, ranked them by a fill and a word against a
+bare icon. Both are tuning. A floating action button and a toolbar item are
+different kinds of control, so D-022's rule that a rare one-way action must not
+carry the weight of the screen's payoff is now a consequence of the layout rather
+than something the drawing has to keep defending.
+
+**Material was read rather than remembered, and it corrected two things.** The
+toolbars guidance names this pairing outright: a FAB beside a floating toolbar,
+for the highest-priority action in the view. It also warns against emphasising two
+controls at once with bold primary colours, naming a button and a FAB together as
+the case to avoid, which is what the previous arrangement would have become. A
+docked toolbar was asked for twice and declined on Material's own usage split,
+docked for global actions repeated across pages and floating for contextual ones.
+The corrections: the baseline bottom app bar is no longer recommended at all, so
+the choice was never docked-or-bottom-bar; and Material does not object to a
+bottom-aligned toolbar here, since it puts the navigation bar on primary pages
+and toolbars on secondary ones, which is exactly this app. The argument that a
+docked bar would collide with the navigation band in muscle memory is a product
+judgement and D-067 labels it as one rather than dressing it as guidance.
+
+**The cost is contrast, and it is recorded rather than hidden.** Start focus was
+a filled `Button`, so `primary`; a FAB container is `primaryContainer`, and
+`expressive-components.md` already records that overriding that role was tried on
+`AddTaskFab` and reverted. The payoff steps down a level. Accepted, because what
+D-064 bought was the word and the word survives.
+
+**One defect nearly shipped, and only a physical device caught it.**
+`ExtendedFloatingActionButton`'s `text`/`icon` overload wraps the label in
+`clearAndSetSemantics`, so the word is drawn and then removed from the
+accessibility tree; Material's intent is that the icon's description does the
+announcing. Built that way first, with the glyph's description null because D-064
+says the word names the action, the button read "Start focus" on screen and
+announced nothing whatsoever to a screen reader. That is D-064 inverted. The
+content-slot overload composes the same row and clears nothing. The two look
+identical on screen, so the KDoc and D-067 both say not to tidy it back.
+
+**The label now names the branch the tap takes, D-068.** D-057 made `beginFocus`
+resume a session already open on this task rather than restart it, and the label
+was left behind: a session paused at 44:45 offered "Start focus" and did not start
+one. The mildest member of the family the audit was about, the app claiming
+something it has not done, and the same mistake. The word branches on the
+condition the view model branches on, copied rather than approximated. A session
+on another task still reads "Start focus", correctly, since that tap resumes
+nothing and D-057's dialog is what explains it.
+
+28 Task Details instrumented tests green, two of them new, on a OnePlus 8T and on
+the emulator. The Resume case was confirmed to fail with the label pinned back to
+Start, so it tests the fix rather than restating it.
+
+**The emulator went unusable for a stretch and then recovered, cause unknown.**
+Worth writing down because it is the kind of thing a next session will waste an
+hour on. Instrumentation there crashed before collecting a single test, for every
+class, with and without the change under test: four runs, four crashes, reported
+as `Process crashed` with `Starting 0 tests`. It looks exactly like a code defect
+and is not one. The work was done on the 8T instead, which is how the
+accessibility defect above was found at all — on a green emulator build it would
+have shipped unseen. The emulator has since run the same suite twice, green both
+times, with nothing done to it that explains the change.
+
+**The Repeat sheet has a real flake and this is the third sighting.**
+`theLastWeekdayCannotBeDeselected` failed on a Compose idling timeout last
+session and again here; `aWeekdayIsNotWrittenUntilSaveIsPressed` failed one run
+in three on the 8T. Two methods, two devices, one sheet. A `ComposeNotIdleException`
+means the clock never went idle, which is a property of the screen and not of the
+assertion, so this wants chasing rather than re-running. It is also next to an
+open low-severity finding, the missing feedback when the last weekday cannot be
+deselected.
+
 **What the audit found and this session did not fix.** Six low-severity
 findings: the title and notes edit affordance, feedback when the last weekday
 cannot be deselected, the Repeat sheet discarding without asking, the Duration
