@@ -292,6 +292,54 @@ class TaskDetailsSemanticsTest {
     }
 
     /**
+     * `docs/decisions.md` D-068. **The word has to name the branch the tap
+     * takes.** D-057 made `beginFocus` resume a session already open on this
+     * task instead of restarting it, and the label was left behind, so a task
+     * with a session paused at 44:45 offered "Start focus" and did not start
+     * one. Against the unfixed screen this fails: the button reads Start.
+     */
+    @Test
+    fun aSessionOnThisTask_wordsTheControlAsResume() {
+        val viewModel = setScreen()
+
+        rule.runOnIdle {
+            viewModel.beginFocus(TASK_ID)
+            viewModel.pauseFocusSession()
+        }
+
+        rule.waitUntilExactlyOneExists(hasText(RESUME_FOCUS), TIMEOUT_MILLIS)
+        rule.onNodeWithText(RESUME_FOCUS).assertIsDisplayed()
+        rule.onNodeWithText(START_FOCUS).assertDoesNotExist()
+    }
+
+    /**
+     * And the other two branches keep Start, which is the half that stops this
+     * becoming the same defect pointing the other way. No session is the plain
+     * case; a session on *another* task resumes nothing here, and D-057's dialog
+     * is what explains that tap.
+     */
+    @Test
+    fun noSessionOnThisTask_keepsTheControlAsStart() {
+        val dao = FakeTaskDao(
+            listOf(
+                testTask(id = TASK_ID, title = TITLE, scheduledDate = TestToday),
+                testTask(id = OTHER_TASK_ID, title = OTHER_TITLE, scheduledDate = TestToday)
+            )
+        )
+        val viewModel = setScreen(dao = dao)
+
+        rule.onNodeWithText(START_FOCUS).assertIsDisplayed()
+
+        rule.runOnIdle {
+            viewModel.beginFocus(OTHER_TASK_ID)
+            viewModel.pauseFocusSession()
+        }
+
+        rule.onNodeWithText(START_FOCUS).assertIsDisplayed()
+        rule.onNodeWithText(RESUME_FOCUS).assertDoesNotExist()
+    }
+
+    /**
      * Delete keeps no word, which D-064 argues rather than inherits. A trash can
      * is not ambiguous the way a play triangle is, and labelling it would give a
      * rare one-way action the weight D-022 and D-037 both kept from it.
@@ -607,6 +655,11 @@ class TaskDetailsSemanticsTest {
         /** The notes placeholder, which is also how the field is tapped. */
         const val ADD_NOTES = "Add notes"
         const val START_FOCUS = "Start focus"
+        const val RESUME_FOCUS = "Resume focus"
+
+        /** D-068's other-task case: a session that this screen must not claim. */
+        const val OTHER_TASK_ID = "2"
+        const val OTHER_TITLE = "Draft the release notes"
 
         /** D-062's three answers when there is no task to draw. */
         const val MISSING_HEADLINE = "This task is no longer available"

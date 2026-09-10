@@ -9,15 +9,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
@@ -186,6 +186,16 @@ fun TaskDetailsScreen(
         // writes nothing and raises a question instead, so leaving the screen
         // here would land the user in Focus on a session that had not changed.
         onStartFocus = { if (viewModel.beginFocus(current.id)) onOpenFocus() },
+        // **The word follows the branch `beginFocus` takes.** D-068. A session
+        // already open on this task resumes rather than restarting, per D-057,
+        // and the control used to promise a fresh clock either way. This is the
+        // same condition the view model tests, deliberately copied rather than
+        // approximated: a label that decides for itself can drift from what the
+        // tap does, which is the defect being fixed.
+        //
+        // A session on *another* task is not this, and stays Start focus. That
+        // tap resumes nothing; D-057's dialog is what explains it.
+        resumesSession = focusSession != null && focusedTaskId == current.id,
         // A soft delete raising the same single undo offer every list raises.
         // The screen does not navigate here: the task disappearing from
         // `allTasks` is what pops it, through the effect above, so deletion has
@@ -387,6 +397,7 @@ private fun TaskDetailsContent(
     onToggleComplete: () -> Unit,
     onEdit: (Task) -> Unit,
     onStartFocus: () -> Unit,
+    resumesSession: Boolean,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -405,7 +416,8 @@ private fun TaskDetailsContent(
             // Today. The screen name is published as `paneTitle` above, which a
             // screen reader announces and nothing draws.
             //
-            // **No actions.** D-037 moved Delete to the floating toolbar, so
+            // **No actions.** D-037 moved Delete out of the bar and into the
+            // floating toolbar, where D-067 left it, so
             // the overflow that held it and nothing else is gone. A menu whose
             // only item is one action promises options it does not have, and
             // the trailing slot now matches the three list screens by being
@@ -446,8 +458,9 @@ private fun TaskDetailsContent(
                 )
             }
 
-            TaskDetailsToolbar(
+            TaskDetailsActions(
                 onStartFocus = onStartFocus,
+                resumesSession = resumesSession,
                 onDelete = onDelete,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -816,28 +829,51 @@ private fun PlanSheetHost(
 /**
  * The screen's two actions, floating over the content.
  *
- * `docs/decisions.md` D-037. Start focus and Delete, in one
- * `HorizontalFloatingToolbar`, replacing a full-width button at the foot of the
- * scroll and an app-bar overflow whose only item was Delete.
+ * `docs/decisions.md` D-067. **Two floating controls, not one.** The toolbar
+ * holds Delete and nothing else; Start focus is the screen's floating action
+ * button, a pill standing at the toolbar's trailing end. Material documents this
+ * pairing: a FAB beside a floating toolbar, carrying the highest-priority action
+ * in the view alongside the toolbar's set.
  *
- * **Delete leads and Focus trails, which is the opposite of the menu rule and
- * the same reasoning.** `expressive-components.md` orders the row menu
- * "constructive before destructive, so the thumb does not land on Delete". In a
- * vertical menu the thumb lands nearest the bottom; in a horizontal bar it lands
- * nearest the reaching side. Putting Focus at the trailing end is what keeps the
- * thumb off Delete here, and it is also where Material puts a toolbar's
- * prominent action.
+ * **The hierarchy is structural now rather than styled.** D-037 ranked these two
+ * by giving Start focus the attached FAB's extra diameter; D-064, once that slot
+ * turned out not to hold a label, ranked them by a fill and a word standing
+ * against a bare icon. Both were tuning. A floating action button and a toolbar
+ * item are different kinds of control, so D-022's rule that a rare one-way action
+ * must not carry the weight of the screen's payoff is now a consequence of the
+ * layout instead of something the drawing has to keep defending.
  *
- * **Focus is filled and Delete is not**, which answers D-022's objection to
- * pairing them: a rare one-way action must not carry the same weight as the
- * screen's payoff. The fill is the weight, since neither can carry a label.
+ * Material also warns against emphasising two controls at once with bold primary
+ * colours, naming a button and a FAB together as the case to avoid. A filled
+ * `primary` button inside the toolbar with a FAB beside it would have been
+ * exactly that. Only one action is emphasised here, and it is the right one.
  *
- * **Start focus has its word back, and `docs/decisions.md` D-064 is why.** D-037
- * accepted losing it, named the cost as "a first-time user sees two glyphs
- * rather than a worded action", and said that if it cost more than the overflow
- * did, D-037 is the entry to supersede. It did. A play triangle on a screen
- * about one task reads as preview, or resume, or run, and none of those is what
- * it does.
+ * **The pill is dimmer than the button it replaces, and that is the cost.**
+ * Start focus was a filled `Button`, so `primary`. A floating action button's
+ * container is `primaryContainer`. `expressive-components.md` records that
+ * overriding that role was tried on `AddTaskFab` and reverted, and that the
+ * button is therefore never the highest-contrast element on the page, which is
+ * what Material intends. Taking the contrast back here would mean departing from
+ * the specification on a second component after declining to on the first. What
+ * D-064 was buying was the word, and the word is untouched.
+ *
+ * **Extended here, regular on Today, and the two agree.** `AddTaskFab` dropped
+ * the extended form because "Add task" spent 80dp repeating what a plus already
+ * said. That is D-064 inverted: a play triangle does not say Focus. It reads as
+ * preview, as resume, as run.
+ *
+ * **Delete leads and Focus trails**, which is D-037's ordering unchanged. In a
+ * vertical menu the thumb lands nearest the bottom, so `expressive-components.md`
+ * orders the row menu constructive-before-destructive; in a horizontal group it
+ * lands nearest the reaching side, so the order inverts to keep the thumb off
+ * Delete.
+ *
+ * **The word is Resume when the tap resumes, per D-068.** D-057 made
+ * `beginFocus` resume a session already open on this task rather than restart
+ * it, and the label was not part of that change, so the control promised a fresh
+ * clock and delivered a running one. It now branches on the same condition the
+ * view model branches on. D-064 exists because this control did not say what it
+ * did; a word naming the wrong act is no better than a glyph naming none.
  *
  * **Delete stays an icon, deliberately.** A trash can is not ambiguous the way a
  * play triangle is, and giving it a word would raise a rare one-way action to
@@ -847,55 +883,70 @@ private fun PlanSheetHost(
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun TaskDetailsToolbar(
+private fun TaskDetailsActions(
     onStartFocus: () -> Unit,
+    resumesSession: Boolean,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // **The attached FAB is gone, and it had to be.** D-037 chose it as
-    // "Material's own arrangement for a toolbar with one action that outranks
-    // the rest", which it is, but the slot cannot hold a label: the component
-    // measures its FAB with `minWidth` and `maxWidth` both pinned to one square
-    // size. There is no extended variant, so a worded Start focus and that slot
-    // are mutually exclusive.
-    //
-    // The prominence survives without it. D-037 rejected a `FilledIconButton`
-    // here because "the two actions read as a pair of equals with one tinted
-    // differently", which is true of two icons and not true of a filled button
-    // carrying a word beside a bare icon.
-    HorizontalFloatingToolbar(expanded = true, modifier = modifier) {
-        IconButton(
-            onClick = onDelete,
-            colors = IconButtonDefaults.iconButtonColors(
-                // Its second cue, and it was `error` on D-022's menu item too.
-                // Still the only one besides the glyph, because this action
-                // keeps no word: see the note above on why that is right here
-                // and was not for Start focus.
-                contentColor = MaterialTheme.colorScheme.error
-            )
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_delete),
-                contentDescription = stringResource(R.string.task_delete)
-            )
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(FocuslistSpacing.xs)
+    ) {
+        HorizontalFloatingToolbar(expanded = true) {
+            IconButton(
+                onClick = onDelete,
+                colors = IconButtonDefaults.iconButtonColors(
+                    // Its second cue, and it was `error` on D-022's menu item
+                    // too. Still the only one besides the glyph, because this
+                    // action keeps no word: see the note above on why that is
+                    // right here and was not for Start focus.
+                    contentColor = MaterialTheme.colorScheme.error
+                )
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_delete),
+                    contentDescription = stringResource(R.string.task_delete)
+                )
+            }
         }
 
-        // Trailing, which is D-037's ordering unchanged: in a horizontal bar the
-        // thumb lands nearest the reaching side, so the constructive action goes
-        // there and Delete does not.
-        Button(
-            onClick = onStartFocus,
-            contentPadding = ButtonDefaults.ButtonWithIconContentPadding
-        ) {
+        // Names no colour, for the reason `AddTaskFab` names none: the Material
+        // default is `primaryContainer` with `onPrimaryContainer`, and that is
+        // the documented role for every floating action button style.
+        //
+        // **The content slot rather than the `text`/`icon` overload, and this is
+        // not a style preference.** That overload wraps the label in
+        // `Modifier.clearAndSetSemantics {}`, which deletes the word from the
+        // accessibility tree and leaves the icon's own description as the only
+        // announcement. Built that way first, with the description null on the
+        // glyph because D-064 says the word names the action, this button
+        // announced nothing at all: drawn for sighted users and silent to a
+        // screen reader. The four `TaskDetailsSemanticsTest` failures that
+        // caught it were looking for the word and finding it only in the
+        // unmerged tree.
+        //
+        // The content slot composes the same row and clears nothing, so the
+        // label is what is drawn and what is spoken, which is what D-064 asked
+        // for. Do not "simplify" this back.
+        ExtendedFloatingActionButton(onClick = onStartFocus) {
             Icon(
                 painter = painterResource(R.drawable.ic_play_arrow),
-                // The word beside it names the action now, so the glyph is
+                // The word beside it names the action, so the glyph is
                 // decoration and announcing it would say the same thing twice.
-                contentDescription = null,
-                modifier = Modifier.size(ButtonDefaults.IconSize)
+                contentDescription = null
             )
-            Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-            Text(stringResource(R.string.task_start_focus))
+            // Material's own icon-to-label gap inside an extended FAB is 12dp,
+            // and the token is internal, so this is the spacing scale's 12
+            // rather than a number written into a screen.
+            Spacer(Modifier.width(FocuslistSpacing.sm))
+            Text(
+                stringResource(
+                    if (resumesSession) R.string.task_resume_focus
+                    else R.string.task_start_focus
+                )
+            )
         }
     }
 }

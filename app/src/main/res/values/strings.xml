@@ -247,6 +247,12 @@
     <!-- Announced as one action, so a row reads as label, value and a control. -->
     <string name="task_plan_row_action">%1$s, %2$s</string>
     <string name="task_start_focus">Start focus</string>
+    <!-- D-068. The same control, worded for what the tap actually does. A
+         session already open on this task resumes rather than restarting, per
+         D-057, and the button used to promise a fresh clock either way. Must
+         stay identical to today_focus_now_resume and focus_resume, which are
+         the same words on the paused card and in the Focus sheet. -->
+    <string name="task_resume_focus">Resume focus</string>
 
     <!-- The five Plan rows. -->
     <string name="task_scheduled">Scheduled</string>

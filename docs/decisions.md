@@ -4518,3 +4518,198 @@ second one would be the app saying the same thing in a worse form.
 indicator stops reassuring anyone, which would mean the page needs a count rather
 than a spin, and that would mean the codec streaming rather than parsing in one
 pass.
+
+---
+
+## D-067. Start focus leaves the toolbar and becomes the screen's floating action button
+
+**Decision.** Task Details draws two floating controls rather than one. The
+`HorizontalFloatingToolbar` keeps Delete and nothing else. Start focus becomes an
+`ExtendedFloatingActionButton`, a pill carrying the play glyph and the words
+"Start focus", sitting beside the toolbar at its trailing end. Delete still
+leads, Start focus still trails, and the pair sits bottom centre where the
+toolbar alone used to.
+
+**What this supersedes.** D-037 on the toolbar's contents, and D-064 on the
+arrangement that replaced the attached FAB. Both entries are otherwise intact:
+the floating toolbar over a docked one, the ordering and its reasoning, Delete's
+`error` colour and its wordlessness, the soft delete and its single undo offer,
+and the `FabClearance` reserved beneath the last Plan row.
+
+**A docked toolbar was asked for twice and is still not the answer.** Worth
+recording because the question will come back. Material's own usage split is that
+a docked toolbar spans the full window width and is for global actions repeated
+across pages, while a floating toolbar sits above the body content and is for
+contextual actions belonging to that page. Delete and Start focus act on the one
+task the screen is about, so D-037's reasoning was right and is now sourced
+rather than paraphrased.
+
+Two corrections to carry with it. The baseline bottom app bar is no longer
+recommended, so the choice is docked toolbar or floating toolbar, not bottom app
+bar or floating toolbar. And Material does *not* object to a bottom-aligned
+toolbar on this screen: it says to show the navigation bar on primary pages and
+toolbars on secondary pages with actions, which is exactly Today, Inbox and
+Upcoming against Task Details. An argument was made in session that a docked bar
+would collide with the navigation band's position in muscle memory. That is a
+product judgement, it may still be worth something, and it is not Material's
+position. Do not cite it as one.
+
+**Why, and it is not the reason it looks like.** The obvious reason is that a
+toolbar with room in it can hold actions this screen may want later. That is not
+the argument, and building for actions that do not exist is what the drift guard
+in `CLAUDE.md` exists to refuse. The arrangement has to be right with one item in
+the toolbar today.
+
+It is right because it makes the hierarchy structural rather than stylistic.
+D-037 and D-064 both had to argue the ranking of these two controls from how they
+were drawn: D-037 gave Start focus the FAB slot's extra diameter, and when that
+slot turned out not to hold a label, D-064 argued that a fill and a word beside a
+bare icon separate them well enough. Both are true and both are tuning. Once
+Start focus is the screen's floating action button and Delete is an item in a
+toolbar, the two are different kinds of control, and nothing about their styling
+has to be defended to keep the destructive one subordinate. D-022's rule that a
+rare one-way action must not carry the weight of the screen's payoff stops being
+maintained and starts being a consequence of the layout.
+
+**It also retires D-064's reversal condition.** That entry ended by naming what
+would undo it: "The toolbar growing crowded at large font scales or in a narrow
+window, where a labelled button and an icon may not sit together. The content row
+scrolls horizontally, so the failure would be a hidden action rather than a
+broken layout." A toolbar holding one icon has nothing to crowd, and the pill
+sizes to its own label outside it. The failure mode is gone rather than watched.
+
+**The cost, which is a real one: the pill is dimmer than the button it replaces.**
+Start focus was a filled `Button`, so `primary`. A floating action button's
+container is `primaryContainer`, and `expressive-components.md` records that
+overriding that to `primary` was tried on `AddTaskFab` and reverted, with the
+consequence stated outright: the button "is therefore never the highest-contrast
+element on the page. That is what Material intends." So the screen's payoff steps
+down one level of contrast. Accepted, because what D-064 was actually buying was
+the word, and the word survives unchanged. Taking the contrast back would mean
+departing from the specification on a second component after deciding not to on
+the first.
+
+**Why an extended button here when Add is a regular one.** `AddTaskFab` was moved
+off the extended form because the words "Add task" spent 80dp repeating what a
+plus on a task screen already said. That reasoning does not transfer, and the
+difference is the whole of D-064: a play triangle on a screen about one task does
+*not* say Focus. It reads as preview, as resume, as run. The extended form is
+justified on this screen exactly where it was not on Today, and the two are
+consistent rather than in conflict.
+
+**What Material actually documents, checked rather than remembered.** The
+toolbars guidance at `m3.material.io/components/toolbars` names this exact
+pairing: a FAB placed next to a floating toolbar, carrying one high-priority
+action alongside the toolbar's set, and it says to use the FAB for the
+highest-priority action in the view. So this is the documented configuration
+rather than a departure from one, which is the opposite of what D-064 had to
+settle for when the attached slot could not hold a label.
+
+The same page supplies an argument this entry would otherwise have missed, and
+it is the strongest one here. Material warns against emphasising two controls at
+once with bold primary colours, and names a button and a FAB together as the case
+to avoid. The build before this change is a filled `primary` button sitting inside
+the toolbar. Adding a FAB beside it would have been precisely that mistake;
+moving Start focus out and leaving Delete as a bare icon is what prevents it.
+The change resolves a conflict rather than introducing one, and the contrast the
+entry gives up above is part of how it does that.
+
+It also confirms the growth path, without licensing the toolbar to be built for
+it: when a floating toolbar runs out of room, the trailing actions collapse into
+an overflow menu. And the 16dp the group sits above the bottom of the content is
+the specified minimum margin for a horizontal floating toolbar, so
+`FocuslistSpacing.md` there is the rule rather than a choice.
+
+**Why two floating elements are acceptable when two bare buttons were not.** The
+arrangement considered and rejected before this was a circular Delete and a
+Start focus pill with no container between them. Two buttons with their own fills
+and no other distinction read as peers, which is the pairing D-037 refused when
+it rejected a `FilledIconButton`. A toolbar container standing beside a floating
+action button is not that. It is Material's own pairing, the two have different
+roles, and Delete's container is a neutral toolbar surface rather than a fill of
+its own. The only departure from the documented pattern is a pill where it shows
+a circle, which is the same departure D-064 already needed and could not get from
+the attached slot.
+
+**One implementation trap, found on the device and worth writing down.**
+`ExtendedFloatingActionButton` has a `text`/`icon` overload that looks like the
+obvious way to build this. It wraps the label in `Modifier.clearAndSetSemantics {}`,
+so the word is drawn and then removed from the accessibility tree; Material's
+intent is that the icon's own `contentDescription` carries the announcement and
+the visible label is decoration.
+
+Built that way first, with the glyph's description null because D-064 says the
+word names the action, the result was a button that said "Start focus" on screen
+and announced nothing whatsoever to a screen reader. That is D-064 inverted: the
+entry exists because the control did not say what it did, and this would have
+made it say nothing at all to the people who most need it to.
+
+Four `TaskDetailsSemanticsTest` cases caught it, all reporting the word present
+in the unmerged tree and absent from the merged one. The fix is the content-slot
+overload, which composes the same row and clears nothing. Anyone tidying this
+toward the shorter overload will reintroduce the defect silently, because it
+looks identical on screen.
+
+Worth noting how close this came to shipping unseen: the emulator's
+instrumentation was crashing before collecting a single test, and the failure was
+only visible once the suite was run on a physical device.
+
+**What would reverse this.** Delete being tapped by people reaching for the pill,
+which would mean the gap between the two controls is too small to separate them
+and the answer is spacing, not a return to one container. Or the toolbar still
+holding one item after several phases, which would mean the container is
+scaffolding for actions that never arrived and Delete would be better as a plain
+floating control.
+
+---
+
+## D-068. Task Details says Resume focus when that is what the tap does
+
+**Decision.** The Task Details action reads "Resume focus" when this screen's
+task already has a focus session, and "Start focus" otherwise. The condition is
+the one `beginFocus` itself branches on, `focusedTaskId == task.id && session
+!= null`, so the word cannot disagree with the behaviour.
+
+**What this supersedes.** Nothing. D-064 gave the control a word and D-067 moved
+it onto the FAB; both write the label as the literal text "Start focus" because
+neither entry asked what the control does when a session is already open on this
+task. This answers that and leaves the rest of both entries standing.
+
+**The defect.** D-057 gave `beginFocus` three branches: no session starts one, a
+session on another task raises the switch question, and a session on *this* task
+resumes rather than restarting. The label was not part of that change, so a task
+with a paused session offered "Start focus" and delivered a resume. Tapping it on
+a forty-five minute session paused at 44:45 does not produce 45:00, which is what
+the words promise.
+
+This is the family of defect the D-056 to D-059 audit was about: the app claiming
+something it has not done. It is the mildest of them, because nothing is lost and
+the behaviour underneath is right, and it is still the same mistake.
+
+**It is also D-064 applied where D-064 did not look.** That entry exists because
+a play triangle did not say what it did, and it fixed that by adding the word. A
+word that names the wrong act is not an improvement on a glyph that names none.
+
+**Why the same-task running case reads Resume too.** In practice it is barely
+reachable, since D-015 pauses the session when the sheet closes, so a session on
+this task is a paused session almost always. Rather than adding a third state for
+a case that hardly occurs, the label branches on exactly what the code branches
+on. A label whose condition is a copy of the behaviour's condition cannot drift
+from it; one that adds a distinction of its own can.
+
+**Why the switch case keeps Start focus.** A session on a *different* task still
+reads "Start focus", correctly. That tap does not resume anything, and D-057's
+dialog is what explains the choice. Wording it Resume would name a session the
+user is not looking at.
+
+**Why a new string rather than borrowing one.** "Resume focus" already exists
+twice, as `today_focus_now_resume` on the paused card and `focus_resume` in the
+Focus sheet, each under the screen that owns it. `task_resume_focus` follows that
+convention rather than reaching across a screen boundary for wording. The three
+must stay identical, and that is a translation note, not a reason to share a key.
+
+**What would reverse this.** The label proving to be the wrong place to carry
+this, because what the user needs to know is how much of the session is left
+rather than which verb applies. Today's card shows the remaining minutes; this
+shows none. If that turns out to be the real gap, the answer is a line on the
+screen, not a longer button.
