@@ -9,6 +9,44 @@ scope it delivers is in `PRODUCT.md`.
 
 ## Current phase
 
+**The dark theme audit is done, and it found nothing to fix.** That is a result
+rather than a shrug, and the two halves of it are worth keeping.
+
+**The colour half was measured, not looked at.** Every pair the app actually draws
+was pulled out of `Color.kt` and checked for WCAG contrast in both schemes:
+thirteen pairs, all passing, in light and in dark. Dark is the safer of the two on
+the tightest numbers, the checkbox and field borders, at 5.84 and 5.17 against
+light's 4.27 and 3.87, where the threshold is 3.0.
+
+**The check that mattered was state discrimination, which is what D-021 actually
+failed.** That entry was a bug where `tertiaryContainer` at #FFD7E3 and
+`errorContainer` at #FFD8D6 sat one step apart in green, so a caution and an error
+rendered alike. In dark those two are 80.7 apart in RGB where light has them at
+13.0, and the pair the health screen really uses, an error row against a neutral
+one, is 115.3 apart in dark against light's 36.5. The D-021 class of collision
+cannot happen in this dark scheme. Verified by eye as well: the Blocked row is
+unmistakable against the two neutral rows above and below it.
+
+**The audited scheme is not the one most users see, which is the part worth
+knowing.** `dynamicColor` defaults to true, so the fallback schemes in `Color.kt`
+are what runs only when the user turns dynamic colour off or is below Android 12.
+The default path is Material's own, generated from the wallpaper.
+
+That path was tested rather than assumed, by forcing a hostile system accent
+through `theme_customization_overlay_packages` and rebuilding the screens against
+it. With a red accent the error containers stay red and the primary rotates to
+violet, so the health screen still tells an error from a neutral row. Overdue dates
+follow the accent, which is deliberate: `TaskRow` uses `tertiary` and not `error`,
+with the reason written beside it, and it clears contrast in both schemes at 5.56
+and 9.65.
+
+Swept by eye in dark: Today, Reminder health in Action needed, Settings, Task
+details, the Reminder sheet.
+
+**One thing seen and not touched.** The paused session card is clipped behind the
+app bar on Today. That is the bug the parallel session has open in `TodayScreen.kt`
+right now, reproduced here rather than discovered.
+
 **The accessibility sweep is done. The TalkBack pass is not, and the difference
 matters.** Method, because it decides what the findings are worth: every screen was opened on the emulator and its
 accessibility node tree dumped, which is the tree an accessibility service reads, and
