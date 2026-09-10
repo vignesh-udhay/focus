@@ -514,6 +514,20 @@ private fun DurationPresetGroup(selectedMinutes: Int?, onPick: (Int?) -> Unit) {
         if (minutes == null) noneLabel else durationLabel(minutes).text
     }
 
+    // **These buttons announce "45m" where the task rows announce "45 minutes",
+    // and it is not fixable through this API.** `DurationLabel` says in its own
+    // KDoc that the spoken form has to be attached as a content description, and
+    // `TaskListRow` does attach it. `ButtonGroupScope.toggleableItem` takes
+    // `checked`, `label`, `onCheckedChange`, `icon`, `weight` and `enabled`, and
+    // no modifier, so there is nowhere to hang one.
+    //
+    // The only opening is `customItem`, which takes a composable and would mean
+    // building the connected toggles by hand. That is exactly what adopting
+    // `ButtonGroup` was for, per the note above: the shape and the control come
+    // from Material rather than from a `when` on the index. Trading that back for
+    // "45 minutes" over "45m" is the wrong way round, so this is recorded rather
+    // than fixed. Found in the Phase 5 accessibility pass.
+
     // **No `fillMaxWidth`, and that is load-bearing rather than tidying.** It
     // makes the width constraint tight, `minWidth == maxWidth`, and when the
     // items do not fit `ButtonGroup` takes its overflow branch and copies the

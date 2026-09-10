@@ -40,6 +40,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -345,6 +346,13 @@ private fun CheckRow(
  * The mark is the second channel on top of the words. "May block background
  * alarms" and "Not allowed" already differ in text; this is what a person
  * scanning sees first.
+ *
+ * **Which is why none of it is announced.** A second channel for the eye is
+ * noise for a screen reader: the row says "Notifications, Not allowed" already,
+ * and TalkBack reading a bare "!" after it adds a character, not a fact. The Ok
+ * branch has always passed `contentDescription = null` for that reason; the two
+ * text marks needed `clearAndSetSemantics` to say the same thing, and until the
+ * Phase 5 pass they were being read out.
  */
 @Composable
 private fun StatusGlyph(state: CheckState, onContainer: Color) {
@@ -365,14 +373,16 @@ private fun StatusGlyph(state: CheckState, onContainer: Color) {
             CheckState.Warning -> Text(
                 text = WarningMark,
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.clearAndSetSemantics {}
             )
 
             // An exclamation, on the error container the row already carries.
             CheckState.Blocked -> Text(
                 text = BlockedMark,
                 style = MaterialTheme.typography.titleMedium,
-                color = onContainer
+                color = onContainer,
+                modifier = Modifier.clearAndSetSemantics {}
             )
         }
     }

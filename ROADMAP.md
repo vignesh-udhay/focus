@@ -9,6 +9,100 @@ scope it delivers is in `PRODUCT.md`.
 
 ## Current phase
 
+**The accessibility sweep is done. The TalkBack pass is not, and the difference
+matters.** Method, because it decides what the findings are worth: every screen was opened on the emulator and its
+accessibility node tree dumped, which is the tree an accessibility service reads, and
+each focus stop's announcement composed from its own label and its descendants'. That
+catches silent controls, targets under 48dp, and two controls that say the same
+thing. It does not catch reading order, heading structure, or live regions, and it is
+not a substitute for someone turning TalkBack on and using the app.
+
+Swept: Today, Inbox, Upcoming, Logbook, Settings, Reminder health, Task details,
+Focus in two states, Quick Add, and the Duration picker.
+
+**Reminder health was reading its status glyph out loud.** Each check row carries a
+mark beside its words, and D-021 is explicit that the mark is a second channel for
+someone scanning, on top of words that already differ. The tick was hidden from the
+start because an `Icon` takes a `contentDescription` and it was given null. The
+question mark and the exclamation are `Text`, so they went into the tree as a bare
+"?" and a bare "!" and were announced after the row they annotate. Both now carry
+`clearAndSetSemantics`, and `ReminderHealthSemanticsTest` is new: three cases, run
+against the unfixed code first, where they fail.
+
+**One finding recorded rather than fixed.** The Duration picker's buttons announce
+"45m" where the task rows announce "45 minutes", and `DurationLabel`'s own KDoc says
+the spoken form has to be attached as a content description. It cannot be, through
+this API: `ButtonGroupScope.toggleableItem` takes no modifier, and the only opening
+is `customItem`, which would mean building the connected toggles by hand. That is
+what adopting `ButtonGroup` was for. The note is in `TaskDetailsSheets.kt` beside the
+code.
+
+**One false alarm, checked rather than filed.** A silent 996x13px focus stop on Today
+turned out to be the Completed disclosure clipped at the scroll boundary; scrolled
+fully into view it announces "Completed, 1" and the screen is clean.
+
+**The Focus readout fix was confirmed live** in the same sweep: the status line
+carries `text='44:40 · 45 min focus'` and `desc='44:40 remaining, 45 min focus'`. The
+mascot does not appear in the tree at all, which is what a decorative drawing should
+do.
+
+**What is left of the pass, so the next session does not mistake this for finished.**
+Everything the node tree cannot answer: traversal order, which the dump only hints at
+and which puts the app bar last on several screens; whether headings are marked such
+that a reader can jump by them; live regions, for the undo snackbar and the health
+banner, neither of which announces itself today as far as this method can tell; and
+the gestures, swipe-to-next, explore-by-touch, and the local context menu. All of it
+wants TalkBack actually switched on, on a device, by a person. Phase 5's exit
+criterion is "every screen is navigable and comprehensible with TalkBack", and a
+sweep of the tree is evidence toward that, not the thing itself.
+
+**Phase 5 has begun, and its first exit criterion is met: a backup restores onto
+a wiped install.** Never verified end to end before. The instrumented tests all
+run in process, so none of them exercised export, wipe and import as separate
+acts, which is what the criterion actually asks about.
+
+Done on the emulator against the seeded fixtures plus one uniquely named task, with
+the theme set to Dark so the preferences half of the file had something to carry.
+Exported through the real picker, `pm clear`, relaunched to confirm the wipe had
+taken and the debug seed had refilled the database with different data, restored
+through the real picker, then exported a second time and compared the two files.
+Same format and version, identical settings, the same fourteen task ids, and **zero
+rows differing on any field**. The theme came back as Dark against a light system,
+which is the preferences half arriving.
+
+**A pre-rename backup still restores, which is the claim the rename rested on.**
+`Focuslist-backup-2026-09-09.json` was written by the app before the rename to Catimo and
+restores cleanly now, swapping the list to its own older snapshot. The export
+filename moved with the app name and the `focuslist-backup` marker inside the file
+did not, which is why. Had that marker been renamed with everything else, every
+backup a user already held would have stopped opening, and this is the test that
+would have caught it.
+
+**What a backup does not carry, noticed while doing this.** A paused focus session
+lives in `SharedPreferences` through `FocusSessionStore`, not in the file, so it does
+not survive a restore. That is defensible, a session is not data the user typed, but
+it is undocumented and worth a line somewhere before 1.0.
+
+**The paused Focus card stopped returning behind Today's app bar.** A defect,
+no decision entry: leaving Focus has always paused the session and made its card
+the route back.
+
+Resuming removes the paused card from Today. Leaving Focus inserts it again
+ahead of the first band, and `LazyColumn` normally preserves the old first
+item's key. With enough tasks to scroll, that kept Overdue in the same place and
+laid the returning card out above the viewport, behind the app bar. The existing
+viewport helper now treats a paused card appearing while Today is at the top as
+the same special case it already handled for a task moving to Completed: it pins
+index zero for the next remeasure. A list deliberately scrolled deeper keeps its
+position.
+
+The reveal animation stays. It communicates the real state change—leaving Focus
+pauses the session and restores its way back—but it now expands into the visible
+viewport. Confirmed first with a scrollable regression that failed with the
+Resume action at y=169 behind an app bar ending at y=263, then with 31/31 Today
+instrumented tests, 665 JVM tests, a debug build, and two Focus exits on the
+emulator.
+
 **Three fixes found by asking what was broken rather than what was next.** No
 decision entries: one restores behaviour `strings.xml` already claimed, one
 regenerates an asset, one deletes wiring a decision orphaned.
