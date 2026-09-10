@@ -5,6 +5,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import com.vignesh.focuslist.core.design.FocuslistSpacing
 
 /**
@@ -25,6 +27,14 @@ import com.vignesh.focuslist.core.design.FocuslistSpacing
  * where those rows begin. An inset of its own put it 12dp inboard of the rows
  * and about 66dp outboard of the row titles, which is to say aligned with
  * nothing on the screen.
+ *
+ * **It is a heading, and until now it only said so in this comment.** A defect,
+ * no decision entry: every word above describes a heading and the semantics
+ * never carried one, so a screen reader met an unmarked line of text and
+ * TalkBack users could not jump between sections at all. It is the same
+ * `heading()` the screen titles and the empty states already publish, which is
+ * what makes Today, Upcoming, Settings and Task Details navigable by heading in
+ * one change rather than four.
  */
 @Composable
 internal fun SectionLabel(text: String, modifier: Modifier = Modifier) {
@@ -32,9 +42,11 @@ internal fun SectionLabel(text: String, modifier: Modifier = Modifier) {
         text = text,
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier.padding(
-            top = FocuslistSpacing.lg,
-            bottom = FocuslistSpacing.xs
-        )
+        modifier = modifier
+            .padding(
+                top = FocuslistSpacing.lg,
+                bottom = FocuslistSpacing.xs
+            )
+            .semantics { heading() }
     )
 }

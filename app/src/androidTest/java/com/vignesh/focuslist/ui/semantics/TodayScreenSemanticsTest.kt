@@ -451,6 +451,41 @@ class TodayScreenSemanticsTest {
         rule.onNodeWithText(BANNER_ACTION_LABEL).assertIsDisplayed()
     }
 
+    /**
+     * **The banner announces itself, and it did not.** A defect, no decision
+     * entry. It appears while the user is already on Today, so a reader who had
+     * moved past the top of the screen was never told the app had just said it
+     * cannot deliver a reminder. D-040 put this banner here precisely because it
+     * is worth interrupting a day for, and for a TalkBack user it interrupted
+     * nothing.
+     *
+     * Polite, so it waits for the reader to finish the sentence they are on.
+     */
+    @Test
+    fun reminderBanner_announcesItselfPolitely() {
+        setToday(
+            FontScale100,
+            withOneTask(),
+            ReminderHealthState.ActionNeeded(HealthCheck.Notifications)
+        )
+
+        rule.onNode(hasText(BANNER_NO_NOTIFICATIONS) and isPoliteLiveRegion()).assertExists()
+    }
+
+    /**
+     * The band labels are headings, and until now they only said so in
+     * `SectionLabel`'s own comment. Without this a TalkBack user cannot jump
+     * between Overdue, No reminder set and Later today at all: they meet three
+     * unmarked lines of text and have to swipe through every row between them.
+     */
+    @Test
+    fun bandLabels_areHeadings() {
+        setToday(FontScale100, withOneUntimedTask())
+
+        rule.waitUntilExactlyOneExists(hasText(TITLE), TIMEOUT_MILLIS)
+        rule.onNode(hasText(NO_REMINDER_BAND) and isHeading()).assertExists()
+    }
+
     @Test
     fun reminderBanner_namesTheCause_at100() = assertTheBannerNamesTheCause(FontScale100)
 

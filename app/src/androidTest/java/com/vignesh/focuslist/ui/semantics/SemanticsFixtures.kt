@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
@@ -100,6 +101,16 @@ internal fun grantRuntimePermission(permission: String) {
 /** Matches a node marked as a heading for accessibility services. */
 internal fun isHeading(): SemanticsMatcher =
     SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)
+
+/**
+ * Matches a node a screen reader announces when it appears or changes.
+ *
+ * Polite rather than assertive, so it waits for the reader to finish the
+ * sentence it is on. Assertive interrupts mid-word and nothing in this app
+ * earns that.
+ */
+internal fun isPoliteLiveRegion(): SemanticsMatcher =
+    SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite)
 
 /**
  * Matches a node whose tap action is announced as [label].

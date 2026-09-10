@@ -268,15 +268,40 @@ write is reported rather than fatal, and that a second refusal is announced too.
 676 JVM tests, up from 673, and the DAO suite covering the two transactions and
 both new queries.
 
-**What the audit found and this session did not fix.** Five medium findings and
+**Two accessibility defects fixed ahead of the TalkBack pass, so it finds real
+problems rather than known ones.** Neither is a decision entry: both are code
+failing to do what its own comment already claimed.
+
+**`SectionLabel` is a heading now, and had only ever said so in prose.** Every
+line of its KDoc describes a heading and the semantics carried none, so a screen
+reader met an unmarked line of text. The cost is concrete: a TalkBack user could
+not jump between Overdue, No reminder set and Later today at all, and had to
+swipe through every row in a band to reach the next label. One change covers
+Today, Upcoming, Settings and Task Details, because all four go through the same
+component.
+
+**The reminder health banner announces itself.** It appears while the user is
+already on Today, so a reader who had moved past the top of the screen was never
+told that the app had just said it cannot deliver a reminder. D-040 put the
+banner there precisely because that is worth interrupting a day for, and for a
+TalkBack user it interrupted nothing.
+
+Polite rather than assertive, matching `UndoSnackbarHost`: it waits for the
+reader to finish the sentence they are on. It also does not move accessibility
+focus, which the audit offered as an option — stealing focus pulls the reader out
+of the row they were reading, and an announcement they can act on when ready is
+the Android convention.
+
+37 Today instrumented tests green, two of them new, plus Settings, screen chrome
+and the empty states re-run because they share `SectionLabel`.
+
+**What the audit found and this session did not fix.** Three medium findings and
 six low ones. The four lists initialise on an empty loaded list so a slow read
 shows a false empty state — they now have the flag that would fix it,
 `tasksLoaded`, and spending it is a design call between a skeleton, a delayed
 spinner and nothing. Backup progress disables both buttons without saying which
 one is working. The Task Details toolbar's two icons are unlabelled for sighted
-users. `SectionLabel` is documented as a heading and exposes no heading
-semantics, and the reminder-health banner is not a live region; those two belong
-with the TalkBack pass below rather than here.
+users.
 
 **The dark theme audit is done, and it found nothing to fix.** That is a result
 rather than a shrug, and the two halves of it are worth keeping.

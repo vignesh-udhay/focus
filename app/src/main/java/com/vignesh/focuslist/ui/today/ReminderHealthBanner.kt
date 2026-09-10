@@ -18,7 +18,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -106,7 +108,27 @@ fun ReminderHealthBanner(
                     // The label and sentence are one route to the detail
                     // screen. The dismiss button remains its own semantics
                     // node, so neither action obscures the other.
-                    .semantics(mergeDescendants = true) {},
+                    //
+                    // **And it announces itself, which it did not.** A defect,
+                    // no decision entry. This banner appears while the user is
+                    // already on Today, so a reader who has moved past the top
+                    // of the screen was never told that the app had just said
+                    // it cannot deliver a reminder. That is the most important
+                    // sentence in the product going unheard, and D-040 put it
+                    // here precisely because it is worth interrupting a day
+                    // for.
+                    //
+                    // Polite, matching `UndoSnackbarHost`: it waits for the
+                    // reader to finish what they are hearing. Assertive would
+                    // cut them off mid-word, and nothing here is worth that.
+                    // It does not move accessibility focus either, which the
+                    // audit raised as an option — stealing focus takes the
+                    // reader out of the row they were reading, and an
+                    // announcement they can act on when ready is the Android
+                    // convention.
+                    .semantics(mergeDescendants = true) {
+                        liveRegion = LiveRegionMode.Polite
+                    },
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(FocuslistSpacing.sm)
             ) {
