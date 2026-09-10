@@ -259,10 +259,13 @@ cleared rather than moved to a different phone. Both operations now announce
 themselves with a counted snackbar, which was missing entirely until it was
 reported from use.
 
-Not built: any indication that an operation is in progress. Both buttons disable
-while one runs and nothing else is drawn. Accepted for now on the grounds that a
-local file of this size is written and read faster than a spinner would be seen.
-If a large enough backup ever makes the page look inert, that is where to look.
+**An operation in progress names itself**, since D-066. Both buttons still
+disable while either runs, and the running one becomes "Exporting…" or
+"Restoring…" beside a small indeterminate indicator. This paragraph used to
+record the gap and accept it, on the grounds that a local file of this size is
+read and written faster than a spinner would be seen. That measured the wrong
+file: neither operation touches a file the app owns, and the Storage Access
+Framework can hand back a URI belonging to a document provider on a network.
 
 The debug APK and JVM suite build cleanly. Focused emulator tests cover every
 task field and both settings through the codec, foreign/future file rejection,

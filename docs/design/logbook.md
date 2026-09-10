@@ -170,9 +170,12 @@ done, not a score for having done it.
 
 Two more states, drawn on the board in chapter 09 beside the Logbook itself.
 
-**First load** shows the M3 Expressive loading indicator, centred, and nothing
-else. The chrome stays: the back arrow works before the list has arrived, so a
-slow read is never a trap.
+**First load** shows nothing, and the chrome. D-065 replaced the loading
+indicator this line used to specify, on the grounds that it was never built and
+that building it would give one of four lists a spinner for a read all four
+share. The back arrow and the bar are drawn before the list arrives, so a slow
+read is never a trap; the empty state is what waits, because "Nothing completed
+yet" is a claim about the user's work and the app has not looked yet.
 
 **A read that failed** shows the error-toned empty state and a Try again button.
 The wording matters more here than on other screens, because this is the list

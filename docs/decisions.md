@@ -4408,3 +4408,113 @@ it now names the action and announcing both would say the same thing twice.
 in a narrow window, where a labelled button and an icon may not sit together. The
 content row scrolls horizontally, so the failure would be a hidden action rather
 than a broken layout, which is worth watching for rather than assuming.
+
+---
+
+## D-065. A list that has not read yet says nothing, rather than saying it is empty
+
+**Decision.** The four task lists draw their chrome and no body until the stored
+read has answered. Today, Inbox, Upcoming and Logbook each take the
+`tasksLoaded` flag D-062 added, and the empty state is now behind it: the
+branch order is failed read, then not read yet, then empty, then the list.
+
+Nothing is drawn in the not-read-yet branch. No skeleton, no spinner, no
+delayed spinner.
+
+**What this supersedes.** The gap D-062 left open in as many words: "The four
+lists still start on an empty loaded list and still flash a false empty state on
+a slow read. They now have the flag that would fix it, `tasksLoaded`, and using
+it is a different question." This is the answer to that question.
+
+It also supersedes one paragraph of `docs/design/logbook.md`, which specified
+"the M3 Expressive loading indicator, centred, and nothing else" for first load.
+That was written before D-062 existed and was never built. Building it now would
+give one of the four lists a spinner and the other three nothing, for a read all
+four share.
+
+**Why the empty state was the bug and the spinner is not the fix.** Every one of
+these screens asserts something specific about the user's work when it is empty:
+"Nothing scheduled for today", "Nothing completed yet". D-034 already named that
+failure mode for a read that fails, and the initial state had exactly the same
+shape as a read that failed, because `Loaded(emptyList())` and "we have not
+looked" were the same value. D-062 split them for Task Details and left the
+lists where they were.
+
+So the defect is one sentence being untrue for as long as the read takes. The
+answer is to not say it. A spinner would replace an untrue sentence with a true
+one, and would also be a second thing appearing and vanishing inside the same
+frame.
+
+**Why nothing rather than a spinner after a threshold.** A delayed indicator is
+the honest answer when a read can be slow, and this one cannot. It is a local
+Room query over a personal task list, and D-062 measured the same read resolving
+in a frame. A threshold long enough never to fire in the ordinary case is a
+timer that exists for a case that does not happen, and one short enough to help
+is the flash again.
+
+The chrome is what makes the blank safe, and it is the part worth being explicit
+about. The app bar, the navigation bar, the overflow and the add button are all
+drawn before the read answers, so a read that never returns leaves a screen the
+user can still leave, and a screen they can recognise as the one they asked for.
+That is the same reasoning D-062 used for Task Details, and it is the reason
+neither needs an indicator.
+
+**Today keeps its banner rule, and this does not touch it.** D-040 puts the
+reminder health banner above the empty state, because a user with no tasks yet is
+exactly the user about to set a first reminder into silence. That branch is
+untouched; it now runs one state later than it did.
+
+**What would reverse this.** A list staying blank long enough for anyone to
+notice. The read is shared, so the symptom would be all four at once, and the
+fix would be the delayed indicator this entry declined rather than a spinner on
+one screen.
+
+---
+
+## D-066. Backup says which half of the page is working
+
+**Decision.** `BackupUiState` carries `working: BackupOperation?` in place of
+`isWorking: Boolean`. Both buttons still disable while either operation runs, and
+the one that is running now says so: Export becomes "Exporting…" and Restore
+becomes "Restoring…", each beside a small indeterminate progress indicator.
+
+**What this supersedes.** `docs/design/settings.md`, which recorded the gap and
+accepted it: "Not built: any indication that an operation is in progress. Both
+buttons disable while one runs and nothing else is drawn. Accepted for now on the
+grounds that a local file of this size is written and read faster than a spinner
+would be seen. If a large enough backup ever makes the page look inert, that is
+where to look."
+
+**Why that reasoning does not hold.** It measured the wrong file. The size of the
+backup is not what decides how long this takes, because neither operation touches
+a file the app owns. Both go through the Storage Access Framework, and the URI a
+picker hands back can belong to any document provider on the phone, including one
+backed by a network. A restore from a file on a cloud drive is a download, and
+the page that says nothing during it is the page a user force-quits.
+
+The second half is that "faster than a spinner would be seen" argues against the
+spinner and not against the rest of it. Two buttons going grey with no word
+between them is already a state change the user can see. It just does not say
+what it means, and a user who taps a disabled button learns nothing from it.
+
+**Why the label rather than only the spinner, and why both.** The label is the
+part that answers the finding. A screen reader on a disabled button hears
+"Restore from file, disabled", which is the app refusing without a reason; it now
+hears "Restoring…", which is the reason. The indicator is what makes the same
+answer available without reading, and an indeterminate one is honest, because
+neither operation can report progress: the codec reads and writes in one pass and
+knows the total only when it is finished.
+
+**Why the running button stays disabled.** `BackupViewModel.run` already ignores
+a second call while one is in flight, so the disabling is not what protects the
+write. It is what stops the user asking a question the app has already answered.
+
+**Why no live region on it.** A polite announcement here would fire twice, once
+when the label changes to "Restoring…" and again when it changes back, and the
+counted snackbar the screen already shows is the announcement of the result. The
+second one would be the app saying the same thing in a worse form.
+
+**What would reverse this.** A provider slow enough that an indeterminate
+indicator stops reassuring anyone, which would mean the page needs a count rather
+than a spin, and that would mean the codec streaming rather than parsing in one
+pass.

@@ -15,7 +15,15 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class BackupUiState(
-    val isWorking: Boolean = false,
+    /**
+     * Which half of the page is running, or null when neither is.
+     *
+     * `docs/decisions.md` D-066. This used to be `isWorking: Boolean`, which
+     * told the screen that something was happening and not what. Both buttons
+     * disable either way, so the page had two greyed controls and no way to say
+     * which one the user was waiting on.
+     */
+    val working: BackupOperation? = null,
     val error: BackupOperation? = null,
     val done: BackupDone? = null,
 
@@ -27,7 +35,11 @@ data class BackupUiState(
      * [BackupViewModel.confirmRestore].
      */
     val pendingRestore: PendingRestore? = null
-)
+) {
+
+    /** Whether either operation is in flight, which is what the re-entry guard asks. */
+    val isWorking: Boolean get() = working != null
+}
 
 /**
  * What the restore confirmation says, in numbers the user can check.
@@ -173,7 +185,10 @@ class BackupViewModel(
         if (mutableState.value.isWorking) return
 
         viewModelScope.launch(Dispatchers.IO) {
-            mutableState.value = BackupUiState(isWorking = true)
+            // Named rather than flagged, per D-066, and taken from this call's
+            // own operation so the button that says "Exporting…" cannot be the
+            // one that is not.
+            mutableState.value = BackupUiState(working = operation)
             mutableState.value = try {
                 work()
             } catch (_: Exception) {

@@ -26,6 +26,7 @@ import com.vignesh.focuslist.data.repository.TaskRepository
 import com.vignesh.focuslist.ui.task.TaskListViewModel
 import com.vignesh.focuslist.ui.theme.FocuslistTheme
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -151,6 +152,23 @@ internal class FailingTaskDao(
 
     override fun observeTasks(): Flow<List<TaskEntity>> =
         flow { throw IllegalStateException("read failed") }
+}
+
+/**
+ * A DAO whose read never answers, for D-065's not-read-yet state.
+ *
+ * `emptyFlow` completes without emitting anything, so the view model stays on
+ * `Loading` for the whole test. That is the first frame of every launch held
+ * still: on real storage the read resolves in a frame, which is exactly why
+ * nothing could test what the lists drew before it did.
+ *
+ * Delegates every write so the type is satisfied; only the read differs.
+ */
+internal class SilentTaskDao(
+    private val delegate: FakeTaskDao = FakeTaskDao()
+) : TaskDao by delegate {
+
+    override fun observeTasks(): Flow<List<TaskEntity>> = emptyFlow()
 }
 
 internal class FakeTaskDao(initial: List<Task> = emptyList()) : TaskDao {

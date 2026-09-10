@@ -324,12 +324,41 @@ new. The twenty-sixth, `theLastWeekdayCannotBeDeselected`, failed on a Compose
 idling timeout and passes on its own; it touches the Repeat sheet and nothing in
 this change, and the emulator had been running tests for some hours.
 
-**What the audit found and this session did not fix.** Two medium findings and
-six low ones. The four lists initialise on an empty loaded list so a slow read
-shows a false empty state — they now have the flag that would fix it,
-`tasksLoaded`, and spending it is a design call between a skeleton, a delayed
-spinner and nothing. Backup progress disables both buttons without saying which
-one is working.
+**Both remaining medium findings are fixed, D-065 and D-066.**
+
+**The four lists stop saying the user has no work before they have looked,
+D-065.** Today, Inbox, Upcoming and Logbook each spent the `tasksLoaded` flag
+D-062 left them: the branch order is now failed read, then not read yet, then
+empty, then the list. Nothing is drawn in the new branch. A skeleton and a
+delayed spinner were both considered and both declined, because the read is a
+local Room query that D-062 already measured resolving in a frame, and an
+indicator that fast is the same flash in a different costume. The chrome is
+what makes the blank safe: the bar, the navigation bar and the add button are
+drawn above the branch, so a read that never returns is a list the user can
+still leave.
+
+**Backup says which half of the page is working, D-066.** `BackupUiState`
+carries `working: BackupOperation?` instead of `isWorking: Boolean`, and the
+running button becomes "Exporting…" or "Restoring…" beside a small
+indeterminate indicator. `settings.md` had recorded this gap and accepted it,
+on the grounds that a file this size is read faster than a spinner would be
+seen. That measured the wrong file: both operations go through the Storage
+Access Framework, and the URI a picker hands back can belong to a provider on a
+network. The label is also the accessible half — a screen reader on the
+disabled button used to hear "disabled" with no reason attached.
+
+Thirteen new instrumented tests, all green: eight covering the four lists in
+both directions, since a list that never shows its empty state again would pass
+a test that only checked the new branch, and five covering the backup labels at
+100% and 200%. The backup page is rendered through `BackupContent`, which is
+internal now, because reaching the working state through `BackupScreen` means a
+real `ContentResolver`, a real picker and a real file, and none of them are part
+of the contract.
+
+**What the audit found and this session did not fix.** Six low-severity
+findings: the title and notes edit affordance, feedback when the last weekday
+cannot be deselected, the Repeat sheet discarding without asking, the Duration
+picker's spoken labels, the Upcoming capture FAB, and the backup privacy copy.
 
 **The dark theme audit is done, and it found nothing to fix.** That is a result
 rather than a shrug, and the two halves of it are worth keeping.

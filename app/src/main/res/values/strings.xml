@@ -180,6 +180,14 @@
     <string name="backup_restore_description">Restore from a Catimo backup file.</string>
     <string name="backup_restore_action">Restore from file</string>
     <!--
+      What the running half of the page says while it runs, D-066. Both
+      buttons disable while either operation is in flight, and without these
+      the page never said which one was working: a screen reader on the
+      other button heard "disabled" with no reason attached to it.
+    -->
+    <string name="backup_export_working">Exporting…</string>
+    <string name="backup_restore_working">Restoring…</string>
+    <!--
       What a finished export or restore says. A count rather than a bare
       confirmation: the number can be checked against what the lists hold, and
       an assertion the user cannot check is one they cannot disagree with.

@@ -70,6 +70,7 @@ fun LogbookScreen(
     val tasks by viewModel.completedTasks.collectAsStateWithLifecycle()
     val today by viewModel.today.collectAsStateWithLifecycle()
     val readFailed by viewModel.readFailed.collectAsStateWithLifecycle()
+    val tasksLoaded by viewModel.tasksLoaded.collectAsStateWithLifecycle()
 
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -82,6 +83,9 @@ fun LogbookScreen(
         onOpenTask = onOpenTask,
         onDelete = viewModel::deleteTask,
         readFailed = readFailed,
+        // D-065. Until this is true, an empty list means the read has not
+        // answered rather than that nothing has been completed.
+        tasksLoaded = tasksLoaded,
         onRetry = viewModel::retryRead,
         modifier = modifier,
         snackbarHostState = snackbarHostState,
@@ -105,6 +109,9 @@ private fun LogbookContent(
     onOpenTask: (String) -> Unit,
     onDelete: (String) -> Unit,
     readFailed: Boolean = false,
+    // Defaults to true, so a preview or a test handing in a list is showing a
+    // list that has been read. Only the live screen can be in the other state.
+    tasksLoaded: Boolean = true,
     onRetry: () -> Unit = {},
     modifier: Modifier = Modifier,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
@@ -148,6 +155,10 @@ private fun LogbookContent(
                 onRetry = onRetry,
                 modifier = Modifier.padding(innerPadding)
             )
+        } else if (!tasksLoaded) {
+            // Nothing, per D-065. This is the list that exists to make
+            // completing a task safe, so "Nothing completed yet" before the
+            // read has answered is the worst version of the false empty state.
         } else if (tasks.isEmpty()) {
             TaskListEmptyState(
                 headline = stringResource(R.string.logbook_empty_headline),

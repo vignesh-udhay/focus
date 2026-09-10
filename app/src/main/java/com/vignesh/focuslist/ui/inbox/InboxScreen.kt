@@ -69,6 +69,7 @@ fun InboxScreen(
     val tasks by viewModel.inboxTasks.collectAsStateWithLifecycle()
     val today by viewModel.today.collectAsStateWithLifecycle()
     val readFailed by viewModel.readFailed.collectAsStateWithLifecycle()
+    val tasksLoaded by viewModel.tasksLoaded.collectAsStateWithLifecycle()
 
     // Screen state, not app state: opening Quick Add here says nothing about
     // whether Today has its own sheet open.
@@ -84,6 +85,9 @@ fun InboxScreen(
         onOpenTask = onOpenTask,
         onAddTask = { isQuickAddVisible = true },
         readFailed = readFailed,
+        // D-065. Until this is true, an empty list means the read has not
+        // answered rather than that nothing is waiting.
+        tasksLoaded = tasksLoaded,
         onRetry = viewModel::retryRead,
         modifier = modifier,
         snackbarHostState = snackbarHostState,
@@ -134,6 +138,9 @@ private fun InboxContent(
     onOpenTask: (String) -> Unit,
     onAddTask: () -> Unit,
     readFailed: Boolean = false,
+    // Defaults to true, so a preview or a test handing in a list is showing a
+    // list that has been read. Only the live screen can be in the other state.
+    tasksLoaded: Boolean = true,
     onRetry: () -> Unit = {},
     modifier: Modifier = Modifier,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
@@ -178,6 +185,9 @@ private fun InboxContent(
                 onRetry = onRetry,
                 modifier = Modifier.padding(innerPadding)
             )
+        } else if (!tasksLoaded) {
+            // Nothing, per D-065. "Inbox is empty" is a claim about the user's
+            // work, and the app has not looked yet.
         } else if (tasks.isEmpty()) {
             TaskListEmptyState(
                 headline = stringResource(R.string.inbox_empty_headline),

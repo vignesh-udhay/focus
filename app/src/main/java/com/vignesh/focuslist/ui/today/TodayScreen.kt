@@ -102,6 +102,7 @@ fun TodayScreen(
     val pausedTask by viewModel.pausedFocusTask.collectAsStateWithLifecycle()
     val focusSession by viewModel.focusSession.collectAsStateWithLifecycle()
     val readFailed by viewModel.readFailed.collectAsStateWithLifecycle()
+    val tasksLoaded by viewModel.tasksLoaded.collectAsStateWithLifecycle()
 
     // Screen state, not app state: opening Quick Add here says nothing about
     // whether Inbox has its own sheet open.
@@ -160,6 +161,9 @@ fun TodayScreen(
         onEndSession = viewModel::endFocus,
         onAddTask = { isQuickAddVisible = true },
         readFailed = readFailed,
+        // D-065. Until this is true, an empty list means the read has not
+        // answered rather than that the day is clear.
+        tasksLoaded = tasksLoaded,
         onRetry = viewModel::retryRead,
         modifier = modifier,
         snackbarHostState = snackbarHostState,
@@ -230,6 +234,9 @@ private fun TodayContent(
     onEndSession: () -> Unit = {},
     onAddTask: () -> Unit,
     readFailed: Boolean = false,
+    // Defaults to true, so a preview or a test handing in a list is showing a
+    // list that has been read. Only the live screen can be in the other state.
+    tasksLoaded: Boolean = true,
     onRetry: () -> Unit = {},
     modifier: Modifier = Modifier,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
@@ -315,6 +322,11 @@ private fun TodayContent(
                 onRetry = onRetry,
                 modifier = Modifier.padding(innerPadding)
             )
+        } else if (!tasksLoaded) {
+            // Nothing, per D-065. "Nothing scheduled for today" is an assertion
+            // about the user's day, and the app has not looked yet. The bar,
+            // the navigation bar and the add button are all above this branch,
+            // so a read that never returns is a blank list rather than a trap.
         } else if (tasks.isEmpty() && pausedTask == null) {
             // The banner survives the empty screen, and D-040 says this is
             // where it matters most: a user who has just declined the

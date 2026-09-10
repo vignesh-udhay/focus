@@ -70,6 +70,7 @@ fun UpcomingScreen(
     val tasks by viewModel.upcomingTasks.collectAsStateWithLifecycle()
     val today by viewModel.today.collectAsStateWithLifecycle()
     val readFailed by viewModel.readFailed.collectAsStateWithLifecycle()
+    val tasksLoaded by viewModel.tasksLoaded.collectAsStateWithLifecycle()
 
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -79,6 +80,9 @@ fun UpcomingScreen(
         tasks = tasks,
         today = today,
         readFailed = readFailed,
+        // D-065. Until this is true, an empty list means the read has not
+        // answered rather than that nothing is scheduled ahead.
+        tasksLoaded = tasksLoaded,
         onRetry = viewModel::retryRead,
         onToggleComplete = viewModel::toggleComplete,
         onOpenTask = onOpenTask,
@@ -104,6 +108,9 @@ private fun UpcomingContent(
     onToggleComplete: (String) -> Unit,
     onOpenTask: (String) -> Unit,
     readFailed: Boolean = false,
+    // Defaults to true, so a preview or a test handing in a list is showing a
+    // list that has been read. Only the live screen can be in the other state.
+    tasksLoaded: Boolean = true,
     onRetry: () -> Unit = {},
     modifier: Modifier = Modifier,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
@@ -142,6 +149,9 @@ private fun UpcomingContent(
                 onRetry = onRetry,
                 modifier = Modifier.padding(innerPadding)
             )
+        } else if (!tasksLoaded) {
+            // Nothing, per D-065. "Nothing scheduled ahead" is a claim about
+            // the user's plans, and the app has not looked yet.
         } else if (tasks.isEmpty()) {
             TaskListEmptyState(
                 headline = stringResource(R.string.upcoming_empty_headline),

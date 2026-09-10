@@ -5,17 +5,23 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
@@ -101,7 +107,9 @@ fun BackupScreen(
     }
 
     BackupContent(
-        isWorking = state.isWorking,
+        // D-066. Which half is running, not merely that one is: both buttons
+        // disable either way, and only this says which one to wait for.
+        working = state.working,
         onExport = chooseExport,
         onRestore = chooseRestore,
         onBack = onBack,
@@ -138,9 +146,17 @@ fun BackupScreen(
     }
 }
 
+/**
+ * The backup page.
+ *
+ * Internal rather than private so the semantics suite can render the working
+ * state directly. Reaching it through [BackupScreen] would mean a real
+ * `ContentResolver`, a real document picker and a real file, none of which the
+ * contract under test depends on.
+ */
 @Composable
-private fun BackupContent(
-    isWorking: Boolean,
+internal fun BackupContent(
+    working: BackupOperation?,
     onExport: () -> Unit,
     onRestore: () -> Unit,
     onBack: () -> Unit,
@@ -211,12 +227,16 @@ private fun BackupContent(
             ) {
                 Button(
                     onClick = onExport,
-                    enabled = !isWorking,
+                    enabled = working == null,
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = FocuslistDimensions.ActionHeight)
                 ) {
-                    Text(stringResource(R.string.backup_export_action))
+                    WorkingLabel(
+                        isWorking = working == BackupOperation.Export,
+                        idle = stringResource(R.string.backup_export_action),
+                        working = stringResource(R.string.backup_export_working)
+                    )
                 }
             }
 
@@ -226,16 +246,51 @@ private fun BackupContent(
             ) {
                 FilledTonalButton(
                     onClick = onRestore,
-                    enabled = !isWorking,
+                    enabled = working == null,
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = FocuslistDimensions.ActionHeight)
                 ) {
-                    Text(stringResource(R.string.backup_restore_action))
+                    WorkingLabel(
+                        isWorking = working == BackupOperation.Restore,
+                        idle = stringResource(R.string.backup_restore_action),
+                        working = stringResource(R.string.backup_restore_working)
+                    )
                 }
             }
         }
     }
+}
+
+/**
+ * A button label that says whether this is the button doing the work.
+ *
+ * `docs/decisions.md` D-066. The word is the part that answers the finding: a
+ * screen reader on a disabled button hears "disabled" and no reason, and it now
+ * hears the reason. The indicator carries the same answer for anyone not
+ * reading, and it is indeterminate because neither operation can report
+ * progress: the codec reads and writes in one pass.
+ *
+ * The indicator takes [LocalContentColor] rather than the default, so it fades
+ * with the label it stands beside instead of staying at full strength on a
+ * button that is disabled.
+ */
+@Composable
+private fun RowScope.WorkingLabel(
+    isWorking: Boolean,
+    idle: String,
+    working: String
+) {
+    if (isWorking) {
+        CircularProgressIndicator(
+            strokeWidth = WorkingIndicatorStroke,
+            color = LocalContentColor.current,
+            modifier = Modifier.size(ButtonDefaults.IconSize)
+        )
+        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+    }
+
+    Text(if (isWorking) working else idle)
 }
 
 @Composable
@@ -361,6 +416,7 @@ private fun BackupErrorDialog(
 
 private const val JsonMimeType = "application/json"
 private val LocalFirstMinHeight = 154.dp
+private val WorkingIndicatorStroke = 2.dp
 
 @Preview(name = "Backup light", heightDp = 720)
 @Preview(name = "Backup dark", heightDp = 720, uiMode = Configuration.UI_MODE_NIGHT_YES)
@@ -368,7 +424,7 @@ private val LocalFirstMinHeight = 154.dp
 private fun BackupPreview() {
     FocuslistTheme(dynamicColor = false) {
         BackupContent(
-            isWorking = false,
+            working = null,
             onExport = {},
             onRestore = {},
             onBack = {},
