@@ -131,21 +131,34 @@ class TodayScreenSemanticsTest {
      */
     @Test
     fun leavingFocus_keepsPausedSessionCardVisible() {
-        val viewModel = testViewModel(withOneTask())
+        val viewModel = testViewModel(withEnoughTasksToScroll())
+        viewModel.beginFocus("1")
+        viewModel.leaveFocusSheet()
 
         rule.setFocuslistContent(FontScale100) {
             TodayScreen(viewModel = viewModel, onOpenTask = {})
         }
 
-        rule.waitUntilExactlyOneExists(hasText(TITLE), TIMEOUT_MILLIS)
+        rule.waitUntilExactlyOneExists(hasText(RESUME_FOCUS), TIMEOUT_MILLIS)
+        rule.onNodeWithText(RESUME_FOCUS).performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText(RESUME_FOCUS).assertDoesNotExist()
 
         rule.runOnIdle {
-            viewModel.beginFocus("1")
             viewModel.leaveFocusSheet()
         }
 
         rule.waitUntilExactlyOneExists(hasText(RESUME_FOCUS), TIMEOUT_MILLIS)
-        rule.onNodeWithText(RESUME_FOCUS).assertIsDisplayed()
+        val appBarBottom = rule.onNode(hasText("Today") and isHeading())
+            .fetchSemanticsNode().boundsInRoot.bottom
+        val cardActionTop = rule.onNodeWithText(RESUME_FOCUS)
+            .fetchSemanticsNode().boundsInRoot.top
+
+        assertTrue(
+            "Paused-session card was clipped behind the app bar: " +
+                "actionTop=$cardActionTop, appBarBottom=$appBarBottom",
+            cardActionTop >= appBarBottom
+        )
     }
 
     /** And the row says what tapping it does, in the words every row uses. */
@@ -180,6 +193,18 @@ class TodayScreenSemanticsTest {
                 reminderAt = TestPassedReminder
             )
         )
+    )
+
+    /** Enough rows for LazyColumn to preserve an item above the viewport. */
+    private fun withEnoughTasksToScroll() = FakeTaskDao(
+        (1..12).map { index ->
+            testTask(
+                id = index.toString(),
+                title = "Task $index",
+                scheduledDate = TestToday,
+                reminderAt = TestPassedReminder
+            )
+        }
     )
 
     private fun assertScreenTitleIsAHeading(fontScale: Float) {

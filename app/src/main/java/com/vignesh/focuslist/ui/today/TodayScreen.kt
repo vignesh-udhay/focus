@@ -272,7 +272,10 @@ private fun TodayContent(
     val gutter = focuslistContentGutter()
 
     val listState = rememberLazyListState()
-    listState.HoldViewportAcross(sections)
+    listState.HoldViewportAcross(
+        sections = sections,
+        hasPausedSessionCard = pausedTask != null
+    )
 
     Scaffold(
         modifier = modifier,
@@ -479,7 +482,7 @@ private fun TodayContent(
 }
 
 /**
- * Holds the viewport still when [sections] changes shape.
+ * Holds the viewport still when Today's lazy content changes shape.
  *
  * `LazyColumn` remembers the *key* of its first visible item, not just its
  * index, and after a data change it looks that key up and scrolls so the item
@@ -509,18 +512,37 @@ private fun TodayContent(
  *
  * Pinning to the current index rather than the current key is the point: the
  * rows below simply move up by one, which is what the user expects to see.
+ *
+ * The paused-session card needs one narrower version of the same correction.
+ * Resuming removes the card and leaves the first band at index zero. When the
+ * user leaves Focus, pausing inserts the card ahead of that band. If Today was
+ * at the top, LazyColumn otherwise keeps the band's key pinned there and lays
+ * the new card out behind the app bar. Requesting index zero only in that case
+ * reveals the card without pulling a user who had deliberately scrolled deeper
+ * back to the start of the list.
  */
 @Composable
-private fun LazyListState.HoldViewportAcross(sections: List<TodaySection>) {
+private fun LazyListState.HoldViewportAcross(
+    sections: List<TodaySection>,
+    hasPausedSessionCard: Boolean
+) {
     val order = sections.flatMap { section -> section.tasks.map(Task::id) }
-    val previous = remember { mutableStateOf<List<String>?>(null) }
+    val previousOrder = remember { mutableStateOf<List<String>?>(null) }
+    val previouslyHadPausedSessionCard = remember { mutableStateOf<Boolean?>(null) }
 
     SideEffect {
-        val before = previous.value
-        if (before != null && before != order) {
+        val beforeOrder = previousOrder.value
+        val hadPausedSessionCard = previouslyHadPausedSessionCard.value
+        val taskOrderChanged = beforeOrder != null && beforeOrder != order
+        val pausedCardAppearedAtTop = hadPausedSessionCard == false &&
+            hasPausedSessionCard &&
+            firstVisibleItemIndex == 0
+
+        if (taskOrderChanged || pausedCardAppearedAtTop) {
             requestScrollToItem(firstVisibleItemIndex, firstVisibleItemScrollOffset)
         }
-        previous.value = order
+        previousOrder.value = order
+        previouslyHadPausedSessionCard.value = hasPausedSessionCard
     }
 }
 
