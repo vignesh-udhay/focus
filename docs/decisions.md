@@ -4259,3 +4259,83 @@ a design call rather than this defect. Left as the audit filed it.
 tasks that do exist, which would mean the read answers `Loaded` before it is
 really settled. The check is whether anyone sees it after an ordinary tap from a
 list.
+
+---
+
+## D-063. Completing a task is one write, and a write that fails says so
+
+**Decision.** Three changes to the write path, in the order they matter.
+
+**Completion is atomic.** `TaskDao.completeWithNext` marks the task complete and
+inserts its next occurrence inside one `@Transaction`, or does neither.
+`reopenWithoutSpawn` is its mirror. `TaskCompletion` calls those instead of
+making two unrelated calls.
+
+**Writes read their task with a point query.** `TaskDao.findTask(id)` replaces
+`observeTasks().first()` at all seven sites, six in `TaskListViewModel` and one
+in `TaskCompletion`. `findSpawnsOf(parentId)` replaces the in-memory scan that
+reopening used.
+
+**A write that fails is reported.** Every write in the view model goes through
+one private `write { }` that catches and raises `WriteFailure`, which the
+snackbar effect every list already hosts announces as "Couldn't save that
+change".
+
+**Why the transaction, and why it is first.** `TaskCompletion.complete` was:
+
+    repository.update(task.copy(completedAt = clock()))
+    next?.let { repository.insert(it) }
+
+Two writes, nothing binding them. A failure on the second, or the process dying
+between them, leaves a recurring task complete with no successor. Its reminder
+is gone and nothing anywhere says so. `PRODUCT.md` is explicit — "completing one
+occurrence must produce the next one, it must never make the task disappear" —
+and principle 1 ranks a reminder that does not fire above a crash, because a
+crash is visible and this is not.
+
+That promise cannot be made by two writes that can half happen, and no amount of
+error handling above them fixes it: by the time the second write fails the first
+has already landed. `reopen` had the same shape and lost the occurrence in the
+other direction, deleting an untouched spawn and then failing to clear the
+completion.
+
+**Why the point query.** Every write path reached its task by subscribing to a
+stream of *every* task, taking one emission, cancelling it, and searching the
+list in memory. That reads the whole table to find one row, and it has no error
+path: a `Flow` that throws kills its collector, which is how D-062 found the app
+crashing, and routing it through the caught stream instead would have suspended
+for ever and made the tap silently do nothing.
+
+A suspending point query has neither problem. It throws at one call site the
+caller can wrap, and it cannot hang. The `deletedAt IS NULL` filter matches
+`observeTasks`, so callers see exactly the rows they saw before.
+
+**Why the failure is announced rather than swallowed.** D-062 left this open,
+between a crash and a silent no-op, and the answer is neither. A user who ticks a
+task off and is not told the write failed believes it is done — the app quietly
+asserting something untrue about their work, which is the fault D-034 exists to
+prevent, arriving through a different door. `AGENTS.md` already forbids the
+silent version for scheduling failures.
+
+No retry action on the snackbar. There is nothing to retry automatically, the
+user's next tap is the retry, and a button that will fail again is worse than no
+button, which is the same reasoning `settings.md` gives for the restore error
+offering Choose another file rather than Retry.
+
+**`WriteFailure` carries an id**, for the reason `BackupDone` does. Two failures
+in a row are otherwise `equals`, the state does not change, the screen never
+notices the second, and the user taps into silence.
+
+**The whole read-decide-write unit is inside the `try`,** not just the read. If
+the database cannot be read it usually cannot be written either, and guarding one
+half would leave the other crashing for the same reason.
+
+**What is not claimed.** The rollback guarantee is Room's, declared by
+`@Transaction` and not asserted by a test here: there is no way to make one of
+these two writes fail from outside without testing Room rather than this code.
+What is tested is that both writes land, that a refused write is reported instead
+of fatal, and that a second refusal is announced too.
+
+**What would reverse this.** "Couldn't save that change" appearing in ordinary
+use, which would mean writes are failing for a reason worth finding rather than
+because storage is broken.

@@ -45,17 +45,21 @@ class TaskCompletion(
      * should survive it coming back on Thursday.
      */
     suspend fun complete(id: String): String? {
-        val task = repository.observeTasks().first().firstOrNull { it.id == id } ?: return null
+        val task = repository.findTask(id) ?: return null
         if (task.isCompleted) return null
-
-        repository.update(task.copy(completedAt = clock()))
 
         val next = task.nextRecurringInstance(
             today = currentDay.today.first(),
             id = newId(),
             createdAt = clock()
         )
-        next?.let { repository.insert(it) }
+
+        // **One transaction, and D-063 is why.** This was an `update` followed
+        // by an `insert`, so a failure between them left a recurring task
+        // complete with no successor: its reminder gone, and nothing saying so.
+        // `PRODUCT.md` puts that above a crash, and requires that completing an
+        // occurrence produces the next one.
+        repository.completeWithNext(completed = task.copy(completedAt = clock()), next = next)
 
         return next?.id
     }
@@ -75,14 +79,23 @@ class TaskCompletion(
      * up.
      */
     suspend fun reopen(id: String) {
-        val tasks = repository.observeTasks().first()
-        val task = tasks.firstOrNull { it.id == id } ?: return
+        val task = repository.findTask(id) ?: return
         if (!task.isCompleted) return
 
-        tasks.firstOrNull { spawn ->
-            spawn.spawnedFromId == task.id && !spawn.isCompleted && !spawn.isDeleted
-        }?.let { spawn -> repository.delete(spawn.id) }
+        // Asked for by parent rather than filtered out of every task. The rule
+        // for which occurrence counts stays here, because it is a domain rule:
+        // one that has itself been completed has its own record and its own
+        // successor, and removing it would be destroying work.
+        val spawn = repository.findSpawnsOf(task.id).firstOrNull { candidate ->
+            !candidate.isCompleted
+        }
 
-        repository.update(task.copy(completedAt = null))
+        // Atomic for the mirror of D-063's reason: a failure between the two
+        // writes destroyed an untouched next occurrence and left the task
+        // completed, losing the reminder in the other direction.
+        repository.reopenWithoutSpawn(
+            reopened = task.copy(completedAt = null),
+            spawnId = spawn?.id
+        )
     }
 }

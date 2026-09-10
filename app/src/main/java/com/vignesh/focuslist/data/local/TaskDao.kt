@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
@@ -33,11 +34,74 @@ interface TaskDao {
     @Query("SELECT * FROM tasks WHERE deletedAt IS NULL ORDER BY createdAt, id")
     fun observeTasks(): Flow<List<TaskEntity>>
 
+    /**
+     * One task by id, or null when there is no live row for it.
+     *
+     * `docs/decisions.md` D-063. Every write path used to reach its task with
+     * `observeTasks().first()`: subscribe to a stream of every task, take one
+     * emission, cancel it, then search the list in memory. That reads the whole
+     * table to find one row, and worse, it has no error path — a `Flow` that
+     * throws crashes the collector, and the caught stream would suspend for
+     * ever instead.
+     *
+     * A suspending point query throws at one call site the caller can wrap, and
+     * cannot hang. The `deletedAt IS NULL` filter matches [observeTasks], so
+     * callers see exactly what they saw before.
+     */
+    @Query("SELECT * FROM tasks WHERE id = :id AND deletedAt IS NULL")
+    suspend fun findTask(id: String): TaskEntity?
+
+    /**
+     * The live occurrences a completion created from [parentId].
+     *
+     * Reopening needs to find them and the rule for which one counts is a
+     * domain rule, so only the deleted filter this DAO already owns is applied
+     * here. Whether an occurrence is still untouched is decided above.
+     */
+    @Query("SELECT * FROM tasks WHERE spawnedFromId = :parentId AND deletedAt IS NULL")
+    suspend fun findSpawnsOf(parentId: String): List<TaskEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(task: TaskEntity)
 
     @Update
     suspend fun update(task: TaskEntity)
+
+    /**
+     * Completes a task and starts its next occurrence, or does neither.
+     *
+     * `docs/decisions.md` D-063. These were two separate writes with nothing
+     * binding them, so a failure between them left a recurring task complete
+     * with no successor: its reminder gone, and nothing anywhere saying so.
+     * `PRODUCT.md` requires that "completing one occurrence must produce the
+     * next one", and that promise cannot be kept by two writes that can half
+     * happen.
+     *
+     * [next] is null for a task that does not recur, which is the ordinary
+     * case and needs no second write.
+     */
+    @Transaction
+    suspend fun completeWithNext(completed: TaskEntity, next: TaskEntity?) {
+        update(completed)
+        next?.let { occurrence -> insert(occurrence) }
+    }
+
+    /**
+     * Reopens a task and removes the occurrence its completion created, or
+     * does neither.
+     *
+     * The mirror of [completeWithNext] and atomic for the same reason: a
+     * failure between the two writes destroyed the untouched next occurrence
+     * and left the task completed, which loses the reminder in the other
+     * direction.
+     *
+     * [spawnId] is null when completion produced nothing to take back.
+     */
+    @Transaction
+    suspend fun reopenWithoutSpawn(reopened: TaskEntity, spawnId: String?) {
+        spawnId?.let { id -> deleteById(id) }
+        update(reopened)
+    }
 
     /**
      * Marks a task deleted without removing the row, so the deletion can be

@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -43,6 +44,38 @@ import java.util.UUID
  * with no mocking library. That keeps the repository's own mapping in the loop
  * rather than stubbing it out.
  */
+/**
+ * Storage that reads but refuses every write, for `docs/decisions.md` D-063.
+ *
+ * Reads work so the user has a task to act on, and the refusal lands where the
+ * tap does. Before D-063 that combination crashed the process.
+ */
+private class RefusingTaskDao(private val rows: List<TaskEntity>) : TaskDao {
+
+    override fun observeTasks(): Flow<List<TaskEntity>> = MutableStateFlow(rows)
+
+    override suspend fun findTask(id: String): TaskEntity? = rows.firstOrNull { it.id == id }
+
+    override suspend fun findSpawnsOf(parentId: String): List<TaskEntity> =
+        rows.filter { it.spawnedFromId == parentId }
+
+    override suspend fun insert(task: TaskEntity) = refuse()
+
+    override suspend fun update(task: TaskEntity) = refuse()
+
+    override suspend fun softDelete(id: String, deletedAt: Long) = refuse()
+
+    override suspend fun markReminderDelivered(id: String, deliveredAt: Long) = refuse()
+
+    override suspend fun rescheduleReminder(id: String, reminderAt: String?) = refuse()
+
+    override suspend fun restore(id: String) = refuse()
+
+    override suspend fun deleteById(id: String) = refuse()
+
+    private fun refuse(): Nothing = throw IllegalStateException("write refused")
+}
+
 private class FakeTaskDao : TaskDao {
 
     val emissions = MutableStateFlow<List<TaskEntity>>(emptyList())
@@ -58,6 +91,13 @@ private class FakeTaskDao : TaskDao {
      */
     override fun observeTasks(): Flow<List<TaskEntity>> =
         emissions.map { rows -> rows.filter { row -> row.deletedAt == null } }
+
+    /** The real query's point lookup, with the same live-rows filter. */
+    override suspend fun findTask(id: String): TaskEntity? =
+        emissions.value.firstOrNull { row -> row.id == id && row.deletedAt == null }
+
+    override suspend fun findSpawnsOf(parentId: String): List<TaskEntity> =
+        emissions.value.filter { row -> row.spawnedFromId == parentId && row.deletedAt == null }
 
     /** Stores the row so the flow re-emits, as the real DAO does. */
     override suspend fun insert(task: TaskEntity) {
@@ -231,6 +271,22 @@ class TaskListViewModelTest {
 
     private fun store(vararg tasks: Task) {
         dao.emissions.value = tasks.map { it.toEntity() }
+    }
+
+    /**
+     * A view model over storage that refuses every write, for D-063.
+     *
+     * Reads still work, so the screen has a task to act on and the failure
+     * happens where the user's tap lands rather than before it.
+     */
+    private fun refusingViewModel(vararg tasks: Task): TaskListViewModel {
+        val refusing = RefusingTaskDao(tasks.map { it.toEntity() })
+        return TaskListViewModel(
+            TaskRepository(refusing),
+            currentDay,
+            SavedStateHandle(),
+            alarms
+        )
     }
 
     /** The state starts empty, so wait for the derived emission. */
@@ -2960,6 +3016,66 @@ class TaskListViewModelTest {
         assertEquals("b", awaitFocusedTaskId(model, "b"))
         assertTrue(model.isFocusSheetOpen.value)
         assertNotNull(model.focusSession.value)
+    }
+
+    // D-063: a write storage refuses is reported, not fatal
+
+    /**
+     * **This used to take the app down.** `toggleComplete` read its task with
+     * `observeTasks().first()` inside a bare `viewModelScope.launch`, and a
+     * `Flow` that throws is finished, so nothing caught it. The alternative,
+     * letting the tap quietly do nothing, is the failure D-034 exists to
+     * prevent in the other direction: the app asserting something untrue about
+     * the user's work, here that a task was completed when it was not.
+     */
+    @Test
+    fun aWriteStorageRefusesIsReportedRatherThanFatal() {
+        val model = refusingViewModel(task(id = "a", scheduledDate = today))
+
+        model.toggleComplete("a")
+
+        assertNotNull(awaitWriteFailure(model))
+        // And no undo is offered for something that did not happen.
+        assertNull(model.pendingUndo.value)
+    }
+
+    /**
+     * Two failures in a row are otherwise `equals` to each other, the state
+     * would not change, and the screen would never notice the second. That is
+     * the bug `BackupDone` carries an id to prevent, and this is the same shape.
+     */
+    @Test
+    fun asecondRefusedWriteIsAnnouncedToo() {
+        val model = refusingViewModel(task(id = "a", scheduledDate = today))
+
+        model.toggleComplete("a")
+        val first = awaitWriteFailure(model)
+        model.consumeWriteFailure()
+
+        model.deleteTask("a")
+        val second = awaitWriteFailure(model)
+
+        assertNotEquals(first, second)
+    }
+
+    /** Nothing to announce while writes are working. */
+    @Test
+    fun anOrdinaryWriteRaisesNoFailure() {
+        store(task(id = "a", scheduledDate = today))
+        val model = viewModel()
+
+        model.toggleComplete("a")
+        awaitTodayTask(model) { it.isCompleted }
+
+        assertNull(model.writeFailure.value)
+    }
+
+    private fun awaitWriteFailure(model: TaskListViewModel): WriteFailure {
+        repeat(200) {
+            model.writeFailure.value?.let { return it }
+            Thread.sleep(10)
+        }
+        throw AssertionError("no write failure was reported")
     }
 
     // D-057: Start focus asks before it discards a session

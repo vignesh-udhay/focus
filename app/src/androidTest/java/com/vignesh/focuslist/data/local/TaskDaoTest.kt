@@ -89,6 +89,84 @@ class TaskDaoTest {
     private suspend fun observed(): List<TaskEntity> =
         dao.observeTasks().first().sortedBy { it.id }
 
+    // D-063: the point query, and the two writes that have to be atomic
+
+    @Test
+    fun findTaskReturnsOneRowRatherThanTheWholeTable() = runBlocking {
+        dao.insert(entity("a"))
+        dao.insert(entity("b"))
+
+        assertEquals("b", dao.findTask("b")?.id)
+        assertNull(dao.findTask("missing"))
+    }
+
+    /**
+     * The same live-rows filter `observeTasks` applies. Every write path used to
+     * read that filtered stream, so a point query that saw the trash would show
+     * callers rows they had never been able to see.
+     */
+    @Test
+    fun findTaskIgnoresASoftDeletedRow() = runBlocking {
+        dao.insert(entity("a", deletedAt = deletedAt))
+
+        assertNull(dao.findTask("a"))
+    }
+
+    /**
+     * `PRODUCT.md`: "Completing one occurrence must produce the next one." Two
+     * separate writes could not promise that, and a recurring task completed
+     * without its successor is a reminder silently lost.
+     */
+    @Test
+    fun completeWithNextWritesBothTheCompletionAndTheOccurrence() = runBlocking {
+        dao.insert(entity("a", recurrence = RecurrenceUnit.DAILY))
+
+        val completed = dao.findTask("a")!!.copy(completedAt = completedAt)
+        dao.completeWithNext(
+            completed = completed,
+            next = entity("a-next", recurrence = RecurrenceUnit.DAILY, spawnedFromId = "a")
+        )
+
+        assertEquals(completedAt, dao.findTask("a")?.completedAt)
+        assertEquals("a", dao.findTask("a-next")?.spawnedFromId)
+    }
+
+    /** A task that does not recur has no second write to make. */
+    @Test
+    fun completeWithNextAcceptsNoOccurrence() = runBlocking {
+        dao.insert(entity("a"))
+
+        dao.completeWithNext(completed = dao.findTask("a")!!.copy(completedAt = completedAt), next = null)
+
+        assertEquals(completedAt, dao.findTask("a")?.completedAt)
+        assertEquals(1, observed().size)
+    }
+
+    /** The mirror, and it loses the occurrence in the other direction. */
+    @Test
+    fun reopenWithoutSpawnRemovesTheOccurrenceAndClearsTheCompletion() = runBlocking {
+        dao.insert(entity("a", completedAt = completedAt, recurrence = RecurrenceUnit.DAILY))
+        dao.insert(entity("a-next", spawnedFromId = "a", recurrence = RecurrenceUnit.DAILY))
+
+        dao.reopenWithoutSpawn(
+            reopened = dao.findTask("a")!!.copy(completedAt = null),
+            spawnId = "a-next"
+        )
+
+        assertNull(dao.findTask("a")?.completedAt)
+        assertNull(dao.findTask("a-next"))
+    }
+
+    @Test
+    fun findSpawnsOfReturnsOnlyTheOccurrencesOfThatParent() = runBlocking {
+        dao.insert(entity("a"))
+        dao.insert(entity("a-next", spawnedFromId = "a"))
+        dao.insert(entity("b-next", spawnedFromId = "b"))
+        dao.insert(entity("a-binned", spawnedFromId = "a", deletedAt = deletedAt))
+
+        assertEquals(listOf("a-next"), dao.findSpawnsOf("a").map { it.id })
+    }
+
     // 1
 
     @Test

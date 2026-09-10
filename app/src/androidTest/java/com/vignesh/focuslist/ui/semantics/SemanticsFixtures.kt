@@ -152,6 +152,12 @@ internal class FakeTaskDao(initial: List<Task> = emptyList()) : TaskDao {
                 .sortedWith(compareBy({ it.createdAt }, { it.id }))
         }
 
+    override suspend fun findTask(id: String): TaskEntity? =
+        rows.value.firstOrNull { row -> row.id == id && row.deletedAt == null }
+
+    override suspend fun findSpawnsOf(parentId: String): List<TaskEntity> =
+        rows.value.filter { row -> row.spawnedFromId == parentId && row.deletedAt == null }
+
     override suspend fun insert(task: TaskEntity) {
         rows.value = rows.value + task
     }

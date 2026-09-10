@@ -38,6 +38,13 @@ private class FakeTaskDao : TaskDao {
 
     override fun observeTasks(): Flow<List<TaskEntity>> = emissions
 
+    /** The real query's point lookup, with the same live-rows filter. */
+    override suspend fun findTask(id: String): TaskEntity? =
+        emissions.value.firstOrNull { row -> row.id == id && row.deletedAt == null }
+
+    override suspend fun findSpawnsOf(parentId: String): List<TaskEntity> =
+        emissions.value.filter { row -> row.spawnedFromId == parentId && row.deletedAt == null }
+
     override suspend fun insert(task: TaskEntity) {
         inserted += task
     }

@@ -31,12 +31,41 @@ class TaskRepository(private val dao: TaskDao) {
     fun observeTasks(): Flow<List<Task>> =
         dao.observeTasks().map { entities -> entities.map { entity -> entity.toDomain() } }
 
+    /**
+     * One task by id, or null when there is no live row for it.
+     *
+     * What every write path reads before it decides. D-063 replaced
+     * `observeTasks().first()` here: that took one emission off a stream of
+     * every task and had no error path, so a failed read crashed the caller.
+     */
+    suspend fun findTask(id: String): Task? = dao.findTask(id)?.toDomain()
+
+    /** The live occurrences a completion created from [parentId]. */
+    suspend fun findSpawnsOf(parentId: String): List<Task> =
+        dao.findSpawnsOf(parentId).map { entity -> entity.toDomain() }
+
     suspend fun insert(task: Task) {
         dao.insert(task.toEntity())
     }
 
     suspend fun update(task: Task) {
         dao.update(task.toEntity())
+    }
+
+    /**
+     * Completes [completed] and starts [next] in one transaction, or neither.
+     *
+     * `docs/decisions.md` D-063. Two calls to [update] and [insert] could half
+     * happen, and a recurring task completed without its successor is a
+     * reminder silently lost, which `PRODUCT.md` ranks above a crash.
+     */
+    suspend fun completeWithNext(completed: Task, next: Task?) {
+        dao.completeWithNext(completed = completed.toEntity(), next = next?.toEntity())
+    }
+
+    /** Reopens [reopened] and removes [spawnId] together, or neither. */
+    suspend fun reopenWithoutSpawn(reopened: Task, spawnId: String?) {
+        dao.reopenWithoutSpawn(reopened = reopened.toEntity(), spawnId = spawnId)
     }
 
     /**

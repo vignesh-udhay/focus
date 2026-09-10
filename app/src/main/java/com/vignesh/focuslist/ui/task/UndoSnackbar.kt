@@ -25,6 +25,12 @@ import com.vignesh.focuslist.R
  *
  * The screen keeps its own [SnackbarHostState] and passes it to its own
  * `Scaffold`, which is what leaves the previews stateless.
+ *
+ * **It carries a second thing now: a write that failed.** `docs/decisions.md`
+ * D-063. It belongs here for the same reason the undo offer does, that an action
+ * taken on one screen has to be reported wherever the user ends up, and it
+ * arrives through the same host so the two can never overlap. It has no action:
+ * there is nothing to retry automatically, and the user's next tap is the retry.
  */
 @Composable
 fun UndoSnackbarEffect(
@@ -32,6 +38,17 @@ fun UndoSnackbarEffect(
     snackbarHostState: SnackbarHostState
 ) {
     val pendingUndo by viewModel.pendingUndo.collectAsStateWithLifecycle()
+    val writeFailure by viewModel.writeFailure.collectAsStateWithLifecycle()
+    val writeFailedMessage = stringResource(R.string.task_write_failed)
+
+    // Before the undo effect, because a write that failed raised no offer and
+    // the two are never pending together.
+    LaunchedEffect(writeFailure) {
+        if (writeFailure == null) return@LaunchedEffect
+
+        snackbarHostState.showSnackbar(writeFailedMessage)
+        viewModel.consumeWriteFailure()
+    }
 
     val completedMessage = stringResource(R.string.task_completed)
     val deletedMessage = stringResource(R.string.task_deleted)

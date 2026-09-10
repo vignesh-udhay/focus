@@ -92,6 +92,15 @@ sealed interface PendingUndo {
  * drawing stale rows beneath an error message would be making two claims at
  * once, and the older of them is the one that cannot be checked.
  */
+/**
+ * A write that failed, waiting to be announced.
+ *
+ * [id] distinguishes two identical failures, exactly as `BackupDone` does: a
+ * second failure with no id would be `equals` to the standing one, the screen
+ * would not notice it, and the user would tap into silence.
+ */
+data class WriteFailure(val id: Long)
+
 private sealed interface TaskRead {
 
     val tasks: List<Task>
@@ -267,6 +276,54 @@ class TaskListViewModel(
         storedTasks
             .filterIsInstance<TaskRead.Loaded>()
             .map { read -> read.tasks }
+
+    private val _writeFailure = MutableStateFlow<WriteFailure?>(null)
+
+    /**
+     * A write that did not happen, waiting to be announced.
+     *
+     * `docs/decisions.md` D-063. Storage failing while the user taps a checkbox
+     * used to crash: the read threw inside a bare `viewModelScope.launch`, and
+     * nothing was catching. The alternative it replaced, letting the tap quietly
+     * do nothing, is the failure D-034 exists to prevent in the other direction:
+     * the app asserting something untrue about the user's work, in this case
+     * that a task was completed.
+     *
+     * Carries an id for the reason `BackupDone` does. Two failures in a row are
+     * otherwise `equals` to each other, so the screen would not notice the
+     * second and the user would tap into silence.
+     */
+    val writeFailure: StateFlow<WriteFailure?> = _writeFailure.asStateFlow()
+
+    /** Called once the failure has been announced, so it is not announced twice. */
+    fun consumeWriteFailure() {
+        _writeFailure.value = null
+    }
+
+    private var writeFailures = 0L
+
+    /**
+     * Runs one write, and reports it rather than dying if storage refuses.
+     *
+     * Every write goes through here. The whole read-decide-write unit is inside
+     * the `try`, not just the read: if the database cannot be read it usually
+     * cannot be written either, and guarding one half would leave the other
+     * crashing for the same reason.
+     *
+     * The exception is swallowed after being recorded, deliberately. There is
+     * nothing to retry automatically — the user's next tap is the retry — and
+     * `AGENTS.md` forbids only the silent swallow, which is what the id and the
+     * snackbar exist to prevent.
+     */
+    private fun write(block: suspend () -> Unit) {
+        viewModelScope.launch {
+            try {
+                block()
+            } catch (_: Exception) {
+                _writeFailure.value = WriteFailure(id = ++writeFailures)
+            }
+        }
+    }
 
     /** Starts a fresh read after a failed one. The Try again button calls it. */
     fun retryRead() {
@@ -901,7 +958,7 @@ class TaskListViewModel(
         val trimmed = title.trim()
         if (trimmed.isEmpty()) return false
 
-        viewModelScope.launch {
+        write {
             repository.insert(
                 Task(
                     id = UUID.randomUUID().toString(),
@@ -968,8 +1025,8 @@ class TaskListViewModel(
      * describes the task's state.
      */
     fun toggleComplete(id: String) {
-        viewModelScope.launch {
-            val task = repository.observeTasks().first().firstOrNull { it.id == id } ?: return@launch
+        write {
+            val task = repository.findTask(id) ?: return@write
 
             if (task.isCompleted) {
                 completion.reopen(id)
@@ -981,7 +1038,7 @@ class TaskListViewModel(
                 // matched nothing and the snackbar was left offering an undo
                 // for something already undone.
                 dismissUndo(task.id)
-                return@launch
+                return@write
             }
 
             _pendingUndo.value =
@@ -1004,7 +1061,7 @@ class TaskListViewModel(
         if (offer.taskId != id) return
         if (!_pendingUndo.compareAndSet(expect = offer, update = null)) return
 
-        viewModelScope.launch {
+        write {
             // The spawned instance goes first, and unconditionally. It exists
             // only because of the completion being undone, so it goes back
             // whether or not the original is still there to reopen, and it is
@@ -1012,8 +1069,8 @@ class TaskListViewModel(
             // should not be left for them to find.
             offer.spawnedTaskId?.let { repository.delete(it) }
 
-            val task = repository.observeTasks().first().firstOrNull { it.id == id } ?: return@launch
-            if (!task.isCompleted) return@launch
+            val task = repository.findTask(id) ?: return@write
+            if (!task.isCompleted) return@write
 
             repository.update(task.copy(completedAt = null))
         }
@@ -1064,8 +1121,8 @@ class TaskListViewModel(
 
         val trimmedNotes = notes?.trim()?.takeIf { it.isNotEmpty() }
 
-        viewModelScope.launch {
-            val task = repository.observeTasks().first().firstOrNull { it.id == id } ?: return@launch
+        write {
+            val task = repository.findTask(id) ?: return@write
 
             repository.update(
                 task.copy(
@@ -1117,9 +1174,9 @@ class TaskListViewModel(
      * raise a snackbar about a move that did not happen.
      */
     fun rescheduleTask(id: String, date: LocalDate?) {
-        viewModelScope.launch {
-            val task = repository.observeTasks().first().firstOrNull { it.id == id } ?: return@launch
-            if (task.scheduledDate == date) return@launch
+        write {
+            val task = repository.findTask(id) ?: return@write
+            if (task.scheduledDate == date) return@write
 
             repository.update(task.copy(scheduledDate = date))
             _pendingUndo.value = PendingUndo.Reschedule(task.id, previousDate = task.scheduledDate)
@@ -1138,8 +1195,8 @@ class TaskListViewModel(
         if (offer.taskId != id) return
         if (!_pendingUndo.compareAndSet(expect = offer, update = null)) return
 
-        viewModelScope.launch {
-            val task = repository.observeTasks().first().firstOrNull { it.id == id } ?: return@launch
+        write {
+            val task = repository.findTask(id) ?: return@write
 
             repository.update(task.copy(scheduledDate = offer.previousDate))
         }
@@ -1156,8 +1213,8 @@ class TaskListViewModel(
      * matches no task offers nothing.
      */
     fun deleteTask(id: String) {
-        viewModelScope.launch {
-            val task = repository.observeTasks().first().firstOrNull { it.id == id } ?: return@launch
+        write {
+            val task = repository.findTask(id) ?: return@write
 
             repository.softDelete(id = task.id, deletedAt = Instant.now())
             _pendingUndo.value = PendingUndo.Deletion(task.id)
@@ -1177,7 +1234,7 @@ class TaskListViewModel(
     fun undoDelete(id: String) {
         if (!_pendingUndo.compareAndSet(expect = PendingUndo.Deletion(id), update = null)) return
 
-        viewModelScope.launch {
+        write {
             repository.restore(id)
         }
     }

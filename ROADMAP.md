@@ -208,19 +208,65 @@ load-bearing half: an empty list there reads as "the task is gone" and would end
 a focus session because storage hiccuped. Not emitting leaves each watcher
 holding what it last knew.
 
-**Still open on that path.** Six one-shot reads on the write paths call
-`repository.observeTasks().first()` inside a `launch` and would still throw on a
-failed read — `toggleComplete` and its siblings, reached only by a deliberate tap
-on a device whose storage is already broken. Routing them through the caught
-stream swaps a crash for a silent no-op, and choosing between that, a message and
-a retry is a design question rather than this defect.
-
 Verified on the emulator through the real widget deep link, `focuslist://widget/
 task/ghost-task`: the screen says its piece, the bar is there, and Back lands on
 Today. 673 JVM tests green, and 79 instrumented across Task Details, Today, Focus
 and the empty states, four of them new — the stale link, its way back, the failed
 read, and the silent exit for a task deleted while open. The first three fail
 against the unfixed code, and the failed-read one took the whole app down.
+
+**The write path is fixed properly, D-063, and the crash D-062 filed was the
+least of what was wrong with it.**
+
+**Completing a task was two writes with nothing binding them.**
+`TaskCompletion.complete` marked the task complete, then inserted its next
+occurrence. A failure on the second, or the process dying between them, left a
+recurring task complete with no successor: its reminder gone, and nothing
+anywhere saying so. `PRODUCT.md` says "completing one occurrence must produce the
+next one, it must never make the task disappear", and principle 1 puts a reminder
+that does not fire above a crash. This was that bug, sitting in the checkbox.
+
+`completeWithNext` does both writes in one `@Transaction` or neither.
+`reopenWithoutSpawn` is its mirror, and had the same shape in the other
+direction: it deleted an untouched next occurrence and then cleared the
+completion, so a failure between them destroyed the occurrence and left the task
+done.
+
+No amount of error handling above those two calls would have fixed it. By the
+time the second write fails the first has already landed.
+
+**Every write path read its task the expensive way with no error path.** Seven
+sites did `observeTasks().first()`: subscribe to a stream of every task, take one
+emission, cancel, then search the list in memory. That reads the whole table to
+find one row, and a `Flow` that throws kills its collector, which is the crash
+D-062 filed. Routing it through the caught stream would have suspended for ever
+instead, turning the crash into a tap that silently does nothing.
+
+`findTask(id)` is a suspending point query: it throws at one call site the caller
+can wrap, and cannot hang. The dilemma D-062 left open stops existing rather than
+being decided.
+
+**A refused write is announced.** Every write in the view model goes through one
+`write { }` that catches and raises `WriteFailure`, which the snackbar effect
+every list already hosts reports as "Couldn't save that change". Neither a crash
+nor a silent no-op: a user who ticks a task off and is not told the write failed
+believes it is done, which is the app asserting something untrue about their
+work, the fault D-034 exists to prevent arriving through another door.
+
+No retry button. There is nothing to retry automatically and the next tap is the
+retry, which is the reasoning `settings.md` already gives for the restore error
+offering Choose another file. `WriteFailure` carries an id for the reason
+`BackupDone` does: two failures in a row are otherwise `equals`, and the second
+would never be announced.
+
+**What is not claimed.** The rollback itself is Room's guarantee, declared by
+`@Transaction`, and there is no way to fail one of the two writes from outside
+without testing Room rather than this code. What is tested is that both writes
+land, that soft-deleted rows stay invisible to the point query, that a refused
+write is reported rather than fatal, and that a second refusal is announced too.
+
+676 JVM tests, up from 673, and the DAO suite covering the two transactions and
+both new queries.
 
 **What the audit found and this session did not fix.** Five medium findings and
 six low ones. The four lists initialise on an empty loaded list so a slow read

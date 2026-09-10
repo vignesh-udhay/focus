@@ -67,6 +67,11 @@
     <string name="task_completed">Task completed</string>
     <string name="task_deleted">Task deleted</string>
     <string name="task_rescheduled">Task moved</string>
+    <!-- A write that storage refused, D-063. No action: there is nothing to
+         retry automatically and the next tap is the retry. It says the change
+         did not happen rather than guessing why, which the app cannot know and
+         the user cannot act on. -->
+    <string name="task_write_failed">Couldn\'t save that change</string>
     <string name="undo">Undo</string>
     <string name="nav_more">More</string>
     <string name="focus_title">Focus</string>
