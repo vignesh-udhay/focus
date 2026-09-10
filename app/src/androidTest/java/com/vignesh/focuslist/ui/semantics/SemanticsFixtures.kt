@@ -25,6 +25,7 @@ import com.vignesh.focuslist.data.repository.TaskRepository
 import com.vignesh.focuslist.ui.task.TaskListViewModel
 import com.vignesh.focuslist.ui.theme.FocuslistTheme
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -124,6 +125,23 @@ internal fun hasLiveRegion(mode: androidx.compose.ui.semantics.LiveRegionMode): 
  * [TaskDao] is an interface, so the real [TaskRepository] and the real
  * [TaskListViewModel] stay in the loop and only storage is replaced.
  */
+/**
+ * A DAO whose read throws, for D-034's failed-read state.
+ *
+ * Room hands the app a cold `Flow` and a `Flow` that throws is finished, which
+ * is the whole reason `TaskListViewModel` catches once and carries the failure
+ * as a value. Nothing tested that until D-062 found Task Details hanging on it.
+ *
+ * Delegates every write so the type is satisfied; only the read differs.
+ */
+internal class FailingTaskDao(
+    private val delegate: FakeTaskDao = FakeTaskDao()
+) : TaskDao by delegate {
+
+    override fun observeTasks(): Flow<List<TaskEntity>> =
+        flow { throw IllegalStateException("read failed") }
+}
+
 internal class FakeTaskDao(initial: List<Task> = emptyList()) : TaskDao {
 
     private val rows = MutableStateFlow(initial.map { task -> task.toEntity() })
@@ -240,7 +258,7 @@ internal val TestPassedReminder: LocalDateTime = TestToday.atTime(9, 0)
  * their state, so what the tests exercise is the production composition.
  */
 internal fun testViewModel(
-    dao: FakeTaskDao,
+    dao: TaskDao,
     today: LocalDate = TestToday
 ): TaskListViewModel = TaskListViewModel(
     repository = TaskRepository(dao),

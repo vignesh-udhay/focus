@@ -21,6 +21,7 @@ import com.vignesh.focuslist.core.domain.inboxTasks as queryInboxTasks
 import com.vignesh.focuslist.core.domain.todayTasks as queryTodayTasks
 import com.vignesh.focuslist.core.domain.upcomingTasks as queryUpcomingTasks
 import com.vignesh.focuslist.data.repository.TaskRepository
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -31,6 +32,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -93,6 +95,21 @@ sealed interface PendingUndo {
 private sealed interface TaskRead {
 
     val tasks: List<Task>
+
+    /**
+     * Storage has not answered yet.
+     *
+     * `docs/decisions.md` D-062. This used to be `Loaded(emptyList())`, which
+     * told every reader that the app had looked and found nothing. The lists
+     * cannot tell the difference and do not need to, because both draw the same
+     * empty state. Task Details could not tell either, and it needed to: it uses
+     * "the list is not empty" as its proof that a read has happened, and on a
+     * device with no other tasks that proof never arrived, so a stale deep link
+     * left it drawing nothing for ever.
+     */
+    data object Loading : TaskRead {
+        override val tasks: List<Task> = emptyList()
+    }
 
     data class Loaded(override val tasks: List<Task>) : TaskRead
 
@@ -183,7 +200,7 @@ class TaskListViewModel(
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
-                initialValue = TaskRead.Loaded(emptyList())
+                initialValue = TaskRead.Loading
             )
 
     /**
@@ -201,6 +218,55 @@ class TaskListViewModel(
                 started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
                 initialValue = false
             )
+
+    /**
+     * Whether the stored read has answered at all, either way.
+     *
+     * False only before the first emission. Every list ignores this, because an
+     * empty list and a list not yet read draw the same thing and the difference
+     * is over in a frame. Task Details cannot ignore it: it is asked for one
+     * task by id, and "not in the list" means "deleted" after the read and
+     * nothing at all before it. D-062.
+     */
+    val tasksLoaded: StateFlow<Boolean> =
+        storedTasks
+            .map { it !is TaskRead.Loading }
+            .distinctUntilChanged()
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
+                initialValue = false
+            )
+
+    /**
+     * The caught read, emitting only when it has actually read something.
+     *
+     * **What the three Focus watchers below have to use instead of the
+     * repository, and D-062 is why they could not before.** D-034 said "every
+     * view derives from the caught stream rather than from the repository
+     * directly", and three collectors did not: `focusedTask`, `pausedFocusTask`
+     * and the sheet's gone-task watcher each subscribed to
+     * `repository.observeTasks()` on the stated grounds that the caught stream
+     * "starts on a placeholder and reading the placeholder as gone would close
+     * the sheet on the way in". That was true of `Loaded(emptyList())` and is
+     * the reason `Loading` now exists.
+     *
+     * It was not a small gap. A `Flow` that throws is finished, and those three
+     * had no `catch` between them and Room, so a failed read did not draw
+     * D-034's error state, it crashed the app on Today before anything could be
+     * drawn at all. The error state was unreachable by the failure it was
+     * written for.
+     *
+     * `Failed` is filtered out rather than passed through as an empty list, and
+     * that distinction is load-bearing: an empty list here reads as "the task is
+     * gone" and would end a focus session because storage hiccuped. Not emitting
+     * leaves every watcher holding what it last knew, which is the truthful
+     * answer when the app cannot see.
+     */
+    private val loadedTasks: Flow<List<Task>> =
+        storedTasks
+            .filterIsInstance<TaskRead.Loaded>()
+            .map { read -> read.tasks }
 
     /** Starts a fresh read after a failed one. The Try again button calls it. */
     fun retryRead() {
@@ -312,7 +378,7 @@ class TaskListViewModel(
      * user somewhere they did not ask to be.
      */
     val focusedTask: StateFlow<Task?> =
-        combine(repository.observeTasks(), _focusedTaskId) { tasks, id ->
+        combine(loadedTasks, _focusedTaskId) { tasks, id ->
             tasks.firstOrNull { task ->
                 task.id == id && !task.isDeleted && !task.isCompleted
             }
@@ -652,7 +718,7 @@ class TaskListViewModel(
      */
     val pausedFocusTask: StateFlow<Task?> =
         combine(
-            repository.observeTasks(),
+            loadedTasks,
             _focusSession,
             _focusedTaskId
         ) { tasks, session, focusedId ->
@@ -700,15 +766,20 @@ class TaskListViewModel(
         // does not cover — pausing is safe because there is something to come
         // back to, and here there is not.
         //
-        // Watched against the stored stream rather than against `focusedTask`,
+        // Watched against `loadedTasks` rather than against `focusedTask`,
         // because that flow starts on a placeholder and reading the placeholder
-        // as "gone" would close the sheet on the way in. The repository only
-        // emits once it has really read.
+        // as "gone" would close the sheet on the way in. `loadedTasks` emits
+        // only once a read has really succeeded.
+        //
+        // It used to read the repository directly, for that same reason, and
+        // D-062 records what that cost: no `catch` stood between this and Room,
+        // so a failed read crashed the app rather than drawing D-034's error.
+        // A failure now simply does not emit, and the session survives it.
         viewModelScope.launch {
             combine(
                 _isFocusSheetOpen,
                 _focusedTaskId,
-                repository.observeTasks()
+                loadedTasks
             ) { isOpen, chosen, tasks ->
                 isOpen && chosen != null && tasks.none { task ->
                     task.id == chosen && !task.isDeleted && !task.isCompleted

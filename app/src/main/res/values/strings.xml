@@ -219,6 +219,15 @@
     <string name="task_details_heading">Task details</string>
     <!-- The Task Details overflow. Holds Delete and nothing else, per D-022. -->
     <string name="task_details_back">Back</string>
+    <!-- Task Details asked for a task the read does not hold, D-062. The stale
+         deep link: a notification or widget for a task since deleted, or one a
+         restore replaced. The screen used to draw nothing at all here, with no
+         bar and no way out, whenever the user had no other tasks. The copy names
+         both causes because the user cannot tell them apart and neither can the
+         app. -->
+    <string name="task_details_missing_headline">This task is no longer available</string>
+    <string name="task_details_missing_supporting">It was deleted, or a restored backup does not contain it.</string>
+    <string name="task_details_missing_action">Back to your tasks</string>
     <string name="task_details_title_label">Title</string>
     <string name="task_details_notes_placeholder">Add notes</string>
     <string name="task_plan">Plan</string>

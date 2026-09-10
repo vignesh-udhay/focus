@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -60,6 +61,8 @@ import com.vignesh.focuslist.ui.component.FocuslistTopAppBar
 import com.vignesh.focuslist.ui.component.PlanRow
 import com.vignesh.focuslist.ui.component.PlanRowGroup
 import com.vignesh.focuslist.ui.component.SectionLabel
+import com.vignesh.focuslist.ui.component.TaskListEmptyState
+import com.vignesh.focuslist.ui.component.TaskListErrorState
 import com.vignesh.focuslist.ui.component.UndoSnackbarHost
 import com.vignesh.focuslist.ui.component.durationLabel
 import com.vignesh.focuslist.ui.component.scheduledDateLabel
@@ -100,6 +103,12 @@ fun TaskDetailsScreen(
     val tasks by viewModel.allTasks.collectAsStateWithLifecycle()
     val today by viewModel.today.collectAsStateWithLifecycle()
 
+    // Whether the read has answered, and whether it failed. D-062: "the list is
+    // empty" cannot tell those two apart from "there are no tasks", and this
+    // screen is the one that has to.
+    val tasksLoaded by viewModel.tasksLoaded.collectAsStateWithLifecycle()
+    val readFailed by viewModel.readFailed.collectAsStateWithLifecycle()
+
     // For D-057's question, below. Collected here rather than beside the dialog
     // so the screen reads its inputs in one place.
     val focusSwitchTaskId by viewModel.focusSwitchTaskId.collectAsStateWithLifecycle()
@@ -109,25 +118,42 @@ fun TaskDetailsScreen(
     val task = tasks.firstOrNull { it.id == taskId }
     var taskWasShown by rememberSaveable(taskId) { mutableStateOf(false) }
 
-    // The task was deleted from under the screen, or completed from a
-    // notification. There is nothing left to edit, so the screen leaves rather
-    // than drawing an empty one.
-    //
-    // Guarded on the list having loaded at all: every exposed flow begins on a
-    // placeholder before storage answers, and reading that placeholder as
-    // "gone" would pop the screen on the way in. That is the same trap Focus
-    // fell into and `focus.md` warns about.
-    // A non-empty list is still useful for rejecting a stale id on first load.
-    // Once this particular task has been shown, though, its disappearance is
-    // conclusive even when it was the last live task and the list is now empty.
-    LaunchedEffect(task, tasks.isEmpty()) {
-        when {
-            task != null -> taskWasShown = true
-            taskWasShown || tasks.isNotEmpty() -> onBack()
-        }
+    LaunchedEffect(task) { if (task != null) taskWasShown = true }
+
+    // **A task that was on screen and has gone was completed or deleted**, from
+    // here or from its notification, and the screen leaves rather than drawing
+    // an empty one. Silently, because the list the user lands on carries the
+    // undo offer for the thing they just did, and a second message explaining it
+    // would be the app narrating the user's own tap back to them.
+    LaunchedEffect(task, taskWasShown) {
+        if (task == null && taskWasShown) onBack()
     }
 
-    val current = task ?: return
+    if (task == null) {
+        // **The screen used to hang here, and `docs/decisions.md` D-062 is the
+        // fix.** The condition above this was `taskWasShown || tasks.isNotEmpty()`,
+        // where a non-empty list stood in for "the read has happened". On a
+        // device holding no other tasks that proof never arrives, so a
+        // notification pointing at a deleted task drew nothing, for ever, with
+        // no bar and no way out.
+        //
+        // Drawn only when the task was never shown. One that was is already
+        // leaving through the effect above, and flashing an explanation on the
+        // way out would be a message about something the user just did.
+        if (!taskWasShown) {
+            TaskDetailsUnavailable(
+                hasRead = tasksLoaded,
+                readFailed = readFailed,
+                onBack = onBack,
+                onRetry = viewModel::retryRead,
+                modifier = modifier
+            )
+        }
+
+        return
+    }
+
+    val current = task
 
     val snackbarHostState = remember { SnackbarHostState() }
     UndoSnackbarEffect(viewModel = viewModel, snackbarHostState = snackbarHostState)
@@ -194,6 +220,81 @@ fun TaskDetailsScreen(
         onConfirm = { if (viewModel.confirmFocusSwitch()) onOpenFocus() },
         onCancel = viewModel::dismissFocusSwitch
     )
+}
+
+/**
+ * Task Details with no task to show.
+ *
+ * `docs/decisions.md` D-062. Three reasons the screen can be asked for a task it
+ * cannot draw, and the screen used to answer all three by drawing nothing at
+ * all: no app bar, no message, no way back.
+ *
+ * - **The read has not answered.** Over in a frame, and the bar is the point:
+ *   even a read that never returns leaves the user a way out.
+ * - **The read failed.** The same state every list draws for the same failure,
+ *   with the same Try again, because there is one read behind all of them and
+ *   D-034 settled that it says so once, in one shape.
+ * - **The read answered and the task is not in it.** The stale deep link: a
+ *   notification or widget for a task that has since been deleted, or one a
+ *   restore replaced. This is the case that had no state at all.
+ *
+ * **It does not navigate away by itself, which is a departure from what the
+ * audit asked for.** Returning to the list automatically would flash a screen
+ * the user tapped a notification to reach and then take it away, leaving them on
+ * Today with no idea what happened. Back is one tap and it is theirs to make.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TaskDetailsUnavailable(
+    hasRead: Boolean,
+    readFailed: Boolean,
+    onBack: () -> Unit,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Scaffold(
+        modifier = modifier,
+        containerColor = MaterialTheme.colorScheme.surface,
+        topBar = {
+            FocuslistTopAppBar(
+                title = null,
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_arrow_back),
+                            contentDescription = stringResource(R.string.task_details_back)
+                        )
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            when {
+                // Nothing drawn under the bar. A spinner for something that
+                // resolves in a frame is a flicker, and `AGENTS.md` asks for
+                // motion that communicates a state change rather than motion
+                // because motion is possible.
+                !hasRead -> Unit
+
+                readFailed -> TaskListErrorState(
+                    headline = stringResource(R.string.error_tasks_headline),
+                    supporting = stringResource(R.string.error_tasks_supporting),
+                    onRetry = onRetry
+                )
+
+                else -> TaskListEmptyState(
+                    headline = stringResource(R.string.task_details_missing_headline),
+                    supporting = stringResource(R.string.task_details_missing_supporting),
+                    action = {
+                        Button(onClick = onBack) {
+                            Text(stringResource(R.string.task_details_missing_action))
+                        }
+                    }
+                )
+            }
+        }
+    }
 }
 
 /**

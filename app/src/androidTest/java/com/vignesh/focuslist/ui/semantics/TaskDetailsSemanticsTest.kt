@@ -93,6 +93,108 @@ class TaskDetailsSemanticsTest {
     }
 
     /**
+     * **The dead end D-062 fixed.** A notification for a deleted task, on a
+     * device holding nothing else.
+     *
+     * The screen used `tasks.isNotEmpty()` as its proof that the read had
+     * happened, and with no other tasks that proof never arrives: empty before
+     * the read and empty after it. So the screen fell through both branches of
+     * its guard and drew nothing at all, with no app bar and no way back, for
+     * ever. Against the unfixed code every assertion here fails.
+     */
+    @Test
+    fun aStaleDeepLink_saysSo_ratherThanDrawingNothing() {
+        var backs = 0
+        val viewModel = testViewModel(FakeTaskDao(emptyList()))
+
+        rule.setFocuslistContent(FontScale100) {
+            TaskDetailsScreen(
+                taskId = "deleted-task",
+                viewModel = viewModel,
+                onBack = { backs++ },
+                onOpenFocus = {}
+            )
+        }
+
+        rule.waitUntilExactlyOneExists(hasText(MISSING_HEADLINE), TIMEOUT_MILLIS)
+        rule.onNodeWithText(MISSING_HEADLINE).assertIsDisplayed()
+
+        // The bar is the part that makes it not a trap, and it was the part
+        // missing in every one of these states.
+        rule.onNodeWithContentDescription(BACK).assertIsDisplayed()
+
+        // It says its piece and stays. Leaving on its own would flash a screen
+        // the user tapped a notification to reach and then take it away.
+        rule.runOnIdle { assertEquals(0, backs) }
+    }
+
+    /** And Back is one tap, from the button as well as from the bar. */
+    @Test
+    fun aStaleDeepLink_offersAWayBack() {
+        var backs = 0
+        val viewModel = testViewModel(FakeTaskDao(emptyList()))
+
+        rule.setFocuslistContent(FontScale100) {
+            TaskDetailsScreen(
+                taskId = "deleted-task",
+                viewModel = viewModel,
+                onBack = { backs++ },
+                onOpenFocus = {}
+            )
+        }
+
+        rule.waitUntilExactlyOneExists(hasText(MISSING_ACTION), TIMEOUT_MILLIS)
+        rule.onNodeWithText(MISSING_ACTION).performClick()
+
+        rule.runOnIdle { assertEquals(1, backs) }
+    }
+
+    /**
+     * The same dead end by the other route, and nobody had noticed it.
+     *
+     * D-034 gave every list a failed-read state and Task Details was never
+     * wired to it. A read that throws leaves the list empty, which is the same
+     * ambiguity, so the screen hung here too. It draws what the lists draw.
+     */
+    @Test
+    fun aFailedRead_saysSo_onTaskDetailsToo() {
+        val viewModel = testViewModel(FailingTaskDao())
+
+        rule.setFocuslistContent(FontScale100) {
+            TaskDetailsScreen(
+                taskId = TASK_ID,
+                viewModel = viewModel,
+                onBack = {},
+                onOpenFocus = {}
+            )
+        }
+
+        rule.waitUntilExactlyOneExists(hasText(READ_FAILED_HEADLINE), TIMEOUT_MILLIS)
+        rule.onNodeWithText(READ_FAILED_HEADLINE).assertIsDisplayed()
+        rule.onNodeWithText(TRY_AGAIN).assertIsDisplayed()
+
+        // Not the missing-task wording. The task may exist and the app could
+        // not see it, which is a different claim and D-034's whole point.
+        rule.onNodeWithText(MISSING_HEADLINE).assertDoesNotExist()
+    }
+
+    /**
+     * A task that was on screen and then went still leaves silently. The user
+     * completed or deleted it, and the list they land on carries the undo
+     * offer, so an explanation would narrate their own tap back to them.
+     */
+    @Test
+    fun aTaskDeletedWhileOpen_leavesWithoutExplaining() {
+        var backs = 0
+        val viewModel = setScreen(onBack = { backs++ })
+
+        rule.runOnIdle { viewModel.deleteTask(TASK_ID) }
+
+        rule.waitUntil(TIMEOUT_MILLIS) { backs == 1 }
+        rule.onNodeWithText(MISSING_HEADLINE).assertDoesNotExist()
+    }
+
+    /**
      * Waits for a write to reach storage, which is asynchronous.
      *
      * Read back through the view model rather than the DAO, so the assertion
@@ -458,6 +560,12 @@ class TaskDetailsSemanticsTest {
         /** The notes placeholder, which is also how the field is tapped. */
         const val ADD_NOTES = "Add notes"
         const val START_FOCUS = "Start focus"
+
+        /** D-062's three answers when there is no task to draw. */
+        const val MISSING_HEADLINE = "This task is no longer available"
+        const val MISSING_ACTION = "Back to your tasks"
+        const val READ_FAILED_HEADLINE = "Couldn't load your tasks"
+        const val TRY_AGAIN = "Try again"
 
         const val SCHEDULED = "Scheduled"
         const val DUE_DATE = "Due date"

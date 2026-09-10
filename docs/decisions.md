@@ -4154,3 +4154,108 @@ print.
 **What would reverse this.** Users reading "No reminder set" as an instruction to
 set one, on a band whose whole point is that a task does not need one. The check
 is whether tasks start acquiring reminders after landing there.
+
+---
+
+## D-062. A read that has not answered says so, and Task Details stops hanging
+
+**Decision.** `TaskRead` gains `Loading`, and it is what `storedTasks` starts on
+instead of `Loaded(emptyList())`. Task Details gains the three states it was
+missing, drawn under an app bar with a back arrow in every one of them:
+
+    read has not answered     the bar, and nothing under it
+    read failed               the shared failed-read state, with Try again
+    read answered, no task    "This task is no longer available", with Back
+
+Nothing else changes. Every list derives from `read.tasks`, `Loading` carries an
+empty one, and `readFailed` still asks `is Failed`, so all four lists behave
+exactly as before.
+
+**The bug.** Task Details is reached by id and has to decide whether a task it
+cannot find is deleted or simply not read yet. It decided with this:
+
+    task != null -> taskWasShown = true
+    taskWasShown || tasks.isNotEmpty() -> onBack()
+
+`tasks.isNotEmpty()` was standing in for "the read has happened", and on a device
+holding no other tasks that proof never arrives: the list is empty before the
+read and empty after it. So a notification pointing at a deleted task fell
+through both branches and `val current = task ?: return` drew nothing. No app
+bar, no message, nothing to tap. It stayed that way.
+
+Reachable two ways worth naming. Completing or deleting your last task from its
+own notification, then tapping the notification again before it clears. And a
+restore, which is the more likely one now that the picker keeps a file list: the
+notifications for the replaced tasks outlive the tasks, and D-056's dialog makes
+restoring a stale file a thing users will now do deliberately and survive.
+
+**A failed read hit the same dead end**, and nobody had noticed, because D-034's
+error state was only ever wired to the lists. A read that throws leaves `tasks`
+empty, which is the same trap by the same route. Task Details now draws the same
+state every list draws, from the same strings and the same Try again, which is
+what D-034 meant by one read failing once.
+
+**Why the fix is a state on the flow rather than a smarter guess.** The screen
+was inferring a lifecycle fact from a data fact, and there was no version of that
+inference that could work: an empty list is genuinely ambiguous and the only
+thing that can resolve it is the flow saying which it is. `Loading` is one object
+and one `initialValue`. Everything downstream that only wants rows keeps reading
+`read.tasks` and never learns the state exists.
+
+**Why it does not navigate away on its own, which is where this departs from the
+audit.** The audit asked for the message and then a return to the originating
+list. Refused, because the two fight: a user who tapped a notification would see
+a screen appear and vanish, and land on Today with no idea what happened. There
+is also no originating list to return to — the deep link's back stack is whatever
+the app was already showing. So the screen says its piece and Back is one tap,
+which the bar and the button both offer.
+
+**A task that was on screen and then went still leaves silently**, and that is
+unchanged. The user completed or deleted it, the list they land on carries the
+undo offer, and an explanation would be the app narrating their own tap back to
+them. The two cases are told apart by `taskWasShown`, which the screen already
+tracked.
+
+**Nothing drawn while the read is in flight**, rather than a spinner. It resolves
+in a frame from a local database, and `AGENTS.md` asks for motion that
+communicates a state change. What matters is that the app bar is there, so even a
+read that never returns is not a trap.
+
+**And the failed-read state had never been reachable, which this found.** D-034
+says "every view derives from the caught stream rather than from the repository
+directly", and three did not: `focusedTask`, `pausedFocusTask` and the Focus
+sheet's gone-task watcher each subscribed to `repository.observeTasks()`. Their
+comments say why, in as many words — the caught stream "starts on a placeholder
+and reading the placeholder as gone would close the sheet on the way in" — which
+was true of `Loaded(emptyList())` and is exactly the ambiguity `Loading` removes.
+
+A `Flow` that throws is finished, and those three had no `catch` between them and
+Room. So a failed read did not draw the error state D-034 built. It crashed the
+app on Today, before anything could be drawn. The state was unreachable by the
+one failure it exists for, and nothing caught that because nothing tested a
+failed read at all until this entry did.
+
+They read `loadedTasks` now, which is the caught stream with `Loading` and
+`Failed` filtered out. Filtering `Failed` rather than passing its empty list is
+the load-bearing half: an empty list here reads as "the task is gone" and would
+end a focus session because storage hiccuped. Not emitting leaves each watcher
+holding what it last knew, which is the truthful answer when the app cannot see.
+
+**What this does not do.** Six one-shot reads on the write paths still call
+`repository.observeTasks().first()` inside a `launch`, and would still throw on a
+failed read — `toggleComplete` and its siblings, reached only by a deliberate tap
+on a device whose storage is already broken. Routing them through the caught
+stream would swap a crash for a silent no-op, and choosing between that, a
+message and a retry is a design question rather than this defect. Filed, not
+fixed.
+
+The four lists still start on an empty loaded list and still flash a false empty
+state on a slow read. They now have the flag that would
+fix it, `tasksLoaded`, and using it is a different question: a list needs to
+decide between a skeleton, a spinner after a threshold, and nothing, and that is
+a design call rather than this defect. Left as the audit filed it.
+
+**What would reverse this.** "This task is no longer available" appearing for
+tasks that do exist, which would mean the read answers `Loaded` before it is
+really settled. The check is whether anyone sees it after an ordinary tap from a
+list.

@@ -160,14 +160,77 @@ Today instrumented tests green, with four new ones — two on End session,
 including one asserting it does not open Focus, and two on the band, one of them
 pinning the label against the estimate that used to contradict it.
 
-**What the audit found and this session did not fix.** Six medium findings and
-six low ones. Task Details can be left permanently blank by a stale deep link
-when the repository holds zero tasks, the four lists initialise on an empty
-loaded list so a slow read shows a false empty state, backup progress disables
-both buttons without saying which one is working, the Task Details toolbar's two
-icons are unlabelled for sighted users, `SectionLabel` is documented as a heading
-and exposes no heading semantics, and the reminder-health banner is not a live
-region. The last two belong with the TalkBack pass below rather than here.
+**Task Details stops hanging on a stale deep link, D-062, and the fix found a
+crash on the way.**
+
+The screen is reached by id and had to decide whether a task it cannot find is
+deleted or simply not read yet. It decided with `tasks.isNotEmpty()`, which was
+standing in for "the read has happened". On a device holding no other tasks that
+proof never arrives: the list is empty before the read and empty after it. So a
+notification for a deleted task fell through both branches and the screen drew
+nothing at all. No app bar, no message, nothing to tap, permanently.
+
+`TaskRead` gains `Loading`, which is what `storedTasks` starts on instead of
+`Loaded(emptyList())`. The lists are unaffected — they read `read.tasks`, and
+`Loading` carries an empty one — but the ambiguity is gone for the one screen
+that could not live with it. Task Details now draws the bar in every case, with
+nothing under it while the read is in flight, the shared failed-read state if it
+failed, and "This task is no longer available" if it answered and the task is not
+there.
+
+**It does not navigate away by itself, which departs from what the audit asked
+for.** Returning to the list automatically would flash a screen the user tapped a
+notification to reach and then take it away, leaving them on Today with no idea
+what happened. There is also no originating list to return to: a deep link's back
+stack is whatever the app was already showing. Back is one tap and it is theirs.
+A task that was on screen and then went still leaves silently, because the user
+completed or deleted it and the list they land on carries the undo offer.
+
+**The failed-read state had never been reachable, and that is the part worth
+keeping.** Writing a test for the failed-read branch crashed the app instead.
+D-034 says "every view derives from the caught stream rather than from the
+repository directly", and three collectors did not: `focusedTask`,
+`pausedFocusTask` and the Focus sheet's gone-task watcher each subscribed to
+`repository.observeTasks()`. Their comments say why, in as many words — the
+caught stream "starts on a placeholder and reading the placeholder as gone would
+close the sheet on the way in" — which was true of `Loaded(emptyList())` and is
+precisely the ambiguity `Loading` removes.
+
+A `Flow` that throws is finished, and those three had no `catch` between them and
+Room. So a failed read never drew D-034's error state. It crashed the app on
+Today before anything could be drawn, and the state built for that failure was
+unreachable by it. Nothing caught that because nothing tested a failed read at
+all, on any screen, until now.
+
+They read `loadedTasks` now, the caught stream with `Loading` and `Failed`
+filtered out. Filtering `Failed` rather than passing its empty list is the
+load-bearing half: an empty list there reads as "the task is gone" and would end
+a focus session because storage hiccuped. Not emitting leaves each watcher
+holding what it last knew.
+
+**Still open on that path.** Six one-shot reads on the write paths call
+`repository.observeTasks().first()` inside a `launch` and would still throw on a
+failed read — `toggleComplete` and its siblings, reached only by a deliberate tap
+on a device whose storage is already broken. Routing them through the caught
+stream swaps a crash for a silent no-op, and choosing between that, a message and
+a retry is a design question rather than this defect.
+
+Verified on the emulator through the real widget deep link, `focuslist://widget/
+task/ghost-task`: the screen says its piece, the bar is there, and Back lands on
+Today. 673 JVM tests green, and 79 instrumented across Task Details, Today, Focus
+and the empty states, four of them new — the stale link, its way back, the failed
+read, and the silent exit for a task deleted while open. The first three fail
+against the unfixed code, and the failed-read one took the whole app down.
+
+**What the audit found and this session did not fix.** Five medium findings and
+six low ones. The four lists initialise on an empty loaded list so a slow read
+shows a false empty state — they now have the flag that would fix it,
+`tasksLoaded`, and spending it is a design call between a skeleton, a delayed
+spinner and nothing. Backup progress disables both buttons without saying which
+one is working. The Task Details toolbar's two icons are unlabelled for sighted
+users. `SectionLabel` is documented as a heading and exposes no heading
+semantics, and the reminder-health banner is not a live region; those two belong
+with the TalkBack pass below rather than here.
 
 **The dark theme audit is done, and it found nothing to fix.** That is a result
 rather than a shrug, and the two halves of it are worth keeping.
