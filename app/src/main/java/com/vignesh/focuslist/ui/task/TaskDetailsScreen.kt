@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -13,10 +14,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
@@ -831,12 +832,18 @@ private fun PlanSheetHost(
  * pairing them: a rare one-way action must not carry the same weight as the
  * screen's payoff. The fill is the weight, since neither can carry a label.
  *
- * **Both lose their words, and that is the cost D-037 accepts.** D-022 called an
- * unlabelled trash icon "the least legible form of the most destructive action",
- * and that is still true. What is different is that deletion here is a soft
- * delete raising the same undo offer every list raises, and that a one-item
- * overflow was hiding the action behind a control promising options it did not
- * have. The content descriptions carry the words for a screen reader.
+ * **Start focus has its word back, and `docs/decisions.md` D-064 is why.** D-037
+ * accepted losing it, named the cost as "a first-time user sees two glyphs
+ * rather than a worded action", and said that if it cost more than the overflow
+ * did, D-037 is the entry to supersede. It did. A play triangle on a screen
+ * about one task reads as preview, or resume, or run, and none of those is what
+ * it does.
+ *
+ * **Delete stays an icon, deliberately.** A trash can is not ambiguous the way a
+ * play triangle is, and giving it a word would raise a rare one-way action to
+ * the weight of the screen's payoff, which is what D-022 argued against and
+ * D-037 kept. It keeps `error` as its second cue, and its content description is
+ * its word for a screen reader.
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -845,32 +852,25 @@ private fun TaskDetailsToolbar(
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    HorizontalFloatingToolbar(
-        expanded = true,
-        modifier = modifier,
-        // **Focus is the attached FAB, which is Material's own arrangement for
-        // a toolbar with one action that outranks the rest.** It carries the
-        // prominence the full-width button used to, without a label and without
-        // competing with the bar it sits on. `FilledIconButton` was the first
-        // build of this and only approximated it: same fill, none of the size
-        // or the separation, so the two actions read as a pair of equals with
-        // one tinted differently.
-        floatingActionButton = {
-            FloatingToolbarDefaults.StandardFloatingActionButton(onClick = onStartFocus) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_play_arrow),
-                    // The only place the words survive, so they are the action
-                    // rather than the glyph: "Start focus", never "play".
-                    contentDescription = stringResource(R.string.task_start_focus)
-                )
-            }
-        }
-    ) {
+    // **The attached FAB is gone, and it had to be.** D-037 chose it as
+    // "Material's own arrangement for a toolbar with one action that outranks
+    // the rest", which it is, but the slot cannot hold a label: the component
+    // measures its FAB with `minWidth` and `maxWidth` both pinned to one square
+    // size. There is no extended variant, so a worded Start focus and that slot
+    // are mutually exclusive.
+    //
+    // The prominence survives without it. D-037 rejected a `FilledIconButton`
+    // here because "the two actions read as a pair of equals with one tinted
+    // differently", which is true of two icons and not true of a filled button
+    // carrying a word beside a bare icon.
+    HorizontalFloatingToolbar(expanded = true, modifier = modifier) {
         IconButton(
             onClick = onDelete,
             colors = IconButtonDefaults.iconButtonColors(
-                // The word is gone, so the colour is the only cue left that this
-                // one is different in kind. It was `error` on the menu item too.
+                // Its second cue, and it was `error` on D-022's menu item too.
+                // Still the only one besides the glyph, because this action
+                // keeps no word: see the note above on why that is right here
+                // and was not for Start focus.
                 contentColor = MaterialTheme.colorScheme.error
             )
         ) {
@@ -878,6 +878,24 @@ private fun TaskDetailsToolbar(
                 painter = painterResource(R.drawable.ic_delete),
                 contentDescription = stringResource(R.string.task_delete)
             )
+        }
+
+        // Trailing, which is D-037's ordering unchanged: in a horizontal bar the
+        // thumb lands nearest the reaching side, so the constructive action goes
+        // there and Delete does not.
+        Button(
+            onClick = onStartFocus,
+            contentPadding = ButtonDefaults.ButtonWithIconContentPadding
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_play_arrow),
+                // The word beside it names the action now, so the glyph is
+                // decoration and announcing it would say the same thing twice.
+                contentDescription = null,
+                modifier = Modifier.size(ButtonDefaults.IconSize)
+            )
+            Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+            Text(stringResource(R.string.task_start_focus))
         }
     }
 }

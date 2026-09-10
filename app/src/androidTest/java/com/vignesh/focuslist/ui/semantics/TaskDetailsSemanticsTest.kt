@@ -23,6 +23,7 @@ import com.vignesh.focuslist.core.domain.RecurrenceUnit
 import com.vignesh.focuslist.ui.task.TaskDetailsScreen
 import com.vignesh.focuslist.ui.task.TaskListViewModel
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -239,13 +240,17 @@ class TaskDetailsSemanticsTest {
             rule.onNodeWithText(row).assertIsDisplayed()
         }
 
-        // Action. D-037 moved both actions into a floating toolbar, so they are
-        // icons carrying their words as descriptions rather than text in the
-        // column, and they no longer scroll: the toolbar is pinned, which is
-        // most of the point of it. Asserted at both scales for the same reason
-        // the old scrolled assertion existed, that a control reachable at 100%
-        // has not been pushed off screen at 200%.
-        rule.onNodeWithContentDescription(START_FOCUS).assertIsDisplayed()
+        // Action. D-037 moved both actions into a floating toolbar and they no
+        // longer scroll: it is pinned, which is most of the point of it.
+        // Asserted at both scales for the same reason the old scrolled
+        // assertion existed, that a control reachable at 100% has not been
+        // pushed off screen at 200%.
+        //
+        // D-064 gave Start focus its word back, so it is drawn text now and not
+        // only a description. Delete keeps neither, deliberately: a trash can is
+        // not ambiguous the way a play triangle was, and a word would raise a
+        // rare one-way action to the weight of the screen's payoff.
+        rule.onNodeWithText(START_FOCUS).assertIsDisplayed()
         rule.onNodeWithContentDescription(DELETE).assertIsDisplayed()
     }
 
@@ -256,6 +261,48 @@ class TaskDetailsSemanticsTest {
     @Test
     fun theScreenShowsItsThreeRegions_at200() =
         assertTheScreenShowsItsThreeRegions(FontScale200)
+
+    /**
+     * `docs/decisions.md` D-064. D-037 accepted losing this word and named the
+     * reversal condition: a play triangle on a screen about one task reads as
+     * preview, or resume, or run, and Focus is the payoff the whole page leads
+     * to. The FAB slot could not hold a label — the component pins its width and
+     * height to one square value — so the action moved into the toolbar's own
+     * row to get one.
+     */
+    @Test
+    fun startFocus_isWorded_andSaysItOnce() {
+        setScreen()
+
+        rule.onNodeWithText(START_FOCUS).assertIsDisplayed()
+
+        // The word is drawn, so the glyph beside it is decoration. Announcing
+        // both would read the action out twice.
+        rule.onNodeWithContentDescription(START_FOCUS).assertDoesNotExist()
+    }
+
+    /** And it still starts a session from the labelled control. */
+    @Test
+    fun startFocus_stillStartsASession() {
+        val viewModel = setScreen()
+
+        rule.onNodeWithText(START_FOCUS).performClick()
+
+        rule.runOnIdle { assertNotNull(viewModel.focusSession.value) }
+    }
+
+    /**
+     * Delete keeps no word, which D-064 argues rather than inherits. A trash can
+     * is not ambiguous the way a play triangle is, and labelling it would give a
+     * rare one-way action the weight D-022 and D-037 both kept from it.
+     */
+    @Test
+    fun delete_staysAnIconWithItsWordSpokenOnly() {
+        setScreen()
+
+        rule.onNodeWithContentDescription(DELETE).assertIsDisplayed()
+        rule.onNodeWithText(DELETE).assertDoesNotExist()
+    }
 
     /** A room: a back arrow, and it is the only thing in the bar. */
     @Test

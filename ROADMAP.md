@@ -295,13 +295,41 @@ the Android convention.
 37 Today instrumented tests green, two of them new, plus Settings, screen chrome
 and the empty states re-run because they share `SectionLabel`.
 
-**What the audit found and this session did not fix.** Three medium findings and
+**Start focus has its word back, D-064.** Both toolbar actions were bare glyphs.
+Screen readers were fine, since both carried content descriptions; a sighted
+first-timer saw two icons. The play triangle is the one that fails: on a screen
+about one task it reads as preview, or resume, or run, and Focus is the payoff
+the whole page leads to. D-037 accepted that cost and named this as its own
+reversal condition.
+
+**Delete keeps no word, and that is argued rather than inherited.** The audit
+proposed labelling it too, or moving it back to an overflow. Both refused. A
+trash can is not ambiguous the way a play triangle is, so the two glyphs are not
+the same problem; a word is weight, and D-022 and D-037 both deliberately kept
+this rare one-way action below the screen's payoff; and an overflow holding one
+item is D-022, which D-037 replaced for a reason that has not changed.
+
+**The attached FAB had to go, and not by preference.** The component measures its
+FAB slot with `minWidth` and `maxWidth` pinned to one square value and ships no
+extended variant, so a worded Start focus and that slot cannot both exist. It is
+a filled button in the toolbar's own content row now. D-037 had rejected that row
+because "the two actions read as a pair of equals with one tinted differently",
+which is true of two icons and not of a filled button carrying a word beside a
+bare icon.
+
+Seen on the emulator at 100% and at 200%, where the bar grows and still sits
+clear of both edges — the crowding D-064 names as its reversal condition is not
+happening yet. 25 of the 26 Task Details instrumented tests green, three of them
+new. The twenty-sixth, `theLastWeekdayCannotBeDeselected`, failed on a Compose
+idling timeout and passes on its own; it touches the Repeat sheet and nothing in
+this change, and the emulator had been running tests for some hours.
+
+**What the audit found and this session did not fix.** Two medium findings and
 six low ones. The four lists initialise on an empty loaded list so a slow read
 shows a false empty state — they now have the flag that would fix it,
 `tasksLoaded`, and spending it is a design call between a skeleton, a delayed
 spinner and nothing. Backup progress disables both buttons without saying which
-one is working. The Task Details toolbar's two icons are unlabelled for sighted
-users.
+one is working.
 
 **The dark theme audit is done, and it found nothing to fix.** That is a result
 rather than a shrug, and the two halves of it are worth keeping.

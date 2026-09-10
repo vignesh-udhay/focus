@@ -4339,3 +4339,72 @@ of fatal, and that a second refusal is announced too.
 **What would reverse this.** "Couldn't save that change" appearing in ordinary
 use, which would mean writes are failing for a reason worth finding rather than
 because storage is broken.
+
+---
+
+## D-064. Start focus gets its word back, and Delete does not
+
+**Decision.** The Task Details toolbar loses its attached FAB. Start focus
+becomes a filled `Button` carrying the play glyph and the words "Start focus",
+at the trailing end of the toolbar's own content row. Delete stays exactly as it
+is: a bare icon button in `error`, leading.
+
+**What this supersedes.** D-037's choice of the attached FAB, and the cost it
+accepted with it. D-037 named that cost and named its own reversal condition:
+"a first-time user sees two glyphs rather than a worded action. That is the trade
+this decision makes, and if it turns out to cost more than the overflow did, the
+entry to supersede is this one."
+
+**Why it cost more.** D-037 argued the glyph was safe because the trap it was
+solving had gone: a filled pill without a glyph "was pressed by people meaning to
+close the page", and "a small play icon in a floating bar is not open to that
+reading". True, and it answers the wrong question. The icon is no longer
+mistakable for Close; it is mistakable for everything else. A play triangle on a
+screen about one task reads as preview, as resume, as run. Focus is none of
+those, and it is the screen's payoff — the one control the whole page exists to
+lead to.
+
+The comparison D-037 set up also does not hold in its favour. An overflow with
+one item promised options it did not have, which is a small lie about the shape
+of the menu. An unlabelled play button makes no promise at all, which is worse
+for the action that matters most here.
+
+**Why Delete keeps no word, which is the part worth arguing.** The audit that
+raised this proposed labelling Delete too, or moving it back to an overflow.
+Both refused.
+
+A trash can is not ambiguous the way a play triangle is. It is among the few
+genuinely settled icons in the platform, and nothing about this screen gives it a
+second reading. So the two glyphs are not the same problem and do not want the
+same answer: one fails to say what it does and the other does not.
+
+Labelling it would also undo what D-022 and D-037 both protected. A rare
+one-way action must not carry the weight of the screen's payoff, and a word is
+weight. Moving it back to an overflow is D-022, which D-037 replaced for a reason
+that has not changed: a three-dot menu holding one item promises more than it
+has.
+
+**Why the FAB had to go rather than gain a label.** Not a preference. The
+component measures its FAB slot with `minWidth` and `maxWidth` pinned to the same
+square value, interpolated as the toolbar expands, and Material ships no extended
+variant for it. A worded Start focus and that slot cannot both exist.
+
+**The prominence survives the move.** D-037 rejected a `FilledIconButton` in the
+content row because "the two actions read as a pair of equals with one tinted
+differently". That is true of two icons. It is not true of a filled button
+carrying a word standing beside a bare icon: the fill and the label together
+separate them more plainly than the FAB's extra diameter did.
+
+**What is unchanged.** The floating toolbar itself, and D-037's reasoning for it
+over a docked one. The order, Delete leading and Start focus trailing, on D-037's
+argument that in a horizontal bar the thumb lands nearest the reaching side.
+Delete's `error` colour, its content description, the soft delete, and the single
+undo offer. The `FabClearance` reserved beneath the last Plan row.
+
+The glyph on Start focus loses its content description, because the word beside
+it now names the action and announcing both would say the same thing twice.
+
+**What would reverse this.** The toolbar growing crowded at large font scales or
+in a narrow window, where a labelled button and an icon may not sit together. The
+content row scrolls horizontally, so the failure would be a hidden action rather
+than a broken layout, which is worth watching for rather than assuming.
