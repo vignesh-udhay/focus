@@ -570,11 +570,20 @@ class TaskListViewModel(
     /**
      * Ends Focus outright: no session, no chosen task, no sheet.
      *
-     * Not a control the user has. D-015 removed the one that stopped a session,
-     * and stopping was only ever pausing and not resuming. This is for the two
-     * cases where there is nothing to come back to: the task was completed, or
-     * it was deleted from somewhere else while the sheet was open. Pausing is
-     * safe because something is waiting; here nothing is.
+     * Two callers with different reasons. The screen has no say in the first:
+     * the task was completed, or deleted from somewhere else while the sheet was
+     * open, and pausing is only safe when something is waiting to come back to.
+     *
+     * **The second is the user, through End session on the paused card**, which
+     * is `docs/decisions.md` D-060 and which this comment used to deny by saying
+     * "not a control the user has". D-015 removed the control that stopped a
+     * running session and that is unchanged: leaving the sheet still pauses,
+     * because the close control cannot tell "I am finished" from "one minute".
+     * A separate, explicitly labelled button somewhere else has no such problem,
+     * and D-057 made one necessary by closing the exit that was working by
+     * accident.
+     *
+     * The task is untouched either way. What ends is the clock.
      */
     fun endFocus() {
         writeFocusSession(null)

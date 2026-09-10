@@ -107,19 +107,67 @@ still said "45 min" and nobody had run it. It now checks both halves, the compac
 text and the spoken description, and the spoken one had never been checked at all,
 which is the half this file is actually about.
 
-**What the audit found and this session did not fix.** Eight medium findings and
-six low ones, none touched. Two are worth naming because they are close to the
-work above: there is still **no way to end a paused Focus session** without
-completing its task or replacing it, which is D-015's recorded cost and which
-D-057 does not address, it only stops the replacement being silent. And Today's
-"No time set" band means "no reminder" while showing rows that display 45m and
-20m, which reads as a contradiction.
+**Two of the audit's medium findings are fixed, and the first only became a
+defect because the high-severity work closed its escape hatch.**
 
-Also untouched: Task Details can be left permanently blank by a stale deep link
-when the repository holds zero tasks, the four lists initialise on an empty loaded
-list so a slow read shows a false empty state, `SectionLabel` is documented as a
-heading and exposes no heading semantics, and the reminder-health banner is not a
-live region. The last two belong with the TalkBack pass below rather than here.
+**A paused session can be ended, D-060.** The card gains `End session` beside
+Resume, a text button against a filled one, calling the `endFocus` that already
+existed and whose comment said "not a control the user has".
+
+D-015 removed the control that stopped a session and priced the cost honestly:
+"a user who abandons a session leaves a paused one in the Focus now card until
+they finish the task or start another. That is clutter, and it is the price." Two
+exits, and D-057 closed the second one this week, because starting Focus on
+another task was clearing the first by destroying it silently. Fixing that bug
+removed an exit, so the price D-015 quoted went up without anyone deciding it
+should: a user who wanted the card gone now had to answer a dialog and start a
+session they did not want, on a task they did not choose.
+
+**Not in a Focus overflow, which is what the audit suggested.** The sheet is on
+the far side of the problem — the only way in from a paused session is Resume, so
+ending one there means starting the clock you intend to discard and then finding
+a menu. The card is the thing that persists and nags, and it is where the user is
+looking when they notice it.
+
+No confirmation and no undo, both on purpose. D-057's dialog exists because the
+loss was a side effect of asking for something else; here it is the action, under
+a label that names it, and what is lost is a clock reading with the task and
+everything on it untouched. The protection is the weight of the two buttons.
+
+**Today's second band reads "No reminder set", D-061.** It read "No time set"
+above rows each printing their estimate — `45m`, `20m`, `15m` — which is a screen
+arguing with itself, and nothing tells the reader that one means a time of day
+and the other a duration. D-012 could not have seen it: the estimate moved into
+the row's trailing slot afterwards and the two were never looked at together.
+
+The name was also wrong about the code. `todayGroup` splits on
+`task.reminderAt == null`, and D-012's own body says the bands are told apart "by
+whether the task carries a reminder". So `TodayBand.NO_TIME_SET` became
+`NO_REMINDER` along with the label, fifteen sites across three source files and
+two test files. That is not the rename D-055 refused: `Focuslist` in a class name
+is stale, `NO_TIME_SET` asserted a rule the code did not implement.
+
+**"Any time today" was refused again**, which is what the audit actually
+preferred. D-012 answered that one already, on D-002's grounds that Anytime is
+GTD vocabulary a broad Android audience does not arrive trained in, and nothing
+found since weakens it. The audit named it as the calmer option without weighing
+D-002. "No reminder set" passes all three tests D-012 set for the old name and
+the old name failed one of them.
+
+Verified on the emulator: End session clears the card and leaves the task in its
+band, and the renamed label sits above a row reading 45m. 673 JVM tests and 35
+Today instrumented tests green, with four new ones — two on End session,
+including one asserting it does not open Focus, and two on the band, one of them
+pinning the label against the estimate that used to contradict it.
+
+**What the audit found and this session did not fix.** Six medium findings and
+six low ones. Task Details can be left permanently blank by a stale deep link
+when the repository holds zero tasks, the four lists initialise on an empty
+loaded list so a slow read shows a false empty state, backup progress disables
+both buttons without saying which one is working, the Task Details toolbar's two
+icons are unlabelled for sighted users, `SectionLabel` is documented as a heading
+and exposes no heading semantics, and the reminder-health banner is not a live
+region. The last two belong with the TalkBack pass below rather than here.
 
 **The dark theme audit is done, and it found nothing to fix.** That is a result
 rather than a shrug, and the two halves of it are worth keeping.

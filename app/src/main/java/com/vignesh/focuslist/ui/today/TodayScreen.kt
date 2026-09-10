@@ -153,6 +153,11 @@ fun TodayScreen(
             viewModel.resumeFocusFromCard()
             onOpenFocus()
         },
+        // **The other way out of a paused session, per D-060.** Completing the
+        // task was the only one left once D-057 stopped Start focus on another
+        // task from destroying this one, and needing to finish a task to clear a
+        // card is not an exit. It does not navigate: there is nothing to go to.
+        onEndSession = viewModel::endFocus,
         onAddTask = { isQuickAddVisible = true },
         readFailed = readFailed,
         onRetry = viewModel::retryRead,
@@ -222,6 +227,7 @@ private fun TodayContent(
     onToggleComplete: (String) -> Unit,
     onOpenTask: (String) -> Unit,
     onResumeFocus: () -> Unit = {},
+    onEndSession: () -> Unit = {},
     onAddTask: () -> Unit,
     readFailed: Boolean = false,
     onRetry: () -> Unit = {},
@@ -395,6 +401,7 @@ private fun TodayContent(
                         PausedSessionCard(
                             task = pausedTask,
                             onResume = onResumeFocus,
+                            onEndSession = onEndSession,
                             remainingMinutes = pausedRemainingMinutes,
                             // The card arrives and leaves on `reveal`, which is
                             // what that token is for. Not a container transform
@@ -459,7 +466,7 @@ private fun TodayContent(
                             ),
                             colors = taskColors,
                             // The heading already fixes the day for every band
-                            // but this one: No time set and Later today are
+                            // but this one: No reminder set and Later today are
                             // both today, and Completed is whenever it was.
                             // Overdue is the exception, because its tasks come
                             // from various past days and the date is the whole
@@ -561,7 +568,7 @@ private fun LazyListState.HoldViewportAcross(
 private val TodaySection.labelRes: Int
     get() = when (band) {
         TodayBand.OVERDUE -> R.string.today_section_overdue
-        TodayBand.NO_TIME_SET -> R.string.today_section_no_time_set
+        TodayBand.NO_REMINDER -> R.string.today_section_no_reminder
         TodayBand.LATER_TODAY -> R.string.today_section_later_today
         // Drawn by CompletedDisclosure, which never asks for this. Named rather
         // than thrown, so a future band added above cannot crash the screen.
@@ -626,7 +633,7 @@ private fun sampleTodayTasks(): List<Task> {
             estimatedDurationMinutes = 15
         ),
         // The paused session's task. Scheduled for today with no time, so it
-        // shows up in the "No time set" band as well as on the card: since D-048
+        // shows up in the "No reminder set" band as well as on the card: since D-048
         // the card no longer takes its task out of the list, and a preview that
         // hid the overlap would hide the thing worth looking at.
         Task(

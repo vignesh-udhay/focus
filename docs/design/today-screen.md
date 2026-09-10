@@ -143,7 +143,7 @@ together or not at all.
 ## Where the date went
 
 Nowhere. D-020 records why: nothing on Today needs it. The bands are relative,
-Overdue and No time set and Later today, and so is the paused session card, so
+Overdue and No reminder set and Later today, and so is the paused session card, so
 no row, band or card is harder to read for its absence. It was pleasant rather than
 load-bearing.
 
@@ -295,7 +295,7 @@ work is still outstanding. Nothing else promotes a task, and there is no
 fallback to "the first task".
 
 A third reason used to match any task scheduled for today carrying no time,
-which is most of them. Under it the card was the first row of the "No time set"
+which is most of them. Under it the card was the first row of the "No reminder set"
 band lifted out and drawn larger, with that band's own label as its explanation,
 on grounds equally true of every other row in the band. D-035 has the argument
 and what would reverse it.
@@ -600,7 +600,7 @@ the screen: the app bar, the collection, the spacing, and the FAB together.
 Four bands, in this order, per D-012:
 
     Overdue          past, and needs a decision
-    No time set      today, do it whenever
+    No reminder set  today, nothing will announce it
     Later today      today, it will announce itself
     Completed · N    a disclosure, collapsed by default
 
@@ -619,8 +619,9 @@ label, on the argument that "at the top of the Today screen, today's work needs
 no announcement", and with Completed neither counted nor collapsible. The band
 order changed, so the first band is no longer the one that needs no
 announcement, and the argument retires with the position. D-012 has the
-reasoning, including why the label is "No time set" rather than "Anytime
-today".
+reasoning, including why the label is not "Anytime today", and D-061 has why the
+second band reads "No reminder set" rather than "No time set": the rows in it
+show their estimate, so the old label was contradicted by the screen under it.
 
 The grouping is read from `TaskQueries.todaySections`, which cuts the list
 `todayTasks` already ordered at the points where the band changes. Concatenating

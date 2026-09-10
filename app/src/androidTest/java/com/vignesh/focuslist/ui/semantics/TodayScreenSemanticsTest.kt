@@ -161,6 +161,87 @@ class TodayScreenSemanticsTest {
         )
     }
 
+    /**
+     * `docs/decisions.md` D-060. Until this button existed there were two ways
+     * out of a paused session: complete its task, or start Focus on another one,
+     * and D-057 closed the second because it was destroying this one silently.
+     * A card the user cannot dismiss without finishing a task is the clutter
+     * D-015 priced, arriving without the exit D-015 assumed.
+     */
+    @Test
+    fun endSession_clearsThePausedCard() {
+        val viewModel = testViewModel(withOneTask())
+        viewModel.beginFocus("1")
+        viewModel.leaveFocusSheet()
+
+        rule.setFocuslistContent(FontScale100) {
+            TodayScreen(viewModel = viewModel, onOpenTask = {})
+        }
+
+        rule.waitUntilExactlyOneExists(hasText(END_SESSION), TIMEOUT_MILLIS)
+        rule.onNodeWithText(END_SESSION).performClick()
+        rule.waitForIdle()
+
+        rule.onNodeWithText(END_SESSION).assertDoesNotExist()
+        rule.onNodeWithText(RESUME_FOCUS).assertDoesNotExist()
+
+        // The clock ends and the task does not. It is still on Today, in the
+        // band it was already in, unchanged.
+        rule.onNodeWithText(TITLE).assertIsDisplayed()
+    }
+
+    /**
+     * Ending is not resuming, and the two buttons sit next to each other. A
+     * mis-wired End session would open Focus instead of clearing the card, and
+     * the assertions above would still pass if the sheet were covering them.
+     */
+    @Test
+    fun endSession_doesNotOpenFocus() {
+        val viewModel = testViewModel(withOneTask())
+        viewModel.beginFocus("1")
+        viewModel.leaveFocusSheet()
+
+        rule.setFocuslistContent(FontScale100) {
+            TodayScreen(viewModel = viewModel, onOpenTask = {})
+        }
+
+        rule.waitUntilExactlyOneExists(hasText(END_SESSION), TIMEOUT_MILLIS)
+        rule.onNodeWithText(END_SESSION).performClick()
+        rule.waitForIdle()
+
+        rule.runOnIdle {
+            assertEquals(false, viewModel.isFocusSheetOpen.value)
+            assertEquals(null, viewModel.focusSession.value)
+        }
+    }
+
+    /**
+     * D-061. The band holds tasks with no reminder, and it used to be headed
+     * "No time set" above rows each showing their estimate.
+     */
+    @Test
+    fun theUntimedBand_saysItIsAboutReminders() {
+        setToday(FontScale100, withOneUntimedTask())
+
+        rule.waitUntilExactlyOneExists(hasText(TITLE), TIMEOUT_MILLIS)
+        rule.onNodeWithText(NO_REMINDER_BAND).assertIsDisplayed()
+    }
+
+    /**
+     * The contradiction D-061 fixed, in one screen. The band said no time was
+     * set and the row beneath it printed 45m, and nothing told the reader that
+     * one meant a time of day and the other a duration.
+     */
+    @Test
+    fun theUntimedBand_doesNotContradictTheEstimateBelowIt() {
+        setToday(FontScale100, withOneUntimedTask())
+
+        rule.waitUntilExactlyOneExists(hasText(TITLE), TIMEOUT_MILLIS)
+        rule.onNodeWithText(NO_REMINDER_BAND).assertIsDisplayed()
+        rule.onNode(hasText("45m", substring = true)).assertExists()
+        rule.onNodeWithText("No time set").assertDoesNotExist()
+    }
+
     /** And the row says what tapping it does, in the words every row uses. */
     private fun assertTheRowNamesItsAction(fontScale: Float) {
         setToday(fontScale, withOneTask())
@@ -191,6 +272,21 @@ class TodayScreenSemanticsTest {
                 title = TITLE,
                 scheduledDate = TestToday,
                 reminderAt = TestPassedReminder
+            )
+        )
+    )
+
+    /**
+     * One task in the band D-061 renamed: today, no reminder, and an estimate,
+     * which is the pairing the old label contradicted.
+     */
+    private fun withOneUntimedTask() = FakeTaskDao(
+        listOf(
+            testTask(
+                id = "1",
+                title = TITLE,
+                scheduledDate = TestToday,
+                estimatedDurationMinutes = 45
             )
         )
     )
@@ -542,6 +638,10 @@ class TodayScreenSemanticsTest {
         const val MARK_COMPLETE = "Mark \"$TITLE\" complete"
         const val MARK_INCOMPLETE = "Mark \"$TITLE\" not complete"
         const val RESUME_FOCUS = "Resume focus"
+        const val END_SESSION = "End session"
+
+        /** D-061 renamed this band from "No time set". */
+        const val NO_REMINDER_BAND = "No reminder set"
 
         /** D-012's Completed disclosure, which carries a count and collapses. */
         const val COMPLETED_ONE = "Completed · 1"

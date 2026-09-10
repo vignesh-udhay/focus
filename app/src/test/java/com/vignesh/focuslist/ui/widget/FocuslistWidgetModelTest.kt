@@ -52,7 +52,7 @@ class FocuslistWidgetModelTest {
         ).body as WidgetBody.Sections
 
         assertEquals(
-            listOf(TodayBand.OVERDUE, TodayBand.NO_TIME_SET, TodayBand.LATER_TODAY),
+            listOf(TodayBand.OVERDUE, TodayBand.NO_REMINDER, TodayBand.LATER_TODAY),
             body.sections.map { it.band }
         )
         assertEquals(
@@ -66,7 +66,7 @@ class FocuslistWidgetModelTest {
     fun aBandWithNothingInItDoesNotAppear() {
         val body = model(listOf(task("a"), task("b"))).body as WidgetBody.Sections
 
-        assertEquals(listOf(TodayBand.NO_TIME_SET), body.sections.map { it.band })
+        assertEquals(listOf(TodayBand.NO_REMINDER), body.sections.map { it.band })
         assertEquals(listOf("a", "b"), body.sections.single().rows.map { it.task.id })
     }
 
@@ -82,7 +82,7 @@ class FocuslistWidgetModelTest {
             listOf(task("a"), task("done", completedAt = createdAt))
         ).body as WidgetBody.Sections
 
-        assertEquals(listOf(TodayBand.NO_TIME_SET), body.sections.map { it.band })
+        assertEquals(listOf(TodayBand.NO_REMINDER), body.sections.map { it.band })
         assertEquals(listOf("a"), body.sections.single().rows.map { it.task.id })
     }
 
@@ -148,7 +148,7 @@ class FocuslistWidgetModelTest {
             zoneId = ZoneOffset.UTC
         ).body as WidgetBody.Sections
 
-        val untimed = body.sections.single { it.band == TodayBand.NO_TIME_SET }
+        val untimed = body.sections.single { it.band == TodayBand.NO_REMINDER }
         assertEquals(listOf("a", "done", "b"), untimed.rows.map { it.task.id })
         assertTrue(untimed.rows.single { it.task.id == "done" }.justCompleted)
         assertTrue(untimed.rows.filterNot { it.task.id == "done" }.none { it.justCompleted })
@@ -173,7 +173,7 @@ class FocuslistWidgetModelTest {
         ).body as WidgetBody.Sections
 
         assertEquals(
-            listOf(TodayBand.OVERDUE, TodayBand.NO_TIME_SET),
+            listOf(TodayBand.OVERDUE, TodayBand.NO_REMINDER),
             body.sections.map { it.band }
         )
         assertTrue(body.sections.first().rows.single().justCompleted)

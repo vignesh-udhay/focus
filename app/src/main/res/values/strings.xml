@@ -10,7 +10,12 @@
     <string name="widget_all_done">All done for today</string>
     <string name="widget_add_task">Add a task</string>
     <string name="today_section_overdue">Overdue</string>
-    <string name="today_section_no_time_set">No time set</string>
+    <!-- D-061 renamed this from "No time set". The band holds tasks with no
+         reminder, and the rows in it show their estimate at the end: a band
+         headed "No time set" above three rows reading 45m, 20m and 15m is a
+         screen arguing with itself. "Any time today" was refused again, on
+         D-012's reasoning that D-002 removed Anytime as vocabulary. -->
+    <string name="today_section_no_reminder">No reminder set</string>
     <string name="today_section_later_today">Later today</string>
     <!-- The Completed disclosure carries its count: "Completed \u00b7 2". -->
     <string name="today_section_completed_count">Completed \u00b7 %1$d</string>
@@ -21,6 +26,11 @@
          it, and the button always resumes. The reason lines went with the
          reason, and "Focus now" went with the question the card stopped asking. -->
     <string name="today_focus_now_resume">Resume focus</string>
+    <!-- D-060. D-015 removed the control that stopped a session and priced the
+         cost as clutter, on the assumption that starting another session was the
+         other way out. D-057 closed that because it was destroying the first one
+         silently, so this is the exit that replaces it. -->
+    <string name="today_focus_now_end">End session</string>
     <string name="today_focus_now_paused">Paused</string>
     <string name="today_focus_now_paused_remaining">Paused \u00b7 %1$d min remaining</string>
     <string name="today_section_completed">Completed</string>

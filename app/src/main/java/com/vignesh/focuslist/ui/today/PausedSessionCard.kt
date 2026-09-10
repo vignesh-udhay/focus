@@ -1,7 +1,9 @@
 package com.vignesh.focuslist.ui.today
 
 import android.content.res.Configuration
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
@@ -9,6 +11,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.Alignment
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -38,11 +42,24 @@ import java.time.LocalDate
  * left in it.
  *
  * **Three things, and the task is not one of them.** A label saying what is
- * paused and how much is left, the title so the user knows which task, and Resume.
- * No checkbox, no reason line, no tap target on the body. All three existed
- * because D-012 lifted the task out of its band and left the row's affordances
- * with nowhere to live; D-048 leaves the task in its band, so the row carries them
- * again and this carries the one thing the row cannot.
+ * paused and how much is left, the title so the user knows which task, and the
+ * two actions. No checkbox, no reason line, no tap target on the body. All three
+ * existed because D-012 lifted the task out of its band and left the row's
+ * affordances with nowhere to live; D-048 leaves the task in its band, so the row
+ * carries them again and this carries the one thing the row cannot.
+ *
+ * **End session is the second action, and `docs/decisions.md` D-060 is why it
+ * exists.** D-015 removed the control that stopped a session and priced the cost
+ * as clutter: a paused session the user has abandoned sits here until they finish
+ * the task or start another. D-057 then closed the second of those, because
+ * starting another was silently destroying this one, and closing a bug removed an
+ * exit. Without this button a user who wants the card gone has to answer a dialog
+ * and start a session they did not want, on a task they did not choose.
+ *
+ * The card is where it belongs rather than in the sheet, because the sheet is on
+ * the far side of the problem: the only way in from here is Resume, so ending a
+ * session there would mean starting the clock you intend to discard. A thing that
+ * will not go away should carry the control that dismisses it.
  *
  * **The remaining time is in the label rather than on a line of its own.** It is
  * the number the decision turns on: a forty-five minute task paused two thirds of
@@ -57,6 +74,7 @@ import java.time.LocalDate
 fun PausedSessionCard(
     task: Task,
     onResume: () -> Unit,
+    onEndSession: () -> Unit,
     modifier: Modifier = Modifier,
     // What is left of the paused session. Null for a session with no estimate
     // behind it, which is D-013's open-ended session paused: there is no
@@ -111,15 +129,34 @@ fun PausedSessionCard(
                     .semantics { heading() }
             )
 
-            Button(
-                onClick = onResume,
+            // **Resume leads and End session trails, which is the opposite of
+            // D-037 and does not contradict it.** D-037 put the destructive
+            // action first because in a floating toolbar at the foot of the
+            // screen the thumb lands nearest the reaching side. This is a
+            // left-aligned row near the top of the screen, where that pressure
+            // does not apply, and the fill is carrying the weight instead.
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(FocuslistSpacing.xs),
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(top = FocuslistSpacing.sm)
             ) {
-                // Always Resume. The card has one state now, so the label no
-                // longer branches: there is no path here that lands the sheet on
-                // Ready, because the only thing this card speaks for is work the
-                // user already started.
-                Text(text = stringResource(R.string.today_focus_now_resume))
+                Button(onClick = onResume) {
+                    // Always Resume. The card has one state now, so the label no
+                    // longer branches: there is no path here that lands the sheet
+                    // on Ready, because the only thing this card speaks for is
+                    // work the user already started.
+                    Text(text = stringResource(R.string.today_focus_now_resume))
+                }
+
+                // **No confirmation, and D-057 having added one is not an
+                // argument for a second.** That dialog exists because the loss
+                // was a side effect of asking for something else; here it is the
+                // action, under a label that names it. What protects it is the
+                // weight of the two buttons, which is the same argument
+                // `settings.md` makes for Export against Restore.
+                TextButton(onClick = onEndSession) {
+                    Text(text = stringResource(R.string.today_focus_now_end))
+                }
             }
         }
     }
@@ -147,6 +184,7 @@ private fun PausedSessionPreview() {
         PausedSessionCard(
             task = SampleTask,
             onResume = {},
+            onEndSession = {},
             modifier = Modifier.padding(FocuslistSpacing.md),
             remainingMinutes = 17
         )
@@ -168,6 +206,7 @@ private fun PausedSessionOpenEndedPreview() {
                 estimatedDurationMinutes = null
             ),
             onResume = {},
+            onEndSession = {},
             modifier = Modifier.padding(FocuslistSpacing.md)
         )
     }
@@ -192,6 +231,7 @@ private fun PausedSessionLongTitlePreview() {
                 estimatedDurationMinutes = 45
             ),
             onResume = {},
+            onEndSession = {},
             modifier = Modifier.padding(FocuslistSpacing.md),
             remainingMinutes = 32
         )

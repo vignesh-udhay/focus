@@ -389,7 +389,7 @@ private fun WidgetBandHeader(band: TodayBand) {
 private val TodayBand.labelRes: Int
     get() = when (this) {
         TodayBand.OVERDUE -> R.string.today_section_overdue
-        TodayBand.NO_TIME_SET -> R.string.today_section_no_time_set
+        TodayBand.NO_REMINDER -> R.string.today_section_no_reminder
         TodayBand.LATER_TODAY -> R.string.today_section_later_today
         TodayBand.COMPLETED -> R.string.today_section_completed
     }

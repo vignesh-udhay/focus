@@ -19,7 +19,7 @@ class TaskQueriesTest {
         completedAt: Instant? = null,
         deletedAt: Instant? = null,
         createdAt: Instant = timestamp,
-        // What tells No time set from Later today. A task with a time will
+        // What tells No reminder set from Later today. A task with a time will
         // announce itself; a task without one is only ever done because the
         // user looked.
         reminderAt: LocalDateTime? = null
@@ -576,7 +576,7 @@ class TaskQueriesTest {
         assertEquals(
             listOf(
                 TodayBand.OVERDUE,
-                TodayBand.NO_TIME_SET,
+                TodayBand.NO_REMINDER,
                 TodayBand.LATER_TODAY,
                 TodayBand.COMPLETED
             ),
@@ -638,7 +638,7 @@ class TaskQueriesTest {
 
         val sections = todaySections(tasks, today)
 
-        assertEquals(listOf(TodayBand.NO_TIME_SET), sections.map { it.band })
+        assertEquals(listOf(TodayBand.NO_REMINDER), sections.map { it.band })
         assertEquals(listOf("a", "b"), ids(sections.single().tasks))
     }
 
@@ -658,7 +658,7 @@ class TaskQueriesTest {
 
         val sections = todaySections(tasks, today)
 
-        assertEquals(listOf(TodayBand.OVERDUE, TodayBand.NO_TIME_SET), sections.map { it.band })
+        assertEquals(listOf(TodayBand.OVERDUE, TodayBand.NO_REMINDER), sections.map { it.band })
         assertEquals(listOf("old1", "old2"), ids(sections[0].tasks))
         assertEquals(listOf("now1", "now2"), ids(sections[1].tasks))
     }
@@ -666,7 +666,7 @@ class TaskQueriesTest {
     @Test
     fun `a band is named for every task it holds`() {
         assertEquals(
-            TodayBand.NO_TIME_SET,
+            TodayBand.NO_REMINDER,
             todayBandOf(task(id = "a", scheduledDate = today), today)
         )
         assertEquals(

@@ -4016,3 +4016,141 @@ practice and mutually exclusive with nothing, so the line grows by one segment
 on the tasks that have one. If that turns out to be too much, the answer is to
 drop the scheduled date where a heading already carries it, not to hide the
 deadline again.
+
+---
+
+## D-060. The paused session card can end its own session
+
+**Decision.** The card gains a second action. Resume stays as it is, filled, and
+`End session` sits beside it as a text button:
+
+    Paused · 15 min remaining
+    Refine landing page hero
+
+    [Resume focus]  End session
+
+`End session` calls the `endFocus` that already exists: no session, no chosen
+task, no alarm. The task itself is untouched, and stays in whatever band it was
+already in.
+
+**What this supersedes.** D-015's "There is no longer a control that stops a
+session outright", and D-048's "What is left is a label, the title, and Resume."
+
+**Why, and what new information there is.** D-015 accepted this cost explicitly
+and named the thing to watch: "A user who abandons a session leaves a paused one
+in the Focus now card until they finish the task or start another. That is
+clutter, and it is the price." It then wrote the reversal condition as "paused
+sessions accumulating in the Focus now card and reading as nagging rather than as
+a way back in."
+
+That condition is now met by construction rather than by observation, and D-057
+is what changed it. Before D-057 there were two exits from a stale session:
+complete its task, or start Focus on another one, which silently overwrote it.
+The second was a bug, and closing it removed an exit. A user who wants the card
+gone and does not want to finish that task now has to answer a dialog and start a
+session they did not want, on a task they did not choose, in order to clear a
+card. That is worse than the clutter D-015 priced in.
+
+**Why the card and not a Focus overflow.** The audit that raised this suggested
+an overflow inside the Focus sheet. Refused, because the sheet is on the far side
+of the problem: the only way in from a paused session is Resume, so ending one
+would mean starting the clock you intend to discard, then finding a menu. The
+card is the object that persists and nags, and a thing that will not go away
+should carry the control that dismisses it.
+
+It is also where the user already is. The card is on Today, above the first band,
+in the place they are looking when they notice it is still there.
+
+**Why no confirmation, when D-057 added one.** D-057's dialog exists because the
+loss was a *side effect* of asking for something else. Here it is the action,
+under a label that names it. The protection is the weight of the two buttons,
+filled against text, which is the same argument `settings.md` makes for Export
+and Restore.
+
+**Why no undo, stated plainly.** What is lost is a clock reading. The task, its
+notes, its date, its estimate and its reminder are all untouched, and the session
+was already paused, so nothing in flight is interrupted. An undo would mean
+teaching the undo mechanism a third kind of thing to hold, for a value that is
+not the user's work. If people report ending sessions by accident, that is the
+signal to reconsider.
+
+**Resume leads and End session trails**, which is the opposite of D-037's
+ordering and does not contradict it. D-037 put the destructive action first
+because in a floating toolbar at the bottom of the screen the thumb lands nearest
+the reaching side. This is a left-aligned action row near the top of the screen,
+where that pressure does not apply, and the fill is doing the work instead.
+
+**What this does not do.** It does not bring back a stop control inside Focus.
+Leaving the sheet still pauses, D-015 is unchanged on that, and the whole of
+D-015's argument about the close control not being able to tell two intentions
+apart still holds. This adds a second, explicitly labelled control somewhere
+else, which is exactly what D-015 said the alternative to overloading the first
+one would be.
+
+**What would reverse this.** Sessions being ended and immediately restarted,
+which would mean the control is being read as a way to reset the clock rather
+than as a way to stop. The fix then is naming, not removal.
+
+---
+
+## D-061. Today's second band is No reminder set
+
+**Decision.** The band label reads `No reminder set`. `TodayBand.NO_TIME_SET`
+becomes `TodayBand.NO_REMINDER` and the string key moves with it, so the code
+says what the label says.
+
+    Overdue            past, and needs a decision
+    No reminder set    today, nothing will announce it
+    Later today        today, it will announce itself
+    Completed · N      a disclosure, collapsed by default
+
+**What this supersedes.** D-012's choice of "No time set", and only that. Every
+other part of D-012's band list stands.
+
+**Why. The label was contradicted by the rows underneath it.** Tasks in this band
+show their estimate at the end of the row: `45m`, `20m`, `15m`. A band headed
+"No time set" holding three rows each displaying a time is a screen arguing with
+itself, and the reader has no way to know that one means a time of day and the
+other a duration. D-012 could not have seen this: the estimate moved into the
+row's trailing slot afterwards, and the two changes were never looked at
+together.
+
+The name was also wrong about the code. `todayGroup` splits on
+`task.reminderAt == null`, and D-012's own body says the bands "are told apart by
+whether the task carries a reminder, which is what 'it will announce itself'
+means". The label said time and the rule read reminder, so a task scheduled for
+today at no particular hour and a task with a reminder were being described by a
+word that does not distinguish them.
+
+**Why not "Any time today", which is what the audit preferred.** Because D-012
+answered that one and the answer has not changed. D-002 cut Anytime as GTD
+vocabulary "that a broad Android audience does not arrive trained in", and the
+word was then removed from the routes, the storage enums and the row menu.
+Reintroducing it as a band label, for a third meaning, invites the confusion
+D-002 was written to prevent. Nothing found since weakens that; the audit named
+it as the calmer of two options without weighing D-002.
+
+"No reminder set" meets all three of the tests D-012 set for the old name. It is
+plain English. It says what the band contains. And it is the app's own wording,
+more so than the label it replaces: "reminder" is the word `PRODUCT.md`, the
+Reminder sheet and the Reminder health screen all use.
+
+**The enum is renamed, and D-055's rule is why that is not inconsistent.** D-055
+left `Focuslist` in class names on the grounds that no user sees them and the
+diff buys no behaviour. The difference here is that `NO_TIME_SET` is not a stale
+name, it is a wrong one: it asserts a rule the code does not implement, in the
+one file where someone reading it would be deciding what the band means. Fifteen
+sites across three source files and two test files.
+
+**What is deliberately not renamed.** The entries above this one in this
+document, which are history and say what was decided when. D-012 still reads "No
+time set" and should.
+
+**Rows still do not repeat the label.** D-012's rule that "a row reading 'No time
+set' under a band reading 'No time set' is the label twice" is unaffected: no row
+prints its own reminder state, and a row in this band has no reminder time to
+print.
+
+**What would reverse this.** Users reading "No reminder set" as an instruction to
+set one, on a band whose whole point is that a task does not need one. The check
+is whether tasks start acquiring reminders after landing there.

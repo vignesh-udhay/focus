@@ -38,7 +38,7 @@ fun todayTasks(tasks: List<Task>, today: LocalDate): List<Task> =
 private const val OVERDUE = 0
 
 /** Today, with no time on it. Do it whenever. */
-private const val NO_TIME_SET = 1
+private const val NO_REMINDER = 1
 
 /** Today, with a time. It will announce itself. */
 private const val LATER_TODAY = 2
@@ -62,7 +62,10 @@ private const val COMPLETED = 3
  * it, so the screen still opens on what to do rather than on what was missed.
  *
  * **Today's two bands are told apart by whether the task carries a reminder**,
- * which is what "it will announce itself" means. A task with a time does not
+ * which is what "it will announce itself" means, and since D-061 it is what the
+ * label says too. It used to read "No time set", which described neither this
+ * rule nor the rows underneath it, since every task in the band shows its
+ * estimate at the end of its row. A task with a time does not
  * need to be remembered, because the app will say; a task without one is only
  * ever done because the user looked.
  *
@@ -72,7 +75,7 @@ private const val COMPLETED = 3
 private fun todayGroup(task: Task, today: LocalDate): Int = when {
     task.isCompleted -> COMPLETED
     task.scheduledDate != today -> OVERDUE
-    task.reminderAt == null -> NO_TIME_SET
+    task.reminderAt == null -> NO_REMINDER
     else -> LATER_TODAY
 }
 
@@ -94,8 +97,8 @@ enum class TodayBand {
     /** Scheduled before today, still outstanding. Needs a decision. */
     OVERDUE,
 
-    /** Today, with no time on it. Do it whenever. */
-    NO_TIME_SET,
+    /** Today, and nothing will announce it. Do it whenever. */
+    NO_REMINDER,
 
     /** Today, with a time. It will announce itself. */
     LATER_TODAY,
@@ -147,7 +150,7 @@ fun todaySections(
 /** Which band [task] falls into, by the same rule [todayTasks] sorts on. */
 fun todayBandOf(task: Task, today: LocalDate): TodayBand = when (todayGroup(task, today)) {
     OVERDUE -> TodayBand.OVERDUE
-    NO_TIME_SET -> TodayBand.NO_TIME_SET
+    NO_REMINDER -> TodayBand.NO_REMINDER
     LATER_TODAY -> TodayBand.LATER_TODAY
     else -> TodayBand.COMPLETED
 }
