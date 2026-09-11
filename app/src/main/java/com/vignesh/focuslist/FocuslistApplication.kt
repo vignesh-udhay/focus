@@ -1,7 +1,6 @@
 package com.vignesh.focuslist
 
 import android.app.Application
-import android.content.pm.ApplicationInfo
 import androidx.room.Room
 import com.vignesh.focuslist.data.local.FocuslistDatabase
 import com.vignesh.focuslist.data.local.FocuslistMigrations
@@ -9,7 +8,6 @@ import com.vignesh.focuslist.data.local.FocuslistPreferences
 import com.vignesh.focuslist.data.local.FocusSessionPreferences
 import com.vignesh.focuslist.data.local.ReminderHealthAcknowledgements
 import com.vignesh.focuslist.data.local.WidgetInteractionPreferences
-import com.vignesh.focuslist.data.local.debugSeedCallback
 import com.vignesh.focuslist.core.notification.AndroidFocusAlarms
 import com.vignesh.focuslist.core.notification.AndroidReminderAlarms
 import com.vignesh.focuslist.core.notification.FocusAlarms
@@ -61,10 +59,6 @@ class FocuslistApplication : Application() {
             // No destructive fallback. A missing migration should fail loudly
             // rather than quietly empty someone's task list.
             .addMigrations(*FocuslistMigrations)
-            // Fires only when the database is first created, which on a debug
-            // build is every reinstall the instrumented tests cause. A release
-            // install reaches the same line and is handed nothing.
-            .addCallback(debugSeedCallback(isDebuggable))
             .build()
     }
 
@@ -102,16 +96,6 @@ class FocuslistApplication : Application() {
     val reminderDeliveryRepository: ReminderDeliveryRepository by lazy {
         ReminderDeliveryRepository(database.reminderDeliveryDao())
     }
-
-    /**
-     * Whether this install is a debug build.
-     *
-     * Read from the manifest flag rather than `BuildConfig`, which this module
-     * does not generate, and which would mean turning on a build feature for
-     * one boolean.
-     */
-    private val isDebuggable: Boolean
-        get() = applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
 
     /** Eager, so the date broadcasts are being listened for from the start. */
     val currentDay: SystemCurrentDay by lazy { SystemCurrentDay(this) }

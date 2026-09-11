@@ -45,6 +45,15 @@ replaced." Right sentence, and English rather than a plural with a zero in it.
 Three exit criteria are left, and all three are yours rather than the code's: the
 TalkBack pass on a real device, the Play listing, and publishing.
 
+**The debug seed is gone, and a fresh install now starts empty.** `DebugSeed.kt`
+and its `Room.databaseBuilder` callback are deleted. It was written so that
+reinstalling for an instrumented test run did not cost an afternoon of typed-in
+tasks, which is a real cost, but the app is now being used day to day on a real
+phone and thirteen fixture tasks are noise in a list that is supposed to be the
+user's own. Anything above that reads the seed, including the passage on this
+page about the restore replacing thirteen rows, is a record of what was true
+then rather than what a fresh install does now.
+
 **A UI and UX audit found four high-severity defects, and all four are fixed.**
 Each one reversed something written down, so each has a decision entry, D-056 to
 D-059, written before the code. What they have in common is worth naming: three
