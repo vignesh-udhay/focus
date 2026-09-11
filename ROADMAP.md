@@ -1653,6 +1653,33 @@ permanent entry, while the identical app-bar overflow entry is gone. More now
 contains only Logbook and Settings; contextual reliability warnings may still
 open Reminder health directly when there is something to act on.
 
+**Quick Add understands three more things, and one of them was a bug, D-069.**
+"Call mum on friday" used to match only its last word and save a task called
+"Call mum on", so a day may now be introduced by "on" or "by" and the
+preposition is taken and marked with the day. `noon`, `midday`, `midnight`,
+`tonight` and `this evening` name a time without digits, at 12:00, 12:00, 00:00,
+20:00 and 18:00. "in 2 hours" and "in 30 minutes" set a reminder counted from
+the moment of typing, and a capture naming both a day and an offset takes
+neither, because they ask for two different moments. Twenty-four unit tests
+cover the additions; no dependency and no parser library was added, and the
+trailing-run, whole-candidate and visible-mark rules are untouched.
+
+**The parser now reads transcripts, which is stage one of voice capture and
+the whole of it for now, D-070.** Dictation through the keyboard's mic already
+reaches the Quick Add field; what failed was the text it writes. Number words
+resolve wherever digits did ("six pm", "in two hours", "in an hour", "in three
+days"), from one table in `SpokenNumbers.kt` shared by every branch, which
+supersedes D-069's digits-only rule. "6 p.m." folds its dots, and the trailing
+full stop Pixel voice typing adds no longer makes every trailing candidate
+unrecognisable. "at six" with no meridiem stays refused rather than guessed,
+and D-070 records why. The script was then dictated on a real phone and the
+database read back: the parser held on every fair transcript, and the one real
+failure it surfaced, spoken "at six" arriving as "6:00" and storing a 6am
+reminder for a 6pm intention, is fixed by requiring both hour digits of a
+24-hour time. "06:00" and "18:00" read; "6:00" stays in the title. No
+microphone UI, no permission, no dependency; that is a later stage and a
+separate decision.
+
 **Lint passes again.** Notification posting now checks permission at the point
 of use and handles a grant being revoked between that check and `notify()`. Real
 and test reminders use the result when recording delivery, so a rejected post

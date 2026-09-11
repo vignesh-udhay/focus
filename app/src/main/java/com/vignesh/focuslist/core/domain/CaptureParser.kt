@@ -1,5 +1,6 @@
 package com.vignesh.focuslist.core.domain
 
+import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -38,6 +39,9 @@ import java.util.Locale
  * guessed, and a title is never emptied by parsing.
  * @param date the day the title named, or null. Sets the scheduled date.
  * @param time the time of day the title named, or null. Sets a reminder.
+ * @param offset how long after the moment of typing the title asked to be
+ * reminded, or null. D-069. Never set at the same time as [time]: both come off
+ * the same single peel, and a capture naming a day cannot carry one at all.
  * @param dateRange where the day sits in the text as it was handed in, or null.
  * Indexes the original string rather than [title], which has been trimmed, so
  * the marking does not drift when there is leading whitespace.
@@ -47,13 +51,14 @@ data class CapturedTask(
     val title: String,
     val date: LocalDate?,
     val time: LocalTime?,
+    val offset: Duration?,
     val dateRange: IntRange?,
     val timeRange: IntRange?
 ) {
 
     /** Whether anything was understood at all. D-011's first of three states. */
     val isPlain: Boolean
-        get() = date == null && time == null
+        get() = date == null && time == null && offset == null
 
     /**
      * Everything the field should mark, as one span.
@@ -90,6 +95,13 @@ data class CapturedTask(
      * that rolled says "Tomorrow" on the sheet the user is still looking at.
      */
     fun reminderAt(defaultDate: LocalDate, now: LocalDateTime): LocalDateTime? {
+        // An offset is counted from the moment of typing and names no clock
+        // time, so the day it lands on falls out of the arithmetic: "in 2 hours"
+        // typed at eleven at night is one in the morning tomorrow. D-069. It
+        // needs no forward resolution, because a moment after now is ahead by
+        // construction.
+        offset?.let { return now.plus(it) }
+
         val at = time ?: return null
         return nextReminderOccurrence(LocalDateTime.of(date ?: defaultDate, at), now)
     }
@@ -110,7 +122,8 @@ data class CapturedTask(
      * The time's words stay in the text and are simply no longer marked, so what
      * the field shows and what will be saved go on agreeing.
      */
-    fun withoutReminder(): CapturedTask = copy(time = null, timeRange = null)
+    fun withoutReminder(): CapturedTask =
+        copy(time = null, offset = null, timeRange = null)
 }
 
 /**
@@ -141,9 +154,27 @@ fun splitTrailingCapture(text: String, today: LocalDate): CapturedTask {
     // covers the preposition the user typed rather than orphaning it.
     for (count in minOf(MaxTimeWords, words.size) downTo 1) {
         val start = words[words.size - count].range.first
-        val time = parseTimeOfDay(text.substring(start)) ?: continue
-
+        val candidate = text.substring(start)
         val head = text.substring(0, start)
+
+        // "in 2 hours", which names no clock time and so reads no day. D-069.
+        parseRelativeTime(candidate)?.let { offset ->
+            // A day and an offset ask for two different moments and neither one
+            // is obviously right, so nothing is taken. The same line also holds
+            // the rule every other branch keeps: a title is never emptied.
+            if (namesADay(head, today)) return plain(text)
+
+            return CapturedTask(
+                title = head.trim(),
+                date = null,
+                time = null,
+                offset = offset,
+                dateRange = null,
+                timeRange = start until text.trimEnd().length
+            )
+        }
+
+        val time = parseTimeOfDay(candidate) ?: continue
 
         // Nothing left to call the task: the whole capture was a time, or a day
         // and a time. It stays a title, unparsed and unmarked.
@@ -158,6 +189,7 @@ fun splitTrailingCapture(text: String, today: LocalDate): CapturedTask {
             title = day.title,
             date = day.date,
             time = time,
+            offset = null,
             dateRange = day.dateStart?.let { at -> at until head.trimEnd().length },
             timeRange = start until text.trimEnd().length
         )
@@ -170,14 +202,33 @@ fun splitTrailingCapture(text: String, today: LocalDate): CapturedTask {
         title = day.title,
         date = day.date,
         time = null,
+        offset = null,
         dateRange = day.dateStart?.let { at -> at until text.trimEnd().length },
         timeRange = null
     )
 }
 
 /** A capture that parsed to nothing: all of it is the title. */
-private fun plain(text: String) =
-    CapturedTask(text.trim(), date = null, time = null, dateRange = null, timeRange = null)
+private fun plain(text: String) = CapturedTask(
+    title = text.trim(),
+    date = null,
+    time = null,
+    offset = null,
+    dateRange = null,
+    timeRange = null
+)
+
+/**
+ * Whether [head] is a day, ends in one, or is nothing at all.
+ *
+ * The three things that stop an offset being read, in one question. Anything a
+ * day could be hiding in makes "in 2 hours" contradictory or leaves the capture
+ * with no title, and D-069 takes nothing in either case.
+ */
+private fun namesADay(head: String, today: LocalDate): Boolean =
+    head.isBlank() ||
+        parseDate(head, today) is ParsedDate.Recognized ||
+        splitTrailingDate(head, today).date != null
 
 /**
  * A time of day, or null when [text] is not one.
@@ -189,6 +240,11 @@ private fun plain(text: String) =
  *
  *     3pm      3 pm     3:30pm    3.30pm
  *     15:00    09:30    at 3pm    at 15:00
+ *     noon     midday   midnight  tonight   this evening
+ *     six pm   at seven am        6 p.m.
+ *
+ * The five words carry no digits and are the ordinary way people say these
+ * hours, D-069. [WordTimes] fixes what the two that need a number chosen mean.
  *
  * **Deliberately absent: a bare number.** "7" is not read as seven o'clock, and
  * "Call mum 7" captures a title ending in a seven. A bare hour is far more often
@@ -205,7 +261,34 @@ private fun plain(text: String) =
  * Turkish device the default folds a capital I to a dotless one.
  */
 fun parseTimeOfDay(text: String): LocalTime? {
-    val cleaned = text.trim().lowercase(Locale.ROOT).removePrefix("at ").trim()
+    val cleaned = text.trim().lowercase(Locale.ROOT)
+        // One sentence terminator, at the end only. Pixel voice typing
+        // punctuates what it hears, D-070, and "6 pm." used to be refused. The
+        // dot in "3.30pm" is inside the phrase and is untouched.
+        .removeSuffix(".").removeSuffix("!").removeSuffix("?")
+        // Some recognizers punctuate the abbreviation itself. Dotless in the
+        // pattern, because the line above has already taken the final dot off
+        // "6 p.m." and what is left to fold is "p.m".
+        .replace("p.m", "pm").replace("a.m", "am")
+        .removePrefix("at ").trim()
+
+    WordTimes[cleaned]?.let { return it }
+
+    // "six pm", D-070: an hour said as a word, still needing its meridiem. The
+    // meridiem is what makes the hour unambiguous, exactly as with digits, so
+    // "at six" stays refused: nothing in it says which of the two sixes.
+    SpokenHour.matchEntire(cleaned)?.let { match ->
+        val hour = spokenNumber(match.groupValues[1]) ?: return@let
+        if (hour !in 1..12) return@let
+
+        val isMorning = match.groupValues[2] == "am"
+        val hourOfDay = when {
+            hour == 12L -> if (isMorning) 0 else 12
+            else -> if (isMorning) hour.toInt() else hour.toInt() + 12
+        }
+
+        return LocalTime.of(hourOfDay, 0)
+    }
 
     TwelveHour.matchEntire(cleaned)?.let { match ->
         val hour = match.groupValues[1].toInt()
@@ -224,14 +307,83 @@ fun parseTimeOfDay(text: String): LocalTime? {
     }
 
     TwentyFourHour.matchEntire(cleaned)?.let { match ->
-        val hour = match.groupValues[1].toInt()
+        val hourDigits = match.groupValues[1]
+        val hour = hourDigits.toInt()
         val minute = match.groupValues[2].toInt()
         if (hour > 23 || minute > 59) return null
+
+        // A single-digit hour is not a 24-hour time anyone wrote, D-070's
+        // addendum. Dictating "tomorrow at six" put "6:00" in the field, this
+        // branch read it as six in the morning, and a 6am reminder for a 6pm
+        // intention was measured on a real phone. A 24-hour typist writes
+        // "06:00" or "18:00"; "6:00" is a spoken hour wearing digits, and it is
+        // as ambiguous as "at six", so it gets the same answer. Refused, not
+        // guessed.
+        if (hourDigits.length < 2) return null
 
         return LocalTime.of(hour, minute)
     }
 
     return null
+}
+
+/**
+ * The times people say without digits, D-069.
+ *
+ * Noon and midnight are not decisions. The other two are: "tonight" is eight in
+ * the evening and "this evening" is six. Eight is late enough to read as the
+ * evening rather than the end of the afternoon, and early enough that a reminder
+ * still lands while someone is up; six keeps the two phrases apart, which they
+ * are in use, because "this evening" is when the day's work stops and "tonight"
+ * is after it.
+ *
+ * A word whose hour has gone by rolls to tomorrow like any other time, through
+ * the same resolution D-030 applies, and the Reminder chip names the day it
+ * landed on before anything is saved.
+ */
+private val WordTimes: Map<String, LocalTime> = mapOf(
+    "noon" to LocalTime.NOON,
+    "midday" to LocalTime.NOON,
+    "midnight" to LocalTime.MIDNIGHT,
+    "tonight" to LocalTime.of(20, 0),
+    "this evening" to LocalTime.of(18, 0)
+)
+
+/**
+ * How long after now the title asked to be reminded: "in 2 hours", "in 30
+ * minutes". Null when [text] is not one of those.
+ *
+ * D-069. The clock forms cannot say this, and neither can the user, who does not
+ * know what time it will be in two hours without working it out. Quick Add
+ * exists to avoid exactly that arithmetic.
+ *
+ * **Number words as well as digits, since D-070.** "in two hours", "in thirty
+ * minutes" and "in an hour" all read, because a speech recognizer writes the
+ * words whether or not the vocabulary accepts them, and the day half accepts
+ * the same table, so the branches stay learnable as one rule. "in a couple of
+ * hours" is still refused: the table names numbers, not quantities.
+ *
+ * **At least one of whatever it counts.** "in 0 minutes" is refused rather than
+ * set for the current instant, because a reminder that fires as the sheet closes
+ * is not an interruption anyone asked for.
+ *
+ * Split on words rather than matched with a regex, which is what keeps the two
+ * units and the numeral visible in one place.
+ */
+fun parseRelativeTime(text: String): Duration? {
+    val words = text.trim().lowercase(Locale.ROOT)
+        .removeSuffix(".").removeSuffix("!").removeSuffix("?")
+        .split(" ").filter { it.isNotEmpty() }
+    if (words.size != 3 || words[0] != "in") return null
+
+    val amount = words[1].toLongOrNull() ?: spokenNumber(words[1]) ?: return null
+    if (amount < 1) return null
+
+    return when (words[2]) {
+        "hour", "hours" -> runCatching { Duration.ofHours(amount) }.getOrNull()
+        "minute", "minutes" -> runCatching { Duration.ofMinutes(amount) }.getOrNull()
+        else -> null
+    }
 }
 
 /**
@@ -242,11 +394,19 @@ fun parseTimeOfDay(text: String): LocalTime? {
  */
 private val TwelveHour = Regex("""^(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)$""")
 
+/** An hour word and its meridiem, D-070: "six pm", "twelve am". */
+private val SpokenHour = Regex("([a-z]+) ?(am|pm)")
+
 /**
- * A 24-hour time, which needs its separator: "15:00", "09.30".
+ * A 24-hour time, which needs its separator and both hour digits: "15:00",
+ * "09.30".
  *
- * Without one there is nothing to say the digits are a clock rather than a
- * quantity.
+ * Without the separator there is nothing to say the digits are a clock rather
+ * than a quantity. Without the second hour digit there is nothing to say which
+ * half of the day is meant: speech recognizers write a dictated "at six" as
+ * "6:00", and the branch reading that as 06:00 stored a measured 6am reminder
+ * for a 6pm intention. The regex still admits one digit so the case lands here
+ * and is refused for its length rather than half-matching elsewhere.
  */
 private val TwentyFourHour = Regex("""^(\d{1,2})[:.](\d{2})$""")
 

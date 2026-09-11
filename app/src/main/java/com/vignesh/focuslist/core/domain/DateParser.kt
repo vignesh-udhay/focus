@@ -48,6 +48,10 @@ sealed interface ParsedDate {
  *     4 september              september 4
  *     4 september 2026         september 4 2026
  *
+ * Any of them may be introduced by "on" or "by": "on friday", "by 4 september".
+ * D-069. The preposition belongs to the phrase, and dropping it here is what
+ * stops [splitTrailingDate] from leaving it stranded at the end of a title.
+ *
  * A bare weekday means the next one strictly after [today], so "monday" typed
  * on a Monday is a week away. "next monday" and "this monday" mean the same
  * thing. English usage disagrees with itself about which week those point at,
@@ -66,7 +70,7 @@ sealed interface ParsedDate {
  * matching the rest of the app's text.
  */
 fun parseDate(text: String, today: LocalDate): ParsedDate {
-    val input = normalise(text)
+    val input = withoutPreposition(normalise(text))
     if (input.isEmpty()) return ParsedDate.Empty
 
     return keyword(input, today)
@@ -77,16 +81,38 @@ fun parseDate(text: String, today: LocalDate): ParsedDate {
 }
 
 /**
- * Lower cases with [Locale.ROOT], drops commas, and collapses runs of
- * whitespace.
+ * Lower cases with [Locale.ROOT], drops commas, collapses runs of whitespace,
+ * and drops one sentence terminator from the end. The terminator matters for
+ * transcripts, D-070: Pixel voice typing punctuates the sentence it hears, so
+ * "tomorrow." used to be unrecognisable. One character, at the end only, so
+ * punctuation inside a phrase still refuses.
  *
  * The root locale matters: the device's own locale would map "I" to a dotless
  * "ı" on a Turkish device, and "In 2 days" would stop matching.
  */
 private fun normalise(text: String): String =
-    Whitespace.replace(text.lowercase(Locale.ROOT).replace(",", " "), " ").trim()
+    Whitespace.replace(text.lowercase(Locale.ROOT).replace(",", " "), " ")
+        .trim()
+        .removeSuffix(".").removeSuffix("!").removeSuffix("?")
+        .trimEnd()
 
 private val Whitespace = Regex("\\s+")
+
+/**
+ * Drops a leading "on" or "by", D-069.
+ *
+ * The time half has always done this with "at", inside `parseTimeOfDay`, which
+ * is why "at 3pm" is matched and marked whole while "on friday" used to match
+ * only its second word and leave the first at the end of the title.
+ *
+ * Neither word begins any form in the vocabulary, so nothing here can shadow a
+ * date. "by" means a deadline in English and this does not read it as one: the
+ * day sets the scheduled date whichever word introduced it, because that is the
+ * only field Quick Add writes, and a preposition quietly switching which field a
+ * capture lands in is not a thing the sheet has room to say.
+ */
+private fun withoutPreposition(input: String): String =
+    input.removePrefix("on ").removePrefix("by ")
 
 private fun keyword(input: String, today: LocalDate): ParsedDate? = when (input) {
     "today" -> ParsedDate.Recognized(today)
@@ -105,10 +131,13 @@ private fun weekday(input: String, today: LocalDate): ParsedDate? {
 private val WeekdaysByName: Map<String, DayOfWeek> =
     DayOfWeek.entries.associateBy { it.name.lowercase(Locale.ROOT) }
 
-/** "in 3 days", "in 1 week". */
+/** "in 3 days", "in 1 week", and since D-070 "in three days", "in a week". */
 private fun relative(input: String, today: LocalDate): ParsedDate? {
     val match = Relative.matchEntire(input) ?: return null
-    val amount = match.groupValues[1].toLongOrNull() ?: return ParsedDate.Unrecognized
+    val counted = match.groupValues[1]
+    val amount = counted.toLongOrNull()
+        ?: spokenNumber(counted)
+        ?: return ParsedDate.Unrecognized
     val weeks = match.groupValues[2].startsWith("week")
 
     // A number large enough to run off the end of the calendar is not a date
@@ -118,7 +147,7 @@ private fun relative(input: String, today: LocalDate): ParsedDate? {
     }.getOrElse { ParsedDate.Unrecognized }
 }
 
-private val Relative = Regex("in (\\d+) (days?|weeks?)")
+private val Relative = Regex("in ([a-z\\-]+|\\d+) (days?|weeks?)")
 
 /**
  * "4 september", "september 4", and the same two with a year.
@@ -244,5 +273,12 @@ fun splitTrailingDate(text: String, today: LocalDate): TitleWithDate {
 
 private val Word = Regex("\\S+")
 
-/** No form [parseDate] understands is longer than "4 september 2026". */
-private const val MaxDateWords = 3
+/**
+ * "on 4 september 2026" is the longest form [parseDate] understands.
+ *
+ * Three, until D-069 let a day be introduced by a preposition. The walk is
+ * longest-first and every candidate has to match [parseDate] entire, so the only
+ * four-word span that can match is a preposition in front of a dated month.
+ * "friday" still wins at one word.
+ */
+private const val MaxDateWords = 4

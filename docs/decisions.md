@@ -4709,3 +4709,195 @@ this, because what the user needs to know is how much of the session is left
 rather than which verb applies. Today's card shows the remaining minutes; this
 shows none. If that turns out to be the real gap, the answer is a line on the
 screen, not a longer button.
+
+---
+
+## D-069. Quick Add reads the preposition, the evening words, and a reminder counted from now
+
+**Decision.** Three additions to what a Quick Add title is allowed to say.
+
+A day may be introduced by `on` or `by`: "Call mum on friday", "Pay the rent by
+monday". The preposition is part of what is taken and part of what is marked,
+and the day it introduces still sets the scheduled date, exactly as a bare day
+does.
+
+Five words now name a time without digits: `noon` and `midday` are 12:00,
+`midnight` is 00:00, `tonight` is 20:00 and `this evening` is 18:00.
+
+A reminder may be asked for as an offset: "in 2 hours", "in 30 minutes",
+counted from the moment of typing rather than from a clock time.
+
+**The preposition is a defect being fixed, not a feature being added.** It
+looked like a gap in the vocabulary and it was not. "Call mum on friday" already
+parsed: the trailing walk failed on "on friday", then matched "friday" on its
+own, set the date and saved a task called **"Call mum on"**. The title was being
+mangled by a word the parser half-understood. `date-parsing.md` promises that
+nothing is extracted from the middle of a phrase and that what is taken is
+shown; a dangling preposition breaks the second promise, because the words left
+behind are not the words the user would have typed.
+
+The time half never had this problem, which is what makes the case: it strips a
+leading `at` inside `parseTimeOfDay`, so "at 3pm" is matched and marked whole.
+The day half is now symmetrical with it.
+
+`MaxDateWords` goes from three to four for the same reason `MaxTimeWords` went
+from two to three: the longest form the parser understands is now "on 4
+september 2026". The walk is longest-first and every candidate has to match
+`parseDate` entire, so a four-word candidate can only be a preposition and a
+dated month, and "friday" still wins at one word.
+
+**`by friday` schedules for Friday rather than setting a due date**, and that
+deserves saying out loud because English means something else by it. Quick Add
+sets a scheduled date; that is what D-011 and `date-parsing.md` describe and
+what the supporting line under the field says. Reading `by` as a due date would
+make one preposition switch which field a capture writes to, invisibly, in a
+sheet with no room to show which one it chose. The user who wants a due date has
+Task Details, where the two fields are labelled.
+
+**The evening words are the ordinary way people say a time**, and they were
+missing only because the parser started from digits. "tonight" carries no digits
+and is no more ambiguous than "tomorrow", which has been in the vocabulary since
+the beginning.
+
+The two that need a number chosen are `tonight` and `this evening`, and the
+numbers are 20:00 and 18:00. Eight is late enough to read as the evening rather
+than as the end of the afternoon, and early enough that a reminder still lands
+while someone is up. Six for "this evening" keeps the two phrases distinct,
+which they are in use: "this evening" is when the day's work stops and "tonight"
+is after it.
+
+**A time already gone still rolls to tomorrow, and that is visible.** "tonight"
+typed at nine in the evening resolves to eight tomorrow, through D-030's
+existing rule, which is the wrong reading of the word and the right reading of
+the clock. It is safe because it is shown: the Reminder chip reads the resolved
+day and time before anything is saved, so the sheet says "Tomorrow, 8:00 pm"
+while the user is still looking at it. That is the same protection D-030 relies
+on, and the reason this is not worth a special case.
+
+**An offset is a third way to arrive at a reminder**, and the reason to allow it
+is that the other two cannot express what it says. "in 2 hours" is not a clock
+time, and the user does not know what clock time it is; asking them to work it
+out is asking them to do arithmetic during capture, which is the thing Quick Add
+exists to avoid.
+
+It resolves from `now` and ignores the capture's date, so the day it lands on
+falls out of the arithmetic: typed at eleven at night, "in 2 hours" is one in
+the morning tomorrow. That is not new behaviour. D-030 already lets a reminder
+sit on a different day from the task when the hour has gone by, and the chip
+already names the day it landed on.
+
+**A named day and an offset cannot both be honoured, so neither is taken.**
+"Call mum tomorrow in 2 hours" asks for two different moments, and there is no
+reading of it that is obviously right. Everything stays in the title, unmarked,
+and the user sees that nothing was understood. Guessing one of the two would be
+the invented reminder this whole design refuses.
+
+**Digits only, as everywhere else.** "in an hour" and "in half an hour" are not
+understood, because "in three days" is not understood either. The day half has
+required a numeral since it was written, and a parser that takes number words in
+one branch and not the other is one the user has to memorise rather than learn.
+
+**Amount at least one.** "in 0 minutes" is refused rather than set for the
+current instant. A reminder that fires as the sheet closes is not an
+interruption anybody asked for.
+
+**What this does not open.** Not "next week", "yesterday" or numeric dates, all
+three of which `date-parsing.md` excludes for reasons this entry does not touch.
+Not extraction from the middle of a title. Not a duration, which D-011 removed
+and this does not restore. The trailing-run rule, the whole-candidate rule and
+the visible mark are unchanged; this entry adds words to the vocabulary and one
+new shape of answer, inside the machinery that was already there.
+
+**What would reverse this.** For the preposition, a title that reads worse for
+having lost it, which would show up as captures whose last word is a stranded
+verb. For the evening words, complaints that eight is the wrong hour, which is a
+number to change rather than a feature to remove. For the offset, a reminder
+landing at a moment the user cannot account for, which would mean the chip is not
+being read and the problem is the chip.
+
+---
+
+## D-070. The parser reads transcripts: number words, spelled meridiems, and a trailing full stop
+
+**Decision.** Stage one of voice capture, and no microphone is in it. The work
+is making `parseDate` and the Quick Add parsers survive what a speech
+recognizer writes into the field, because dictation through the keyboard's own
+mic already reaches the field today and the failures are all in the text.
+
+Four changes, each testable with a plain string:
+
+**Number words, everywhere a digit is read.** "six pm" is 18:00, "in two
+hours" and "in thirty minutes" set an offset, "in three days" and "in two
+weeks" resolve a day. One table serves every branch: the words one through
+twelve, fifteen, twenty, thirty and forty-five, plus "a" and "an" as one, so
+"in an hour" is an hour from now. Hours are still checked against one to
+twelve after the word resolves, so "twenty pm" is refused the way "20pm"
+always was.
+
+**This supersedes D-069's digits-only rule, eleven entries after it was
+written.** Its argument was consistency: "a parser that takes number words in
+one branch and not the other is one the user has to memorise rather than
+learn." The new information is that the branches were about to diverge anyway,
+because a recognizer writes "in two hours" whether or not the vocabulary
+accepts it; a user's own typing is digit-shaped, a transcript is word-shaped,
+and the field now receives both. Accepting the words in every branch at once
+is the same consistency argument pointed the other way.
+
+**Spelled meridiems.** "6 p.m." folds to "6 pm" before matching, because some
+recognizers punctuate the abbreviation.
+
+**A trailing full stop, question mark or exclamation mark is dropped** before
+a candidate is matched, in the date normalise and the time clean both. Pixel
+voice typing punctuates the sentence it hears, so "Call mum tomorrow at 6
+p.m." arrives with a full stop that used to make every trailing candidate
+unrecognisable. One terminator, at the end only: punctuation inside a phrase
+still refuses, and "3.30pm" still reads its dot as a separator.
+
+**Considered and refused: the bare anchored hour.** "Call mum at six" stays
+unparsed, and this is the entry to point at when it comes up again. The
+preposition makes "six" a time, but nothing in the phrase says which of the
+two sixes, and the two candidate rules both fail a plain test. Next-occurrence
+resolves "friday at six" to six in the morning, because on a future day every
+hour is still ahead. A pm bias for small hours is an invented meridiem. D-011's
+whole defence of applying a reminder rather than offering one is that the
+parser never invents; a coin flip shown in a chip is still a coin flip. The
+recognizer itself is the mitigation, because speech that says "six pm" is
+written as an unambiguous time.
+
+**Considered and deferred: stripping "remind me to".** The reminder half of
+"remind me to take medicine in two hours" now parses; the title keeps the
+preamble. Stripping it rewrites the start of the title, and the mark that
+makes Quick Add's rewrites visible is one trailing run, so the words removed
+would be words the user was never shown losing. That is the invisible rewrite
+`date-parsing.md` refuses, not a vocabulary gap. If real transcripts make the
+preamble common, the fix starts with the mark, not the parser.
+
+**Also not here:** multi-clause sentences, recurrence in Quick Add, location
+triggers, and any microphone UI. The mic button is a later stage and a
+separate decision; nothing in this entry commits to it.
+
+**What would reverse this.** For the number words, the table growing cases one
+at a time until it is a second number parser, which would mean the line
+belongs at digits after all and transcripts need normalising before the parser
+instead. For the punctuation strip, a real form that ends in a terminator and
+must keep it, which does not currently exist. The refusal of the bare hour is
+reversed only by a rule that resolves "friday at six" without inventing a
+meridiem, written down here first.
+
+**Addendum, measured the same day.** The twenty-sentence dictation script was
+spoken into Quick Add on a real phone and the database read back. The parser
+held on every fair transcript, including the refusals, and the run surfaced
+the bare-hour problem arriving in digits: spoken "tomorrow at six" was written
+by the recognizer as "tomorrow at 6:00", the 24-hour branch read it as 06:00,
+and a 6am reminder was stored for a 6pm intention, exactly the wrong-moment
+failure this entry warned about. So the 24-hour form now requires both hour
+digits: "06:00" and "18:00" read, "6:00" and "6:30" are refused on the same
+terms as "at six", because a 24-hour typist writes both digits and a
+single-digit hour with a separator is a spoken hour wearing digits. The whole
+capture stays in the title, unmarked, so the field says nothing was
+understood, which is true.
+
+Also measured and left alone, awaiting a second occurrence: "in two hours"
+transcribed as "into hours", which lost its reminder and was rightly refused,
+and "Saturday morning", which stayed a title because day-part words are in no
+vocabulary. Either becoming common is D-071 material.

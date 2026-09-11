@@ -131,4 +131,39 @@ class SplitTrailingDateTest {
         assertEquals("", result.title)
         assertNull(result.date)
     }
+
+    // A day introduced by a preposition, D-069. Before it, "Call mum on friday"
+    // matched only its last word and saved a task called "Call mum on".
+
+    @Test
+    fun `a trailing on is taken with the day it introduces`() {
+        val text = "Call mum on friday"
+        val result = split(text)
+
+        assertEquals("Call mum", result.title)
+        assertEquals(LocalDate.of(2026, 9, 4), result.date)
+        assertEquals(text.indexOf("on friday"), result.dateStart)
+    }
+
+    @Test
+    fun `a trailing by is taken with the day it introduces`() {
+        val result = split("Pay the rent by monday")
+
+        assertEquals("Pay the rent", result.title)
+        assertEquals(LocalDate.of(2026, 9, 7), result.date)
+    }
+
+    @Test
+    fun `a preposition and the longest form are four words and still match`() {
+        val result = split("Ship the report on 4 september 2026")
+
+        assertEquals("Ship the report", result.title)
+        assertEquals(LocalDate.of(2026, 9, 4), result.date)
+    }
+
+    @Test
+    fun `a preposition with no day after it is left in the title`() {
+        assertKeptWhole("Turn the lights on")
+    }
+
 }

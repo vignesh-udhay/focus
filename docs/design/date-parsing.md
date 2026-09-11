@@ -58,9 +58,20 @@ made the decision already.
     in 3 days                in 2 weeks
     4 september              september 4
     4 september 2026         september 4 2026
+    on friday                by 4 september
 
-Matching is case-insensitive, folded with `Locale.ROOT`. Commas are dropped and
-runs of whitespace collapsed. Month names are accepted in full or as their
+Any form may be introduced by `on` or `by`, D-069. The preposition is part of
+what is matched and part of what is marked. It is dropped in `parseDate`, so the
+date fields and the Quick Add split inherit it together, and `by friday`
+schedules for Friday rather than setting a due date: Quick Add writes one date
+field, and a preposition switching which field a capture lands in is not
+something the sheet has room to say.
+
+Matching is case-insensitive, folded with `Locale.ROOT`. Commas are dropped,
+runs of whitespace collapsed, and one sentence terminator is dropped from the
+end, because voice typing punctuates what it hears and "tomorrow." was
+unrecognisable, D-070. The relative forms take number words from the shared
+table in `SpokenNumbers.kt` as well as digits: "in three days", "in a week". Month names are accepted in full or as their
 first three letters, in either order relative to the day.
 
 Deliberately absent: `next week`, `yesterday`, numeric dates, and any unit
@@ -76,7 +87,22 @@ coming Friday.
 
 Times of day were on this list and are not any more; see D-011. A trailing time
 is read in Quick Add and sets a reminder, which is shown as a dismissible chip
-rather than applied silently.
+rather than applied silently. That vocabulary lives in `CaptureParser.kt` and
+D-069 last added to it: `noon` and `midday` are 12:00, `midnight` is 00:00,
+`tonight` is 20:00, `this evening` is 18:00, and `in 2 hours` or `in 30 minutes`
+sets a reminder counted from the moment of typing. An offset and a named day
+cannot both be honoured, so a capture asking for both takes neither.
+
+D-070 added the transcript forms, so dictation through the keyboard's mic
+parses like typing: an hour said as a word with its meridiem ("six pm"), number
+words in offsets ("in two hours", "in an hour"), a punctuated meridiem
+("6 p.m."), and the trailing full stop voice typing adds. "at six" with no
+meridiem stays refused, because nothing in it says which of the two sixes, and
+D-070 records why neither candidate rule survives "friday at six". The same
+refusal covers a single-digit hour with a separator: dictation writes a spoken
+"at six" as "6:00", which is not a 24-hour time anyone typed, so the 24-hour
+form requires both hour digits and "6:00" stays in the title while "06:00" and
+"18:00" read. D-070's addendum has the measurement that forced this.
 
 ---
 
@@ -140,8 +166,8 @@ would stop being understood.
 
     splitTrailingDate(text: String, today: LocalDate): TitleWithDate
 
-Walks the trailing words longest-first, capped at three because no supported
-form is longer than "4 september 2026", and hands each candidate to
+Walks the trailing words longest-first, capped at four because no supported
+form is longer than "on 4 september 2026", and hands each candidate to
 `parseDate` **whole**. Everything `parseDate` refuses is refused here too, so
 the two cannot drift apart and there is no second vocabulary to maintain.
 
@@ -186,6 +212,11 @@ the whole vocabulary and is available unconditionally at minSdk 29.
 the longest match winning, a day in the middle being left alone, a time of day
 being refused rather than dropped, a title that is only a day, and the offsets
 staying valid against the original string.
+
+`CaptureParserTest` covers the Quick Add split, which reads a time as well as a
+day: every time form including the five word times, the offsets and what they
+refuse, the day and offset pair that parses to nothing, the mark, and what
+dismissing the chip drops.
 
 `DateParserTest` covers the vocabulary, the weekday and month-day boundaries,
 year and leap-year rolling, case and locale folding, every rejection above, and

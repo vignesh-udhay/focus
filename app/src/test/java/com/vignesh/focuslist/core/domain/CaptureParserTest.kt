@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -350,4 +351,296 @@ class CaptureParserTest {
             result.reminderAt(today, today.atTime(23, 59))
         )
     }
+
+    // --- the times with no digits in them, D-069 -----------------------------
+
+    @Test
+    fun theWordTimesAreUnderstood() {
+        assertEquals(LocalTime.of(12, 0), parseTimeOfDay("noon"))
+        assertEquals(LocalTime.of(12, 0), parseTimeOfDay("midday"))
+        assertEquals(LocalTime.of(0, 0), parseTimeOfDay("midnight"))
+        assertEquals(LocalTime.of(20, 0), parseTimeOfDay("tonight"))
+        assertEquals(LocalTime.of(18, 0), parseTimeOfDay("this evening"))
+        assertEquals(LocalTime.of(12, 0), parseTimeOfDay("at noon"))
+        assertEquals(LocalTime.of(20, 0), parseTimeOfDay("TONIGHT"))
+    }
+
+    @Test
+    fun aWordTimeSetsAReminderOnTheCapturingScreensDay() {
+        val text = "Call the plumber tonight"
+        val result = capture(text)
+
+        assertEquals("Call the plumber", result.title)
+        assertEquals(LocalTime.of(20, 0), result.time)
+        assertEquals(today.atTime(20, 0), result.reminderAt(today, morning))
+        assertEquals("tonight", text.substring(result.markRange!!))
+    }
+
+    @Test
+    fun aTwoWordTimeIsReadWhole() {
+        val text = "Water the plants this evening"
+        val result = capture(text)
+
+        assertEquals("Water the plants", result.title)
+        assertEquals(LocalTime.of(18, 0), result.time)
+        assertEquals("this evening", text.substring(result.markRange!!))
+    }
+
+    /** The same forward resolution D-030 gives every other time. */
+    @Test
+    fun aWordTimeAlreadyGoneResolvesToTomorrow() {
+        val result = capture("Call the plumber tonight")
+
+        assertEquals(
+            tomorrow.atTime(20, 0),
+            result.reminderAt(today, today.atTime(21, 0))
+        )
+    }
+
+    // --- a reminder counted from now, D-069 ----------------------------------
+
+    @Test
+    fun theRelativeFormsAreUnderstood() {
+        assertEquals(Duration.ofHours(2), parseRelativeTime("in 2 hours"))
+        assertEquals(Duration.ofHours(1), parseRelativeTime("in 1 hour"))
+        assertEquals(Duration.ofMinutes(30), parseRelativeTime("in 30 minutes"))
+        assertEquals(Duration.ofMinutes(1), parseRelativeTime("in 1 minute"))
+        assertEquals(Duration.ofHours(2), parseRelativeTime("IN 2 HOURS"))
+    }
+
+    @Test
+    fun theRelativeFormsRefuseEverythingElse() {
+        // Quantities and fractions, which the number table does not name.
+        // D-070 made "in an hour" parse; these still do not.
+        assertNull(parseRelativeTime("in half an hour"))
+        // A reminder that fires as the sheet closes is not an interruption.
+        assertNull(parseRelativeTime("in 0 minutes"))
+        assertNull(parseRelativeTime("in -1 hours"))
+        // Units the day half owns, which must keep resolving to a date.
+        assertNull(parseRelativeTime("in 3 days"))
+        assertNull(parseRelativeTime("in 2 weeks"))
+        assertNull(parseRelativeTime("2 hours"))
+        assertNull(parseRelativeTime("in 2 hours time"))
+        assertNull(parseRelativeTime(""))
+    }
+
+    @Test
+    fun anOffsetSetsAReminderCountedFromTheMomentOfTyping() {
+        val text = "Call the plumber in 2 hours"
+        val result = capture(text)
+
+        assertEquals("Call the plumber", result.title)
+        assertEquals(Duration.ofHours(2), result.offset)
+        assertNull(result.time)
+        assertNull(result.date)
+        assertEquals(today.atTime(11, 0), result.reminderAt(today, morning))
+        assertEquals("in 2 hours", text.substring(result.markRange!!))
+    }
+
+    @Test
+    fun anOffsetInMinutesIsRead() {
+        val result = capture("Water the plants in 30 minutes")
+
+        assertEquals("Water the plants", result.title)
+        assertEquals(Duration.ofMinutes(30), result.offset)
+        assertEquals(today.atTime(9, 30), result.reminderAt(today, morning))
+    }
+
+    /** The day falls out of the arithmetic rather than being decided. */
+    @Test
+    fun anOffsetCrossingMidnightLandsOnTheNextDay() {
+        val result = capture("Call the plumber in 2 hours")
+
+        assertEquals(
+            tomorrow.atTime(1, 0),
+            result.reminderAt(today, today.atTime(23, 0))
+        )
+    }
+
+    /** Two different moments asked for at once, so neither is taken. */
+    @Test
+    fun aDayAndAnOffsetTogetherParseToNothing() {
+        val text = "Call the plumber tomorrow in 2 hours"
+        val result = capture(text)
+
+        assertEquals(text, result.title)
+        assertTrue(result.isPlain)
+        assertNull(result.markRange)
+    }
+
+    @Test
+    fun aTitleThatIsOnlyAnOffsetStaysATitle() {
+        val result = capture("in 2 hours")
+
+        assertEquals("in 2 hours", result.title)
+        assertNull(result.offset)
+        assertTrue(result.isPlain)
+    }
+
+    /** The day half still owns days, which the offset must not shadow. */
+    @Test
+    fun inThreeDaysIsStillADateRatherThanAnOffset() {
+        val result = capture("Call the plumber in 3 days")
+
+        assertEquals("Call the plumber", result.title)
+        assertEquals(today.plusDays(3), result.date)
+        assertNull(result.offset)
+        assertNull(result.reminderAt(today, morning))
+    }
+
+    @Test
+    fun dismissingTheChipDropsAnOffsetToo() {
+        val dismissed = capture("Call the plumber in 2 hours").withoutReminder()
+
+        assertNull(dismissed.offset)
+        assertNull(dismissed.reminderAt(today, morning))
+        assertNull(dismissed.markRange)
+        assertTrue(dismissed.isPlain)
+        assertEquals("Call the plumber", dismissed.title)
+    }
+
+    // --- a day introduced by a preposition, D-069 ----------------------------
+
+    @Test
+    fun aPrepositionIsTakenWithTheDayAndTheTimeStillReads() {
+        val text = "Call the plumber on friday at 3pm"
+        val result = capture(text)
+
+        assertEquals("Call the plumber", result.title)
+        assertEquals(LocalDate.of(2026, 9, 11), result.date)
+        assertEquals(LocalTime.of(15, 0), result.time)
+        assertEquals("on friday at 3pm", text.substring(result.markRange!!))
+    }
+
+
+    // --- transcript forms, D-070 ---------------------------------------------
+
+    @Test
+    fun anHourSaidAsAWordIsUnderstoodWithItsMeridiem() {
+        assertEquals(LocalTime.of(18, 0), parseTimeOfDay("six pm"))
+        assertEquals(LocalTime.of(7, 0), parseTimeOfDay("at seven am"))
+        assertEquals(LocalTime.of(12, 0), parseTimeOfDay("twelve pm"))
+        assertEquals(LocalTime.of(0, 0), parseTimeOfDay("twelve am"))
+    }
+
+    /** The meridiem is still what makes an hour unambiguous, D-070. */
+    @Test
+    fun anHourWordWithoutAMeridiemIsRefused(): Unit {
+        assertNull(parseTimeOfDay("six"))
+        assertNull(parseTimeOfDay("at six"))
+        // A word that is a number but not an hour on any clock.
+        assertNull(parseTimeOfDay("twenty pm"))
+        assertNull(parseTimeOfDay("fifteen pm"))
+    }
+
+    @Test
+    fun aPunctuatedMeridiemIsFolded() {
+        assertEquals(LocalTime.of(18, 0), parseTimeOfDay("6 p.m."))
+        assertEquals(LocalTime.of(6, 0), parseTimeOfDay("6 a.m."))
+        assertEquals(LocalTime.of(18, 0), parseTimeOfDay("at 6 p.m."))
+    }
+
+    @Test
+    fun aTrailingSentenceTerminatorIsDroppedFromATime() {
+        assertEquals(LocalTime.of(15, 0), parseTimeOfDay("3pm."))
+        assertEquals(LocalTime.of(15, 0), parseTimeOfDay("15:00."))
+        assertEquals(LocalTime.of(20, 0), parseTimeOfDay("tonight."))
+        // The dot in "3.30pm" is a separator and is untouched.
+        assertEquals(LocalTime.of(15, 30), parseTimeOfDay("3.30pm."))
+        // A bare number stays refused whatever punctuation follows it.
+        assertNull(parseTimeOfDay("7."))
+    }
+
+    @Test
+    fun anOffsetAmountSaidAsAWordIsUnderstood() {
+        assertEquals(Duration.ofHours(2), parseRelativeTime("in two hours"))
+        assertEquals(Duration.ofMinutes(30), parseRelativeTime("in thirty minutes"))
+        assertEquals(Duration.ofHours(1), parseRelativeTime("in an hour"))
+        assertEquals(Duration.ofMinutes(1), parseRelativeTime("in a minute"))
+        assertEquals(Duration.ofMinutes(45), parseRelativeTime("in forty-five minutes"))
+        assertEquals(Duration.ofHours(2), parseRelativeTime("in two hours."))
+    }
+
+    @Test
+    fun aQuantityIsStillNotANumber() {
+        assertNull(parseRelativeTime("in a couple of hours"))
+        assertNull(parseRelativeTime("in few minutes"))
+        assertNull(parseRelativeTime("in some hours"))
+    }
+
+    /** The sentence a recognizer actually writes, end to end. */
+    @Test
+    fun aPunctuatedTranscriptCapturesWhole() {
+        val text = "Call mum tomorrow at 6 p.m."
+        val result = capture(text)
+
+        assertEquals("Call mum", result.title)
+        assertEquals(tomorrow, result.date)
+        assertEquals(LocalTime.of(18, 0), result.time)
+        assertEquals("tomorrow at 6 p.m.", text.substring(result.markRange!!))
+    }
+
+    @Test
+    fun aSpokenHourWordCapturesWithItsDay(): Unit {
+        val text = "Call mum tomorrow at six pm"
+        val result = capture(text)
+
+        assertEquals("Call mum", result.title)
+        assertEquals(tomorrow, result.date)
+        assertEquals(LocalTime.of(18, 0), result.time)
+        assertEquals("tomorrow at six pm", text.substring(result.markRange!!))
+    }
+
+    @Test
+    fun aSpokenOffsetSentenceKeepsItsPreambleInTheTitle() {
+        val result = capture("Remind me to take medicine in two hours")
+
+        // The preamble stays, deliberately: stripping it is a rewrite of the
+        // start of the title, where the mark cannot show it. D-070.
+        assertEquals("Remind me to take medicine", result.title)
+        assertEquals(Duration.ofHours(2), result.offset)
+        assertEquals(today.atTime(11, 0), result.reminderAt(today, morning))
+    }
+
+    @Test
+    fun aBareAnchoredHourStaysInTheTitle() {
+        val result = capture("Call mum at six")
+
+        assertEquals("Call mum at six", result.title)
+        assertTrue(result.isPlain)
+    }
+
+
+    /**
+     * Measured on a real phone, D-070's addendum: dictating "tomorrow at six"
+     * put "6:00" in the field, and reading it as 06:00 stored a 6am reminder
+     * for a 6pm intention. A single-digit hour with a separator and no meridiem
+     * is a spoken hour wearing digits, and it is refused on the same terms as
+     * "at six". A 24-hour typist writes both digits.
+     */
+    @Test
+    fun aSingleDigitHourWithASeparatorIsAmbiguousAndRefused(): Unit {
+        assertNull(parseTimeOfDay("6:00"))
+        assertNull(parseTimeOfDay("at 6:00"))
+        assertNull(parseTimeOfDay("6:30"))
+        assertNull(parseTimeOfDay("9.15"))
+        // Both digits say which half of the day is meant.
+        assertEquals(LocalTime.of(6, 0), parseTimeOfDay("06:00"))
+        assertEquals(LocalTime.of(18, 0), parseTimeOfDay("18:00"))
+        // A meridiem also says, whatever the hour's width.
+        assertEquals(LocalTime.of(18, 0), parseTimeOfDay("6:00pm"))
+    }
+
+    @Test
+    fun theMeasuredSixAmCaptureNowStaysInTheTitle() {
+        val result = capture("Call mum tomorrow at 6:00")
+
+        // Everything stays, day included: the refused hour makes the trailing
+        // run not a date, and nothing is extracted from the middle of one. No
+        // mark, so the field says nothing was understood, which is true.
+        assertEquals("Call mum tomorrow at 6:00", result.title)
+        assertTrue(result.isPlain)
+        assertNull(result.markRange)
+    }
+
 }

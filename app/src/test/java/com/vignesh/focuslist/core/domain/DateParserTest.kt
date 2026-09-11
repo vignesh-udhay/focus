@@ -312,4 +312,71 @@ class DateParserTest {
             day = day.plusDays(1)
         }
     }
+
+    // A day introduced by a preposition, D-069
+
+    @Test
+    fun `on introduces a weekday`() {
+        assertEquals(LocalDate.of(2026, 9, 4), date("on friday"))
+    }
+
+    @Test
+    fun `by introduces a weekday`() {
+        assertEquals(LocalDate.of(2026, 9, 7), date("by monday"))
+    }
+
+    @Test
+    fun `a preposition introduces a month and day`() {
+        assertEquals(LocalDate.of(2026, 9, 4), date("on 4 september"))
+        assertEquals(LocalDate.of(2026, 9, 4), date("by september 4"))
+    }
+
+    @Test
+    fun `a preposition introduces the longest form there is`() {
+        assertEquals(LocalDate.of(2026, 9, 4), date("on 4 september 2026"))
+    }
+
+    @Test
+    fun `a preposition with nothing after it is not a date`() {
+        assertUnrecognized("on")
+        assertUnrecognized("by")
+    }
+
+    @Test
+    fun `only one preposition is dropped`() {
+        assertUnrecognized("by by friday")
+        assertUnrecognized("on on 4 september")
+    }
+
+
+    // Transcript forms, D-070
+
+    @Test
+    fun `a relative amount said as a word is understood`() {
+        assertEquals(today.plusDays(3), date("in three days"))
+        assertEquals(today.plusWeeks(2), date("in two weeks"))
+        assertEquals(today.plusWeeks(1), date("in a week"))
+        assertEquals(today.plusDays(1), date("in a day"))
+    }
+
+    @Test
+    fun `a word that is not a number does not count`() {
+        assertUnrecognized("in some days")
+        assertUnrecognized("in couple weeks")
+    }
+
+    @Test
+    fun `a trailing sentence terminator is dropped`() {
+        assertEquals(today.plusDays(1), date("tomorrow."))
+        assertEquals(today.plusDays(1), date("Tomorrow!"))
+        assertEquals(LocalDate.of(2026, 9, 4), date("on friday."))
+        assertEquals(today.plusDays(3), date("in three days."))
+    }
+
+    @Test
+    fun `punctuation inside a phrase still refuses`() {
+        assertUnrecognized("to.morrow")
+        assertUnrecognized("in 3. days")
+    }
+
 }
