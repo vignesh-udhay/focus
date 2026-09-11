@@ -1,5 +1,6 @@
 package com.vignesh.focuslist.ui.semantics
 
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
@@ -158,6 +159,52 @@ class TodayScreenSemanticsTest {
             "Paused-session card was clipped behind the app bar: " +
                 "actionTop=$cardActionTop, appBarBottom=$appBarBottom",
             cardActionTop >= appBarBottom
+        )
+    }
+
+    /**
+     * The health check answers after the list has laid out, and a banner-
+     * earning answer inserts the banner above the first band.
+     *
+     * Same LazyColumn behavior as the paused-session card above: with enough
+     * tasks to scroll, keeping the old first item's key pinned would lay the
+     * banner out behind the app bar. A notice that reminders cannot be
+     * delivered which is itself invisible is the arrangement D-040 exists to
+     * prevent.
+     *
+     * The state starts as [ReminderHealthState.Checking], which draws nothing,
+     * because that is the live sequence: the host refreshes on resume and the
+     * answer lands a few frames after Today is on screen.
+     */
+    @Test
+    fun healthAnswerArriving_keepsBannerVisible() {
+        val viewModel = testViewModel(withEnoughTasksToScroll())
+        val health = mutableStateOf<ReminderHealthState?>(ReminderHealthState.Checking)
+
+        rule.setFocuslistContent(FontScale100) {
+            TodayScreen(
+                viewModel = viewModel,
+                onOpenTask = {},
+                reminderHealth = health.value
+            )
+        }
+
+        rule.waitUntilExactlyOneExists(hasText("Task 1"), TIMEOUT_MILLIS)
+
+        rule.runOnIdle {
+            health.value = ReminderHealthState.ActionNeeded(HealthCheck.Notifications)
+        }
+
+        rule.waitUntilExactlyOneExists(hasText(BANNER_NO_NOTIFICATIONS), TIMEOUT_MILLIS)
+        val appBarBottom = rule.onNode(hasText("Today") and isHeading())
+            .fetchSemanticsNode().boundsInRoot.bottom
+        val bannerTop = rule.onNodeWithText(BANNER_NO_NOTIFICATIONS)
+            .fetchSemanticsNode().boundsInRoot.top
+
+        assertTrue(
+            "Reminder health banner was clipped behind the app bar: " +
+                "bannerTop=$bannerTop, appBarBottom=$appBarBottom",
+            bannerTop >= appBarBottom
         )
     }
 

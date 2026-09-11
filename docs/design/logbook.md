@@ -236,7 +236,11 @@ Implemented. `LogbookScreen` reads `TaskListViewModel.completedTasks`, derived
 from `TaskQueries.completedTasks` over the shared repository stream, and is a
 destination in the navigation graph, reached from the app-bar overflow.
 
-**Not yet built:** the day grouping D-016 settles, and the loading and
-read-failure states above. The screen currently renders one flat list. Grouping
-is a presentation change over the existing query, since `completedAt` is already
-the sort key, so it needs no schema or repository work.
+**Built since:** the two states above. `LogbookScreen` takes `readFailed` and
+`tasksLoaded` from the view model and branches on them in that order, so a failed
+read shows the error state and a read that has not answered shows the chrome and
+nothing. D-062 added the flag and D-065 put all four lists behind it together.
+
+**Not yet built:** the day grouping D-016 settles. The screen still renders one
+flat list. Grouping is a presentation change over the existing query, since
+`completedAt` is already the sort key, so it needs no schema or repository work.

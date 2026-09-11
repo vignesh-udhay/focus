@@ -287,7 +287,8 @@ private fun TodayContent(
     val listState = rememberLazyListState()
     listState.HoldViewportAcross(
         sections = sections,
-        hasPausedSessionCard = pausedTask != null
+        hasPausedSessionCard = pausedTask != null,
+        hasReminderHealthBanner = reminderHealth.hasReminderHealthBanner()
     )
 
     Scaffold(
@@ -532,36 +533,46 @@ private fun TodayContent(
  * Pinning to the current index rather than the current key is the point: the
  * rows below simply move up by one, which is what the user expects to see.
  *
- * The paused-session card needs one narrower version of the same correction.
- * Resuming removes the card and leaves the first band at index zero. When the
- * user leaves Focus, pausing inserts the card ahead of that band. If Today was
- * at the top, LazyColumn otherwise keeps the band's key pinned there and lays
- * the new card out behind the app bar. Requesting index zero only in that case
- * reveals the card without pulling a user who had deliberately scrolled deeper
- * back to the start of the list.
+ * Two of Today's leading items need one narrower version of the same
+ * correction, because both appear while the screen is already on. Leaving
+ * Focus inserts the paused-session card ahead of the first band. The reminder
+ * health banner arrives the same way: the check runs after the list has laid
+ * out, and an answer that earns a banner inserts it at the very top. In either
+ * case, if Today was at the top, LazyColumn otherwise keeps the old first
+ * item's key pinned there and lays the new item out behind the app bar.
+ * Requesting index zero only in that case reveals the new item without pulling
+ * a user who had deliberately scrolled deeper back to the start of the list.
  */
 @Composable
 private fun LazyListState.HoldViewportAcross(
     sections: List<TodaySection>,
-    hasPausedSessionCard: Boolean
+    hasPausedSessionCard: Boolean,
+    hasReminderHealthBanner: Boolean
 ) {
     val order = sections.flatMap { section -> section.tasks.map(Task::id) }
     val previousOrder = remember { mutableStateOf<List<String>?>(null) }
     val previouslyHadPausedSessionCard = remember { mutableStateOf<Boolean?>(null) }
+    val previouslyHadReminderHealthBanner = remember { mutableStateOf<Boolean?>(null) }
 
     SideEffect {
         val beforeOrder = previousOrder.value
-        val hadPausedSessionCard = previouslyHadPausedSessionCard.value
         val taskOrderChanged = beforeOrder != null && beforeOrder != order
-        val pausedCardAppearedAtTop = hadPausedSessionCard == false &&
+        // `== false` and not `!= true`: on the first composition the previous
+        // value is null, and whatever that composition carries is already the
+        // first layout, with nothing pinned above it to correct for.
+        val pausedCardAppearedAtTop = previouslyHadPausedSessionCard.value == false &&
             hasPausedSessionCard &&
             firstVisibleItemIndex == 0
+        val bannerAppearedAtTop = previouslyHadReminderHealthBanner.value == false &&
+            hasReminderHealthBanner &&
+            firstVisibleItemIndex == 0
 
-        if (taskOrderChanged || pausedCardAppearedAtTop) {
+        if (taskOrderChanged || pausedCardAppearedAtTop || bannerAppearedAtTop) {
             requestScrollToItem(firstVisibleItemIndex, firstVisibleItemScrollOffset)
         }
         previousOrder.value = order
         previouslyHadPausedSessionCard.value = hasPausedSessionCard
+        previouslyHadReminderHealthBanner.value = hasReminderHealthBanner
     }
 }
 
