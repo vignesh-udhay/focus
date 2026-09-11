@@ -968,6 +968,13 @@ private fun ReminderTimePickerDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
+                // The 20dp belongs to the component, not to us.
+                // `TimePickerDialogDefaults.Title` carries it, and the dialog's
+                // portrait layout places the dial at the title's own height
+                // with no gap of its own, so swapping in our own words took the
+                // spacing out with the default and left the label sitting on
+                // the clock.
+                modifier = Modifier.padding(bottom = 20.dp),
                 text = stringResource(R.string.task_reminder_at),
                 style = MaterialTheme.typography.labelMedium
             )

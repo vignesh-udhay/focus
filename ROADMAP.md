@@ -1680,6 +1680,13 @@ reminder for a 6pm intention, is fixed by requiring both hour digits of a
 microphone UI, no permission, no dependency; that is a later stage and a
 separate decision.
 
+**The Focus cat sits under the centre line again.** Both mascot poses are now
+placed by their ground shadow rather than by their bounding box, which the tail
+was skewing by 10.84dp in the sitting pose. The shadow also stops sliding
+sideways on pause and resume. The reminder time picker got Material's own 20dp
+back under its title, which was lost when the default title was replaced with
+"Remind me at".
+
 **Lint passes again.** Notification posting now checks permission at the point
 of use and handles a grant being revoked between that check and `notify()`. Real
 and test reminders use the result when recording delivery, so a rejected post

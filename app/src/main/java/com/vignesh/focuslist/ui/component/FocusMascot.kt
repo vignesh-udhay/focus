@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -67,10 +68,10 @@ internal fun FocusMascot(running: Boolean, modifier: Modifier = Modifier) {
     val napping = rememberMascotImage(::catNapping)
     val settle = rememberSettle(running)
 
-    // Sized to the union of the two poses and aligned to the bottom, so the
-    // ground line under the cat is the same pixel in both. That is the whole
-    // of the alignment work: the poses are different widths and very different
-    // heights, and centring them would make the cat jump as they crossed.
+    // Bottom-aligned, so the ground line under the cat is the same pixel in
+    // both poses, and each pose nudged sideways so its ground shadow sits on
+    // the box's centre line. [SitShadowOffset] says why the second half is not
+    // the same as centring the drawings.
     Box(
         modifier = modifier.size(width = MascotBoxWidth.dp, height = MascotBoxHeight.dp),
         contentAlignment = Alignment.BottomCenter
@@ -79,6 +80,7 @@ internal fun FocusMascot(running: Boolean, modifier: Modifier = Modifier) {
             image = sitting,
             width = SitWidth,
             height = SitHeight,
+            offsetX = SitShadowOffset,
             alpha = 1f - settle.value,
             scale = 1f - Settle * settle.value
         )
@@ -86,6 +88,7 @@ internal fun FocusMascot(running: Boolean, modifier: Modifier = Modifier) {
             image = napping,
             width = NapWidth,
             height = NapHeight,
+            offsetX = NapShadowOffset,
             alpha = settle.value,
             scale = 1f + Settle * (1f - settle.value)
         )
@@ -103,14 +106,24 @@ internal fun FocusMascot(running: Boolean, modifier: Modifier = Modifier) {
  * **Scaled about its own feet.** [TransformOrigin] at the bottom centre means
  * the ground line does not move while the body compresses, so the settle reads
  * as the cat lowering itself rather than as the drawing sliding.
+ *
+ * [offsetX] is static and per pose. Nothing here animates sideways.
  */
 @Composable
-private fun MascotPose(image: ImageVector, width: Float, height: Float, alpha: Float, scale: Float) {
+private fun MascotPose(
+    image: ImageVector,
+    width: Float,
+    height: Float,
+    offsetX: Float,
+    alpha: Float,
+    scale: Float
+) {
     Image(
         imageVector = image,
         contentDescription = null,
         modifier = Modifier
             .size(width = width.dp, height = height.dp)
+            .offset(x = offsetX.dp)
             .graphicsLayer {
                 this.alpha = alpha
                 scaleX = scale
@@ -168,8 +181,39 @@ private const val SitHeight = 178.87f
 private const val NapWidth = 202.55f
 private const val NapHeight = 119.13f
 
-/** The union of the two poses: the wider width, and the taller height. */
-private const val MascotBoxWidth = NapWidth
+/**
+ * How far right each pose has to move for its ground shadow to land on the
+ * box's centre line.
+ *
+ * **A drawing centred by its bounding box is not centred to the eye.** The
+ * sitting cat's tail sweeps out to x=528.5 of a 529-wide viewport while its
+ * ground shadow stops at 470.3, so the box's centre lands on the tail and the
+ * shadow ends up 29.75 viewport units, 10.84dp at the size this draws at, to
+ * the left of it. Under a Focus column of centred buttons that reads as the cat
+ * standing off to one side, which is what it is doing. The head agrees with the
+ * shadow rather than with the box: the eyes' midpoint is left of centre too.
+ *
+ * The shadow is the anchor rather than the head or the body because it is the
+ * ground, it is the widest part of either pose, and it is the one element both
+ * poses draw the same way.
+ *
+ * The napping pose was very nearly right already, at 1.06dp, and it is
+ * corrected anyway. Leaving it would slide the shadow ten dp sideways on every
+ * pause and resume, under a crossfade written so the floor does not move.
+ */
+private const val SitShadowOffset = 10.84f
+private const val NapShadowOffset = 1.06f
+
+/**
+ * Wide enough to hold both poses once each sits on its shadow, and as tall as
+ * the taller one.
+ *
+ * No longer the union of the two widths. Centring on the shadow pushes the
+ * sitting tail 107.02dp out from the centre line, further than either pose
+ * reaches on its own, and a box measured on the drawings would have let the
+ * tail hang outside it.
+ */
+private const val MascotBoxWidth = 214f
 private const val MascotBoxHeight = SitHeight
 
 private fun catSittingFront(light: Color, mid: Color, dark: Color): ImageVector =

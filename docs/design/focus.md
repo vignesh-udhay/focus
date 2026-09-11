@@ -205,10 +205,21 @@ sitting up at the buzzer would.
 **Both poses share a ground line and are scaled about their own feet**, so the
 floor under the cat does not move while the body compresses. Nothing translates.
 The poses are 192.72 x 178.87 and 202.55 x 119.13, they are drawn at those sizes
-inside the union of the two rather than filling a common width, and the box is
-bottom-aligned. Letting each fill the same width would shrink the wider one by
-about five percent, which is the one thing that stops them reading as one
-animal.
+rather than filling a common width, and the box is bottom-aligned. Letting each
+fill the same width would shrink the wider one by about five percent, which is
+the one thing that stops them reading as one animal.
+
+**Each pose is centred on its ground shadow, not on its bounding box.** The
+sitting cat's tail reaches x=528.5 of a 529-wide viewport while its shadow stops
+at 470.3, so a box centred on the drawing puts its centre line on the tail and
+leaves the shadow 10.84dp to the left of it. Against a column of centred buttons
+that reads as the cat sitting off to one side. The shadow is the anchor because
+it is the ground, it is the widest part of either pose, and both poses draw it
+the same way. The napping pose was out by 1.06dp and is corrected too, because
+leaving it would slide the shadow sideways on every pause and resume. The
+offsets are static per pose; the crossfade itself still translates nothing. The
+box is 214dp wide, which is what holds the sitting tail once the shadow is
+centred, rather than the union of the two drawn widths.
 
 **`cat-sit-front` is a fourth sitting pose and that is deliberate.** The three
 shipped sits are empty-state poses on list screens, where posture says why a
