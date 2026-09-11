@@ -9,6 +9,42 @@ scope it delivers is in `PRODUCT.md`.
 
 ## Current phase
 
+**The first Phase 5 exit criterion is met, and it was measured rather than
+assumed.** "A backup taken on one install restores completely onto a clean
+install" had never been run end to end. It has now, on the emulator, through the
+real Storage Access Framework pickers rather than through the codec's tests.
+
+The data was built to be awkward on purpose. Thirteen seeded tasks covering every
+band, plus four things the seed cannot produce: notes typed into Task Details, a
+due date set from the sheet, a reminder parsed out of a Quick Add title, and a
+task deleted with the undo offer left to lapse, so the file had to carry a
+soft-deleted row. The theme was moved to Dark before exporting, so a non-default
+setting had to survive too.
+
+**The check was a diff, not a look.** Export from the first install, uninstall,
+reinstall, restore, export again, and compare the two files field by field:
+fourteen tasks, identical ids, zero differences across every field the codec
+writes, and identical settings. The only thing that differed was `createdAt`,
+which is the export timestamp and has to. The lists were then read on the device
+as well: the deleted task stayed deleted, the Logbook held only the one completed
+task, the notes and the Sep 18 due date came back intact, and the app was in dark
+mode before the restore snackbar had gone.
+
+**The clean install is a real replacement, not a merge.** The debug seed refills
+a fresh database with its thirteen rows, so the restore had to delete them and
+did: D-056's dialog read "This backup holds 13 tasks. Restoring replaces the 13
+tasks on this device, and cannot be undone", and the count afterwards was
+thirteen rather than twenty-six.
+
+**The seed hides the case a real user meets first, so it was exercised on its
+own.** A first install has no tasks, and the dialog's zero branch had never been
+seen. Restoring an empty file first, then reopening the dialog, produced it:
+"This backup holds 13 tasks. This device has no tasks yet, so nothing will be
+replaced." Right sentence, and English rather than a plural with a zero in it.
+
+Three exit criteria are left, and all three are yours rather than the code's: the
+TalkBack pass on a real device, the Play listing, and publishing.
+
 **A UI and UX audit found four high-severity defects, and all four are fixed.**
 Each one reversed something written down, so each has a decision entry, D-056 to
 D-059, written before the code. What they have in common is worth naming: three
@@ -2874,7 +2910,8 @@ Store listing, one line:
 
 Exit criteria:
 
-- A backup taken on one install restores completely onto a clean install
+- ~~A backup taken on one install restores completely onto a clean install~~
+  verified end to end on the emulator, 2026-09-11
 - Every screen is navigable and comprehensible with TalkBack
 - The Play listing makes no claim the app does not deliver
 - 1.0 is live
