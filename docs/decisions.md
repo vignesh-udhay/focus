@@ -4650,10 +4650,6 @@ overload, which composes the same row and clears nothing. Anyone tidying this
 toward the shorter overload will reintroduce the defect silently, because it
 looks identical on screen.
 
-Worth noting how close this came to shipping unseen: the emulator's
-instrumentation was crashing before collecting a single test, and the failure was
-only visible once the suite was run on a physical device.
-
 **What would reverse this.** Delete being tapped by people reaching for the pill,
 which would mean the gap between the two controls is too small to separate them
 and the answer is spacing, not a return to one container. Or the toolbar still

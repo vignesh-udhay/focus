@@ -413,25 +413,6 @@ nothing and D-057's dialog is what explains it.
 the emulator. The Resume case was confirmed to fail with the label pinned back to
 Start, so it tests the fix rather than restating it.
 
-**The emulator went unusable for a stretch and then recovered, cause unknown.**
-Worth writing down because it is the kind of thing a next session will waste an
-hour on. Instrumentation there crashed before collecting a single test, for every
-class, with and without the change under test: four runs, four crashes, reported
-as `Process crashed` with `Starting 0 tests`. It looks exactly like a code defect
-and is not one. The work was done on the 8T instead, which is how the
-accessibility defect above was found at all — on a green emulator build it would
-have shipped unseen. The emulator has since run the same suite twice, green both
-times, with nothing done to it that explains the change.
-
-**The Repeat sheet has a real flake and this is the third sighting.**
-`theLastWeekdayCannotBeDeselected` failed on a Compose idling timeout last
-session and again here; `aWeekdayIsNotWrittenUntilSaveIsPressed` failed one run
-in three on the 8T. Two methods, two devices, one sheet. A `ComposeNotIdleException`
-means the clock never went idle, which is a property of the screen and not of the
-assertion, so this wants chasing rather than re-running. It is also next to an
-open low-severity finding, the missing feedback when the last weekday cannot be
-deselected.
-
 **What the audit found and this session did not fix.** Six low-severity
 findings: the title and notes edit affordance, feedback when the last weekday
 cannot be deselected, the Repeat sheet discarding without asking, the Duration
