@@ -742,7 +742,10 @@ Details' Plan rows open, with only the Hidden and Expanded states enabled: none
 of them has a half-height state worth stopping at.
 
 [CD] Standard Material scrim, drag handle and corner treatment. Sheet motion is
-the Material default.
+the Material default, with one exception: Quick Add opens at `Expanded` and
+lets the keyboard carry it up, D-073. It is the only sheet that opens a
+keyboard, and a slide running under a rising keyboard lands the sheet in the
+wrong place and then corrects it. Dismissal still slides.
 
 [CD] **A sheet used to hold a draft**, and Task Details was the reason that rule
 existed: nothing was written until Save, so dismissing left the task exactly as

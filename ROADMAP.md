@@ -80,6 +80,19 @@ knocked-out features all read in the status bar, and the mark fills the tinted
 circle in the shade. Focus's estimate notification keeps `ic_focus`, which is
 our own symbol and names what it is about.
 
+**Quick Add arrives with the keyboard, D-073.** Measured on the emulator with
+animations slowed five times: the tap on "+" produced the scrim, then the
+keyboard, then the sheet climbing out from behind the keyboard and settling,
+still moving about 880ms after the tap. The cause is Material's entrance slide
+animating toward the `Expanded` anchor as it stood when the slide began, while
+the keyboard inset moves that anchor every frame; the slide cannot retarget, so
+it lands short and the sheet jumps the rest. The sheet now opens at `Expanded`,
+so nothing competes with the keyboard and it rides up on top of it as one
+motion, settled about 390ms after the tap. Dismissal still slides, and the Task
+Details sheets, which open no keyboard, keep the Material default.
+`expressive-components.md` records the exception. All 62 Quick Add and Today
+semantics tests pass on the emulator, and lint is clean.
+
 Three exit criteria are left, and all three are yours rather than the code's: the
 TalkBack pass on a real device, the Play listing, and publishing.
 

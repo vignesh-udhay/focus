@@ -5013,3 +5013,59 @@ one place a calm design cannot afford it.
 density, or a manufacturer skin rendering the knockouts as a solid shape. The
 bell is then the honest choice, because an icon nobody can identify is worse
 than a generic one that is at least legible.
+
+## D-073. Quick Add arrives with the keyboard, not ahead of it
+
+**Decision.** Quick Add's sheet opens at `Expanded` rather than sliding up from
+`Hidden`. It is placed at its anchor on the first frame and the keyboard carries
+it: as the keyboard rises the sheet rides on top of it, one motion. Dismissal
+still slides down. The Task Details sheets keep Material's default entrance,
+because they open with no keyboard and the slide is the right motion there.
+`expressive-components.md`'s line that "sheet motion is the Material default"
+now carries this one exception.
+
+**What was measured.** On the emulator with animations slowed five times, the
+tap on "+" produced three motions in sequence: the scrim, then the keyboard, then
+the sheet climbing out from behind the keyboard and settling. On a phone the
+keyboard is slower to start, so the order is sheet, then keyboard over it, then
+the sheet jumping the keyboard's height. Either way the field is not still until
+roughly 600ms after the tap, on a control whose whole job is to be typed into.
+
+**Why the jump happens, which is why no amount of tuning fixes it.** Material's
+sheet applies the keyboard inset as bottom padding on its content, so as the
+keyboard animates the sheet's measured height grows every frame and the
+`Expanded` anchor moves up with it. The entrance slide is an
+`AnchoredDraggableState.animateTo` toward the anchor's position as it was when
+the slide began. While that animation holds the lock, `updateAnchors` cannot
+snap, so the slide finishes at the stale position and the sheet then covers the
+remaining distance in a second move. The two motions are correct on their own
+and wrong together, and they will always be together, because Quick Add always
+opens the keyboard.
+
+**Why the keyboard wins rather than the slide.** The state change the user is
+waiting for is "you can type now", and the keyboard rising already says it. A
+slide underneath it communicates nothing further, which is `AGENTS.md`'s test
+for motion, and here it communicates something false, since it lands the sheet
+in the wrong place. Keep, Google Tasks and Todoist all open their capture
+surfaces this way; the Material slide is the outlier on a one-field sheet.
+
+**What is given up.** The sheet has no entrance of its own. With no keyboard,
+which means a hardware keyboard or one the user dismissed earlier, the sheet
+and its scrim simply appear. That is accepted for a single field. The
+alternative, holding the keyboard back until the slide finishes, is smooth and
+costs the user another third of a second before they can type, which is the
+wrong trade for capture.
+
+**How it stays one motion.** With `initialValue = Expanded`, Material's
+`show()` is never called (the state-restoration flag it checks defaults to
+true), so nothing holds the animation lock and every keyboard frame's
+`updateAnchors` snaps the sheet to the new anchor. That is frame-synchronised
+with the keyboard on Android 11 and up, which is every device the app runs on.
+The first keyboard request still fails once, because the dialog window is not
+yet focused when the field asks, and the system reissues it about 50ms later
+on window focus. That is not visible and is left alone.
+
+**What would reverse this.** A keyboard that does not animate its insets, so
+the sheet appears and then jumps once; a manufacturer keyboard doing that on a
+real device would be worth measuring before deciding whether the slide was the
+lesser evil.

@@ -142,7 +142,14 @@ fun QuickAddSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberBottomSheetState(
-            initialValue = SheetValue.Hidden,
+            // Expanded, not Hidden, so there is no entrance slide and the
+            // keyboard carries the sheet up instead. D-073. A slide running
+            // under a rising keyboard animates toward the anchor as it was
+            // when the slide began, then jumps the keyboard's height once it
+            // lands. Placed at its anchor from the first frame, the sheet
+            // snaps to the new anchor on every keyboard frame and the two
+            // read as one motion. Dismissal still slides.
+            initialValue = SheetValue.Expanded,
             // One field: there is no half-height state worth stopping at.
             enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)
         ),
