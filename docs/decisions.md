@@ -4956,3 +4956,60 @@ days other than today, which would make the clock the wrong thing to seed from
 and the default day the right one. `reminder_deliveries` records what was
 scheduled and when it was placed, so the distance between placing a reminder and
 its firing is measurable rather than a matter of opinion.
+
+## D-072. A reminder arrives under the Catimo mark, not a stock bell
+
+**Decision.** The three reminder notifications take the Catimo cat as their
+small icon, drawn as a 24dp monochrome silhouette in
+`ic_notification_cat.xml`. `ic_notifications`, Material's bell, stays where it
+belongs: an icon inside the app's own UI. Focus's estimate notification keeps
+`ic_focus`, which is our own symbol rather than a stock one and names the thing
+it is about.
+
+**The launcher icon was never available to pass here, which is why this looked
+like an oversight and was not one.** Android uses a notification's small icon as
+a mask: it keeps the alpha channel, discards every colour in the drawable, and
+tints what is left. Our launcher icon is an opaque adaptive icon, so handing it
+over would draw a filled blob in the status bar. Every app that appears to show
+"its icon" in the shade is shipping a silhouette drawn for the mask.
+
+**We already had the silhouette, and it was drawn on this exact rule.**
+`ic_launcher_monochrome.xml` is the themed-icon layer for Android 13 and up, and
+its own comment reasons from the mask: one path, one colour, the system keeps
+only the alpha, and the eyes and nose are knocked out of the head with an
+even-odd fill so the tint shows through them. That file also records why the cat
+survives being reduced to an outline where the earlier dog head could not: two
+ear peaks and a round jaw say what it is before any interior feature is drawn.
+The notification icon is the same problem at a quarter of the size, so it is the
+same artwork with a different frame, not a second drawing to keep in sync.
+
+**The frame is the whole of the work.** The themed layer is a 108dp adaptive
+frame and its art sits inside the safe zone, spanning about 52 of those units.
+Dropped into a 24dp slot unchanged it would draw at roughly two thirds the size
+of every neighbouring icon, which reads as timid rather than quiet. The new file
+wraps the identical group in an outer group scaled 1.9 about the centre, so the
+mark fills about 22 of 24dp, the size a Material system icon is drawn to. The
+path data is copied, not re-exported: same geometry, same knockouts. A vector
+drawable cannot reference another one, so the copy is enforced rather than
+trusted. `NotificationIconTest` reads both files and fails when the two paths
+stop matching, which is the moment someone re-exports the mark and updates only
+the file they happened to be looking at.
+
+**Legibility at status-bar size was checked rather than assumed**, because a
+silhouette that works at launcher size can close up into a blob at 18dp. The
+built-in test reminder was fired on the emulator, which takes the real alarm,
+receiver and notification path. In the status bar the ears, the jaw and the
+knocked-out eyes and nose all survive, at the same weight as the system's own
+icons beside it. In the shade the mark fills the tinted circle next to the app
+name. Nothing closed up.
+
+**Why this is worth a decision at all.** A reminder is the product's one moment
+of contact, and D-005 makes the arrival of that moment the highest-severity
+behaviour in the app. The status bar is where the product stands next to three
+other apps drawing the same stock bell, and being unrecognisable there is the
+one place a calm design cannot afford it.
+
+**What would reverse this.** The mark failing to read on a real device at low
+density, or a manufacturer skin rendering the knockouts as a solid shape. The
+bell is then the honest choice, because an icon nobody can identify is worse
+than a generic one that is at least legible.

@@ -115,7 +115,7 @@ internal fun Context.postSnoozeOptions(task: Task, now: LocalDateTime): Boolean 
  */
 internal fun Context.postTestReminder(arrivedAt: Instant): Boolean {
     val builder = NotificationCompat.Builder(this, ReminderChannelId)
-        .setSmallIcon(R.drawable.ic_notifications)
+        .setSmallIcon(R.drawable.ic_notification_cat)
         .setContentTitle(getString(R.string.reminder_test_title))
         .setContentText(
             getString(
@@ -192,7 +192,7 @@ private fun Context.updateReminderGroupSummary(
     }
 
     val summary = NotificationCompat.Builder(this, ReminderChannelId)
-        .setSmallIcon(R.drawable.ic_notifications)
+        .setSmallIcon(R.drawable.ic_notification_cat)
         // The count alone. Android draws the app name in the header already, so
         // the board's "Focuslist · 3 reminders" would say Focuslist twice.
         .setContentTitle(resources.getQuantityString(R.plurals.reminder_group_summary, count, count))
@@ -285,7 +285,12 @@ private const val ReminderGroupSummaryId = Int.MIN_VALUE
 
 private fun Context.reminderBuilder(task: Task, summary: String) =
     NotificationCompat.Builder(this, ReminderChannelId)
-        .setSmallIcon(R.drawable.ic_notifications)
+        // The mark rather than a stock bell, D-072. Android masks this drawable
+        // down to its alpha and tints it, which is why the launcher icon cannot
+        // be passed here and why [R.drawable.ic_notification_cat] is a
+        // silhouette. The same icon on all three reminder notifications, so a
+        // reminder, its group summary and the test all arrive as one app.
+        .setSmallIcon(R.drawable.ic_notification_cat)
         .setContentTitle(task.title)
         .setContentText(summary)
         .setContentIntent(openIntent(task.id))

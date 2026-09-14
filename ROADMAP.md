@@ -67,6 +67,19 @@ emulator at 14:50: Day reads Today, Time reads 3:00 PM, Save is live, and
 choosing Today keeps it that way. D-030 is unchanged and still holds every
 case it was written for.
 
+**Reminders arrive under the Catimo mark instead of a stock bell, D-072.** The
+small icon was `ic_notifications`, Material's bell, on all three reminder
+notifications. The launcher icon could never have been passed there, because
+Android masks a small icon down to its alpha and tints it, so an opaque
+adaptive icon would draw as a blob. The silhouette that survives that treatment
+already existed as the themed-icon layer, so `ic_notification_cat.xml` carries
+the same path in a 24dp frame, scaled 1.9 about the centre to fill it.
+`NotificationIconTest` fails if the two files' paths ever stop matching. Checked
+by firing the built-in test reminder on the emulator: the ears, jaw and
+knocked-out features all read in the status bar, and the mark fills the tinted
+circle in the shade. Focus's estimate notification keeps `ic_focus`, which is
+our own symbol and names what it is about.
+
 Three exit criteria are left, and all three are yours rather than the code's: the
 TalkBack pass on a real device, the Play listing, and publishing.
 
