@@ -6,6 +6,7 @@ import com.vignesh.focuslist.data.local.FocuslistDatabase
 import com.vignesh.focuslist.data.local.FocuslistMigrations
 import com.vignesh.focuslist.data.local.FocuslistPreferences
 import com.vignesh.focuslist.data.local.FocusSessionPreferences
+import com.vignesh.focuslist.data.local.OnboardingPreferences
 import com.vignesh.focuslist.data.local.ReminderHealthAcknowledgements
 import com.vignesh.focuslist.data.local.WidgetInteractionPreferences
 import com.vignesh.focuslist.core.notification.AndroidFocusAlarms
@@ -66,6 +67,9 @@ class FocuslistApplication : Application() {
 
     /** The two persisted appearance choices, observed directly by the theme. */
     val preferences: FocuslistPreferences by lazy { FocuslistPreferences(this) }
+
+    /** Whether this install has passed the one first-run introduction. */
+    val onboarding: OnboardingPreferences by lazy { OnboardingPreferences(this) }
 
     /** The one resumable Focus clock, shared with the home widget. */
     val focusSessionStore: FocusSessionPreferences by lazy { FocusSessionPreferences(this) }

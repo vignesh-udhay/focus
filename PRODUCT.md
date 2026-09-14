@@ -220,6 +220,7 @@ Shipped in 1.0, and nothing else:
 - One home screen widget
 - Local-first storage, no account
 - Backup and restore to a file
+- First-run onboarding that explains the core promise
 - Dynamic color
 - Light theme
 - Dark theme

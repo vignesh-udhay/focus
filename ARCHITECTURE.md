@@ -54,6 +54,7 @@ notification must agree on, belongs here.
 - `currentDay`, a `SystemCurrentDay` that listens for date-change broadcasts
 - `focusAlarms`, an `AndroidFocusAlarms`
 - `preferences`, the observable dynamic-colour and theme choices
+- `onboarding`, the persisted first-run completion flag
 - `focusSessionStore`, the resumable Focus clock and task pointer
 - `widgetInteractions`, the transient just-completed row evidence
 - `reminderHealthAcknowledgements`, the missed delivery already dismissed on Today
@@ -126,6 +127,10 @@ The active Focus session is four scalar values in SharedPreferences rather
 than a Room table: one task pointer and one clock, atomically replaced together.
 The widget's completion evidence is another small preference record and is
 retired on the first later task or day snapshot.
+
+First-run completion is its own SharedPreferences record. It is app state rather
+than user task data, so Catimo's JSON backup does not carry it to another
+install.
 
 Today's missed-reminder acknowledgement is also one SharedPreferences scalar:
 the delivery ID. It filters only the banner presentation; the delivery remains

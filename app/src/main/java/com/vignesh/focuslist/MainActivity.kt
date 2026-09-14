@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vignesh.focuslist.core.design.ThemePreference
 import com.vignesh.focuslist.ui.navigation.FocuslistNavHost
+import com.vignesh.focuslist.ui.onboarding.OnboardingScreen
 import com.vignesh.focuslist.ui.theme.FocuslistTheme
 import com.vignesh.focuslist.ui.widget.WidgetLaunchCommand
 import com.vignesh.focuslist.ui.widget.widgetLaunchCommand
@@ -42,6 +43,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val focuslist = application as FocuslistApplication
             val preferences by focuslist.preferences.state.collectAsStateWithLifecycle()
+            val onboardingComplete by focuslist.onboarding.completed.collectAsStateWithLifecycle()
             val pendingWidgetCommand by widgetCommand.collectAsStateWithLifecycle()
             val systemDark = isSystemInDarkTheme()
             val darkTheme = when (preferences.theme) {
@@ -76,12 +78,16 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.surface
                 ) {
-                    FocuslistNavHost(
-                        widgetCommand = pendingWidgetCommand,
-                        onWidgetCommandHandled = { handled ->
-                            widgetCommand.compareAndSet(handled, null)
-                        }
-                    )
+                    if (onboardingComplete) {
+                        FocuslistNavHost(
+                            widgetCommand = pendingWidgetCommand,
+                            onWidgetCommandHandled = { handled ->
+                                widgetCommand.compareAndSet(handled, null)
+                            }
+                        )
+                    } else {
+                        OnboardingScreen(onGetStarted = focuslist.onboarding::complete)
+                    }
                 }
             }
         }

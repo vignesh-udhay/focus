@@ -9,6 +9,19 @@ scope it delivers is in `PRODUCT.md`.
 
 ## Current phase
 
+**First-run onboarding is built and verified as Phase 5 release work.** It is
+one screen that explains Catimo's core promise and core loop before opening the
+existing Today screen. It does not ask for notification or exact-alarm
+permission: those requests remain attached to the first reminder, where the
+user has the context to understand them. Completion is app state and is
+deliberately not included in Catimo's JSON backup.
+
+The normal and 200% font layouts were inspected on the emulator. The last line
+remains reachable by scrolling at 200%, the action stays above system
+navigation, completion survives a process restart, and the relaunch opens
+Today rather than repeating the introduction. Both onboarding instrumented
+tests pass, alongside the full JVM suite and lint.
+
 **The first Phase 5 exit criterion is met, and it was measured rather than
 assumed.** "A backup taken on one install restores completely onto a clean
 install" had never been run end to end. It has now, on the emulator, through the
@@ -2938,6 +2951,8 @@ Estimate: 5 to 6 weeks.
 
 Work:
 
+- ~~First-run onboarding that explains the core promise without front-loading
+  reminder permissions~~ done
 - ~~Settings screen~~ pulled forward under D-028 and done
 - ~~Backup and restore to a JSON file the user controls~~ pulled forward under
   D-028 and done

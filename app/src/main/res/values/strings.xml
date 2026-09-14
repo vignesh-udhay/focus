@@ -1,5 +1,14 @@
 <resources>
     <string name="app_name">Catimo</string>
+    <string name="onboarding_title">Welcome to Catimo</string>
+    <string name="onboarding_promise">If you write it down here, you will be told.</string>
+    <string name="onboarding_capture_title">Capture it</string>
+    <string name="onboarding_capture_body">A title is enough. Add the rest only when it helps.</string>
+    <string name="onboarding_schedule_title">Say when</string>
+    <string name="onboarding_schedule_body">Choose the day and moment your task matters.</string>
+    <string name="onboarding_reminder_title">Be told</string>
+    <string name="onboarding_reminder_body">Catimo reminds you even when the app is closed.</string>
+    <string name="onboarding_get_started">Get started</string>
     <string name="task_row_mark_complete">Mark \"%1$s\" complete</string>
     <string name="task_row_mark_incomplete">Mark \"%1$s\" not complete</string>
     <string name="today_title">Today</string>
