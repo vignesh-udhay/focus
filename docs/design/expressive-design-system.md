@@ -570,8 +570,9 @@ every screen has adopted the system, and the content column is in place.
 
 What remains:
 
-1. **TalkBack has never been listened to.** The semantics behind it are now
-   machine-verified, so what an accessibility service is handed is known. What
-   it says out loud, and in what order, is not.
+1. ~~**TalkBack has never been listened to.**~~ Listened to on a real device,
+   2026-09-14, and nothing was found that needs fixing. The semantics stay
+   machine-verified, and the rule above still holds for what the tests alone
+   establish: say "semantics are verified" when that is all you ran.
 2. **`ui/playground/TaskRowPlayground.kt`** is a leftover harness, wired to
    nothing. Harmless, and not the design system's problem.

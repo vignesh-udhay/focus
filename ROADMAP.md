@@ -9,6 +9,25 @@ scope it delivers is in `PRODUCT.md`.
 
 ## Current phase
 
+**The TalkBack pass is done, on a real device, and the exit criterion is
+met.** Switched on and the app used through it by a person, which is the one
+thing the node-tree sweep below was explicit it could not stand in for. Nothing
+was found that needs fixing. The four questions that sweep left open, traversal
+order, heading structure, the live regions behind the undo snackbar and the
+health banner, and the gestures, are answered by that pass rather than by
+anything in the code.
+
+**Automating a pre-pass on the emulator was tried first and does not work, so
+the next session does not spend the time again.** TalkBack installs and runs on
+the Pixel_10 AVD, it speaks, and its focus rectangle can be located in a
+screenshot to the pixel. Driving it is what fails: `input swipe` at three
+speeds, `input tap`, and `input keycombination` for Alt+Right all leave
+accessibility focus exactly where it was and fire no speech, because injected
+events are swallowed before the accessibility layer sees them. `cmd
+accessibility` exposes no navigation surface, and the Play Store image cannot
+be rooted, so TalkBack's own verbose logging is out of reach as well. A screen
+reader on this platform is driven by a person or not at all.
+
 **First-run onboarding is built and verified as Phase 5 release work.** It is
 one screen that explains Catimo's core promise and core loop before opening the
 existing Today screen. It does not ask for notification or exact-alarm
@@ -93,8 +112,8 @@ Details sheets, which open no keyboard, keep the Material default.
 `expressive-components.md` records the exception. All 62 Quick Add and Today
 semantics tests pass on the emulator, and lint is clean.
 
-Three exit criteria are left, and all three are yours rather than the code's: the
-TalkBack pass on a real device, the Play listing, and publishing.
+Two exit criteria are left, and both are yours rather than the code's: the Play
+listing, and publishing.
 
 **The debug seed is gone, and a fresh install now starts empty.** `DebugSeed.kt`
 and its `Room.databaseBuilder` callback are deleted. It was written so that
@@ -2994,7 +3013,7 @@ Work:
 - ~~Settings screen~~ pulled forward under D-028 and done
 - ~~Backup and restore to a JSON file the user controls~~ pulled forward under
   D-028 and done
-- Full accessibility pass with TalkBack
+- ~~Full accessibility pass with TalkBack~~ done
 - Dark theme audit
 - Play listing: screenshots, the one-line pitch, privacy policy
 - Publish free, with no in-app purchases configured at all
@@ -3008,7 +3027,8 @@ Exit criteria:
 
 - ~~A backup taken on one install restores completely onto a clean install~~
   verified end to end on the emulator, 2026-09-11
-- Every screen is navigable and comprehensible with TalkBack
+- ~~Every screen is navigable and comprehensible with TalkBack~~ passed on a
+  real device, 2026-09-14
 - The Play listing makes no claim the app does not deliver
 - 1.0 is live
 
