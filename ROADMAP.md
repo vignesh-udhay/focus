@@ -9,6 +9,64 @@ scope it delivers is in `PRODUCT.md`.
 
 ## Current phase
 
+**The dark theme audit is done again, against the surfaces built since the
+first one, and it found one thing.** `Color.kt` has not changed since
+2026-09-10, so that audit's thirteen measured pairs still stand. What is new is
+the surface drawn on top of them: onboarding is a whole screen that did not
+exist, and Task Details, Backup, the health banner and the paused card all
+changed substantially.
+
+**The colour half was measured again, on the eight pairs the new surfaces
+actually draw.** All eight pass in both schemes, none of them close: onSurface
+on surface at 16.25 and 14.27, onSurfaceVariant on surface at 8.88 and 10.90,
+primary on surface for the step icons at 6.15 and 10.84 against a threshold of
+3.0, onPrimary on primary at 6.48 and 7.71, onErrorContainer on errorContainer
+at 12.94 and 6.97, onPrimaryContainer on primaryContainer at 7.22 in both, and
+onSurfaceVariant on primaryContainer at 7.22 and 5.51. Dark is the safer scheme
+on five of the seven distinct pairs, which is the same shape the first audit
+found.
+
+**The finding: onboarding was the only screen whose cat ignored the theme.**
+It drew `ic_launcher_foreground` with `tint = Color.Unspecified`, so it painted
+the launcher's literal `#E5DEFF` and `#403D89` while every other mascot binds
+`primaryFixed`, `primaryFixedDim` and `onPrimaryFixedVariant` through
+`rememberMascotImage`. That function's own KDoc says which three roles a mascot
+takes is the policy it exists to hold, because a second copy elsewhere would be
+a second place for it to drift, and this was that second copy.
+
+It hid in both fallback schemes, because the fixed roles hold exactly the
+launcher's two literals in light and in dark, so nothing looked wrong until the
+default path was tested. Under a forced green accent the step icons and the
+button went green and the cat stayed lilac, while Today's empty-state cat under
+the same accent went green. Two cats, two colours, one app.
+
+`EmptyStateMascot.kt` had already drawn the line this crossed: an in-app
+illustration binds to the fixed roles so it belongs to the user's phone, and
+the launcher takes fixed hex only because it draws outside the app's theme.
+Onboarding is inside it. Fixed by giving the screen a real mascot,
+`catSittingFront`, the front-facing at-rest pose Focus already uses, through
+`MascotImage` like every other screen that carries one. No new geometry and no
+second copy to keep in sync; the pose and its frame simply became internal.
+Verified under the same green accent: the cat now resolves to the same three
+role values Today's does.
+
+**Two things chased and cleared rather than filed.** The Backup and Reminder
+health hero cards render as large bright blocks in dark, which is not what
+`primaryContainer` should do. Turning dynamic colour off resolved every role to
+its coded value exactly, `primaryContainer` at `#403D89`, `primary` at
+`#CABEFF`, `secondaryContainer` at `#48445C`, so the code is right and Android
+17's dynamic dark palette simply places `primaryContainer` far brighter than
+our fallback does. The on-role tracks it: measured off the rendered pixels, the
+hero text holds 6.08 against its own background. D-021's collision class was
+checked again too, and the red health banner is unmistakable against a green
+accent in dark.
+
+Swept by eye in dark: onboarding, Today with tasks and with the health banner,
+Task Details, Settings, Backup and restore, Reminder health, and Quick Add over
+the keyboard. The D-072 notification mark was fired on the emulator and reads
+in the dark shade, pale cat on the tinted circle, distinct from a Google icon
+in the same list. `OnboardingSemanticsTest` passes and lint is clean.
+
 **The TalkBack pass is done, on a real device, and the exit criterion is
 met.** Switched on and the app used through it by a person, which is the one
 thing the node-tree sweep below was explicit it could not stand in for. Nothing
@@ -3014,7 +3072,7 @@ Work:
 - ~~Backup and restore to a JSON file the user controls~~ pulled forward under
   D-028 and done
 - ~~Full accessibility pass with TalkBack~~ done
-- Dark theme audit
+- ~~Dark theme audit~~ done
 - Play listing: screenshots, the one-line pitch, privacy policy
 - Publish free, with no in-app purchases configured at all
 

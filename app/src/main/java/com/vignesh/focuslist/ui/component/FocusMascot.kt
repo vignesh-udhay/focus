@@ -176,8 +176,8 @@ private fun rememberSettle(running: Boolean): Animatable<Float, AnimationVector1
  */
 private const val Settle = 0.02f
 
-private const val SitWidth = 192.72f
-private const val SitHeight = 178.87f
+internal const val SitWidth = 192.72f
+internal const val SitHeight = 178.87f
 private const val NapWidth = 202.55f
 private const val NapHeight = 119.13f
 
@@ -216,7 +216,7 @@ private const val NapShadowOffset = 1.06f
 private const val MascotBoxWidth = 214f
 private const val MascotBoxHeight = SitHeight
 
-private fun catSittingFront(light: Color, mid: Color, dark: Color): ImageVector =
+internal fun catSittingFront(light: Color, mid: Color, dark: Color): ImageVector =
     ImageVector.Builder(
         name = "FocusCatSittingFront",
         defaultWidth = SitWidth.dp,

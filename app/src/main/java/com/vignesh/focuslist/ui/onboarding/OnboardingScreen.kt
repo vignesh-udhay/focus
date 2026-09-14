@@ -30,11 +30,14 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import com.vignesh.focuslist.R
 import com.vignesh.focuslist.core.design.FocuslistDimensions
 import com.vignesh.focuslist.core.design.FocuslistSpacing
 import com.vignesh.focuslist.core.design.focuslistContentGutter
+import com.vignesh.focuslist.ui.component.MascotImage
+import com.vignesh.focuslist.ui.component.SitHeight
+import com.vignesh.focuslist.ui.component.SitWidth
+import com.vignesh.focuslist.ui.component.catSittingFront
 import com.vignesh.focuslist.ui.theme.FocuslistTheme
 
 /**
@@ -87,11 +90,15 @@ fun OnboardingScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_launcher_foreground),
-                        contentDescription = null,
-                        tint = androidx.compose.ui.graphics.Color.Unspecified,
-                        modifier = Modifier.size(108.dp)
+                    // The mascot, not the launcher icon. `EmptyStateMascot.kt`
+                    // draws the line: an in-app illustration binds to the fixed
+                    // colour roles so it follows the user's palette, and the
+                    // launcher takes fixed hex only because it draws outside the
+                    // app's theme. This screen is inside it.
+                    MascotImage(
+                        width = SitWidth,
+                        height = SitHeight,
+                        build = ::catSittingFront
                     )
                     Spacer(Modifier.height(FocuslistSpacing.md))
                     Text(
