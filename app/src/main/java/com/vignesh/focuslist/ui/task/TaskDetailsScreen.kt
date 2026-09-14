@@ -758,7 +758,10 @@ private fun reminderValue(at: LocalDateTime, today: LocalDate): String {
 /** What the column holds at the largest system font scale, as on Focus. */
 private const val TitleMaxLines = 4
 
-/** How long a reminder defaults to when the task has none yet. */
+/**
+ * The hour a reminder falls back to when the clock cannot supply one: a day
+ * other than today, or the last hour of one. See [suggestedReminderTime], D-071.
+ */
 internal val DefaultReminderTime: java.time.LocalTime = java.time.LocalTime.of(9, 0)
 
 /** Opens whichever sheet the pressed row asked for, and writes what it returns. */

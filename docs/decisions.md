@@ -4901,3 +4901,58 @@ Also measured and left alone, awaiting a second occurrence: "in two hours"
 transcribed as "into hours", which lost its reminder and was rightly refused,
 and "Saturday morning", which stayed a title because day-part words are in no
 vocabulary. Either becoming common is D-071 material.
+
+## D-071. The reminder sheet opens on the next hour, not on nine in the morning
+
+**Decision.** Where a task has no reminder yet and the sheet's default day is
+today, the Time row opens on the next whole hour from now and the Day row reads
+Today. Nine in the morning stays the suggestion everywhere else: a task whose
+default day is not today, and the late-evening case where the next whole hour
+has already crossed midnight. D-030 is untouched. Forward resolution, the
+refusal of a deliberately chosen past moment, and `reminderTrigger`'s clamp all
+behave exactly as they did.
+
+**Nine o'clock is a scheduled-date default wearing a reminder's clothes.** A day
+needs a time attached to it before it can be stored, and a fixed morning hour is
+the ordinary answer, because there the time is ceremony and the day is the
+question. A reminder inverts that. It is an interruption, asked for in the
+middle of the thing it interrupts, and the common request is later today.
+Catimo was answering a question about days with a control the product says is
+about moments.
+
+**What it looked like from the user's side, which is how this was found.** Open
+Task Details at 2:37pm, tap Reminder, and the sheet proposes tomorrow at nine.
+That is nineteen hours from the moment of asking, and both rows have to be
+touched to get anywhere near what was meant. Worse, the Day pane offers Today,
+and tapping it produces a disabled Save under "That moment has already passed",
+because the Time row is still holding nine in the morning. The preset that
+matches the most common intent was the one that visibly broke.
+
+**The forward rule is not what changed here.** D-030 exists so that a moment
+already gone is never stored, and it still does all of that. What it was not
+for is running on every ordinary open of the sheet, which is what a seed stale
+by construction made it do: between nine in the morning and midnight, the
+default was always in the past, so the correction was always showing. With a
+current seed it fires where it was meant to. A reminder whose own time has
+passed, a default day handed in from the past, and a time the user picked from
+the clock themselves all still resolve forward and still say so in the row.
+
+**The next whole hour, rather than the next half hour or an hour from now.** A
+round hour is the unit people say reminders in, and rounding up to it is
+predictable in a way "an hour from now" is not: the same tap at 2:37 and at 2:52
+proposes the same 3:00, so the suggestion does not slide while the sheet is
+being read. It can land close to now, since opening at 2:59pm suggests 3:00pm,
+and that is allowed. The Time row shows the suggestion plainly before Save is
+pressed, so a minute away is a thing the user can see and change, not a thing
+the app did behind them.
+
+**Midnight is the single branch.** At 11:50pm the next whole hour is tomorrow at
+midnight, which is a strange moment to propose and a day the user did not name.
+Nine takes over there, and D-030 carries it to nine tomorrow morning, which is
+the same answer the sheet gave before and is right in that one case.
+
+**What would reverse this.** Evidence that reminders are mostly being set for
+days other than today, which would make the clock the wrong thing to seed from
+and the default day the right one. `reminder_deliveries` records what was
+scheduled and when it was placed, so the distance between placing a reminder and
+its firing is measurable rather than a matter of opinion.

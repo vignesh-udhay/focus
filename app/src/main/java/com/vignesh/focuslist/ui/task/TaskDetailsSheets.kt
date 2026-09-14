@@ -68,6 +68,7 @@ import java.time.LocalDateTime
 import java.time.format.FormatStyle
 import java.time.format.DateTimeFormatter
 import java.time.LocalTime
+import java.time.temporal.ChronoUnit
 
 /**
  * The sheets the Plan rows open.
@@ -706,6 +707,11 @@ private fun DurationField(
  * moment already gone disables Save and says why rather than storing a promise
  * the app has already decided it cannot keep.
  *
+ * **Where it opens is read off the clock, not held as a constant.** D-071.
+ * [suggestedReminderTime] seeds the Time row with the next whole hour while the
+ * day on offer is today, so an ordinary open reads Today at a time the user can
+ * still use, and the correction above is left to the cases it was written for.
+ *
  * **A Save, for the reason `RepeatSheet` has one.** D-018 commits as you go
  * because every other row is one field set by one choice. A day and a time only
  * mean something together, and writing each as it is tapped would push the task
@@ -736,7 +742,9 @@ internal fun ReminderSheet(
     // the time is still deciding it, and the time itself.
     var chosenDay by rememberSaveable { mutableStateOf(NoDayChosen) }
     var timeOfDay by rememberSaveable {
-        mutableStateOf((reminderAt?.toLocalTime() ?: DefaultReminderTime).toSecondOfDay())
+        mutableStateOf(
+            (reminderAt?.toLocalTime() ?: suggestedReminderTime(defaultDay, now)).toSecondOfDay()
+        )
     }
 
     var pane by rememberSaveable { mutableStateOf(ReminderPane.MAIN) }
@@ -869,6 +877,35 @@ internal fun ReminderSheet(
                 )
             }
         }
+    }
+}
+
+/**
+ * Where the Time row opens on a task that has no reminder yet. D-071.
+ *
+ * The next whole hour, while the day being offered is the one we are in, and
+ * [DefaultReminderTime] otherwise. A reminder is an interruption asked for in
+ * the middle of the thing it interrupts, so the useful suggestion for today is
+ * soon; nine in the morning is the useful suggestion for a day not yet reached.
+ *
+ * Rounding up rather than adding an hour, so the same tap at 2:37 and at 2:52
+ * proposes the same 3:00 and the suggestion does not slide while the sheet is
+ * being read.
+ *
+ * The next whole hour after eleven at night belongs to tomorrow, which is a day
+ * the caller did not name. Nine takes over there, and [nextReminderOccurrence]
+ * carries it to tomorrow morning, which is the one case where the old default
+ * was the right answer all along.
+ */
+internal fun suggestedReminderTime(defaultDay: LocalDate, now: LocalDateTime): LocalTime {
+    if (defaultDay != now.toLocalDate()) return DefaultReminderTime
+
+    val nextHour = now.truncatedTo(ChronoUnit.HOURS).plusHours(1)
+
+    return if (nextHour.toLocalDate() == now.toLocalDate()) {
+        nextHour.toLocalTime()
+    } else {
+        DefaultReminderTime
     }
 }
 

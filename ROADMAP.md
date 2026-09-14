@@ -55,6 +55,18 @@ seen. Restoring an empty file first, then reopening the dialog, produced it:
 "This backup holds 13 tasks. This device has no tasks yet, so nothing will be
 replaced." Right sentence, and English rather than a plural with a zero in it.
 
+**The reminder sheet opens on the next hour rather than at nine, D-071.** The
+Time row was seeded from a fixed nine in the morning, so from nine onwards
+D-030's forward resolution ran on every ordinary open and the sheet proposed
+tomorrow. Tapping Today in the day pane then produced a disabled Save under
+"That moment has already passed", which is the preset matching the commonest
+intent being the one that visibly broke. The seed is now the next whole hour
+while the day on offer is today, and nine survives as the fallback for a day
+that is not today and for the last hour before midnight. Checked on the
+emulator at 14:50: Day reads Today, Time reads 3:00 PM, Save is live, and
+choosing Today keeps it that way. D-030 is unchanged and still holds every
+case it was written for.
+
 Three exit criteria are left, and all three are yours rather than the code's: the
 TalkBack pass on a real device, the Play listing, and publishing.
 

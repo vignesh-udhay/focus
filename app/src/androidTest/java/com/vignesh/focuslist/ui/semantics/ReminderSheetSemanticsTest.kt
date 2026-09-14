@@ -109,12 +109,28 @@ class ReminderSheetSemanticsTest {
     // --- the day follows the time until the user says otherwise ---------------
 
     /**
-     * The defect, seen from the interface. Nine in the morning, opened at six in
-     * the evening, reads Tomorrow rather than offering to ring nine hours ago.
+     * An ordinary open, which is the case D-071 changed. Six in the evening
+     * offers seven in the evening, today, rather than sending the user to
+     * tomorrow morning for a reminder they asked for now.
      */
     @Test
-    fun aDefaultTimeAlreadyGoneShowsTomorrow() {
-        setSheet()
+    fun theSheetOpensOnTodayAtTheNextHour() {
+        val saved = setSheet()
+
+        rule.onNodeWithText(TODAY_LABEL).assertIsDisplayed()
+
+        rule.onNodeWithText(SAVE).performClick()
+        assertEquals(listOf(TODAY.atTime(19, 0)), saved)
+    }
+
+    /**
+     * The defect, seen from the interface. A reminder already set for nine in
+     * the morning, reopened at six in the evening, reads Tomorrow rather than
+     * offering to ring nine hours ago.
+     */
+    @Test
+    fun aTimeAlreadyGoneShowsTomorrow() {
+        setSheet(reminderAt = TODAY.atTime(9, 0))
 
         rule.onNodeWithText(TOMORROW).assertIsDisplayed()
     }
@@ -122,7 +138,7 @@ class ReminderSheetSemanticsTest {
     /** And Save writes exactly the day the row was showing. */
     @Test
     fun savingWritesTheResolvedMoment() {
-        val saved = setSheet()
+        val saved = setSheet(reminderAt = TODAY.atTime(9, 0))
 
         rule.onNodeWithText(SAVE).performClick()
 
@@ -160,14 +176,14 @@ class ReminderSheetSemanticsTest {
     // --- a day the user chose is honoured, and refused when it cannot be kept --
 
     /**
-     * Choosing Today at nine in the morning, at six in the evening, is a request
-     * the app cannot keep. It says so and refuses, rather than storing a promise
-     * it has already decided it will break, which is what TickTick does and what
-     * D-030 declined to copy.
+     * Choosing Today for a nine o'clock reminder, at six in the evening, is a
+     * request the app cannot keep. It says so and refuses, rather than storing
+     * a promise it has already decided it will break, which is what TickTick
+     * does and what D-030 declined to copy.
      */
     @Test
     fun choosingADayAlreadyGoneDisablesSaveAndSaysWhy() {
-        setSheet()
+        setSheet(reminderAt = TODAY.atTime(9, 0))
 
         rule.onNodeWithText(DAY).performClick()
         rule.onNodeWithText(TODAY_LABEL).performClick()
@@ -179,7 +195,7 @@ class ReminderSheetSemanticsTest {
     /** And the refusal lifts on naming a day that can still be kept. */
     @Test
     fun theRefusalIsUndoneByChoosingTomorrow() {
-        setSheet()
+        setSheet(reminderAt = TODAY.atTime(9, 0))
 
         rule.onNodeWithText(DAY).performClick()
         rule.onNodeWithText(TODAY_LABEL).performClick()
@@ -197,7 +213,10 @@ class ReminderSheetSemanticsTest {
         /** A Tuesday, matching `RemindersTest`. */
         val TODAY: LocalDate = LocalDate.of(2026, 9, 8)
 
-        /** Six in the evening: after the nine o'clock default, before nine pm. */
+        /**
+         * Six in the evening, on the hour: the sheet suggests seven, and a nine
+         * o'clock reminder handed in is behind it.
+         */
         val NOW: LocalDateTime = TODAY.atTime(18, 0)
 
         const val TIMEOUT_MILLIS = 5_000L
