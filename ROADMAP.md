@@ -19,6 +19,66 @@ system, per `widget.md`, which now says so. Seen on the Pixel 10 emulator: blue
 with the switch on, Catimo lavender off, blue again on. The 17 widget JVM tests
 pass.
 
+**All seven mascot poses are redrawn, D-074, and two of them changed what they
+say.** The `cat-hd` set replaces the five list poses and both Focus poses. It is
+an asset swap everywhere except in three places, and those are why it has a
+decision entry.
+
+**Today and Inbox traded postures.** The files put the sitting cat on an empty
+Today and the sleeping cat on an empty Inbox, which is the reverse of what
+`expressive-components.md` and both KDocs said. That was raised before anything
+was changed and the owner confirmed the files are right. The reading: an empty
+Inbox is that screen's finished state, so the cat sleeps; an empty Today is a
+day work may still arrive in, so the cat is up with its eyes half shut. The
+finished-day cat is the same sit with the eyes curved shut, so D-033's earned
+pose now differs from the unearned one by exactly the eyes.
+
+**Focus's stopped pose lies down.** D-046 named a sit and a nap. The pair is now
+the cat lying awake and the cat curled asleep. D-046's decision, its ceiling of
+two poses and no props, and its reversal condition all stand; D-074 supersedes
+only the pose names. The two frames differ in height by under 3dp where the old
+pair differed by a third, so the eyes carry the state and the reversal condition
+matters more than it did.
+
+**The crossfade is anchored on the shadow's centre in both axes, and the
+offsets are derived rather than measured.** The old code bottom-aligned the two
+frames and nudged each sideways by a hand-measured constant. Frame bottoms are
+not the ground: the new shadows sit 49.29 and 53.86 units above their frames'
+edges, which would have moved the floor 1.2dp on every pause. `FocusPose` now
+holds each pose's viewport and shadow ellipse, derives both offsets and the
+scale pivot from them, and draws the shadow from the same four numbers. Measured
+on the emulator with animations slowed ten times: the shadow's widest row is at
+y=1387 asleep and y=1388 awake, centred at x=541 and x=540 on a 1080 screen.
+
+**Smaller things that went with it.** Every nose is `dark` now, so the `mid`
+nose exception is gone rather than re-explained. The far ear is part of the body
+path, so D-046's merged-subpath workaround is gone too. The shared scale factor
+is 0.26, down from 0.3643, because the new files use larger units; it was chosen
+so the widths carried over, and the error pose is the one that grew noticeably,
+to 207x229, because its question mark sits clear above the head. The ground
+shadow still takes `light` although the files draw it darker than the coat, and
+D-074 says what to try if it ever reads as missing.
+
+Seen on the emulator under a blue dynamic palette: Today, Inbox and Upcoming
+empty, and Focus running and paused. The error and finished-day poses were
+rendered from the Kotlin path constants rather than reached in the app.
+`EmptyStateSemanticsTest` passes 11 of 11 and `FocusSessionSemanticsTest` 10 of
+10 on the emulator, which covers the taller poses leaving both empty-state lines
+reachable at 200% font. The JVM component tests pass.
+
+**The boards moved with the code.** The seven source drawings are on the Figma
+illustrations page as a `cat-hd-*` row above the poses they replace, which stay
+where they were as the archive. Every copy was replaced rather than edited: the
+five illustrated empty-state variants, the five Focus session variants, the
+three detached error frames on the mobile page, and the three paused-session
+panes on the web page. Each is at 0.26 and bound to the same three Brand
+variables as before, and the Focus `cat` frame uses the app's box and the app's
+shadow anchor, so both poses put their shadow centre on the same point there
+too. Web has no empty, error or running-Focus board, so the pane was its only
+cat. One trap worth keeping: frames that hold a pose carry scale constraints, so
+the frame is resized before the pose goes in, not after. `focus.md`, `expressive-components.md`, `expressive-motion.md` and
+`today-screen.md` are updated.
+
 **The dark theme audit is done again, against the surfaces built since the
 first one, and it found one thing.** `Color.kt` has not changed since
 2026-09-10, so that audit's thirteen measured pairs still stand. What is new is

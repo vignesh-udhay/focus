@@ -5069,3 +5069,101 @@ on window focus. That is not visible and is left alone.
 the sheet appears and then jumps once; a manufacturer keyboard doing that on a
 real device would be worth measuring before deciding whether the slide was the
 lesser evil.
+
+## D-074. The cat is redrawn in seven poses, Today and Inbox trade postures, and Focus's resting pose lies down
+
+**Decision.** All seven mascot poses are replaced by the redrawn `cat-hd` set.
+The count does not change: five poses for list states, two for Focus, one prop.
+Three things about what the poses say do change, and they are the reason this
+is an entry rather than an asset swap.
+
+    Today, empty      sitting, eyes half shut      cat-hd-empty-today
+    Inbox, empty      curled asleep                cat-hd-empty-inbox
+    Upcoming, empty   lying down, awake            cat-hd-empty-upcoming
+    Today, finished   sitting, content             cat-hd-all-done
+    Read failed       sitting, question mark       cat-hd-error
+    Focus, stopped    lying down, awake            cat-hd-paused-focus
+    Focus, running    curled asleep                cat-hd-asleep-idle
+
+**Today and Inbox trade postures.** The old set slept on an empty Today and sat
+up on an empty Inbox, and `expressive-components.md` argued for it: nothing is
+scheduled so the cat has stopped, and Inbox is about to be filled so the cat is
+attentive. The new set reverses the pair, and the reading that goes with it is
+this. An empty Inbox is the finished state of that screen: everything captured
+has been given a day, nothing is waiting on the user, and the cat can sleep. An
+empty Today is not finished in the same way. The day is still open and work may
+yet arrive in it, so the cat is up, unbothered, with its eyes half shut. That
+also puts more distance between Today's two cats than there was: empty is a
+calm sit, finished is the same sit with the eyes curved shut, and D-033's rule
+that the content pose is earned by completed work is easier to see when the
+unearned one is not asleep either.
+
+This was the artist's choice and the owner confirmed it on 2026-09-19 when the
+file names and the documents were found to disagree. It is recorded here so the
+next session does not "fix" the files back to the old table.
+
+**Focus's stopped pose is no longer a sit.** D-046 named `cat-sit-front` and
+`cat-nap`. The stopped pose is now the cat lying down with its eyes open and the
+running pose is the cat curled asleep. What D-046 decided is untouched: the
+drawing says whether the clock is running, awake means stopped and asleep means
+running, the cat does not wake when the estimate runs out, and the ceiling holds
+at two Focus poses and no props. D-046's note that `cat-sit-front` made a fourth
+sitting cat is moot, because there are two sitting poses in the app now and
+neither is in Focus.
+
+The pair is closer together than the old one. A sit and a nap differ in height
+by a third; these two are both lying and their frames differ by under 3dp. That
+makes the crossfade calmer, and it puts more weight on the eyes to say which
+state this is. D-046's reversal condition, that the nap has to read as running
+at a glance on a device, applies to this pair with more force, not less.
+
+**Every nose is dark.** The old set drew some noses lighter than the eyes, first
+described as a sitting-pose exception and then corrected by D-046 to "follows
+how the pose was drawn". The new set draws every nose at the eyes' value, so
+every nose takes `dark` and the exception is gone rather than re-explained.
+
+**The far ear is part of the body.** D-046 found that the board's "Ear shading"
+layer was geometry rather than shade, and merged it into the body path to stop a
+hairline showing across the ear. The new files draw one body path with both ears
+in it, so the merge and the layer are both gone. The lesson D-046 drew about
+layer names stands. The new layer names are Ground shadow, Body, Tail, Paw
+shading, Nose, Eye left, Eye right and Question mark, and they bind by name as
+before: shadow and body to `light`, tail and paw shading to `mid`, the rest to
+`dark`.
+
+**The ground shadow still takes `light`.** The new files draw it about halfway
+between the coat and the tail, where the old board drew it at almost the coat's
+value. It stays on `light` because the mascot is three colour roles and a
+fourth tone would need either a fourth role or an alpha, and nothing on a
+device has shown the shadow to need one. If it reads as missing under the new
+poses, that is the thing to revisit, and the answer is an alpha on `mid`
+rather than a new role.
+
+**One scale factor, and it is 0.26.** The new files are drawn in larger units
+than the old board, so the old factor of 0.3643 would draw every cat about a
+third bigger. 0.26 is chosen because it carries the widths over: Upcoming 254dp
+against 250, finished 193 against 195, Focus asleep 210 against the nap's 203.
+Heights moved more, because the new sitting cats are taller animals. The error
+pose is the largest change at 207x229 against 173x170, since its question mark
+now sits clear above the head.
+
+**The Focus crossfade anchors on the shadow's centre, in both axes.** D-046's
+rule that nothing translates and the floor does not move is kept and tightened.
+Both poses are placed so the centre of their ground shadow is the same point in
+the box, and both scale about that point rather than about the bottom edge of
+their own frame. The old code aligned frame bottoms and corrected sideways by
+hand-measured offsets. Frame bottoms are not the ground: the two new shadows sit
+49.29 and 53.86 units above their frames' bottom edges, so bottom alignment
+would lift the floor by 1.2dp on every pause and drop it on every resume. The
+offsets are now derived from the same ellipse numbers the shadow is drawn from,
+so the anchor cannot drift from the drawing.
+
+**What this supersedes.** D-046's pose names and its sit-and-nap table column,
+the posture table and the `mid`-nose paragraphs in `expressive-components.md`,
+and the board node ids recorded for the old poses. Not D-046's decision, its
+ceiling, or its reversal condition.
+
+**What would reverse this.** The half-shut eyes on an empty Today reading as
+bored or disapproving rather than calm, which is a judgement for a device and a
+few days of use. The answer then is to redraw the eyes, not to bring back the
+sleeping Today.

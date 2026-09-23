@@ -256,8 +256,9 @@ From most to least prominent:
 3. task metadata, `bodySmall`, supplied by `TaskRow`
 
 The empty state sits outside that hierarchy and uses `titleMedium` with a
-`bodyMedium` supporting line, above them the cat curled asleep, which says why
-the screen is empty. `expressive-components.md` owns the variant, its colour
+`bodyMedium` supporting line, above them the cat sitting with its eyes half
+shut, which says the day is clear and still open. D-074 moved the sleeping cat
+to Inbox. `expressive-components.md` owns the variant, its colour
 roles, and why the headline did not follow the board up to Title Large.
 
 Every style comes from `FocuslistTypography`. Do not define new text styles

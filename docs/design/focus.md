@@ -17,16 +17,17 @@ asked for it. It is not two screens, and it has not been a destination since
 `docs/decisions.md` D-004 removed the queue a bar entry would have landed on.
 `navigation.md` holds the current arrangement.
 
-    Running            nap    44:37 · 45 min focus       Complete · pause
-    Paused             sit    32:18 · 32 min left        Complete · play
-    Estimate reached   nap    00:00 · Estimate reached   Complete · +5 min
-    Open-ended         nap    12:43 · No time limit      Complete · pause
-    Open-ended paused  sit    12:43 · No time limit      Complete · play
+    Running            asleep 44:37 · 45 min focus       Complete · pause
+    Paused             awake  32:18 · 32 min left        Complete · play
+    Estimate reached   asleep 00:00 · Estimate reached   Complete · +5 min
+    Open-ended         asleep 12:43 · No time limit      Complete · pause
+    Open-ended paused  awake  12:43 · No time limit      Complete · play
 
 D-013 added the pause, the resume and the extension. D-014 settled what the
 shape says. D-015 settled what leaving does. **D-046 replaced the shape with the
 cat and moved the clock onto the status line**, so the middle two columns above
-read differently from every earlier version of this document.
+read differently from every earlier version of this document. D-074 redrew the
+two poses: the second column read `sit` and `nap` until then.
 
 **A sixth state used to head that table**, `Ready sit 45:00 · 45 min focus
 Complete · play`: a task chosen with no clock running. D-054 removed it. It
@@ -66,9 +67,9 @@ and four lines is what the column holds at the largest system font scale. The
 full title is one tap away in Task Details.
 
 **The cat is second, and it is the app's own mascot rather than a shape.**
-D-046. Two poses, `cat-sit-front` when the clock is stopped and `cat-nap` while
-it runs, drawn from the same board and at the same scale factor as the five
-empty-state poses. What it says is what the shape said: whether the clock is
+D-046. Two poses, lying awake when the clock is stopped and curled asleep while
+it runs, drawn in the same set and at the same scale factor as the five
+list poses. D-074 redrew both; before it they were a sit and a nap. What it says is what the shape said: whether the clock is
 moving. It is not a gauge and it does not track progress.
 
 **The time is third now, on the status line at body size.** It is a real readout
@@ -170,8 +171,11 @@ floating action button.
 
 # The cat
 
-`cat-sit-front` when the clock is stopped and `cat-nap` while it runs, drawn
-where the shape used to be and crossing between the two on a state change.
+`cat-hd-paused-focus` when the clock is stopped and `cat-hd-asleep-idle` while
+it runs, drawn where the shape used to be and crossing between the two on a
+state change. The first is the cat lying down with its eyes open, the second is
+the cat curled up asleep. D-074 drew them; D-046's `cat-sit-front` and `cat-nap`
+are what they replaced.
 
 **What it says is whether the clock is running.** That is the whole of it. It is
 not a gauge and does not track progress. The digits do that.
@@ -191,41 +195,52 @@ worse at it. A second channel that says what the first says, less well, is
 decoration, and `expressive-motion.md` bans decoration. D-046 changes what draws
 the state; it does not reopen what the state channel is for.
 
-**Two poses cover five states.** Paused and Open-ended paused sit. Running,
-Estimate reached and Open-ended nap. That is D-014's own partition, so nothing new
-had to be decided about which state looks like what. Ready sat too, until D-054
-removed it.
+**Two poses cover five states.** Paused and Open-ended paused lie awake. Running,
+Estimate reached and Open-ended sleep. That is D-014's own partition, so nothing new
+had to be decided about which state looks like what. Ready was a stopped state
+too, until D-054 removed it.
 
-**The cat does not wake up when the estimate runs out.** Estimate reached naps
+**The cat does not wake up when the estimate runs out.** Estimate reached sleeps
 like any other running state. Running past the estimate is ordinary: the digits
 reach zero, the status line says so, and nothing completes the task by itself.
 Overrunning is not failure and the screen does not say it is, which an animal
 sitting up at the buzzer would.
 
-**Both poses share a ground line and are scaled about their own feet**, so the
-floor under the cat does not move while the body compresses. Nothing translates.
-The poses are 192.72 x 178.87 and 202.55 x 119.13, they are drawn at those sizes
-rather than filling a common width, and the box is bottom-aligned. Letting each
-fill the same width would shrink the wider one by about five percent, which is
-the one thing that stops them reading as one animal.
+**Both poses lie down, so the eyes carry the state.** The old pair differed in
+height by a third. These two frames are 198.38 x 142.74 and 209.56 x 140.14, and
+what changes between them is the head dropping and the eyes closing. That makes
+the crossfade calmer than it was, and it means D-046's reversal condition, that
+asleep has to read as running at a glance, rests on less than it used to. It
+wants checking on a device whenever either drawing changes.
 
-**Each pose is centred on its ground shadow, not on its bounding box.** The
-sitting cat's tail reaches x=528.5 of a 529-wide viewport while its shadow stops
-at 470.3, so a box centred on the drawing puts its centre line on the tail and
-leaves the shadow 10.84dp to the left of it. Against a column of centred buttons
-that reads as the cat sitting off to one side. The shadow is the anchor because
-it is the ground, it is the widest part of either pose, and both poses draw it
-the same way. The napping pose was out by 1.06dp and is corrected too, because
-leaving it would slide the shadow sideways on every pause and resume. The
-offsets are static per pose; the crossfade itself still translates nothing. The
-box is 214dp wide, which is what holds the sitting tail once the shadow is
-centred, rather than the union of the two drawn widths.
+**Both poses stand on one point, and are scaled about it**, so the floor under
+the cat does not move while the body compresses. Nothing translates. The point
+is the centre of the ground shadow, in both axes. Each pose is drawn at its own
+size rather than filling a common width, because letting each fill the same
+width would shrink the wider one by about five percent, which is the one thing
+that stops them reading as one animal.
 
-**`cat-sit-front` is a fourth sitting pose and that is deliberate.** The three
-shipped sits are empty-state poses on list screens, where posture says why a
-list is empty. This pair is in a sheet, is not an empty state, and is read
-against its own partner. D-046 has the argument, and the ceiling that goes with
-it: no prop, no third Focus pose, and nothing outside a session.
+**The anchor is the shadow, not the frame.** The shadow is the ground, it is the
+widest part of either pose, and both poses draw it the same way. A frame is none
+of those. Centring frames puts the awake pose 1.13dp left of the asleep one, and
+sitting frames on a common bottom edge is worse than it sounds: the two shadows
+lie 49.29 and 53.86 viewport units above their frames' bottom edges, so the
+floor would rise 1.2dp on every pause and fall on every resume. With two lying
+poses there is little else moving for the eye to follow, so that is the motion
+it would find.
+
+`FocusPose` holds each pose's viewport and its shadow ellipse, derives both
+offsets and the scale pivot from them, and builds the shadow's path from the
+same four numbers. The old code carried hand-measured offsets, 10.84dp and
+1.06dp, beside a shadow path exported separately, which is two copies of one
+fact. The offsets are static per pose; the crossfade itself still translates
+nothing. The box is measured out from the shared ground point rather than as the
+union of the two frames, and comes to about 210 x 144dp.
+
+**Neither Focus pose is a sit any more.** D-046 defended `cat-sit-front` as a
+deliberate fourth sitting pose. D-074 replaced it with a lying one, so the two
+sits left in the app are both on Today. D-046's ceiling is unchanged: no prop,
+no third Focus pose, and nothing outside a session.
 ---
 
 # The container transform, and why it is gone

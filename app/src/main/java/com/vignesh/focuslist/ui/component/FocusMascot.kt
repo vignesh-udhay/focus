@@ -16,47 +16,38 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.PathBuilder
+import androidx.compose.ui.graphics.vector.PathNode
 import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.unit.dp
 import com.vignesh.focuslist.core.design.FocuslistMotion
 import com.vignesh.focuslist.core.design.focuslistMotionEnabled
 
 /**
- * The Focus mascot: the same cat, sitting when the clock is stopped and napping
- * while it runs.
+ * The Focus mascot: the same cat, lying awake when the clock is stopped and
+ * curled asleep while it runs.
  *
  * D-046 put it where the shape used to be. What it says is exactly what the
  * shape said under D-014, whether the clock is running, and it says it in the
- * app's own animal rather than in a polygon. Two poses cover all six states:
- * Ready, Paused and Open-ended paused sit; Running, Estimate reached and
- * Open-ended nap.
+ * app's own animal rather than in a polygon. Two poses cover all five states:
+ * Paused and Open-ended paused lie awake; Running, Estimate reached and
+ * Open-ended sleep.
  *
  * **The cat does not wake up when the estimate runs out.** Estimate reached
- * naps like any other running state, and only the status line changes. D-046
+ * sleeps like any other running state, and only the status line changes. D-046
  * has the argument: `focus.md` already says overrunning is not failure, and an
  * animal that sat up at the buzzer would say it was.
  *
- * Exported from the board, nodes `1119:5624` and `1119:5634`. Both take the
- * same scale factor as the other five poses. [MascotImage] explains why the
- * paths are built in Kotlin and which colour role each tone takes.
+ * Drawn from `cat-hd-paused-focus` and `cat-hd-asleep-idle`, which replaced
+ * D-046's sit and nap under D-074. Both take the same scale factor as the other
+ * five poses. [MascotImage] explains why the paths are built in Kotlin and which
+ * colour role each tone takes.
  *
- * Both noses take [mid] rather than [dark]. That used to be described as a
- * sitting-pose exception, and it is not: `cat-nap` is a lying pose drawn with a
- * nose lighter than its eyes too, so the rule follows how a pose was drawn
- * rather than what posture it holds.
- *
- * **The layer the board calls "Ear shading" is the far ear, and it is drawn as
- * a subpath of the body rather than as a path of its own.** The name is
- * misleading and it cost a round trip to find out: the body path stops short of
- * that ear and leaves a notch, so the ear is geometry the body does not cover
- * rather than a shade laid over it. Dropping it removes an ear.
- *
- * It is merged instead because both parts bind to [light], and two same-coloured
- * paths abutting are antialiased twice along the join, which draws a hairline
- * across the ear on a real screen. One `addPath` holding both subpaths fills as
- * a union under nonzero winding and has no join to antialias. The five
- * empty-state poses still add theirs separately and are untouched; whether they
- * show the same seam is a question about those poses, not about these.
+ * **Both poses are lying down, so the eyes carry the state.** The old pair
+ * differed in height by a third and these differ by under 3dp. That is what
+ * makes the crossfade calm, and it is also why [FocusPose] is careful about the
+ * floor: with so little else moving, a ground line that shifted a dp on every
+ * pause would be the most visible thing in the transition.
  *
  * Decorative to a screen reader, like every other pose. The task title is the
  * heading, the button reads Pause or Resume, and the status line names the
@@ -64,31 +55,26 @@ import com.vignesh.focuslist.core.design.focuslistMotionEnabled
  */
 @Composable
 internal fun FocusMascot(running: Boolean, modifier: Modifier = Modifier) {
-    val sitting = rememberMascotImage(::catSittingFront)
-    val napping = rememberMascotImage(::catNapping)
+    val awake = rememberMascotImage(::catLyingAwake)
+    val asleep = rememberMascotImage(::catCurledAsleep)
     val settle = rememberSettle(running)
 
-    // Bottom-aligned, so the ground line under the cat is the same pixel in
-    // both poses, and each pose nudged sideways so its ground shadow sits on
-    // the box's centre line. [SitShadowOffset] says why the second half is not
-    // the same as centring the drawings.
+    // Bottom-aligned, then each pose is moved by [FocusPose.offsetX] and
+    // [FocusPose.offsetY] so the centre of its ground shadow lands on one point
+    // of the box. [FocusPose] says why that point and not the frame's edge.
     Box(
         modifier = modifier.size(width = MascotBoxWidth.dp, height = MascotBoxHeight.dp),
         contentAlignment = Alignment.BottomCenter
     ) {
         MascotPose(
-            image = sitting,
-            width = SitWidth,
-            height = SitHeight,
-            offsetX = SitShadowOffset,
+            image = awake,
+            pose = Awake,
             alpha = 1f - settle.value,
             scale = 1f - Settle * settle.value
         )
         MascotPose(
-            image = napping,
-            width = NapWidth,
-            height = NapHeight,
-            offsetX = NapShadowOffset,
+            image = asleep,
+            pose = Asleep,
             alpha = settle.value,
             scale = 1f + Settle * (1f - settle.value)
         )
@@ -98,23 +84,23 @@ internal fun FocusMascot(running: Boolean, modifier: Modifier = Modifier) {
 /**
  * One pose in the crossfade.
  *
- * Drawn at its own size rather than filling the box. The two poses are 192.72
- * and 202.55 wide, and letting each fill the same width would shrink the wider
+ * Drawn at its own size rather than filling the box. The two poses are 198.38
+ * and 209.56 wide, and letting each fill the same width would shrink the wider
  * one by about five percent, which is the one thing that stops them reading as
  * the same animal.
  *
- * **Scaled about its own feet.** [TransformOrigin] at the bottom centre means
- * the ground line does not move while the body compresses, so the settle reads
- * as the cat lowering itself rather than as the drawing sliding.
+ * **Scaled about the ground under it.** [FocusPose.ground] is the centre of the
+ * pose's shadow, which is the same point of the box for both poses, so the
+ * floor does not move while the body compresses and the settle reads as the cat
+ * lowering itself rather than as the drawing sliding.
  *
- * [offsetX] is static and per pose. Nothing here animates sideways.
+ * The offsets are static and per pose. Nothing here animates sideways or
+ * vertically.
  */
 @Composable
 private fun MascotPose(
     image: ImageVector,
-    width: Float,
-    height: Float,
-    offsetX: Float,
+    pose: FocusPose,
     alpha: Float,
     scale: Float
 ) {
@@ -122,19 +108,19 @@ private fun MascotPose(
         imageVector = image,
         contentDescription = null,
         modifier = Modifier
-            .size(width = width.dp, height = height.dp)
-            .offset(x = offsetX.dp)
+            .size(width = pose.width.dp, height = pose.height.dp)
+            .offset(x = pose.offsetX.dp, y = pose.offsetY.dp)
             .graphicsLayer {
                 this.alpha = alpha
                 scaleX = scale
                 scaleY = scale
-                transformOrigin = TransformOrigin(pivotFractionX = 0.5f, pivotFractionY = 1f)
+                transformOrigin = pose.ground
             }
     )
 }
 
 /**
- * How far the cat has settled. Zero is sitting, one is napping.
+ * How far the cat has settled. Zero is awake, one is asleep.
  *
  * **One value drives both halves, and that is deliberate.** The alpha is an
  * effect and the scale is spatial, and `Motion.kt` is right that the two are
@@ -172,130 +158,191 @@ private fun rememberSettle(running: Boolean): Animatable<Float, AnimationVector1
  * Two percent. The leaving pose compresses to 0.98 and the arriving one starts
  * at 1.02 and settles, which is enough for the eye to read a transformation
  * rather than a dissolve and small enough that it stays calm. Larger values
- * start to look like a UI transition rather than an animal sitting down.
+ * start to look like a UI transition rather than an animal lying down.
  */
 private const val Settle = 0.02f
 
-internal const val SitWidth = 192.72f
-internal const val SitHeight = 178.87f
-private const val NapWidth = 202.55f
-private const val NapHeight = 119.13f
+/**
+ * The scale factor all seven poses share, in dp per viewport unit. D-074.
+ *
+ * The five list poses carry its products as literals. It is a number here
+ * because this file has to do arithmetic with it.
+ */
+private const val MascotScale = 0.26f
 
 /**
- * How far right each pose has to move for its ground shadow to land on the
- * box's centre line.
+ * A Focus pose's frame and the ground shadow inside it, which is everything the
+ * crossfade needs to know about where the pose stands.
  *
- * **A drawing centred by its bounding box is not centred to the eye.** The
- * sitting cat's tail sweeps out to x=528.5 of a 529-wide viewport while its
- * ground shadow stops at 470.3, so the box's centre lands on the tail and the
- * shadow ends up 29.75 viewport units, 10.84dp at the size this draws at, to
- * the left of it. Under a Focus column of centred buttons that reads as the cat
- * standing off to one side, which is what it is doing. The head agrees with the
- * shadow rather than with the box: the eyes' midpoint is left of centre too.
- *
- * The shadow is the anchor rather than the head or the body because it is the
+ * **The anchor is the centre of the shadow, in both axes.** The shadow is the
  * ground, it is the widest part of either pose, and it is the one element both
- * poses draw the same way.
+ * poses draw the same way. The frame is none of those things. A drawing centred
+ * by its bounding box is not centred to the eye, and a drawing sat on its
+ * frame's bottom edge is not sat on the floor: these two shadows lie 49.29 and
+ * 53.86 units above their frames' edges, so bottom alignment alone would lift
+ * the floor 1.2dp on every pause and drop it on every resume, under a crossfade
+ * written so the floor does not move.
  *
- * The napping pose was very nearly right already, at 1.06dp, and it is
- * corrected anyway. Leaving it would slide the shadow ten dp sideways on every
- * pause and resume, under a crossfade written so the floor does not move.
+ * **The shadow is drawn from these numbers too.** [shadow] builds the ellipse
+ * from the same four values the offsets are derived from, so the anchor cannot
+ * drift away from the drawing. The old poses carried hand-measured offsets
+ * beside a shadow path exported separately, and a redraw moved one without the
+ * other.
+ *
+ * Viewport units throughout, as the artwork gives them. Everything in dp is a
+ * product with [MascotScale].
  */
-private const val SitShadowOffset = 10.84f
-private const val NapShadowOffset = 1.06f
+private class FocusPose(
+    val viewportWidth: Float,
+    val viewportHeight: Float,
+    private val shadowCx: Float,
+    private val shadowCy: Float,
+    private val shadowRx: Float,
+    private val shadowRy: Float
+) {
+    val width = viewportWidth * MascotScale
+    val height = viewportHeight * MascotScale
+
+    /** How far the ground lies above the frame's bottom edge. */
+    val groundInset = (viewportHeight - shadowCy) * MascotScale
+
+    /** How far the drawing rises above the ground. */
+    val rise = shadowCy * MascotScale
+
+    /** How far the frame reaches sideways from the ground's centre, on its longer side. */
+    val reach = maxOf(shadowCx, viewportWidth - shadowCx) * MascotScale
+
+    /** Moves the shadow's centre onto the box's centre line. */
+    val offsetX = (viewportWidth / 2f - shadowCx) * MascotScale
+
+    /** Lifts the pose until its ground meets [GroundInset]. Zero or negative, since the box aligns bottoms. */
+    val offsetY get() = groundInset - GroundInset
+
+    val ground = TransformOrigin(
+        pivotFractionX = shadowCx / viewportWidth,
+        pivotFractionY = shadowCy / viewportHeight
+    )
+
+    val shadow: List<PathNode>
+        get() = PathBuilder().apply {
+            moveTo(shadowCx - shadowRx, shadowCy)
+            arcToRelative(shadowRx, shadowRy, 0f, true, false, 2f * shadowRx, 0f)
+            arcToRelative(shadowRx, shadowRy, 0f, true, false, -2f * shadowRx, 0f)
+            close()
+        }.nodes
+}
+
+private val Awake = FocusPose(
+    viewportWidth = 763f,
+    viewportHeight = 549f,
+    shadowCx = 377.15f,
+    shadowCy = 499.71f,
+    shadowRx = 370.3f,
+    shadowRy = 34.36f
+)
+
+private val Asleep = FocusPose(
+    viewportWidth = 806f,
+    viewportHeight = 539f,
+    shadowCx = 403.54f,
+    shadowCy = 485.14f,
+    shadowRx = 387f,
+    shadowRy = 39.01f
+)
 
 /**
- * Wide enough to hold both poses once each sits on its shadow, and as tall as
- * the taller one.
- *
- * No longer the union of the two widths. Centring on the shadow pushes the
- * sitting tail 107.02dp out from the centre line, further than either pose
- * reaches on its own, and a box measured on the drawings would have let the
- * tail hang outside it.
+ * Where the shared ground sits above the box's bottom edge: the deeper of the
+ * two insets, so neither pose has to hang below the box to reach it.
  */
-private const val MascotBoxWidth = 214f
-private const val MascotBoxHeight = SitHeight
+private val GroundInset = maxOf(Awake.groundInset, Asleep.groundInset)
 
-internal fun catSittingFront(light: Color, mid: Color, dark: Color): ImageVector =
+/**
+ * Wide enough to hold both poses once each stands on the shared ground, and as
+ * tall as the taller one above it.
+ *
+ * Not the union of the two frames. Each is measured out from the ground's
+ * centre, because that is where they are placed from, and a box measured on the
+ * frames would let whichever pose was moved furthest hang outside it.
+ */
+private val MascotBoxWidth = 2f * maxOf(Awake.reach, Asleep.reach)
+private val MascotBoxHeight = maxOf(Awake.rise, Asleep.rise) + GroundInset
+
+private fun catLyingAwake(light: Color, mid: Color, dark: Color): ImageVector =
     ImageVector.Builder(
-        name = "FocusCatSittingFront",
-        defaultWidth = SitWidth.dp,
-        defaultHeight = SitHeight.dp,
-        viewportWidth = 529f,
-        viewportHeight = 491f
+        name = "FocusCatLyingAwake",
+        defaultWidth = Awake.width.dp,
+        defaultHeight = Awake.height.dp,
+        viewportWidth = Awake.viewportWidth,
+        viewportHeight = Awake.viewportHeight
     )
         .addPath(
-            pathData = addPathNodes(SitGroundShadow),
+            pathData = Awake.shadow,
             fill = SolidColor(light)
         )
         .addPath(
-            pathData = addPathNodes("$SitBody $SitEar"),
+            pathData = addPathNodes(AwakeBody),
             fill = SolidColor(light)
         )
         .addPath(
-            pathData = addPathNodes(SitShading),
+            pathData = addPathNodes(AwakeTail),
             fill = SolidColor(mid)
         )
         .addPath(
-            pathData = addPathNodes(SitNose),
-            fill = SolidColor(mid)
-        )
-        .addPath(
-            pathData = addPathNodes(SitEyeLeft),
+            pathData = addPathNodes(AwakeNose),
             fill = SolidColor(dark)
         )
         .addPath(
-            pathData = addPathNodes(SitEyeRight),
+            pathData = addPathNodes(AwakeEyeLeft),
+            fill = SolidColor(dark)
+        )
+        .addPath(
+            pathData = addPathNodes(AwakeEyeRight),
             fill = SolidColor(dark)
         )
         .build()
 
-private fun catNapping(light: Color, mid: Color, dark: Color): ImageVector =
+private fun catCurledAsleep(light: Color, mid: Color, dark: Color): ImageVector =
     ImageVector.Builder(
-        name = "FocusCatNapping",
-        defaultWidth = NapWidth.dp,
-        defaultHeight = NapHeight.dp,
-        viewportWidth = 556f,
-        viewportHeight = 327f
+        name = "FocusCatCurledAsleep",
+        defaultWidth = Asleep.width.dp,
+        defaultHeight = Asleep.height.dp,
+        viewportWidth = Asleep.viewportWidth,
+        viewportHeight = Asleep.viewportHeight
     )
         .addPath(
-            pathData = addPathNodes(NapGroundShadow),
+            pathData = Asleep.shadow,
             fill = SolidColor(light)
         )
         .addPath(
-            pathData = addPathNodes("$NapBody $NapEar"),
+            pathData = addPathNodes(AsleepBody),
             fill = SolidColor(light)
         )
         .addPath(
-            pathData = addPathNodes(NapShading),
+            pathData = addPathNodes(AsleepTail),
             fill = SolidColor(mid)
         )
         .addPath(
-            pathData = addPathNodes(NapNose),
-            fill = SolidColor(mid)
-        )
-        .addPath(
-            pathData = addPathNodes(NapEyeLeft),
+            pathData = addPathNodes(AsleepNose),
             fill = SolidColor(dark)
         )
         .addPath(
-            pathData = addPathNodes(NapEyeRight),
+            pathData = addPathNodes(AsleepEyeLeft),
+            fill = SolidColor(dark)
+        )
+        .addPath(
+            pathData = addPathNodes(AsleepEyeRight),
             fill = SolidColor(dark)
         )
         .build()
 
-private const val SitGroundShadow = "M438.858 444.784C438.288 445.014 389.668 445.114 240.618 445.214L43.1178 445.334L42.7678 446.164C42.5178 446.694 42.1678 447.034 41.7678 447.114C41.4178 447.194 40.6178 447.464 39.9878 447.714C39.3578 447.944 38.1378 448.214 37.2378 448.314C36.3378 448.414 34.8378 448.644 33.8578 448.834C32.9078 449.034 30.5878 449.484 28.7378 449.834C17.3178 451.984 5.6878 456.034 2.3078 459.064C-0.692205 461.764 -0.762204 464.534 2.0678 467.264C4.4878 469.594 11.4378 472.484 19.8578 474.694C24.0678 475.764 25.1578 476.034 26.4878 476.234C27.2378 476.364 28.5878 476.614 29.4878 476.814C30.3878 477.014 32.5078 477.414 34.2378 477.714C35.9678 478.014 38.6178 478.464 40.1178 478.714C45.6378 479.694 47.4078 479.984 50.2378 480.334C51.8178 480.534 53.7378 480.814 54.4878 480.964C55.2378 481.094 56.7078 481.264 57.7378 481.334C58.7678 481.444 60.1578 481.614 60.8578 481.734C61.5378 481.864 63.5678 482.144 65.3578 482.334C67.1378 482.534 69.6878 482.814 70.9878 482.964C76.4578 483.564 81.1378 484.014 85.3578 484.334C87.8378 484.514 91.0378 484.784 92.4878 484.944C93.9378 485.094 97.1878 485.314 99.7378 485.464C102.268 485.614 104.408 485.784 104.488 485.834C104.568 485.894 106.938 486.034 109.738 486.214C112.568 486.364 116.888 486.644 119.358 486.834C121.838 487.034 126.288 487.314 129.238 487.464C132.188 487.594 135.518 487.764 136.618 487.834C137.708 487.914 143.238 488.144 148.858 488.334C154.518 488.534 161.708 488.814 164.858 488.964C170.708 489.194 183.688 489.484 209.988 489.984C231.558 490.394 281.438 489.764 303.358 488.834C308.188 488.644 315.618 488.364 319.858 488.214C328.718 487.944 334.738 487.664 346.988 486.964C351.738 486.714 357.008 486.414 358.738 486.334C360.468 486.264 363.388 486.034 365.238 485.834C367.088 485.644 369.858 485.414 371.358 485.334C372.888 485.264 375.638 485.014 377.488 484.814C379.338 484.594 382.088 484.334 383.618 484.214C387.668 483.914 394.168 483.264 397.738 482.834C399.468 482.644 402.038 482.364 403.438 482.214C404.868 482.094 406.118 481.914 406.188 481.864C406.288 481.814 407.668 481.644 409.238 481.484C413.168 481.094 417.888 480.414 425.488 479.194C427.058 478.944 429.468 478.564 430.818 478.364C432.138 478.164 433.618 477.894 434.068 477.764C434.488 477.614 435.438 477.444 436.118 477.334C436.808 477.264 438.388 476.964 439.618 476.694C440.858 476.414 442.888 475.964 444.118 475.694C445.358 475.414 447.168 474.964 448.118 474.714C449.088 474.444 450.988 473.944 452.358 473.594C455.668 472.734 459.838 471.214 462.588 469.814C468.668 466.764 470.338 464.264 468.488 461.034C467.218 458.834 462.808 456.064 458.018 454.484C452.718 452.714 444.338 450.514 440.438 449.864C439.088 449.614 438.918 448.214 440.268 448.214C440.518 448.214 441.518 447.894 442.518 447.484C444.868 446.534 445.488 445.764 444.588 444.864L438.858 444.784Z"
-private const val SitBody = "M164.738 0.21391C157.058 1.81391 148.618 6.61391 140.618 13.9139C137.118 17.0939 130.888 23.5639 128.068 26.9639C126.988 28.2639 125.338 30.2339 124.418 31.3339C118.638 38.2339 107.388 54.3139 102.938 61.9639C102.188 63.2639 100.288 66.4639 98.7179 69.0939C97.1179 71.6939 95.0679 75.2339 94.1179 76.9639C93.1879 78.6939 91.9079 80.9639 91.3179 82.0339C90.7179 83.1139 88.9679 86.4139 87.4379 89.3839C85.9079 92.3339 84.0379 95.6139 83.2679 96.6639C78.3579 103.284 71.5679 115.314 66.4879 126.214C63.1879 133.284 62.7879 134.264 60.0679 141.464C56.0879 151.944 52.9879 161.594 50.7379 170.594C50.0679 173.314 48.6579 181.034 47.9879 185.714C47.1879 191.514 47.0079 192.864 46.6879 196.714C46.2679 201.594 46.2879 220.814 46.7179 227.234L47.0679 232.144L46.2879 234.234C45.8879 235.384 45.2879 236.884 44.9879 237.594C44.6879 238.264 44.0379 239.914 43.5679 241.214C43.0879 242.514 42.2379 244.764 41.6879 246.214C38.7879 253.914 34.6179 266.064 32.2879 273.714C30.9179 278.144 30.8379 278.464 28.3579 287.714C27.4679 291.094 26.6179 294.264 26.4679 294.784C26.0879 296.214 23.8579 306.314 23.4179 308.714C23.3679 309.064 23.0679 310.414 22.7879 311.714C22.3379 313.784 21.9679 315.864 20.7379 323.464C19.6379 330.394 19.5879 330.644 18.8879 337.094C16.8879 355.194 17.0879 373.464 19.4179 387.094C19.6379 388.314 19.8879 389.964 19.9879 390.714C20.1579 392.034 21.2879 397.694 21.7379 399.464C21.8579 399.944 22.2179 401.414 22.5079 402.714C22.8079 404.014 23.2579 405.764 23.4879 406.594C23.7379 407.414 24.0079 408.414 24.1179 408.834C24.3179 409.764 26.8579 416.714 28.3879 420.464C31.2879 427.714 36.4379 436.894 40.7879 442.664C41.8679 444.094 42.7379 445.484 42.7379 445.814C42.7379 446.594 42.2379 447.164 41.4879 447.264C41.1379 447.314 40.8579 447.514 40.8579 447.714C40.8579 448.014 41.2179 448.064 42.8179 447.984L44.7679 447.914L46.9379 450.014C53.1579 456.014 57.0379 459.014 60.9079 460.864C62.6179 461.664 63.5679 461.964 64.4179 461.984C65.7379 461.984 69.6879 462.714 70.1879 463.034C70.3579 463.164 70.4879 463.834 70.4879 464.864C70.4879 466.834 70.9079 467.764 72.1179 468.314C76.5679 470.444 88.0379 472.814 96.7379 473.444C98.8579 473.594 101.638 473.834 102.858 473.964C111.958 474.944 118.488 475.214 130.288 475.194L139.208 475.164L141.188 476.164C145.018 478.144 146.368 478.564 148.988 478.594C152.038 478.614 156.388 479.364 157.318 480.014C158.438 480.814 160.968 481.034 169.488 481.064C177.288 481.094 178.118 481.034 183.618 480.214C187.938 479.564 192.338 478.314 195.438 476.814L197.318 475.914L214.088 475.834C223.738 475.814 232.838 475.664 235.488 475.484L240.118 475.164L245.618 477.194C251.668 479.364 253.988 479.944 255.268 479.484C256.638 479.014 258.318 479.164 259.618 479.864C261.218 480.714 263.938 480.984 270.618 481.034C278.488 481.094 286.558 480.164 287.738 479.064C288.088 478.734 289.918 477.964 291.938 477.264C293.918 476.564 296.118 475.644 296.818 475.194C298.088 474.364 298.168 474.334 301.318 474.264C304.218 474.194 304.568 474.214 305.358 474.714C306.188 475.214 306.438 475.234 311.418 475.144C326.238 474.814 332.168 474.484 341.238 473.464C347.038 472.814 356.618 470.164 362.038 467.694C365.618 466.064 365.988 465.734 365.988 464.194C365.988 462.644 366.358 462.364 368.858 462.214C370.808 462.064 371.008 461.984 373.568 460.484C375.568 459.314 376.568 458.894 377.588 458.734C378.338 458.644 379.118 458.444 379.288 458.284C379.468 458.144 381.738 457.964 384.488 457.894C390.718 457.694 396.058 457.284 398.618 456.814C399.718 456.614 402.088 456.364 403.858 456.234C405.668 456.114 407.618 455.814 408.218 455.614C408.818 455.394 409.938 455.144 410.718 455.064C413.068 454.834 418.358 453.964 423.988 452.834C429.258 451.814 436.538 449.594 438.018 448.564C439.018 447.894 441.138 447.214 442.388 447.214C443.888 447.214 452.618 443.644 460.488 439.784C466.808 436.694 475.718 431.334 481.418 427.194C498.818 414.514 513.818 395.414 521.438 376.214C524.268 369.034 526.918 359.984 527.488 355.334C527.638 354.234 527.858 352.314 528.008 351.094C528.538 347.014 528.388 337.564 527.758 333.964C526.138 324.764 523.158 318.014 517.718 311.314C513.418 306.014 505.218 300.714 498.338 298.764C494.118 297.564 491.938 297.334 485.238 297.334C478.438 297.364 477.008 297.534 472.038 298.864C464.918 300.784 455.668 305.664 449.118 310.944C444.858 314.334 436.038 323.634 428.818 332.264C422.038 340.314 420.288 341.864 419.288 340.634C418.968 340.234 418.558 338.014 418.238 334.594C418.118 333.064 417.788 330.694 417.518 329.334C417.268 327.964 416.818 325.534 416.518 323.964C415.088 316.094 414.338 312.814 411.618 302.464C406.858 284.484 396.588 258.564 388.718 244.834L386.858 241.594L386.968 231.464C387.088 217.444 386.488 210.444 383.738 193.334C383.558 192.364 383.238 190.564 382.988 189.334C382.718 188.094 382.308 186.144 382.088 184.964C381.668 182.834 380.568 178.414 379.338 173.964C378.438 170.644 374.268 158.034 373.718 156.934C373.468 156.434 372.818 154.714 372.268 153.094C371.368 150.534 371.238 149.894 371.238 147.984C371.258 144.364 370.258 132.814 369.358 126.214C368.418 119.094 368.188 117.694 367.858 115.964C367.668 114.944 367.218 112.514 366.838 110.594C366.488 108.664 366.038 106.414 365.858 105.594C365.668 104.764 365.258 102.964 364.968 101.594C364.418 99.0339 361.858 88.8339 361.088 86.0939C360.858 85.2639 360.618 84.3139 360.568 83.9639C360.488 83.6139 360.038 81.9839 359.568 80.3339C359.088 78.6939 358.538 76.7639 358.338 76.0939C357.188 71.9839 357.038 71.5939 356.638 71.5139C356.338 71.4339 356.238 71.6139 356.238 72.3339C356.238 72.9439 355.988 73.6139 355.488 74.3339C354.638 75.5939 354.718 75.5639 349.358 76.0939C347.308 76.2839 344.758 76.5639 343.738 76.7139C338.618 77.4139 335.858 77.7339 333.118 77.9639C331.468 78.0939 329.758 78.3139 329.318 78.4339C328.888 78.5639 326.868 78.7339 324.818 78.8339C322.788 78.9139 320.338 79.1439 319.358 79.3339C318.418 79.5139 316.618 79.7339 315.358 79.8139C314.138 79.8839 311.538 80.1139 309.618 80.3339C304.088 80.9439 304.008 80.9139 301.268 79.3639C296.188 76.5139 291.668 74.2139 289.358 73.3339C288.538 73.0139 285.938 71.9139 283.618 70.8839C281.258 69.8639 278.468 68.6839 277.358 68.2639C276.258 67.8339 274.238 67.0139 272.858 66.4639C270.488 65.4839 264.968 63.5939 261.118 62.4139C260.168 62.1139 258.738 61.6839 257.988 61.4339C257.238 61.1839 255.808 60.7639 254.838 60.4839C252.618 59.8339 252.288 59.4839 252.188 57.5939C252.088 55.6639 251.618 55.5139 250.138 56.8839C247.938 58.9839 247.118 59.3139 245.338 58.7139C244.938 58.5939 242.858 58.3139 240.738 58.0939C235.268 57.5339 234.118 57.3639 233.438 56.9139C233.118 56.6839 231.788 55.0139 230.538 53.1639C227.538 48.8339 217.818 36.3639 212.718 30.3339C200.088 15.4139 191.318 7.16391 184.358 3.63391C182.288 2.61391 178.208 1.08391 176.618 0.73391C175.788 0.56391 174.708 0.313909 174.218 0.183909C173.168 -0.066091 166.038 -0.0660904 164.738 0.21391Z"
-private const val SitShading = "M479.238 297.444C469.838 298.444 458.088 303.694 449.118 310.944C444.968 314.264 435.838 323.834 429.388 331.594C428.018 333.234 426.138 335.444 425.238 336.464C424.338 337.484 423.308 338.734 422.988 339.214C422.668 339.694 421.718 340.864 420.888 341.784L419.388 343.514L419.468 354.064C419.538 367.334 418.968 376.814 417.618 383.964C417.418 384.984 417.188 386.394 417.118 387.094C417.008 387.764 416.808 388.834 416.638 389.464C416.438 390.094 416.168 391.314 416.018 392.214C415.618 394.334 413.368 403.094 412.618 405.334C409.388 415.014 405.808 423.144 402.488 428.364C401.618 429.714 400.288 431.784 399.538 432.964C398.188 435.094 394.168 440.814 392.568 442.964C390.938 445.114 384.988 451.194 382.438 453.234C378.268 456.664 378.068 456.864 378.388 457.394C378.638 457.784 379.118 457.834 383.518 457.814C389.068 457.784 396.068 457.334 398.618 456.834C399.588 456.644 401.888 456.394 403.738 456.234C405.588 456.114 407.618 455.814 408.218 455.614C408.818 455.394 409.938 455.144 410.718 455.064C413.068 454.834 418.358 453.964 423.988 452.834C429.238 451.814 436.538 449.594 437.988 448.594C438.988 447.914 440.688 447.334 442.618 447.094C445.918 446.664 459.338 440.714 467.318 436.164C478.538 429.734 484.938 425.064 493.218 417.214C505.438 405.664 515.638 390.834 521.438 376.214C524.268 369.034 526.918 359.984 527.488 355.334C527.638 354.234 527.858 352.314 528.008 351.094C528.188 349.834 528.308 346.194 528.318 342.964C528.288 335.714 527.768 332.064 525.818 325.834C523.968 319.944 519.038 312.014 514.938 308.334C508.688 302.714 502.068 299.364 494.238 297.834L479.238 297.444ZM109.068 416.764C108.438 417.444 107.468 421.444 106.858 425.664C106.358 429.164 106.118 438.194 106.438 440.714C107.138 446.034 107.618 448.334 108.768 451.734C110.358 456.484 110.318 458.114 108.588 459.834C107.768 460.664 103.568 462.464 101.618 462.834C101.068 462.944 94.1577 463.114 86.2877 463.194L71.9377 463.334L71.2177 464.164C69.9677 465.534 70.4177 467.514 72.1377 468.334C76.5877 470.444 87.9877 472.814 96.7377 473.444C98.8577 473.594 101.638 473.834 102.858 473.964C108.488 474.564 110.708 474.734 115.858 474.964C118.888 475.114 125.308 475.214 130.168 475.194L138.958 475.164L141.668 476.414C146.068 478.464 146.988 478.714 149.318 478.664C151.788 478.594 155.568 479.234 156.768 479.944C158.238 480.814 161.068 481.064 169.618 481.064C177.268 481.094 178.138 481.034 183.618 480.214C187.918 479.564 192.488 478.264 195.568 476.784L197.358 475.914L214.118 475.834C223.638 475.814 232.858 475.644 235.488 475.484L240.118 475.164L245.688 477.194C251.808 479.414 254.308 479.984 255.938 479.514C257.418 479.064 258.238 479.144 259.558 479.864C263.358 481.894 284.838 481.214 288.118 478.984C288.668 478.594 290.468 477.814 292.118 477.214C293.758 476.644 295.938 475.714 296.938 475.194C298.718 474.234 298.868 474.214 301.268 474.214C303.238 474.214 304.018 474.314 304.968 474.734C306.088 475.214 306.518 475.234 311.388 475.144C326.218 474.814 332.168 474.484 341.238 473.464C348.618 472.644 363.118 468.144 364.818 466.164C365.388 465.484 365.218 464.594 364.338 463.714L363.738 463.094L347.918 462.964C333.268 462.834 332.018 462.784 330.888 462.364C327.638 461.114 326.418 457.814 327.888 454.334C329.688 450.094 331.018 445.814 331.358 442.964C331.438 442.214 331.688 440.614 331.888 439.414C332.318 436.814 332.568 426.234 332.288 421.664C332.058 418.034 331.668 417.214 330.118 417.214C328.738 417.214 328.288 417.984 327.618 421.594C327.258 423.334 326.838 425.414 326.638 426.194C326.438 426.964 326.018 428.664 325.718 429.964C324.068 437.194 320.238 447.334 317.318 452.364C314.638 456.914 309.488 462.414 305.168 465.284C301.768 467.534 301.488 467.914 301.488 470.034C301.488 471.414 301.418 471.714 300.838 472.234L300.188 472.834L278.418 472.914C259.538 472.984 256.438 472.944 255.238 472.614C247.468 470.464 246.418 470.114 243.358 468.614C237.888 465.944 232.518 461.314 230.568 457.594C229.088 454.714 227.138 449.284 226.418 445.964C225.288 440.834 223.918 430.234 223.518 423.784C223.288 419.914 222.938 419.214 221.238 419.214C219.888 419.214 219.268 420.014 218.988 422.064C218.438 425.864 218.238 427.034 217.488 431.094C215.438 442.064 211.518 454.964 209.118 458.464C204.988 464.514 196.438 469.644 186.518 472.014L183.118 472.834L167.618 472.914C153.708 472.984 151.938 472.944 150.358 472.564C141.538 470.414 135.388 466.914 128.188 459.914C124.088 455.914 122.868 454.214 120.168 448.814C117.468 443.414 114.468 432.694 113.238 424.094C112.408 418.164 112.238 417.394 111.718 416.784C110.988 416.034 109.768 416.014 109.068 416.764Z"
-private const val SitNose = "M211.858 189.234C211.308 189.334 210.438 189.514 209.938 189.594C208.788 189.764 207.568 190.944 207.338 192.064C207.118 193.364 207.738 194.384 210.968 197.764C212.568 199.464 214.518 201.584 215.318 202.514C216.938 204.364 217.938 204.964 219.488 204.964C221.208 204.964 222.088 204.334 225.438 200.634C230.418 195.114 230.868 194.584 231.218 193.764C231.938 192.034 230.668 189.864 228.788 189.594C228.288 189.514 227.388 189.334 226.788 189.214L211.858 189.234Z"
-private const val SitEyeLeft = "M140.488 177.684C137.208 177.834 136.708 177.914 135.438 178.534C130.288 181.034 128.618 188.364 132.038 193.384C132.968 194.764 134.038 195.564 135.958 196.334L137.518 196.984L150.818 196.914L164.118 196.834L165.618 196.234C169.618 194.614 172.038 189.414 170.888 184.884C169.918 181.114 168.188 179.234 164.618 178.134L140.488 177.684Z"
-private const val SitEyeRight = "M273.088 178.064C270.988 178.734 268.588 180.834 267.718 182.814C265.418 188.084 267.568 194.314 272.358 196.234L273.858 196.834H287.118H300.358L301.858 196.234C303.888 195.414 305.938 193.364 306.688 191.384C307.388 189.514 307.438 185.514 306.788 183.664C305.838 181.064 304.058 179.284 301.338 178.314L299.718 177.714L286.918 177.734L273.088 178.064Z"
+private const val AwakeBody = "M 277,16.55 C 268.15,18.62 263.95,20.77 255.12,27.62 C 245.6,35.05 236.68,43.98 224.88,57.85 C 222.1,61.12 220.55,63.07 217.4,67.2 C 215.6,69.57 213.58,72.2 212.93,73.07 C 210.33,76.43 202.43,87.95 198.73,93.8 C 193.95,101.32 194.48,101.07 189.9,98.05 C 188.53,97.12 186.2,95.52 184.75,94.5 C 183.3,93.48 180.5,91.62 178.5,90.42 C 176.5,89.2 173.78,87.52 172.45,86.67 C 166.95,83.17 165,82 162.25,80.5 C 160.68,79.62 157.57,77.85 155.38,76.55 C 144.05,69.8 125.75,61.55 114.5,58.15 C 111.03,57.1 106.53,56 105.73,56 C 105.4,56 104.33,55.82 103.38,55.62 C 101.03,55.12 95.65,55.12 93.38,55.62 C 84.05,57.68 77.12,63.15 67.85,75.75 C 61.48,84.43 52.9,100.7 47.5,114.38 C 46.8,116.15 45.95,118.25 45.62,119 C 42.35,126.6 35.55,147.05 32.25,159.25 C 32,160.15 31.57,161.77 31.28,162.88 C 30.98,163.98 30.58,165.6 30.38,166.5 C 30.2,167.4 29.65,169.75 29.15,171.75 C 27.23,179.52 25.85,186.12 24.9,192.25 C 24.68,193.55 24.23,196.38 23.9,198.5 C 21.2,215.27 19.5,235.88 19.5,251.85 C 19.5,263.82 20.43,279.95 21.62,288.5 C 21.82,289.95 22.1,291.9 22.23,292.88 C 23.2,300.12 24,304.45 25.38,310.25 C 25.6,311.15 25.98,312.82 26.23,314 C 26.8,316.62 27.78,320.23 28.9,323.88 C 29.35,325.38 29.88,327.07 30.03,327.62 C 31.95,334.2 36.03,345.95 38.05,350.75 C 43.1,362.65 50.48,376 56.15,383.55 C 59.4,387.85 60,388.77 60,389.62 C 60,390.07 59.35,392.18 58.55,394.27 C 55.35,402.65 53.1,410.7 51.9,418.12 C 51.1,423 50.88,426.05 50.88,433.25 C 50.88,440.7 51.1,443.48 52.15,449.88 C 53.55,458.18 56.95,466.18 62.62,474.5 C 65.53,478.73 65.78,479.2 65.67,480.05 C 65.52,481.12 65.83,481.5 66.85,481.5 C 67.45,481.5 68.15,482.05 70.85,484.7 C 72.65,486.48 75.08,488.68 76.25,489.6 C 77.42,490.52 78.8,491.62 79.33,492.05 C 82.17,494.32 94.35,500.82 99.62,502.9 C 104.53,504.8 115.83,507.82 120.5,508.48 C 121.53,508.62 123.78,508.98 125.5,509.25 C 127.22,509.55 130.38,509.93 132.5,510.12 C 134.62,510.32 137.22,510.62 138.25,510.75 C 142.78,511.38 167.93,512.88 180.25,513.25 C 184.18,513.38 188.95,513.6 190.88,513.75 C 192.8,513.9 199.72,514.15 206.25,514.27 C 212.78,514.4 219.2,514.55 220.5,514.58 C 238.32,515.17 290.8,515.42 306.88,515 C 342.7,514.08 347.25,513.9 377.25,512.25 C 379.8,512.1 383.57,511.82 385.62,511.62 C 389.93,511.2 397.9,511.12 399.38,511.52 C 399.93,511.68 402.23,511.9 404.5,512.02 C 406.77,512.15 409.75,512.35 411.12,512.48 C 412.5,512.6 416.55,512.83 420.12,512.98 C 423.7,513.12 427.57,513.38 428.75,513.5 C 433.77,514.05 455.23,514.33 479.62,514.12 C 493.1,514 506.05,513.9 508.38,513.88 C 510.73,513.88 512.77,513.77 512.93,513.67 C 513.1,513.55 518.68,513.35 525.3,513.23 C 531.95,513.08 538.68,512.88 540.25,512.77 C 541.83,512.65 546.05,512.45 549.62,512.27 C 553.2,512.12 557.2,511.9 558.5,511.75 C 559.8,511.62 564.6,511.35 569.12,511.12 C 573.67,510.9 578.4,510.62 579.62,510.5 C 580.88,510.35 583.3,510.12 585.05,510 C 586.8,509.88 588.93,509.65 589.8,509.52 C 590.68,509.38 592.9,509.15 594.75,509 C 597.73,508.77 601,508.38 607.12,507.5 C 608.1,507.35 609.67,507.18 610.62,507.1 C 612.27,507 615.73,506.43 619.62,505.62 C 620.6,505.43 622.1,505.2 623,505.12 C 625.02,504.95 627.45,504.35 635.75,501.98 C 643.75,499.73 649.45,497.68 653.25,495.73 C 654.27,495.2 656.83,494 658.88,493.05 C 665.95,489.77 670.25,487.12 670.98,485.57 C 671.4,484.7 671.68,484.48 672.8,484.1 C 673.53,483.88 674.85,483.23 675.75,482.68 C 679.25,480.52 679.83,480.25 681.15,480.25 C 682.65,480.25 683,479.95 682.83,478.88 C 682.68,477.9 683.25,477.2 686.85,474 C 690.7,470.62 700,460.02 704.03,454.48 C 707.38,449.85 712.68,441.65 714.68,438 C 715.1,437.25 716.18,435.27 717.12,433.62 C 727.7,414.75 736.83,388.18 741.12,363.62 C 741.48,361.55 741.95,358.98 742.15,357.88 C 742.78,354.3 743.35,349.55 744.43,339 C 745.13,331.8 745.08,311.15 744.3,303 C 743.65,296.05 742.68,287.95 742.1,284.62 C 740.65,276.2 740.25,274.3 738.95,269.25 C 738.53,267.68 738.05,265.75 737.88,265 C 735.2,253.6 728.4,235.48 721.88,222.5 C 717.9,214.57 709.02,200.27 703.88,193.5 C 698.75,186.75 698.08,185.88 692.25,178.88 C 691.33,177.77 688.23,174.48 685.38,171.55 C 677.02,163 670.38,157.22 658,147.77 C 647.88,140.05 627.65,128.4 614.88,122.95 C 603.5,118.1 588.02,112.55 581.62,111.05 C 581.08,110.9 577.73,110.05 574.18,109.15 C 568.08,107.6 563.85,106.6 560.75,106 C 548.65,103.68 534.33,101.77 523.7,101.15 C 520.38,100.92 515.7,100.62 513.38,100.47 C 508.38,100.12 484.45,100.32 478.12,100.75 C 475.93,100.9 472.73,101.12 471,101.25 C 463.43,101.75 448.12,103.6 443,104.62 C 441.98,104.82 439.55,105.27 437.62,105.65 C 427.75,107.47 415.68,110.22 409.12,112.12 C 407.48,112.6 404.73,113.4 403,113.9 C 401.27,114.4 399.25,115 398.5,115.25 C 391.85,117.48 382.18,120.5 381.75,120.5 C 380.88,120.5 380.07,119.4 377.33,114.38 C 370.43,101.85 362.3,88.82 354.58,77.85 C 342.8,61.15 333.83,50.3 322.45,39.12 C 309.73,26.58 298.6,18.9 290.57,17.1 C 289.65,16.9 288.3,16.55 287.6,16.35 C 285.65,15.8 279.7,15.9 277,16.55 Z"
+private const val AwakeTail = "M 521.62,308.4 C 514.23,308.92 499.45,310.95 494.62,312.1 C 493.8,312.3 492.18,312.67 491,312.95 C 487.8,313.7 483.48,314.9 480.12,315.98 C 478.48,316.52 476.12,317.25 474.88,317.62 C 473.65,318 471.18,318.88 469.38,319.57 C 467.6,320.25 464.57,321.42 462.68,322.15 C 457.5,324.17 446.73,329.8 438.75,334.62 C 432.27,338.57 421.75,346.27 416.43,350.95 C 405.95,360.17 394.23,373.23 388.12,382.5 C 378.4,397.27 372.8,410.05 369.03,426 C 367.8,431.18 367.33,434.3 366.88,440.62 C 366.32,448.27 366.48,456.38 367.28,461.12 C 367.4,461.95 367.68,463.62 367.85,464.88 C 368.05,466.1 368.3,467.57 368.45,468.12 C 368.6,468.68 368.93,470.02 369.15,471.12 C 369.38,472.23 369.7,473.8 369.85,474.62 C 370.9,479.57 375.4,490.27 378.68,495.55 C 381.4,499.98 387.1,506.23 390.58,508.68 C 391.7,509.45 392.95,510.35 393.33,510.68 C 393.95,511.18 394.33,511.25 396.2,511.25 C 397.4,511.25 398.83,511.38 399.38,511.52 C 399.93,511.68 402.23,511.9 404.5,512.02 C 406.77,512.15 409.75,512.35 411.12,512.48 C 412.5,512.6 416.55,512.83 420.12,512.98 C 423.7,513.12 427.57,513.38 428.75,513.5 C 433.77,514.05 455.23,514.33 479.62,514.12 C 493.1,514 506.05,513.9 508.38,513.88 C 510.73,513.88 512.77,513.77 512.93,513.67 C 513.1,513.55 518.68,513.35 525.3,513.23 C 531.95,513.08 538.68,512.88 540.25,512.77 C 541.83,512.65 546.05,512.45 549.62,512.27 C 553.2,512.12 557.2,511.9 558.5,511.75 C 559.8,511.62 564.6,511.35 569.12,511.12 C 573.67,510.9 578.4,510.62 579.62,510.5 C 580.88,510.35 583.27,510.12 585,510 C 586.73,509.88 589.38,509.6 590.88,509.4 C 592.4,509.2 594.75,508.98 596.12,508.88 C 597.5,508.8 599.58,508.55 600.75,508.35 C 601.92,508.15 603.83,507.88 605,507.75 C 606.17,507.62 608.25,507.4 609.62,507.25 C 612.25,506.98 617.08,506.18 619.62,505.62 C 620.45,505.45 621.92,505.23 622.88,505.12 C 625.02,504.95 627.33,504.38 635.75,501.98 C 643.75,499.7 649.45,497.68 653.25,495.73 C 654.27,495.2 656.75,494.02 658.73,493.12 C 662.95,491.18 665.35,489.9 668.18,488.07 C 670.43,486.6 670.7,486.35 670.3,485.95 C 670.13,485.77 669,486.02 666.65,486.85 C 664.8,487.48 663.08,488 662.85,488 C 662.6,488 660.73,488.55 658.65,489.23 C 654.33,490.65 652.13,491.25 645.12,492.85 C 636.45,494.88 631.62,495.85 629.12,496.12 C 628.3,496.23 626.95,496.45 626.12,496.62 C 625.3,496.8 623.9,497.02 623,497.12 C 622.1,497.23 620.9,497.4 620.33,497.52 C 618.2,497.98 606.95,498.9 598.75,499.27 C 575.25,500.35 558.6,498.88 544.25,494.43 C 538.95,492.8 531.15,488.88 526.83,485.68 C 522.65,482.57 517.7,477.4 514.83,473.12 C 512.58,469.77 510.93,465.5 509.68,459.75 C 507.12,448.15 508.88,436.68 515.05,424.55 C 517,420.73 517.95,419.25 520.93,415.55 C 527.65,407.15 534.4,402 546.5,396.07 C 554.05,392.38 554.83,391.95 559.75,388.67 C 570.88,381.27 577.8,373.32 581.83,363.38 C 584.43,356.95 586.03,347.6 585.52,341.85 C 584.73,332.75 580.45,324.17 574.3,319.3 C 568.85,315 563.18,312.32 556.8,311.1 C 555.78,310.9 554.88,310.7 554.77,310.65 C 554.4,310.4 548.17,309.45 544,308.98 Z"
+private const val AwakeNose = "M 192.05,267.52 C 188.85,269.12 188,272.82 190.15,275.93 C 190.68,276.73 192.43,279 194,281 C 195.57,283 197.65,285.68 198.6,286.93 C 201.85,291.35 203.93,292.57 206.78,291.72 C 208.18,291.3 209.22,290.3 211.58,287.18 C 212.75,285.65 215.28,282.4 217.23,280 C 219.15,277.6 220.98,275.15 221.28,274.55 C 222.38,272.32 221.55,269.53 219.35,267.82 C 218.43,267.12 218.43,267.12 205.78,267.05 C 193.3,267 193.1,267 192.05,267.53 Z"
+private const val AwakeEyeLeft = "M 99.95,252 C 96.73,252.55 92.3,255.85 90.68,258.93 C 89.9,260.38 89.25,263.32 89.25,265.35 C 89.25,267.07 90.05,270.2 90.93,271.82 C 92.45,274.68 96.4,277.52 99.8,278.22 C 100.73,278.42 107.2,278.5 120.88,278.45 C 140.62,278.38 140.62,278.38 142.12,277.8 C 149.25,275.12 152.82,267.78 150.47,260.57 C 149.1,256.32 145.12,252.82 140.75,252 C 139.18,251.7 101.72,251.7 99.95,252 Z"
+private const val AwakeEyeRight = "M 267.38,248.82 C 261.52,251.2 258.75,255.4 258.75,261.9 C 258.75,268.2 261.93,272.47 268.03,274.38 C 270.15,275.02 270.15,275.02 289.9,274.95 C 309.63,274.85 309.63,274.85 311.5,274.18 C 316,272.53 319.02,269.23 320.23,264.65 C 320.88,262.17 320.88,260.85 320.25,258.4 C 319.02,253.57 316.1,250.32 311.5,248.68 C 309.62,248 309.62,248 289.5,248 Z"
 
-private const val NapGroundShadow = "M523.335 282.107C522.815 282.457 521.815 283.337 521.105 284.057C520.435 284.757 519.365 285.687 518.735 286.107C518.105 286.507 516.985 287.437 516.235 288.137C513.135 291.007 509.485 293.707 505.735 295.887C504.565 296.577 502.935 297.527 502.105 298.057C501.285 298.557 498.215 300.187 495.235 301.657L489.865 304.337L289.605 304.407L89.3654 304.457L86.9854 303.957C79.8354 302.407 69.1354 298.357 64.6054 295.477C63.9354 295.057 62.9054 294.577 62.3654 294.437C60.2354 293.857 52.4854 288.387 47.5654 283.957C45.7854 282.357 44.7854 281.907 43.0654 282.007C42.0354 282.057 41.6054 282.207 41.4654 282.527C41.3354 282.757 41.1354 283.157 41.0154 283.407C40.9154 283.637 40.5354 283.857 40.2154 283.907C39.8854 283.937 38.8854 284.187 37.9854 284.457C37.0854 284.727 33.7154 285.457 30.4854 286.077C27.2554 286.707 23.9354 287.387 23.1054 287.577C17.7354 288.857 15.9854 289.337 12.9854 290.307C6.78541 292.307 2.33541 294.637 0.835413 296.607C-0.134587 297.887 -0.284588 299.777 0.515412 301.207C1.73541 303.357 5.73541 305.687 11.4854 307.527C16.0054 309.007 21.7854 310.527 24.4854 311.007C25.2354 311.137 26.4354 311.387 27.1054 311.577C27.8154 311.757 28.9854 312.007 29.7354 312.107C30.4854 312.187 31.3654 312.357 31.6654 312.477C31.9354 312.577 33.1354 312.807 34.2854 312.957C35.4154 313.107 36.7154 313.337 37.1054 313.457C37.5354 313.577 38.9354 313.807 40.2354 313.957C41.5354 314.107 42.9354 314.337 43.3354 314.477C43.7354 314.607 45.5354 314.887 47.3154 315.077C49.0854 315.307 50.6354 315.507 50.7154 315.577C50.8154 315.637 52.0654 315.807 53.4854 315.957C54.9354 316.107 57.6854 316.437 59.6054 316.707C68.0654 317.837 75.2854 318.607 81.4854 319.077C84.0154 319.277 86.8854 319.557 87.8654 319.687C88.8154 319.837 90.7854 320.007 92.2354 320.077C93.6854 320.187 96.2654 320.407 97.9854 320.577C99.7054 320.777 102.585 320.977 104.365 321.077C106.155 321.157 108.685 321.337 109.985 321.457C111.285 321.577 114.435 321.807 116.985 321.957C119.535 322.107 124.205 322.387 127.365 322.577C130.535 322.777 135.705 323.057 138.865 323.207C142.035 323.357 146.015 323.557 147.735 323.707C149.455 323.837 153.165 324.007 155.985 324.077C158.805 324.157 164.385 324.387 168.365 324.577C172.365 324.777 179.035 325.057 183.235 325.207C187.435 325.337 194.015 325.577 197.865 325.707C224.935 326.687 263.555 327.107 290.735 326.727C326.985 326.257 343.435 325.907 362.605 325.207C400.835 323.837 409.635 323.437 419.985 322.577C422.535 322.387 425.965 322.157 427.605 322.077C431.465 321.887 433.685 321.507 434.535 320.937C435.135 320.507 435.735 320.457 441.665 320.457C448.865 320.457 455.305 320.157 459.985 319.577C461.715 319.387 464.805 319.107 466.865 318.957C468.935 318.807 470.785 318.637 470.985 318.577C471.185 318.527 472.985 318.357 474.985 318.207C476.985 318.077 479.915 317.777 481.485 317.577C484.165 317.227 486.105 317.007 494.235 316.057C495.965 315.887 497.865 315.607 498.485 315.457C499.105 315.337 500.885 315.107 502.415 314.957C503.965 314.807 505.385 314.637 505.565 314.557C505.735 314.507 507.285 314.207 509.005 313.937C510.715 313.657 513.085 313.257 514.255 313.077C515.435 312.887 517.055 312.557 517.865 312.337C518.685 312.137 519.565 311.957 519.835 311.957C520.105 311.957 521.235 311.727 522.365 311.477C523.465 311.227 525.485 310.757 526.865 310.477C535.835 308.527 544.255 305.557 547.315 303.257C550.485 300.857 550.535 297.707 547.435 295.387C543.735 292.577 534.665 289.077 527.865 287.837C524.285 287.157 524.185 286.777 526.885 284.357C529.465 282.007 529.405 281.607 526.465 281.507L523.335 282.107Z"
-private const val NapBody = "M73.9153 27.4569C72.1853 27.7569 67.5153 29.1869 66.3653 29.7769C54.2353 35.9269 44.4553 51.6769 35.3853 79.5769C32.8853 87.2769 32.3353 89.1769 31.4653 92.9569C31.1653 94.2569 30.7353 96.0569 30.4853 96.9569C30.2353 97.8569 29.9653 99.1369 29.8653 99.8369C29.7853 100.507 29.5653 101.577 29.3653 102.207C29.1853 102.837 28.9653 104.007 28.8653 104.807C28.7553 105.627 28.5853 106.577 28.4653 106.907C28.3353 107.257 28.1053 108.377 27.9653 109.427C27.8353 110.487 27.6053 111.837 27.4853 112.457C27.0053 114.677 26.0053 121.637 25.7353 124.707C25.5853 126.427 25.3653 128.737 25.2353 129.837C24.9053 132.487 24.4853 141.027 24.2553 149.077L24.0853 155.577L22.5653 160.207C20.6053 166.177 19.9853 168.257 19.9853 168.807C19.9853 169.057 19.5353 170.807 18.9853 172.727C18.4353 174.657 17.9853 176.477 17.9853 176.777C17.9853 177.077 17.7553 178.207 17.5153 179.337C14.5653 191.857 13.5153 211.557 15.1053 224.457C17.8053 246.077 26.1853 265.577 38.8653 279.807C41.2353 282.457 41.5653 283.107 40.8653 283.707C40.2853 284.187 40.8653 284.707 41.9653 284.707C42.8353 284.707 44.9353 285.777 45.3353 286.437C45.6053 286.857 50.2853 290.607 53.3353 292.807C56.9153 295.407 58.8653 296.577 60.1053 296.937C60.6553 297.077 61.6853 297.557 62.3653 297.977C67.3353 301.137 77.9553 305.027 86.1053 306.707C88.1853 307.107 90.6553 307.637 91.6053 307.837C92.5853 308.027 94.2353 308.207 95.3353 308.207C96.4153 308.207 97.9853 308.387 98.8353 308.607C100.115 308.957 101.335 309.007 106.735 308.887L113.105 308.727L113.785 309.387L114.455 310.027L123.915 310.107C140.605 310.227 142.605 310.277 143.235 310.527C143.985 310.807 146.285 311.437 150.365 312.437C155.705 313.727 167.765 314.337 174.105 313.607C175.915 313.407 178.085 313.157 178.985 313.057C179.865 312.977 181.035 312.727 181.585 312.557C182.935 312.077 184.215 312.137 185.165 312.707C186.635 313.577 206.065 314.007 210.985 313.227C212.985 312.937 231.485 312.357 238.485 312.407C241.435 312.437 244.085 312.307 244.765 312.157C245.735 311.937 246.135 311.957 247.515 312.437C248.385 312.727 250.285 313.077 251.735 313.207C253.185 313.357 254.935 313.577 255.605 313.707C259.385 314.437 265.105 314.527 295.985 314.477C319.465 314.457 332.415 314.157 336.935 313.577C338.485 313.387 340.865 313.207 342.185 313.207C346.965 313.227 352.265 312.507 356.235 311.307C360.255 310.077 360.685 310.027 361.735 310.577C362.385 310.907 363.005 310.937 366.585 310.687C371.285 310.337 377.365 310.807 380.535 311.727C383.885 312.707 392.665 314.757 394.865 315.057C396.105 315.227 399.105 315.907 401.535 316.557C403.985 317.207 406.865 317.837 407.915 317.977C408.985 318.107 410.435 318.337 411.105 318.477C411.805 318.637 413.755 318.837 415.485 318.957C417.215 319.057 418.835 319.227 419.105 319.307C419.385 319.407 422.235 319.557 425.465 319.687L431.315 319.887L431.985 320.707L432.665 321.527L437.635 321.207C450.135 320.437 450.985 320.307 450.985 319.077C450.985 318.257 451.415 318.027 453.385 317.857C454.365 317.777 455.615 317.557 456.135 317.387C456.665 317.187 457.835 316.957 458.735 316.857C459.635 316.777 461.385 316.477 462.605 316.207C471.165 314.337 470.665 314.457 476.835 312.727C480.385 311.757 484.815 310.207 487.235 309.107C493.835 306.077 495.465 305.337 499.565 303.227C502.035 301.977 505.015 300.357 506.185 299.637C507.385 298.887 509.085 297.857 509.985 297.337C512.315 295.957 516.105 293.027 518.735 290.637C519.485 289.937 520.605 289.007 521.235 288.607C521.835 288.187 522.985 287.207 523.735 286.437C524.505 285.657 525.715 284.727 526.415 284.387C528.015 283.557 534.765 276.577 537.815 272.577C547.535 259.837 552.965 247.187 555.215 231.957C555.385 230.927 555.635 229.277 555.755 228.337C556.055 226.457 555.905 219.337 555.505 216.457C554.905 212.257 554.715 211.007 554.385 209.957C554.215 209.337 553.735 207.757 553.365 206.457C552.585 203.837 550.315 198.757 548.435 195.457C544.465 188.527 537.935 182.557 530.105 178.657C526.435 176.807 523.505 175.857 519.605 175.207C512.635 174.027 505.255 174.637 497.665 177.027C495.605 177.677 495.135 177.507 495.035 176.057C495.015 175.527 494.805 173.907 494.605 172.457C494.435 171.007 494.215 169.107 494.105 168.207C493.505 161.677 491.835 154.007 488.815 144.077C485.485 133.207 481.165 123.457 474.565 111.977C465.835 96.8069 452.115 81.3569 437.635 70.3369C432.265 66.2269 431.185 65.4769 429.885 64.6769C429.185 64.2769 427.615 63.3069 426.365 62.5569C419.605 58.3569 411.085 53.8269 404.365 50.8369C399.105 48.5069 385.385 43.8569 380.105 42.5769C374.055 41.1569 373.305 40.9769 372.235 40.8369C371.605 40.7269 370.605 40.5269 369.985 40.3369C368.555 39.9069 363.365 39.0769 358.985 38.5769C357.135 38.3869 355.335 38.1569 354.985 38.0769C354.635 38.0269 351.335 37.7769 347.605 37.5569C341.665 37.1769 339.805 37.1769 332.105 37.4269C327.305 37.6069 322.505 37.8569 321.485 37.9769C320.465 38.0769 317.585 38.4269 315.105 38.7069C312.635 38.9769 310.215 39.3369 309.735 39.4269C309.255 39.5569 308.085 39.7269 307.135 39.8369C306.185 39.9369 304.915 40.1569 304.265 40.3369C303.635 40.5069 302.615 40.7269 301.985 40.8369C297.485 41.4769 290.885 43.0569 284.605 44.9569C280.385 46.2269 280.105 46.2769 279.415 46.1369C278.805 45.9569 277.885 44.9369 275.985 42.2569C275.005 40.8869 274.585 40.9069 274.385 42.3569C274.085 44.5569 273.165 45.7069 271.685 45.7069C271.055 45.7069 269.585 46.5769 269.415 47.0569C269.335 47.2269 268.885 47.5769 268.385 47.8069C267.515 48.2269 267.185 48.9769 267.735 49.3369C268.055 49.5269 268.055 50.6069 267.735 51.1769C267.605 51.4269 266.415 52.1269 265.055 52.7069C263.705 53.3069 262.385 53.9369 262.105 54.0769C261.535 54.4369 256.085 56.0569 254.635 56.3369C254.115 56.4069 252.985 56.8069 252.135 57.2069C251.315 57.6069 249.535 58.3369 248.235 58.8369C246.935 59.3369 245.385 59.9569 244.785 60.2069C244.215 60.4769 243.585 60.7069 243.435 60.7069C243.285 60.7069 241.805 61.2269 240.135 61.8569C238.455 62.5069 235.665 63.5069 233.865 64.0769C232.085 64.6869 229.605 65.5569 228.365 66.0269C225.535 67.1369 223.915 67.7069 221.185 68.6069L219.035 69.3069L217.065 68.7269C215.985 68.4069 214.165 67.8569 212.985 67.4569C208.455 66.0069 205.365 65.1369 201.365 64.2069C200.135 63.9369 198.265 63.4769 197.235 63.2069C196.205 62.9569 194.915 62.6569 194.365 62.5769C193.805 62.5069 192.635 62.2769 191.735 62.0769C190.015 61.6869 184.605 61.0769 179.535 60.6769C177.835 60.5569 176.335 60.4069 176.235 60.3369C176.105 60.2569 172.785 60.1569 168.865 60.1069C163.585 60.0269 161.605 59.9069 161.335 59.6769C161.035 59.4269 160.985 59.0569 161.105 57.8069C161.285 56.3569 161.235 56.2069 160.665 55.6069C160.285 55.2569 159.835 54.9569 159.665 54.9569C159.465 54.9569 158.665 56.0569 157.885 57.4269C155.815 61.0569 156.535 60.7069 148.605 61.8369C147.105 62.0269 144.885 62.4069 143.685 62.6069C140.965 63.1269 140.585 63.0269 138.605 61.2269C137.705 60.4069 136.185 59.1069 135.205 58.2769C134.265 57.4769 132.135 55.7269 130.535 54.3869C128.935 53.0069 126.715 51.2369 125.605 50.4069C124.515 49.6069 122.765 48.2769 121.735 47.5069C106.985 36.2369 92.3853 28.8069 82.3653 27.4769C80.1053 27.1569 75.7053 27.1569 73.9053 27.4569Z"
-private const val NapShading = "M508.985 174.707C505.185 175.007 501.155 175.927 499.285 176.927C498.785 177.207 497.515 177.837 496.465 178.307L494.585 179.177L492.605 182.127C491.535 183.757 489.385 187.507 487.865 190.457C486.335 193.407 484.385 197.027 483.535 198.507C482.685 199.977 481.285 202.577 480.465 204.307C478.215 208.957 475.965 211.757 470.785 216.277C459.385 226.227 447.935 232.857 424.105 243.337C410.165 249.457 401.785 253.777 394.365 258.657C380.865 267.527 374.165 275.727 372.485 285.357C371.735 289.657 373.335 297.027 375.765 300.507C376.435 301.437 376.365 301.837 375.365 302.937C374.735 303.607 373.465 304.407 371.285 305.507C369.555 306.357 367.805 307.357 367.415 307.687C367.015 308.007 365.715 308.637 364.535 309.057C362.715 309.707 362.335 309.937 362.285 310.437C362.185 311.027 362.215 311.027 363.785 310.887C370.015 310.257 376.685 310.607 380.535 311.727C383.935 312.707 392.685 314.757 394.865 315.057C396.105 315.227 399.105 315.907 401.535 316.557C403.985 317.207 406.865 317.837 407.915 317.977C408.985 318.107 410.435 318.337 411.105 318.477C411.805 318.637 413.755 318.837 415.485 318.957C417.215 319.057 418.835 319.227 419.105 319.307C419.385 319.407 422.235 319.557 425.465 319.687L431.315 319.887L431.985 320.707L432.665 321.527L437.265 321.227C450.915 320.357 450.665 320.387 450.885 319.207C451.115 318.187 451.365 318.057 453.385 317.857C454.365 317.777 455.615 317.557 456.135 317.357C456.665 317.187 457.915 316.957 458.865 316.857C459.835 316.757 461.505 316.457 462.605 316.207C463.715 315.957 465.965 315.457 467.605 315.107C470.415 314.477 471.665 314.187 476.835 312.727C480.385 311.757 484.815 310.207 487.235 309.107C493.835 306.077 495.465 305.337 499.565 303.227C502.035 301.977 505.015 300.357 506.185 299.637C507.385 298.887 509.085 297.857 509.985 297.337C512.315 295.957 516.105 293.027 518.735 290.637C519.485 289.937 520.605 289.027 521.215 288.637C521.815 288.207 523.005 287.187 523.885 286.307C524.755 285.437 526.005 284.457 526.685 284.107C528.235 283.307 534.815 276.527 537.815 272.577C547.535 259.857 552.965 247.187 555.215 231.957C555.385 230.927 555.635 229.277 555.755 228.337C556.055 226.457 555.905 219.337 555.505 216.457C554.905 212.257 554.715 211.007 554.385 209.957C554.215 209.337 553.735 207.757 553.365 206.457C552.085 202.107 548.535 195.077 545.785 191.457C540.765 184.857 532.885 179.157 525.105 176.507C520.905 175.077 514.065 174.307 508.985 174.707ZM235.515 226.707C228.815 231.337 223.585 236.977 219.485 244.077C216.015 250.077 212.985 257.027 212.985 259.007C212.985 259.357 212.805 260.107 212.605 260.687C212.015 262.437 211.035 268.687 210.885 271.957C210.605 277.727 211.285 284.907 212.665 290.707C212.915 291.777 213.085 293.407 213.085 294.507C213.015 298.027 210.835 301.477 207.285 303.727C205.765 304.707 199.485 307.357 194.065 309.337C192.815 309.807 191.485 310.357 191.135 310.577C190.785 310.807 189.415 311.227 188.065 311.527C185.965 312.007 185.615 312.157 185.605 312.577C185.605 313.057 185.835 313.077 189.235 313.257C195.785 313.607 208.705 313.607 210.815 313.277C213.015 312.937 230.335 312.387 238.565 312.387C243.135 312.407 244.035 312.337 244.165 312.027C244.385 311.437 243.765 311.027 241.235 310.187C237.335 308.887 232.685 306.227 229.915 303.757C228.585 302.557 225.235 298.357 223.605 295.837C221.535 292.657 219.535 287.577 218.985 284.077C218.835 283.187 218.605 282.157 218.465 281.777C218.335 281.407 218.135 278.057 218.065 274.337C217.935 268.577 217.985 267.107 218.365 264.577C218.915 260.887 220.555 254.007 221.535 251.337C222.565 248.457 225.715 242.207 227.485 239.507C229.985 235.637 234.685 230.257 237.365 228.207C238.835 227.057 239.165 226.207 238.265 225.707L235.515 226.707ZM118.265 277.527C116.835 279.277 115.915 286.257 116.455 291.137C116.905 294.887 118.805 299.907 121.165 303.457C121.935 304.637 121.885 305.357 121.065 305.857C120.665 306.077 119.815 306.637 119.105 307.077C118.435 307.527 117.105 308.157 116.185 308.457C114.865 308.887 114.485 309.107 114.485 309.477C114.485 310.027 113.085 309.957 127.865 310.077C133.365 310.137 138.435 310.257 139.135 310.337C140.165 310.457 140.515 310.407 140.835 310.057C141.465 309.437 141.285 309.257 138.735 307.907C133.105 304.937 129.205 301.437 125.605 296.077C121.455 289.907 119.735 285.057 119.735 279.607L118.265 277.527Z"
-private const val NapNose = "M159.865 225.387C155.955 226.387 148.035 228.777 145.735 229.657C144.535 230.127 143.485 231.377 143.485 232.337C143.485 233.777 146.455 236.187 152.765 239.837C156.105 241.757 157.485 241.957 158.765 240.657C159.635 239.777 163.135 233.007 164.335 229.907C165.985 225.677 164.515 224.207 159.865 225.377Z"
-private const val NapEyeLeft = "M114.365 228.337C112.785 228.907 111.635 230.027 110.735 231.807C109.455 234.407 107.435 236.577 104.935 238.077C99.4855 241.357 92.6355 241.387 87.1355 238.157C83.5355 236.027 80.6055 236.777 78.8855 240.277C77.2355 243.557 79.0355 246.857 83.5855 248.937C90.9355 252.307 99.5155 252.607 106.565 249.727C114.555 246.457 121.555 238.687 121.185 233.477C120.915 229.757 117.485 227.177 114.365 228.337Z"
-private const val NapEyeRight = "M220.285 197.237C219.015 197.857 218.415 198.637 216.985 201.427C212.885 209.357 202.785 212.377 194.385 208.177C191.315 206.627 190.235 206.557 188.235 207.757C184.135 210.227 185.035 215.827 189.935 218.307C198.985 222.837 208.815 222.407 217.235 217.077C223.165 213.337 227.985 206.807 227.985 202.507C227.985 198.277 223.865 195.457 220.285 197.227Z"
-private const val SitEar = "M311.118 21.094C305.838 21.894 300.638 23.784 292.358 27.834C281.468 33.194 270.488 40.394 258.238 50.234C254.738 53.034 253.718 54.014 250.988 57.014C249.538 58.614 249.488 58.984 250.738 59.114C251.188 59.184 251.688 59.314 251.838 59.434C251.988 59.564 253.138 59.964 254.358 60.334C255.618 60.714 257.238 61.194 257.988 61.434C258.738 61.684 260.168 62.114 261.118 62.414C264.968 63.594 270.488 65.484 272.858 66.464C274.238 67.014 276.258 67.834 277.358 68.264C278.468 68.684 281.258 69.864 283.618 70.884C285.938 71.914 288.538 73.014 289.358 73.334C291.668 74.214 296.188 76.514 301.268 79.364C304.018 80.914 304.088 80.934 309.618 80.334C311.538 80.114 314.138 79.894 315.358 79.814C316.618 79.734 318.418 79.514 319.358 79.334C320.338 79.144 322.788 78.914 324.818 78.834C326.868 78.734 328.888 78.564 329.318 78.434C329.768 78.314 331.468 78.084 333.118 77.964C335.918 77.714 339.038 77.364 343.858 76.684C345.988 76.384 351.918 75.784 354.918 75.564C356.988 75.384 357.088 75.234 356.588 73.564C356.388 72.914 356.238 71.864 356.238 71.214C356.238 69.784 355.538 67.444 353.388 61.514C349.438 50.614 347.368 46.014 343.438 39.514C338.418 31.114 333.388 26.014 327.568 23.334C322.518 21.014 316.738 20.214 311.118 21.094Z"
-private const val NapEar = "M216.685 0.456965C212.115 1.40697 207.335 3.55696 201.685 7.25696C188.885 15.577 173.135 32.827 162.965 49.707C161.485 52.107 160.235 54.407 160.135 54.777C160.035 55.177 159.455 56.387 158.835 57.457C157.765 59.307 157.615 59.957 158.285 59.957C158.465 59.957 158.815 59.727 159.105 59.457L159.665 58.957L160.335 59.477C160.985 59.977 161.315 60.007 168.415 60.107C172.485 60.157 176.015 60.257 176.265 60.337C176.485 60.407 178.015 60.577 179.665 60.707C184.635 61.077 190.035 61.687 191.735 62.077C192.635 62.277 193.805 62.507 194.365 62.577C194.915 62.657 196.205 62.957 197.235 63.207C198.265 63.477 200.135 63.937 201.365 64.207C205.335 65.137 208.385 65.977 212.985 67.457C219.205 69.457 218.985 69.437 221.235 68.607C222.135 68.277 223.535 67.807 224.365 67.507C225.185 67.237 226.935 66.577 228.235 66.077C229.535 65.577 232.085 64.687 233.865 64.077C235.665 63.507 238.455 62.507 240.135 61.857C241.815 61.227 243.285 60.707 243.415 60.707C243.555 60.707 244.285 60.437 245.015 60.137C245.765 59.807 247.215 59.207 248.235 58.837C249.255 58.457 250.935 57.757 251.935 57.307C252.935 56.857 254.165 56.407 254.685 56.307C256.105 56.057 261.535 54.427 262.105 54.077C262.385 53.937 263.865 53.257 265.365 52.577C268.485 51.227 271.235 49.757 271.235 49.457C271.235 49.007 270.735 48.957 269.885 49.357C269.165 49.707 268.915 49.727 268.265 49.457C267.335 49.077 267.235 48.277 268.055 47.977C268.385 47.857 269.085 47.357 269.605 46.857C270.135 46.357 270.805 45.957 271.105 45.957C272.105 45.957 273.165 45.457 273.735 44.677C274.185 44.027 274.415 43.927 275.015 44.057C275.865 44.227 275.985 43.677 275.305 42.727C275.085 42.407 274.585 41.507 274.215 40.727C273.835 39.957 272.315 37.907 270.805 36.177C269.335 34.457 266.935 31.577 265.515 29.807C261.365 24.657 248.885 12.377 244.735 9.30697C237.185 3.72697 232.285 1.22696 227.105 0.336965C224.335 -0.163035 219.385 -0.0930346 216.685 0.456965Z"
+private const val AsleepBody = "M 480.38,15.27 C 472.38,15.48 464.32,15.98 456.62,16.73 C 448.5,17.52 437.27,19.15 430.38,20.5 C 427.5,21.08 425.93,21.38 423.12,21.85 C 422.02,22.05 420.4,22.38 419.5,22.6 C 418.6,22.83 416.52,23.27 414.88,23.62 C 411.85,24.3 406.73,25.58 403.25,26.52 C 402.23,26.82 400.6,27.27 399.62,27.52 C 391.07,29.85 377.52,34.25 370.88,36.88 C 356.12,42.65 349.8,45.45 337.75,51.47 C 330.3,55.2 327.7,56.57 324.62,58.38 C 323.4,59.1 320.57,60.73 318.38,62 C 314.05,64.52 306.75,69.07 303.75,71.12 C 287.68,82.12 276.82,90.52 264.88,101.22 C 256.3,108.9 240.82,124.52 236.45,129.9 C 236,130.47 234.45,132.32 233,134 C 229.85,137.7 225.1,143.52 222.75,146.62 C 221.8,147.85 220.07,150.1 218.93,151.62 C 215.78,155.75 214.4,157.75 204.75,172.25 C 203.7,173.82 201.5,177.38 199.88,180.12 C 195.65,187.23 195.65,187.23 192.5,185.4 C 191.47,184.8 189.22,183.5 187.5,182.5 C 178.93,177.52 164.25,169.85 159.35,167.77 C 158.4,167.38 155.43,166.12 152.75,165 C 130.03,155.45 111.25,151.25 97.88,152.75 C 90.5,153.57 83.3,157.6 77.7,163.97 C 70.53,172.15 63.93,183.15 55.5,200.88 C 54.77,202.4 51.38,210.27 50.38,212.75 C 50.05,213.5 49.42,215.07 48.93,216.25 C 47.78,219.07 43.75,230.18 42.5,234.05 C 38.65,245.78 33.67,264.8 32.15,273.68 C 31.95,274.75 31.55,276.98 31.25,278.62 C 28.27,295.12 26.75,310.07 26.35,326.5 C 26.15,334.5 26.9,351.12 27.73,357.67 C 27.9,358.88 28.2,361.23 28.4,362.88 C 28.6,364.52 28.93,367.1 29.12,368.62 C 29.48,371.32 31.15,380.2 31.88,383.12 C 32.08,383.95 32.52,385.85 32.88,387.38 C 33.23,388.88 33.73,390.9 34,391.88 C 34.25,392.82 34.67,394.5 34.98,395.55 C 35.65,398.17 37.15,402.82 38.85,407.62 C 43.35,420.3 47.85,429.25 55.58,440.88 C 59.85,447.32 62.05,449.93 70.48,458.57 C 74.68,462.88 74.8,463.05 74.67,463.88 C 74.5,464.95 74.9,465.23 76.35,465.07 C 77.28,464.95 77.53,465.05 78.88,466.1 C 87.03,472.45 92.08,475.57 101.03,479.8 C 111.3,484.65 115.3,486.23 124,488.73 C 125.03,489 127.28,489.65 129,490.15 C 132.03,491.02 133.7,491.45 138.25,492.48 C 139.43,492.75 141.1,493.12 142,493.35 C 142.9,493.55 144.7,493.85 146,494 C 147.3,494.15 149.28,494.45 150.4,494.65 C 151.5,494.85 153.18,495.12 154.15,495.23 C 165.53,496.62 168.78,496.98 172.98,497.27 C 175.1,497.4 176.93,497.57 177.05,497.65 C 177.25,497.77 187.73,498.38 196.62,498.75 C 199.38,498.88 249,498.98 306.88,498.98 C 561.58,499 551.62,499 559.75,498.62 C 563.95,498.43 569.98,498.12 573.12,498 C 576.3,497.85 580.05,497.62 581.5,497.48 C 582.95,497.35 585.58,497.12 587.38,496.98 C 589.15,496.85 591.3,496.62 592.12,496.5 C 592.95,496.38 594.25,496.25 595,496.25 C 595.75,496.25 597.1,496.07 597.98,495.88 C 598.85,495.65 601.25,495.38 603.35,495.25 C 605.43,495.1 607.98,494.88 609,494.73 C 610.02,494.57 611.77,494.38 612.88,494.27 C 613.98,494.18 615.12,493.95 615.43,493.8 C 615.73,493.62 616.48,493.5 617.1,493.5 C 618.5,493.5 621.55,493.1 624,492.57 C 625.02,492.38 626.83,492 627.98,491.75 C 630.1,491.32 630.75,490.9 630.75,489.98 C 630.75,489.23 631.33,489.05 634.88,488.77 C 636.8,488.62 639.27,488.4 640.38,488.27 C 641.48,488.12 643.62,487.9 645.12,487.75 C 651.83,487.1 663.58,484.95 670.38,483.12 C 671.75,482.75 673.92,482.18 675.2,481.85 C 677.95,481.18 686.68,478.32 689.88,477.07 C 696.48,474.5 698.27,473.75 702.5,471.62 C 709.35,468.25 713.38,466.1 715.75,464.57 C 717.88,463.2 717.88,463.2 719.62,463.35 C 721.6,463.5 722.3,463.27 721.78,462.65 C 720.98,461.68 721.9,460.73 727.25,457 C 728.17,456.38 730.48,454.57 732.38,453 C 745.02,442.57 756.17,428.2 764.45,411.62 C 766.75,406.98 770.6,398.18 771.38,395.75 C 771.62,395 772.08,393.75 772.38,393 C 773.48,390.35 777.17,378.32 779.1,371.25 C 779.77,368.7 780.98,363.55 781.73,359.88 C 782,358.62 782.45,356.5 782.75,355.12 C 784.23,348.2 786.12,335.12 787,326 C 787.12,324.43 787.38,322.23 787.5,321.12 C 787.62,320.02 787.85,316.82 788,314 C 788.15,311.18 788.38,307.98 788.53,306.88 C 789.2,301.12 788.4,270.85 787.4,263.75 C 787.33,263.27 787.15,261.75 787,260.38 C 786.15,252.48 785.17,245.48 784.23,240.5 C 783.98,239.05 783.45,236.3 783.12,234.38 C 782.5,230.9 782.15,229.2 781.23,225.38 C 780.98,224.27 780.35,221.68 779.88,219.62 C 778.45,213.7 776.92,208.5 773.95,199.62 C 771.43,192.12 770.5,189.65 767.25,181.88 C 766.67,180.5 765.83,178.48 765.38,177.38 C 756.38,155.55 739.9,130.32 721.75,110.5 C 711.62,99.48 701.48,90.15 689.85,81.22 C 677.83,72.02 671.85,67.97 659.12,60.45 C 652,56.22 649.5,54.88 638.38,49.3 C 631.42,45.8 620.67,41.15 611.62,37.7 C 606.2,35.65 588.17,29.72 583.62,28.5 C 582.52,28.2 580.85,27.75 579.88,27.5 C 572.9,25.6 568.02,24.35 564.25,23.55 C 558.15,22.22 554.95,21.6 552.5,21.2 C 551.6,21.07 549.88,20.75 548.62,20.5 C 547.4,20.23 545.75,19.95 545,19.88 C 544.25,19.8 542.77,19.58 541.75,19.38 C 540.73,19.17 538.12,18.8 536,18.5 C 533.88,18.23 530.95,17.83 529.5,17.62 C 528.05,17.42 525.35,17.15 523.5,17 C 521.65,16.85 519.27,16.62 518.25,16.5 C 515.98,16.2 505.4,15.58 499.83,15.38 C 491.13,15.1 487.6,15.08 480.38,15.27 Z"
+private const val AsleepTail = "M 562.75,267.75 C 556.15,268.2 552.75,268.5 549.25,268.97 C 547.25,269.25 544.33,269.65 542.75,269.85 C 541.17,270.07 539.33,270.37 538.62,270.52 C 537.95,270.65 536.08,271 534.5,271.27 C 529.8,272.07 522.73,273.82 515.5,276 C 513.77,276.52 511.52,277.2 510.5,277.5 C 502.2,279.93 485.07,286.98 476,291.67 C 469.88,294.85 465.62,297.15 463.25,298.62 C 456.02,303 453,304.93 451.18,306.17 C 445.57,310.07 442.23,312.48 440.65,313.73 C 439.7,314.5 438.58,315.4 438.15,315.75 C 428.15,323.73 420.4,331 413,339.35 C 399.62,354.42 389.8,370.43 383.33,387.62 C 381,393.8 378.45,403.12 377.75,407.98 C 377.6,409 377.43,409.92 377.35,410.02 C 377.28,410.15 377.12,411.45 376.98,412.93 C 376.85,414.43 376.62,416.57 376.5,417.75 C 375.98,422.18 375.93,426.75 376.33,430 C 376.55,431.73 376.8,434.07 376.9,435.25 C 377.4,442.02 379.45,450.75 382.3,458.25 C 385.25,466 391.23,476.23 396.5,482.48 C 401.5,488.43 407.32,493.73 412.2,496.75 C 413.6,497.62 414.88,498.48 415.03,498.68 C 415.48,499.18 548.9,499.15 559.75,498.62 C 563.95,498.43 569.98,498.12 573.12,498 C 576.3,497.85 580.05,497.62 581.5,497.48 C 582.95,497.35 585.58,497.12 587.38,496.98 C 589.15,496.85 591.3,496.62 592.12,496.5 C 592.95,496.38 594.25,496.25 595,496.25 C 595.75,496.25 597.1,496.07 597.98,495.88 C 598.85,495.65 601.25,495.38 603.35,495.25 C 605.43,495.1 607.98,494.88 609,494.73 C 610.02,494.57 611.77,494.38 612.88,494.27 C 613.98,494.18 615.12,493.95 615.43,493.8 C 615.73,493.62 616.5,493.5 617.18,493.5 C 618.4,493.5 622.55,492.93 624.38,492.52 C 624.92,492.4 626.27,492.12 627.38,491.9 C 630,491.35 630.17,491.3 630.35,490.82 C 630.7,489.9 630.25,489.88 617.18,489.95 C 610.13,489.98 602.98,489.9 601.25,489.77 C 595.67,489.35 592.17,489 589.75,488.62 C 588.45,488.43 586.65,488.2 585.75,488.12 C 584.85,488.05 583.12,487.8 581.88,487.62 C 580.65,487.43 578.85,487.15 577.88,487.02 C 574.45,486.55 567.23,484.77 561.75,483.07 C 539.9,476.27 523.98,464.52 515.93,449.25 C 513.38,444.43 510.88,436.62 510.18,431.38 C 509.7,427.73 509.82,420.93 510.48,417 C 511.58,410.12 511.78,409.25 512.85,406.1 C 516.38,395.7 520.43,388.1 527.73,378.25 C 532.88,371.27 544.9,359.32 552.88,353.23 C 565.12,343.9 572.92,338.65 582.12,333.62 C 590.02,329.27 591.73,328.4 598.08,325.23 C 609.55,319.48 616.68,314.85 620.93,310.45 C 622.4,308.9 625.15,304.92 626.12,302.88 C 626.67,301.73 627.15,300.12 627.53,298.15 C 628.08,295.25 628.08,295.12 627.68,292.6 C 627.13,289.12 626.5,287.52 624.85,285.07 C 621.38,279.95 614.15,275.07 605.88,272.3 C 599.88,270.28 590.88,268.55 583.25,267.97 C 578.55,267.62 566.75,267.5 562.75,267.75 Z"
+private const val AsleepNose = "M 250.25,392.9 C 244.28,394.75 238.88,396.52 238.28,396.82 C 235.9,398.02 234.93,400.38 235.98,402.42 C 236.38,403.2 237.35,404.07 240.15,406.17 C 242.18,407.65 245.62,410.32 247.85,412.07 C 254.68,417.48 255.4,417.82 257.88,416.9 C 259.35,416.32 259.8,415.62 260.6,412.62 C 260.98,411.25 261.73,408.73 262.25,407 C 264.9,398.5 266.05,394.12 265.93,392.98 C 265.75,390.9 264.18,389.48 262.07,389.5 Z"
+private const val AsleepEyeLeft = "M 187.6,393 C 185.68,393.77 184.3,395.12 182.9,397.65 C 180.8,401.45 178.85,404.08 176.18,406.67 C 169.38,413.3 162.78,415.97 154,415.68 C 148,415.48 144.3,414.45 137.88,411.15 C 134.88,409.62 134.88,409.62 132.62,409.62 C 129.97,409.62 128.55,410.18 126.88,411.88 C 125.2,413.55 124.62,414.98 124.62,417.62 C 124.62,421.43 126.17,423.7 130.18,425.7 C 140.55,430.9 148.73,432.75 158.43,432.05 C 167.28,431.4 175.08,428.48 182.5,423.02 C 188.62,418.55 196.6,408.45 198.1,403.27 C 199.28,399.25 197.73,395.3 194.23,393.38 Z"
+private const val AsleepEyeRight = "M 352.6,339.27 C 350.05,340.25 348.65,341.95 347.28,345.67 C 343.4,356.2 333.93,364.12 323.1,365.88 C 317.5,366.77 310.18,365.8 303.88,363.3 C 302.07,362.6 301.27,362.42 299.95,362.42 C 294.82,362.42 290.93,367.67 292.38,372.65 C 293.43,376.32 295.32,377.88 300.88,379.62 C 309.4,382.32 312.82,382.88 319.88,382.67 C 327.4,382.48 331.6,381.42 338.62,378 C 346.8,374.02 352.2,369.23 357.65,361.07 C 361.18,355.8 363.35,350.5 363.35,347.12 Z"

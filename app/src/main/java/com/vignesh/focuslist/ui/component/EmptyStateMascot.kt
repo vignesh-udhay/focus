@@ -15,11 +15,12 @@ import androidx.compose.ui.unit.dp
 /**
  * The part every mascot shares: its colours, and how it takes space.
  *
- * One mascot per screen, and the same cat in all three. What changes is its
- * posture, and the posture is what says why the screen is empty: curled asleep
- * for a day with nothing on it, sitting upright for an inbox waiting to be
- * filled, lying down but awake for days that are still clear. Nothing else is
- * in the drawing. An earlier set gave the cat a prop on each screen, a bowl, a
+ * One mascot per screen, and the same cat in all of them. What changes is its
+ * posture, and the posture is what says why the screen is empty: sitting with
+ * its eyes half shut for a day that is clear and still open, curled asleep for
+ * an inbox with nothing left to decide, lying down but awake for days that are
+ * still clear. D-074 drew this set, and it is where Today and Inbox traded
+ * postures. Nothing else is in the drawing. An earlier set gave the cat a prop on each screen, a bowl, a
  * calendar, a checked card, and the object did the explaining; these say the
  * same three things with the animal alone.
  *
@@ -44,24 +45,23 @@ import androidx.compose.ui.unit.dp
  * app's theme and an icon has to be recognisable among strangers.
  *
  * The three tones are named for their order, not their subject, because what
- * each one draws changes from pose to pose. [light] is the coat and the soft
- * contact shade beneath it, which the board draws at almost the coat's own
- * value; [mid] is the shading that gives the coat its folds and its tail;
- * [dark] is the eyes and the nose.
+ * each one draws changes from pose to pose. [light] is the coat and the ground
+ * shadow beneath it; [mid] is the tail and the shading between the paws;
+ * [dark] is the eyes, the nose and the error pose's question mark.
  *
  * They bind by the part's name rather than by its colour, because the greys
- * drift between poses. One difference is deliberate and lives in the poses
- * rather than here: the sitting cat's nose is drawn lighter than its eyes and
- * takes [mid], where the other two draw it dark.
+ * drift between poses. The source files draw the shadow about halfway between
+ * the coat and the tail, and it takes [light] anyway: the mascot is three
+ * roles, and D-074 says what to do if the shadow ever reads as missing.
  *
  * ## Sizing
  *
- * [width] and [height] are the frame the board draws the pose in, scaled by one
- * factor shared across all three. Neither dimension is normalised: a cat
- * sitting is genuinely taller than the same cat lying down, so matching heights
- * would shrink the sitting one and matching widths would swell it. The board
- * already drew the three at a consistent scale, within about 9% by area, so
- * carrying that scale through is what keeps them one animal.
+ * [width] and [height] are the frame the pose was drawn in, scaled by one
+ * factor shared across all seven poses, 0.26dp per viewport unit. Neither
+ * dimension is normalised: a cat sitting is genuinely taller than the same cat
+ * lying down, so matching heights would shrink the sitting one and matching
+ * widths would swell it. The set was drawn at a consistent scale, so carrying
+ * that scale through is what keeps them one animal.
  *
  * A mascot takes that size until the window is narrower than it, then gives way
  * rather than clipping. It is the part of an empty state that can afford to.

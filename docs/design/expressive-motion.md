@@ -199,12 +199,13 @@ now no behaviour to override. See `today-screen.md`.
 
 [CD] One thing moves on this screen, and it moves only when the state changes.
 
-**The cat** is `cat-sit-front` at rest and `cat-nap` while running. It crosses
-between the two on `mascotSettle` when the state changes, and does not move in
-between. The crossing is an opacity crossfade with a two percent scale, both
-driven off one value so the two halves of one gesture cannot arrive at different
-times, and both poses are scaled about their own feet so the ground line under
-the cat never moves.
+**The cat** lies awake at rest and is curled asleep while running, D-074's
+redraw of D-046's sit and nap. It crosses between the two on `mascotSettle` when
+the state changes, and does not move in between. The crossing is an opacity
+crossfade with a two percent scale, both driven off one value so the two halves
+of one gesture cannot arrive at different times. Both poses stand on the centre
+of their ground shadow and are scaled about that point, so the ground under the
+cat never moves, sideways or vertically.
 
 [CD] **What it says is whether the clock is running. It never says anything
 else.** `docs/decisions.md` D-046 is the entry.

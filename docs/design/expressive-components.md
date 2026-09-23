@@ -485,41 +485,52 @@ same component without one.
 than decorating the absence. It is the same cat in all three; what changes is
 its posture.
 
-| Screen | Pose | Board node | Drawn at |
+| Screen | Pose | Source | Drawn at |
 | --- | --- | --- | --- |
-| Today | curled asleep, for a day with nothing on it | `1076:5756` | 211x130 |
-| Inbox | sitting upright, waiting to be filled | `1076:5773` | 190x173 |
-| Upcoming | lying down but awake, for days still clear | `1076:5781` | 250x134 |
-| Today, finished | sitting, content, eyes closed | `1068:5746` | 195x176 |
-| Error | sitting, with a question mark | `1076:5764` | 173x170 |
+| Today | sitting, eyes half shut, for a day that is clear and still open | `cat-hd-empty-today` | 182x190 |
+| Inbox | curled asleep, for a list with nothing left to decide | `cat-hd-empty-inbox` | 237x150 |
+| Upcoming | lying down but awake, for days still clear | `cat-hd-empty-upcoming` | 254x132 |
+| Today, finished | sitting, content, eyes curved shut | `cat-hd-all-done` | 193x198 |
+| Error | sitting, with a question mark | `cat-hd-error` | 207x229 |
 
-[CD] **The board redraws these, and the node ids move when it does.** The
-sleeping, sitting, lying and question poses were replaced wholesale rather than
-edited, so every path changed and each pose took a new node. Nothing else had to: the part
-names, the paint order and the three colour bindings survived the redraw
-untouched, which is the property `MascotImage` exists to protect. The drawn sizes
-moved by less than half a dp. Ids in this table are therefore a record of where a
-pose came from, not a stable handle.
+[CD] **D-074 redrew all of these, and Today and Inbox traded postures when it
+did.** The set before it slept on an empty Today and sat up on an empty Inbox.
+The reading now runs the other way: an empty Inbox is that screen's finished
+state, so the cat sleeps, and an empty Today is a day work may still arrive in,
+so the cat is up. D-074 has the argument and records that the owner confirmed
+it. Do not "correct" the table back.
 
-[CD] **The three share one scale factor, not a common width or height.** A cat
-sitting is genuinely taller than the same cat lying down. Matching heights would
-shrink the sitting one and matching widths would swell it, and either reads as
-two differently sized animals. The board already drew the three at a consistent
-scale, within about 9% by area, so carrying that scale through is the rule.
+[CD] **A redraw replaces the poses wholesale, and this was the second.** Every
+path changed and the layer names changed with them: Shading and Ear shading
+became Tail and Paw shading, and the far ear is part of Body. What survived is
+the property `MascotImage` exists to protect, three tones bound by part name:
+Ground shadow and Body to `light`, Tail and Paw shading to `mid`, the eyes, the
+nose and the question mark to `dark`. The source column names the file a pose
+was drawn from. The board node ids the old table carried were a record of where
+a pose came from and never a stable handle, and they are gone with the poses.
+
+[CD] **The seven share one scale factor, 0.26dp per viewport unit, not a common
+width or height.** A cat sitting is genuinely taller than the same cat lying
+down. Matching heights would shrink the sitting one and matching widths would
+swell it, and either reads as two differently sized animals. The factor was
+0.3643 for the old board, whose units were smaller; 0.26 was chosen so the
+widths carried over, and D-074 lists them.
 
 [CD] **The error pose is the exception to the no-props rule, and has to be.**
 The other four say why a screen is empty, and a posture can carry that. "The app
-could not read your tasks" is not a state a cat can sit in, so `cat-question`
-takes the question mark. It is the only prop in the set and the only pose that
-is not about an empty collection.
+could not read your tasks" is not a state a cat can sit in, so it takes the
+question mark. It is the only prop in the set and the only pose that is not
+about an empty collection. It is also the tallest pose by some way, because the
+mark sits clear above the head.
 
-[CD] **The finished-day pose is a sitting cat, like the Inbox one, and the eyes
-are the difference.** Closed and curved where the Inbox cat's are open and
-waiting. Both are sitting because both are states where nothing is in motion;
-what separates a day that is done from an inbox that is waiting is whether the
-animal is still watching for something. Both also draw the nose in `mid` rather
-than `dark`, which is the sitting-pose exception the tone table already carried
-for one pose and now carries for two.
+[CD] **Today has both sitting cats, and the eyes are the difference.** Half open
+and level on an empty day, curved shut on a finished one. Both sit because both
+are states where nothing is in motion; what separates them is whether the day
+had work in it, which is D-033's rule for when the content pose is earned.
+
+[CD] **Every nose is `dark`.** The old set drew some noses lighter than the
+eyes, which this section first called a sitting-pose exception and D-046 then
+corrected. The new set draws none that way, so there is no exception to carry.
 
 [CD] **The props are gone.** An earlier set gave the cat something to sit beside
 on each screen, a bowl for Inbox, a calendar for Upcoming, a checked card for
@@ -1061,7 +1072,7 @@ One surface, six states, in a sheet. Centred on a 364dp column, top to bottom:
 | Element | Treatment |
 | --- | --- |
 | Title | Headline Medium Emphasized, `onSurface`, centred, four-line cap |
-| Cat | `cat-sit-front` or `cat-nap`, mascot colour roles, bottom-aligned |
+| Cat | lying awake or curled asleep, mascot colour roles, anchored on its shadow |
 | Status | Body Medium, `onSurfaceVariant`, centred: clock, then budget |
 | Complete | 56dp tonal button, leading |
 | Clock control | 56dp round filled icon button, play or pause, trailing |
@@ -1071,11 +1082,12 @@ the app bar and the bottom inset rather than pinned under the app bar: this is a
 single-purpose mode screen with one column on it, and hanging that column from
 the top left the lower half of the screen empty for no reason.
 
-[CD] The second row is the cat, not a shape. D-046. `cat-sit-front` at rest and
-`cat-nap` while running, board nodes `1119:5624` and `1119:5634`, drawn at
-192.72 x 178.87 and 202.55 x 119.13 inside the union of the two and aligned to
-the bottom so the ground line does not move between them. It takes the same
-0.3643 scale factor as the five empty-state poses.
+[CD] The second row is the cat, not a shape. D-046, redrawn by D-074.
+`cat-hd-paused-focus` at rest and `cat-hd-asleep-idle` while running, drawn at
+198.38 x 142.74 and 209.56 x 140.14 in a box of about 210 x 144. Each pose is
+placed so the centre of its ground shadow is the same point of the box, which is
+what keeps the ground still between them; `focus.md` has the reasoning. It takes
+the same 0.26 scale factor as the five list poses.
 
 [CD] It does not grow with the window, for the reason the shape it replaced did
 not: the row beside it holds a fixed-size readout, and scaling the drawing while
