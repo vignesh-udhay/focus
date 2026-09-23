@@ -401,6 +401,10 @@ Dynamic colour comes from `GlanceTheme` and is API 31 and above. Below that the
 widget takes the app's own light and dark palettes, which is what sections 16
 and 18 of the board draw.
 
+The Dynamic color switch in Settings does reach the widget. Turned off, the
+widget takes the app's own palettes on every API level. The switch picks a
+palette, and light or dark within it still comes from the system.
+
 ---
 
 # Accessibility

@@ -162,9 +162,15 @@ class FocuslistWidget : GlanceAppWidget() {
 
         provideContent {
             val snapshot by snapshots.collectAsState(null)
+            // The Settings switch, not the Settings theme: light and dark still
+            // come from the system, per widget.md.
+            val appearance by application.preferences.state.collectAsState()
 
             GlanceTheme(
-                colors = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                colors = if (
+                    appearance.dynamicColor &&
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                ) {
                     GlanceTheme.colors
                 } else {
                     WidgetFallbackColors

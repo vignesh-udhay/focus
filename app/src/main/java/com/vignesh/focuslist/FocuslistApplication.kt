@@ -27,8 +27,10 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import androidx.glance.appwidget.updateAll
@@ -164,15 +166,20 @@ class FocuslistApplication : Application() {
         }
     }
 
-    /** Keeps task and Focus writes serialized behind one Glance update path. */
+    /**
+     * Keeps task, Focus and dynamic colour changes serialized behind one Glance
+     * update path. The widget has no live session while Settings is open, so
+     * without this the switch would only reach it at the next task write.
+     */
     private fun keepWidgetInStepWithState() {
         applicationScope.launch {
             combine(
                 taskRepository.observeTasks(),
                 // SharedFlow has no initial value. Supplying one lets task
                 // writes drive the combined stream before Focus changes.
-                focusSessionStore.changes.onStart { emit(Unit) }
-            ) { tasks, _ -> tasks }
+                focusSessionStore.changes.onStart { emit(Unit) },
+                preferences.state.map { it.dynamicColor }.distinctUntilChanged()
+            ) { tasks, _, _ -> tasks }
                 // Starting a Glance SessionWorker creates the Application too.
                 // Re-enqueueing from Room's initial snapshot would cancel that
                 // very session and can leave the old RemoteViews on screen.

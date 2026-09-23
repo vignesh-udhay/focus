@@ -9,6 +9,16 @@ scope it delivers is in `PRODUCT.md`.
 
 ## Current phase
 
+**The widget now follows the Dynamic color switch.** Reported: with the switch
+off, the widget kept the wallpaper palette. It never read the preference, and
+chose `GlanceTheme.colors` on any API 31+ device. It now collects
+`preferences.state` inside `provideContent`, and the application's widget update
+path watches `dynamicColor` so a widget with no live session redraws when the
+switch changes, including through a restore. Light and dark still come from the
+system, per `widget.md`, which now says so. Seen on the Pixel 10 emulator: blue
+with the switch on, Catimo lavender off, blue again on. The 17 widget JVM tests
+pass.
+
 **The dark theme audit is done again, against the surfaces built since the
 first one, and it found one thing.** `Color.kt` has not changed since
 2026-09-10, so that audit's thirteen measured pairs still stand. What is new is
