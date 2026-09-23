@@ -53,12 +53,25 @@ the same accent went green. Two cats, two colours, one app.
 `EmptyStateMascot.kt` had already drawn the line this crossed: an in-app
 illustration binds to the fixed roles so it belongs to the user's phone, and
 the launcher takes fixed hex only because it draws outside the app's theme.
-Onboarding is inside it. Fixed by giving the screen a real mascot,
-`catSittingFront`, the front-facing at-rest pose Focus already uses, through
-`MascotImage` like every other screen that carries one. No new geometry and no
-second copy to keep in sync; the pose and its frame simply became internal.
-Verified under the same green accent: the cat now resolves to the same three
-role values Today's does.
+Onboarding is inside it.
+
+**The head stays the head, and that decided how it was fixed.** The screen was
+first given `catSittingFront`, the front-facing pose Focus already draws, which
+cost no new geometry because the pose already existed. It was rejected on
+sight: a whole sitting cat at 193dp is a different screen from a 108dp face,
+and the face is the mark the user is about to put on their home screen. So
+`WelcomeMascot.kt` rebuilds the launcher's own artwork against the colour roles
+instead, the face at `primaryFixed` and the eyes and nose at
+`onPrimaryFixedVariant`, inside the launcher's own 108dp frame and group. It
+looks exactly as it did and now follows the palette.
+
+That is a second copy of the mark's geometry, which is the cost. It is the same
+copy D-072 already accepted for the notification icon and it is paid the same
+way: `WelcomeMascotTest` reads both files and fails when the paths, or the
+group that frames them, stop matching, and it refuses a hard-coded hex creeping
+back in. The test was run against a deliberately nudged copy first, where both
+assertions fail. Verified under the same green accent: the head now resolves to
+the same role values Today's cat does.
 
 **Two things chased and cleared rather than filed.** The Backup and Reminder
 health hero cards render as large bright blocks in dark, which is not what

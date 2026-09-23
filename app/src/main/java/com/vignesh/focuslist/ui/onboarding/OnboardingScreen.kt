@@ -34,10 +34,7 @@ import com.vignesh.focuslist.R
 import com.vignesh.focuslist.core.design.FocuslistDimensions
 import com.vignesh.focuslist.core.design.FocuslistSpacing
 import com.vignesh.focuslist.core.design.focuslistContentGutter
-import com.vignesh.focuslist.ui.component.MascotImage
-import com.vignesh.focuslist.ui.component.SitHeight
-import com.vignesh.focuslist.ui.component.SitWidth
-import com.vignesh.focuslist.ui.component.catSittingFront
+import com.vignesh.focuslist.ui.component.WelcomeMascot
 import com.vignesh.focuslist.ui.theme.FocuslistTheme
 
 /**
@@ -90,16 +87,9 @@ fun OnboardingScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // The mascot, not the launcher icon. `EmptyStateMascot.kt`
-                    // draws the line: an in-app illustration binds to the fixed
-                    // colour roles so it follows the user's palette, and the
-                    // launcher takes fixed hex only because it draws outside the
-                    // app's theme. This screen is inside it.
-                    MascotImage(
-                        width = SitWidth,
-                        height = SitHeight,
-                        build = ::catSittingFront
-                    )
+                    // The head, drawn against the colour roles rather than the
+                    // launcher asset's fixed hex. `WelcomeMascot.kt` has why.
+                    WelcomeMascot()
                     Spacer(Modifier.height(FocuslistSpacing.md))
                     Text(
                         text = stringResource(R.string.onboarding_title),
