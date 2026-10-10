@@ -9,6 +9,45 @@ scope it delivers is in `PRODUCT.md`.
 
 ## Current phase
 
+**A reminder rings before the first unlock after a restart, D-079.** The last
+late-delivery case the audit found. Every reconciliation mirrors the reminders
+it scheduled into device-protected storage; the recovery and alarm receivers are
+direct-boot aware; on `LOCKED_BOOT_COMPLETED` the alarms are set from that copy;
+one firing while locked is shown from it, with Done and Snooze asking for the
+unlock, and recorded there; after the unlock the record is applied to the
+database before any reconciliation, so nothing is announced twice. The
+application no longer opens credential storage while locked and starts its
+watchers at `ACTION_USER_UNLOCKED`.
+
+Verified on the Pixel 10 emulator with a PIN set. "Boot test in 5 minutes" was
+captured and the copy held it at 13:36:26. After a restart left the phone
+`RUNNING_LOCKED`, the alarm was already set, exact. The reminder posted on the
+lock screen; the delivery record says due 13:36:26.070, arrived 13:36:26.136.
+After the unlock there was one notification, not two, `reminderDeliveredAt` was
+set, and the locked record was cleared.
+
+Five smaller fixes went with it:
+
+- **A stale alarm stays quiet.** The receiver checks the reminder is due within a
+  minute, and otherwise reconciles.
+- **A refused alarm reaches the user.** It is recorded and turns the exact-alarm
+  check Blocked.
+- **The widget turns over at midnight** from its own 10-minute-window `RTC`
+  alarm, replacing `DATE_CHANGED`, which a closed app never received.
+- **Restore offers every file.**
+- **Times follow the phone's 24-hour setting.** Seen on the emulator: rows read
+  13:16 and 13:36.
+
+JVM 763 pass. On the emulator: `LockedReminderStoreTest` 3, `MigrationTest` 17,
+`BackupRepositoryTest` 6, `TaskRowSemanticsTest` 23,
+`TodayScreenSemanticsTest` 39, `QuickAddSemanticsTest` 17,
+`QuickAddCaptureTest` 6, `ReminderSheetSemanticsTest` 11,
+`ReminderHealthSemanticsTest` 3, `TaskDetailsSemanticsTest` 28,
+`BackupSemanticsTest` 5, `SettingsSemanticsTest` 1, `ReminderGroupTest` 7,
+`WidgetTaskTextTest` 3 and `WidgetScrollTest` 1. The refusal path and the
+stale-alarm path are covered by JVM tests of their rules, not exercised on a
+device.
+
 **The pre-release audit found a Play policy blocker and four missed-reminder
 bugs, and D-078 fixes them.** Four reviewers audited the build, the reminder
 subsystem, the listing and the code.

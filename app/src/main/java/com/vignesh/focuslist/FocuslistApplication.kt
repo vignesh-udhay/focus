@@ -1,7 +1,24 @@
 package com.vignesh.focuslist
 
 import android.app.Application
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.util.Log
+import androidx.core.content.ContextCompat
+import androidx.core.os.UserManagerCompat
+import com.vignesh.focuslist.core.domain.DeliveryOutcome
+import com.vignesh.focuslist.core.domain.ReminderDelivery
+import com.vignesh.focuslist.core.domain.Task
+import com.vignesh.focuslist.core.domain.hasLiveReminder
+import com.vignesh.focuslist.data.local.LockedReminderStore
+import com.vignesh.focuslist.data.local.SchedulingRefusals
+import com.vignesh.focuslist.ui.widget.armWidgetMidnight
+import java.util.UUID
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import androidx.room.Room
 import com.vignesh.focuslist.data.local.FocuslistDatabase
 import com.vignesh.focuslist.data.local.FocuslistMigrations
@@ -146,13 +163,72 @@ class FocuslistApplication : Application() {
      * or the next occurrence of a task ticked from the shade could be stored
      * and never scheduled. D-078.
      */
-    suspend fun reconcileReminders() {
-        reminderScheduler.reconcile(taskRepository.observeTasks().first())
+    suspend fun reconcileReminders(tasks: List<Task>? = null) {
+        reconcileLock.withLock {
+            // What was announced before the first unlock goes into the database
+            // first, or this pass would find it owed and announce it again.
+            val settled = settleLockedDeliveries()
+            val current = if (settled || tasks == null) taskRepository.observeTasks().first() else tasks
+
+            val result = reminderScheduler.reconcile(current)
+            schedulingRefusals.record(result.failures)
+            lockedReminders.replaceUpcoming(result.scheduled)
+        }
     }
+
+    /**
+     * Writes down the reminders announced while the phone was locked, now that
+     * the database can be opened. Returns whether there were any.
+     *
+     * Only where the task still rings at the moment that was announced. One
+     * edited since, or completed, or deleted, is owed whatever its new state
+     * says, and marking it delivered would silence it.
+     */
+    private suspend fun settleLockedDeliveries(): Boolean {
+        val deliveries = lockedReminders.lockedDeliveries()
+        if (deliveries.isEmpty()) return false
+
+        deliveries.forEach { delivery ->
+            val task = taskRepository.findTask(delivery.taskId) ?: return@forEach
+            if (!task.hasLiveReminder() || task.ringsAt != delivery.ringsAt) return@forEach
+
+            taskRepository.markReminderDelivered(delivery.taskId, delivery.arrivedWallAt)
+            reminderDeliveryRepository.record(
+                ReminderDelivery(
+                    id = UUID.randomUUID().toString(),
+                    taskId = delivery.taskId,
+                    taskTitle = delivery.title,
+                    dueAt = delivery.ringsAt,
+                    scheduledWallAt = delivery.scheduledWallAt,
+                    scheduledElapsedAt = delivery.scheduledElapsedAt,
+                    arrivedWallAt = delivery.arrivedWallAt,
+                    arrivedElapsedAt = delivery.arrivedElapsedAt,
+                    scheduledAhead = delivery.scheduledAhead,
+                    outcome = DeliveryOutcome.Announced
+                )
+            )
+        }
+
+        lockedReminders.clearLockedDeliveries()
+        return true
+    }
+
+    /**
+     * The reminders that have alarms, readable before the first unlock after a
+     * restart. D-079. Written by every reconciliation.
+     */
+    val lockedReminders: LockedReminderStore by lazy { LockedReminderStore(this) }
+
+    /** Whether the latest reconciliation had an alarm refused. D-079. */
+    val schedulingRefusals: SchedulingRefusals by lazy { SchedulingRefusals(this) }
 
     /** What the platform will admit about whether a reminder can arrive. */
     val reminderHealthChecks: ReminderHealthChecks by lazy {
-        AndroidReminderHealthChecks(this, reminderAlarms)
+        AndroidReminderHealthChecks(
+            context = this,
+            alarms = reminderAlarms,
+            refusedRecently = { schedulingRefusals.refusedRecently }
+        )
     }
 
     /**
@@ -172,10 +248,51 @@ class FocuslistApplication : Application() {
             }
     )
 
+    /**
+     * One reconciliation at a time, so applying what was announced while locked
+     * always finishes before a pass that would otherwise announce it again.
+     */
+    private val reconcileLock = Mutex()
+
+    private val credentialWorkStarted = AtomicBoolean(false)
+
     override fun onCreate() {
         super.onCreate()
+
+        // **Nothing in credential-encrypted storage until the user unlocks.**
+        // D-079. The reminder receivers are direct-boot aware, so this process
+        // can start before the first unlock after a restart, when the database
+        // and every preference file cannot be opened. The watchers used to start
+        // regardless, fail, and stay dead for the life of the process, so the
+        // first edits after unlocking set no alarms.
+        if (UserManagerCompat.isUserUnlocked(this)) {
+            startCredentialWork()
+        } else {
+            startCredentialWorkAtUnlock()
+        }
+    }
+
+    private fun startCredentialWorkAtUnlock() {
+        ContextCompat.registerReceiver(
+            this,
+            object : BroadcastReceiver() {
+                override fun onReceive(context: Context, intent: Intent) {
+                    unregisterReceiver(this)
+                    startCredentialWork()
+                }
+            },
+            IntentFilter(Intent.ACTION_USER_UNLOCKED),
+            // A system broadcast, which reaches an unexported receiver.
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+    }
+
+    /** Starts everything that reads storage only an unlocked phone can open. Once. */
+    private fun startCredentialWork() {
+        if (!credentialWorkStarted.compareAndSet(false, true)) return
         keepRemindersInStepWithStorage()
         keepWidgetInStepWithState()
+        armWidgetMidnight(this)
     }
 
     /**
@@ -195,7 +312,7 @@ class FocuslistApplication : Application() {
     private fun keepRemindersInStepWithStorage() {
         applicationScope.launch {
             taskRepository.observeTasks().collectLatest { tasks ->
-                reminderScheduler.reconcile(tasks)
+                reconcileReminders(tasks)
             }
         }
     }
@@ -244,9 +361,7 @@ class FocuslistApplication : Application() {
      * says yes, rather than the next time they happen to open the app.
      */
     fun refreshReminders() {
-        applicationScope.launch {
-            reminderScheduler.reconcile(taskRepository.observeTasks().first())
-        }
+        applicationScope.launch { reconcileReminders() }
     }
 
     companion object {

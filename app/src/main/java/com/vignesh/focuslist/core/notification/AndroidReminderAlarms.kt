@@ -14,6 +14,12 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.getSystemService
+import java.time.ZoneId
+import com.vignesh.focuslist.data.local.LockedDelivery
+import com.vignesh.focuslist.core.domain.reminderTrigger
+import com.vignesh.focuslist.core.domain.isDueAt
+import com.vignesh.focuslist.core.domain.Task
+import androidx.core.os.UserManagerCompat
 import com.vignesh.focuslist.FocuslistApplication
 import com.vignesh.focuslist.MainActivity
 import com.vignesh.focuslist.R
@@ -205,6 +211,21 @@ class ReminderReceiver : BroadcastReceiver() {
 
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
+                // Before the first unlock after a restart the database cannot be
+                // opened, so the reminder is told from the copy kept for this.
+                // D-079.
+                if (!UserManagerCompat.isUserUnlocked(context)) {
+                    context.deliverWhileLocked(
+                        taskId = taskId,
+                        scheduledWallAt = scheduledWallAt,
+                        scheduledElapsedAt = scheduledElapsedAt,
+                        arrivedWallAt = arrivedWallAt,
+                        arrivedElapsedAt = arrivedElapsedAt,
+                        scheduledAhead = scheduledAhead
+                    )
+                    return@launch
+                }
+
                 val task = application.taskRepository.observeTasks().first()
                     .firstOrNull { it.id == taskId }
 
@@ -216,6 +237,16 @@ class ReminderReceiver : BroadcastReceiver() {
                 // The moment it was owed at, which is a snooze's when there is
                 // one, so lateness is measured against what was promised. D-078.
                 val dueAt = task.ringsAt ?: return@launch
+
+                // **A stale alarm says nothing.** D-079. The reminder moved later
+                // and this alarm, aimed at its old time, survived. Announcing it
+                // would mark the reminder delivered and leave the real time
+                // silent, so the alarms are reconciled instead and the right one
+                // is set.
+                if (!isDueAt(dueAt, ZoneId.systemDefault(), arrivedWallAt)) {
+                    application.reconcileReminders()
+                    return@launch
+                }
 
                 suspend fun record(outcome: DeliveryOutcome) {
                     application.reminderDeliveryRepository.record(
@@ -304,8 +335,14 @@ class ReminderRecoveryReceiver : BroadcastReceiver() {
 
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
-                application.reminderScheduler
-                    .reconcile(application.taskRepository.observeTasks().first())
+                if (UserManagerCompat.isUserUnlocked(context)) {
+                    application.reconcileReminders()
+                } else {
+                    // Before the first unlock: set the alarms from the copy, which
+                    // is all that can be read. The unlock reconciles properly.
+                    // D-079.
+                    armFromLockedCopy(application)
+                }
             } catch (error: Exception) {
                 // Logged rather than thrown, which would kill the process on the
                 // very boot that is meant to restore the alarms. D-078.
@@ -318,6 +355,8 @@ class ReminderRecoveryReceiver : BroadcastReceiver() {
 
     private companion object {
         val RecoveryActions = setOf(
+            // Sent before the first unlock, which is the whole point. D-079.
+            Intent.ACTION_LOCKED_BOOT_COMPLETED,
             Intent.ACTION_BOOT_COMPLETED,
             Intent.ACTION_MY_PACKAGE_REPLACED,
             Intent.ACTION_TIME_CHANGED,
@@ -328,6 +367,79 @@ class ReminderRecoveryReceiver : BroadcastReceiver() {
             "android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED"
         )
     }
+}
+
+/**
+ * Sets an alarm for every reminder in the copy kept for the locked phone.
+ *
+ * The same alarms, by the same identity, that the reconciliation sets, so the
+ * first pass after the unlock replaces each one rather than adding a second.
+ */
+private fun armFromLockedCopy(application: FocuslistApplication) {
+    val now = Instant.now()
+    val zone = ZoneId.systemDefault()
+
+    application.lockedReminders.upcoming().forEach { reminder ->
+        try {
+            application.reminderAlarms.schedule(
+                reminder.taskId,
+                reminderTrigger(reminder.ringsAt, zone, now)
+            )
+        } catch (error: Exception) {
+            Log.e(LogTag, "Could not set the locked alarm for ${reminder.taskId}.", error)
+        }
+    }
+}
+
+/**
+ * Tells a reminder while the phone is still locked after a restart. D-079.
+ *
+ * Everything comes from the copy, and what happened goes back into it: the
+ * database cannot be written until the unlock, and the application applies the
+ * record then, before anything reconciles. Done and Snooze ask for the unlock
+ * first, because what they do needs the database.
+ */
+private fun Context.deliverWhileLocked(
+    taskId: String,
+    scheduledWallAt: Instant,
+    scheduledElapsedAt: Long,
+    arrivedWallAt: Instant,
+    arrivedElapsedAt: Long,
+    scheduledAhead: Duration
+) {
+    val store = (applicationContext as FocuslistApplication).lockedReminders
+    val reminder = store.upcoming().firstOrNull { it.taskId == taskId } ?: return
+
+    if (!isDueAt(reminder.ringsAt, ZoneId.systemDefault(), arrivedWallAt)) return
+
+    // Left owed rather than recorded. After the unlock it is announced as a
+    // reminder whose moment passed, which is late, but it is not lost.
+    if (!canPostReminders()) {
+        Log.w(LogTag, "Cannot post. Locked reminder for $taskId fired and said nothing.")
+        return
+    }
+
+    ensureReminderChannel()
+    val task = Task(
+        id = reminder.taskId,
+        title = reminder.title,
+        createdAt = Instant.EPOCH,
+        reminderAt = reminder.ringsAt
+    )
+    if (!postReminder(task, requireUnlockForActions = true)) return
+
+    store.recordLockedDelivery(
+        LockedDelivery(
+            taskId = reminder.taskId,
+            title = reminder.title,
+            ringsAt = reminder.ringsAt,
+            scheduledWallAt = scheduledWallAt,
+            scheduledElapsedAt = scheduledElapsedAt,
+            arrivedWallAt = arrivedWallAt,
+            arrivedElapsedAt = arrivedElapsedAt,
+            scheduledAhead = scheduledAhead
+        )
+    )
 }
 
 /**

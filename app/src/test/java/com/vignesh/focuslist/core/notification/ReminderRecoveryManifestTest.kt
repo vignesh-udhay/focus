@@ -81,6 +81,9 @@ class ReminderRecoveryManifestTest {
          * with a sentence rather than with a list.
          */
         val WHY = mapOf(
+            "android.intent.action.LOCKED_BOOT_COMPLETED" to
+                "A reminder due before the first unlock after a restart has to be " +
+                "set from the copy kept for the locked phone. D-079.",
             "android.intent.action.BOOT_COMPLETED" to
                 "A restart discards every alarm the system was holding.",
             "android.intent.action.MY_PACKAGE_REPLACED" to
@@ -116,6 +119,26 @@ class ReminderRecoveryManifestTest {
         assertTrue(
             "SCHEDULE_EXACT_ALARM is missing, so no reminder can be exact.",
             """<uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />""" in manifest
+        )
+    }
+
+    /**
+     * D-079. Without these two, nothing of this app runs before the first unlock
+     * after a restart, and a reminder due then arrives late.
+     */
+    @Test
+    fun `the recovery and alarm receivers run before the first unlock`() {
+        assertTrue(
+            "The recovery receiver is not direct-boot aware.",
+            """android:directBootAware="true"""" in declaration
+        )
+
+        val alarmReceiver = manifest.substringAfter(
+            """android:name=".core.notification.ReminderReceiver""""
+        ).substringBefore("/>")
+        assertTrue(
+            "The alarm receiver is not direct-boot aware, so a locked phone says nothing.",
+            """android:directBootAware="true"""" in alarmReceiver
         )
     }
 }

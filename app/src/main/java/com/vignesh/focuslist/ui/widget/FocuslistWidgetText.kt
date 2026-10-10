@@ -7,9 +7,9 @@ import com.vignesh.focuslist.core.domain.Task
 import com.vignesh.focuslist.core.text.recurrenceSummary
 import com.vignesh.focuslist.ui.component.DurationLabel
 import com.vignesh.focuslist.ui.component.durationLabel
+import com.vignesh.focuslist.ui.component.shortTimeFormatter
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 import java.util.Locale
 
 internal data class WidgetTaskText(
@@ -50,8 +50,8 @@ private fun Context.dayLabel(date: LocalDate, today: LocalDate): String = when (
     else -> date.format(dateFormatter(date, today))
 }
 
-private fun Context.timeFormatter(): DateTimeFormatter =
-    DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(locale())
+// The phone's 12 or 24 hour setting, the same way the app's rows say it. D-079.
+private fun Context.timeFormatter(): DateTimeFormatter = shortTimeFormatter()
 
 private fun Context.dateFormatter(date: LocalDate, today: LocalDate): DateTimeFormatter =
     DateTimeFormatter.ofPattern(

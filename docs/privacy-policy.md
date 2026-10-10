@@ -26,6 +26,12 @@ storage on your device:
 - a record of when reminders were delivered, used by the Reminder health
   screen to tell you if one arrived late
 
+So that a reminder still arrives after your phone restarts and before you
+unlock it, Catimo also keeps the title and time of each upcoming reminder in
+the part of its private storage that Android makes readable from startup. That
+copy is protected by your device's encryption rather than by your screen lock,
+holds nothing else, and is replaced every time your reminders change.
+
 No other app on your device can read this storage. Uninstalling Catimo deletes
 all of it.
 

@@ -66,9 +66,11 @@
             android:exported="false" />
 
         <!-- Not exported: only AlarmManager delivers to it, on our own
-             PendingIntent. -->
+             PendingIntent. Direct-boot aware, so a reminder due before the
+             first unlock after a restart still rings. D-079. -->
         <receiver
             android:name=".core.notification.ReminderReceiver"
+            android:directBootAware="true"
             android:exported="false" />
 
         <!-- Not exported: only the notification's own PendingIntents reach it,
@@ -94,9 +96,12 @@
              D-078. -->
         <receiver
             android:name=".core.notification.ReminderRecoveryReceiver"
+            android:directBootAware="true"
             android:enabled="true"
             android:exported="true">
             <intent-filter>
+                <!-- Before the first unlock after a restart. D-079. -->
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
                 <action android:name="android.intent.action.TIME_SET" />
@@ -120,8 +125,12 @@
             android:name=".ui.widget.FocuslistWidgetRefreshReceiver"
             android:enabled="true"
             android:exported="true">
+            <!-- DATE_CHANGED is gone: a manifest receiver never gets it. The
+                 widget's own midnight alarm replaces it, and these re-arm it.
+                 D-079. -->
             <intent-filter>
-                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
                 <action android:name="android.intent.action.TIME_SET" />
                 <action android:name="android.intent.action.TIMEZONE_CHANGED" />
             </intent-filter>

@@ -281,7 +281,7 @@ class ReminderSchedulerTest {
             zone = { zone },
             clock = { now },
             onFailure = { id, _ -> failed += id }
-        ).reconcile(tasks)
+        ).reconcile(tasks).failures
 
         assertEquals(1, failures)
         assertEquals(listOf("b"), failed)
@@ -312,5 +312,25 @@ class ReminderSchedulerTest {
         scheduler(alarms).reconcile(listOf(snoozed))
 
         assertEquals(mapOf("a" to Instant.parse("2026-09-05T08:30:00Z")), alarms.scheduled)
+    }
+
+    // D-079: what a pass reports, for the copy kept for the locked phone
+
+    @Test
+    fun `a pass reports the reminders it gave alarms to, and not the refused ones`() {
+        val alarms = RefusingAlarms(refused = "b")
+        val tasks = listOf(
+            task("a", LocalDateTime.of(2026, 9, 5, 13, 0)),
+            task("b", LocalDateTime.of(2026, 9, 5, 14, 0)),
+            task("done", LocalDateTime.of(2026, 9, 5, 15, 0), completedAt = createdAt)
+        )
+
+        val result = scheduler(alarms).reconcile(tasks)
+
+        assertEquals(
+            listOf(ScheduledReminder("a", "Task a", LocalDateTime.of(2026, 9, 5, 13, 0))),
+            result.scheduled
+        )
+        assertEquals(1, result.failures)
     }
 }

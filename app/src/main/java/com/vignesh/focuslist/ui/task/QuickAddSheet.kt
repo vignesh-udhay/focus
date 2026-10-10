@@ -49,10 +49,9 @@ import com.vignesh.focuslist.core.design.FocuslistSpacing
 import com.vignesh.focuslist.core.domain.CapturedTask
 import com.vignesh.focuslist.core.domain.splitTrailingCapture
 import com.vignesh.focuslist.ui.component.scheduledDateLabel
+import com.vignesh.focuslist.ui.component.rememberTimeFormat
 import java.time.LocalDate
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
 /**
  * Quick Add.
@@ -357,7 +356,7 @@ private fun ReminderChip(
     // tomorrow, and a chip still reading "Today" would be the disagreement
     // between the chip and the saved value that D-011 exists to prevent.
     val at = parsed.reminderAt(today, LocalDateTime.now()) ?: return
-    val time = at.toLocalTime().format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
+    val time = at.toLocalTime().format(rememberTimeFormat())
     val label = stringResource(
         R.string.quick_add_reminder,
         scheduledDateLabel(at.toLocalDate(), today),

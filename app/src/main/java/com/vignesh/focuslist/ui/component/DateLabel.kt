@@ -1,9 +1,11 @@
 package com.vignesh.focuslist.ui.component
 
 import android.text.format.DateFormat
+import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.vignesh.focuslist.R
 import java.time.LocalDate
@@ -138,8 +140,28 @@ private const val DayMonthSkeleton = "MMMd"
  */
 @Composable
 fun rememberTimeFormat(): DateTimeFormatter {
+    val context = LocalContext.current
     val locale = LocalConfiguration.current.locales[0]
-    return remember(locale) {
-        DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(locale)
-    }
+    // Read every composition, because the setting can change while a screen
+    // is open and nothing announces it.
+    val is24Hour = DateFormat.is24HourFormat(context)
+    return remember(locale, is24Hour) { context.shortTimeFormatter() }
+}
+
+/**
+ * The phone's own short time format: its locale's order and its 12 or 24 hour
+ * setting.
+ *
+ * `docs/decisions.md` D-079. `ofLocalizedTime` follows the locale alone, so an
+ * en-US phone set to 24-hour time read "5:00 PM" on every row while its
+ * notifications and the time picker said 17:00. A skeleton asked of the locale
+ * with the hour field the setting chose gives both.
+ *
+ * Outside composition so the widget, which has no composition, says a time the
+ * same way.
+ */
+fun Context.shortTimeFormatter(): DateTimeFormatter {
+    val locale = resources.configuration.locales[0]
+    val skeleton = if (DateFormat.is24HourFormat(this)) "Hm" else "hm"
+    return DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, skeleton), locale)
 }

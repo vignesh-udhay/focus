@@ -48,6 +48,8 @@ interface ReminderHealthChecks {
 class AndroidReminderHealthChecks(
     private val context: Context,
     private val alarms: ReminderAlarms,
+    // Whether the latest reconciliation had an alarm refused. D-079.
+    private val refusedRecently: () -> Boolean = { false },
     private val manufacturer: String = Build.MANUFACTURER
 ) : ReminderHealthChecks {
 
@@ -56,8 +58,11 @@ class AndroidReminderHealthChecks(
     override fun notifications(): CheckState =
         if (context.canPostReminders()) CheckState.Ok else CheckState.Blocked
 
+    // Blocked when the system refused an alarm as well as when it says it would.
+    // A refusal is in practice the grant being withdrawn, and either way a
+    // reminder may arrive late. D-079.
     override fun exactAlarms(): CheckState =
-        if (alarms.canScheduleExact()) CheckState.Ok else CheckState.Blocked
+        if (alarms.canScheduleExact() && !refusedRecently()) CheckState.Ok else CheckState.Blocked
 
     override fun restriction(): DeviceRestriction? = restrictionFor(manufacturer)
 }

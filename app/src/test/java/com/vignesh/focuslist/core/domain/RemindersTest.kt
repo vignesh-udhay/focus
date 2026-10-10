@@ -390,4 +390,38 @@ class RemindersTest {
         assertEquals(null, cleared.ringsAt)
         assertFalse(cleared.hasLiveReminder())
     }
+
+    // D-079: a stale alarm stays quiet
+
+    private val kolkata: ZoneId = ZoneId.of("Asia/Kolkata")
+
+    @Test
+    fun `an alarm arriving at its reminder's moment is due`() {
+        val ringsAt = LocalDateTime.of(2026, 9, 5, 9, 0)
+
+        assertTrue(isDueAt(ringsAt, kolkata, ringsAt.atZone(kolkata).toInstant()))
+    }
+
+    @Test
+    fun `an alarm a few seconds early still counts`() {
+        val ringsAt = LocalDateTime.of(2026, 9, 5, 9, 0)
+
+        assertTrue(isDueAt(ringsAt, kolkata, ringsAt.minusSeconds(30).atZone(kolkata).toInstant()))
+    }
+
+    @Test
+    fun `an alarm for a reminder that has since moved later is not due`() {
+        // Aimed at 9:00, but the reminder now rings at 10:00.
+        val ringsAt = LocalDateTime.of(2026, 9, 5, 10, 0)
+        val arrived = LocalDateTime.of(2026, 9, 5, 9, 0).atZone(kolkata).toInstant()
+
+        assertFalse(isDueAt(ringsAt, kolkata, arrived))
+    }
+
+    @Test
+    fun `an alarm arriving late is still due`() {
+        val ringsAt = LocalDateTime.of(2026, 9, 5, 9, 0)
+
+        assertTrue(isDueAt(ringsAt, kolkata, ringsAt.plusHours(2).atZone(kolkata).toInstant()))
+    }
 }

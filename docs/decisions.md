@@ -5369,3 +5369,62 @@ edited and never carried into the next occurrence.
 D-038 holds, at which point it is honestly an alarm app and the case for
 `USE_EXACT_ALARM` can be made on what it is. The others are fixes and are not
 reversed.
+
+## D-079. A reminder rings before the first unlock, a stale alarm stays quiet, and a refused alarm is said out loud
+
+**Decision.** The rest of the pre-release audit's reliability findings, and
+three smaller fixes users would notice.
+
+1. **Before the first unlock.** Every reconciliation also writes the reminders
+   it scheduled, with their titles, to device-protected storage, the one place
+   Android lets an app read before the user has unlocked after a restart. The
+   recovery receiver and the alarm receiver are direct-boot aware. On
+   `LOCKED_BOOT_COMPLETED` the alarms are set from that copy; one that fires
+   while the phone is still locked is shown from it, with Done and Snooze asking
+   for the unlock first, and written down there. After the unlock, those records
+   are applied to the database before anything reconciles, so nothing is
+   announced twice. The application no longer touches credential storage at
+   all while the phone is locked, and starts its watchers at the unlock.
+2. **A stale alarm stays quiet.** The receiver now checks that the reminder is
+   actually due, within a minute, before it announces. An alarm left from an
+   earlier time used to announce early, mark the reminder delivered, and leave
+   the real time silent. Now it reconciles and says nothing.
+3. **A refused alarm is said out loud.** D-078 made the scheduler survive a
+   refusal and log it. It is now recorded, and the exact-alarm check reports
+   Blocked while the latest pass had one, so the Today banner and the health
+   screen say reminders may arrive late.
+4. **The widget turns over at midnight** from an alarm of its own.
+   `DATE_CHANGED` is not on Android's implicit-broadcast exception list, so a
+   closed app never heard it and the widget showed yesterday until a task
+   changed.
+5. **Restore offers every file**, not only those labelled JSON. Files arriving
+   through a messaging app or a drive are often labelled as plain text or as
+   bytes, and a valid backup appeared greyed out. The codec already refuses
+   anything that is not a Catimo backup.
+6. **Times follow the phone's 24-hour setting** on rows, the widget, Quick Add
+   and Task Details, as notifications and the time picker already did.
+
+**Why the first is worth its size.** The owner ranks a late reminder with a
+missed one. The credential-encrypted database cannot be opened until the user
+unlocks, so a reminder due between a restart and the first unlock was held and
+then delivered late: the phone restarts overnight, the 7:00 reminder arrives at
+the 7:40 unlock. Android's own clock app solves this the same way, by keeping
+its alarms in device-protected storage.
+
+**What it costs, said plainly.** The titles of upcoming reminders, at most 400,
+sit in device-protected storage, which is encrypted with a key the device holds
+rather than one derived from the user's PIN. They are readable by this app
+before the first unlock and by nothing else. Without the title the reminder
+would say nothing useful, which defeats the point. `docs/privacy-policy.md`
+says so.
+
+**What the third gives up.** The exact-alarm check now has two causes behind
+one message. A refusal is in practice the exact-alarm grant being withdrawn,
+for which the existing advice is right. The other cause, Android's cap of 500
+alarms per app, is out of reach while the scheduler holds at most 400, and a
+fourth health row for it would be a screen built around a case no user should
+meet.
+
+**What would reverse this.** For the first: storing titles before unlock being
+judged worse than a late reminder, at which point the copy keeps ids and times
+and the locked notification says only that a reminder is due.

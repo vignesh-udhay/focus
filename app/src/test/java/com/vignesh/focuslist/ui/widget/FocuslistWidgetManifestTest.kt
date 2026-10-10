@@ -22,8 +22,11 @@ class FocuslistWidgetManifestTest {
     @Test
     fun `clock changes refresh the launcher even when the app is closed`() {
         assertTrue("The clock receiver is missing.", refresh.isNotEmpty())
+        // No DATE_CHANGED: a manifest receiver never gets it. The widget's own
+        // midnight alarm turns the day over, and these re-arm it. D-079.
         listOf(
-            "android.intent.action.DATE_CHANGED",
+            "android.intent.action.BOOT_COMPLETED",
+            "android.intent.action.MY_PACKAGE_REPLACED",
             "android.intent.action.TIME_SET",
             "android.intent.action.TIMEZONE_CHANGED"
         ).forEach { action -> assertTrue("$action is missing.", action in refresh) }

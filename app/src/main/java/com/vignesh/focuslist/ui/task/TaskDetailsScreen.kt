@@ -66,12 +66,11 @@ import com.vignesh.focuslist.ui.component.TaskListEmptyState
 import com.vignesh.focuslist.ui.component.TaskListErrorState
 import com.vignesh.focuslist.ui.component.UndoSnackbarHost
 import com.vignesh.focuslist.ui.component.durationLabel
+import com.vignesh.focuslist.ui.component.rememberTimeFormat
 import com.vignesh.focuslist.ui.component.scheduledDateLabel
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
 /**
  * Task Details: one task, edited by picking.
@@ -745,8 +744,8 @@ internal enum class PlanSheet {
 /** A reminder as a day and a time, in the reader's own locale. */
 @Composable
 private fun reminderValue(at: LocalDateTime, today: LocalDate): String {
-    val time = at.toLocalTime()
-        .format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
+    // The phone's 12 or 24 hour setting, as the notification says it. D-079.
+    val time = at.toLocalTime().format(rememberTimeFormat())
 
     return stringResource(
         R.string.task_reminder_when,

@@ -48,20 +48,23 @@ import java.util.Date
  */
 
 /** The reminder, as `notify/Collapsed` and `notify/Expanded` draw it. */
-internal fun Context.postReminder(task: Task): Boolean {
+internal fun Context.postReminder(
+    task: Task,
+    // Before the first unlock after a restart, Done and Snooze cannot reach the
+    // database, so Android asks for the unlock before running them. D-079.
+    requireUnlockForActions: Boolean = false
+): Boolean {
     val summary = task.reminderSummary(this)
 
+    fun action(label: Int, action: String) = NotificationCompat.Action.Builder(
+        0,
+        getString(label),
+        actionIntent(task.id, action)
+    ).setAuthenticationRequired(requireUnlockForActions).build()
+
     val builder = reminderBuilder(task, summary)
-        .addAction(
-            0,
-            getString(R.string.reminder_action_done),
-            actionIntent(task.id, ReminderActionReceiver.ACTION_DONE)
-        )
-        .addAction(
-            0,
-            getString(R.string.reminder_action_snooze),
-            actionIntent(task.id, ReminderActionReceiver.ACTION_SNOOZE)
-        )
+        .addAction(action(R.string.reminder_action_done, ReminderActionReceiver.ACTION_DONE))
+        .addAction(action(R.string.reminder_action_snooze, ReminderActionReceiver.ACTION_SNOOZE))
 
     // The expanded form is where the notes live. Collapsed shows the title and
     // the summary line, which is what the frame draws.

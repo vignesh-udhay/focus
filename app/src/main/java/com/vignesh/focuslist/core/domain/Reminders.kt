@@ -1,5 +1,6 @@
 package com.vignesh.focuslist.core.domain
 
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -109,6 +110,25 @@ fun missedReminders(tasks: List<Task>, now: LocalDateTime): List<Task> =
 fun reminderTrigger(reminderAt: LocalDateTime, zone: ZoneId, now: Instant): Instant =
     maxOf(reminderAt.atZone(zone).toInstant(), now)
 
+/**
+ * Whether a reminder ringing at [ringsAt] is due when an alarm arrives at
+ * [arrivedAt].
+ *
+ * `docs/decisions.md` D-079. An alarm is a cache of a decision, and a cache can
+ * be stale: the reminder moved later and the alarm for the old time survived.
+ * Announcing it then was worse than saying nothing, because announcing marks the
+ * reminder delivered and the real time goes silent. So the receiver asks this
+ * first, and an alarm for a reminder that is not due yet reconciles instead.
+ *
+ * [EarlyArrivalTolerance] early still counts. An exact alarm does not arrive
+ * early, but the wall clock can be corrected under it between scheduling and
+ * delivery, and refusing a reminder seconds early would be the same silence.
+ */
+fun isDueAt(ringsAt: LocalDateTime, zone: ZoneId, arrivedAt: Instant): Boolean =
+    !ringsAt.atZone(zone).toInstant().isAfter(arrivedAt.plus(EarlyArrivalTolerance))
+
+/** How early an alarm may arrive and still count as its reminder's. */
+val EarlyArrivalTolerance: Duration = Duration.ofMinutes(1)
 
 /**
  * The same time of day, on the first day it is still ahead of [now].

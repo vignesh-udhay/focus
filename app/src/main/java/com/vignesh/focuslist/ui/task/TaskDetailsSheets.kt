@@ -62,11 +62,10 @@ import com.vignesh.focuslist.ui.component.PlanRowGroup
 import com.vignesh.focuslist.ui.component.TaskDatePickerDialog
 import com.vignesh.focuslist.ui.component.durationLabel
 import com.vignesh.focuslist.ui.component.scheduledDateLabel
+import com.vignesh.focuslist.ui.component.rememberTimeFormat
 import com.vignesh.focuslist.ui.component.PlanRow
 import java.time.LocalDate
 import java.time.LocalDateTime
-import java.time.format.FormatStyle
-import java.time.format.DateTimeFormatter
 import java.time.LocalTime
 import java.time.temporal.ChronoUnit
 
@@ -821,9 +820,7 @@ internal fun ReminderSheet(
                         )
                         PlanRow(
                             label = stringResource(R.string.task_reminder_time),
-                            value = time.format(
-                                DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
-                            ),
+                            value = time.format(rememberTimeFormat()),
                             shapes = ListItemDefaults.segmentedShapes(index = 1, count = 2),
                             onClick = { isTimeOpen = true }
                         )

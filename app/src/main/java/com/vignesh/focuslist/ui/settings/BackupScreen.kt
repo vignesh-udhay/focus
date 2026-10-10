@@ -77,7 +77,11 @@ fun BackupScreen(
         exportLauncher.launch("Catimo-backup-${LocalDate.now()}.json")
     }
     val chooseRestore = {
-        restoreLauncher.launch(arrayOf(JsonMimeType, "text/json"))
+        // Every file, not only those labelled JSON. D-079. A backup that came
+        // through a messaging app or a drive is often labelled as plain text or
+        // as bytes, and appeared greyed out. The codec refuses anything that is
+        // not a Catimo backup, so the filter was guarding nothing.
+        restoreLauncher.launch(arrayOf("*/*"))
     }
 
     // **A finished operation says so, and it used to not.** Success landed on

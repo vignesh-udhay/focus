@@ -93,7 +93,7 @@ class ReminderScheduler(
      * and anything past the cap is scheduled by a later pass, which every
      * delivery triggers by writing down that it was announced.
      */
-    fun reconcile(tasks: List<Task>): Int {
+    fun reconcile(tasks: List<Task>): ReconcileResult {
         val now = clock()
         val here = zone()
         val localNow = LocalDateTime.ofInstant(now, here)
@@ -105,28 +105,44 @@ class ReminderScheduler(
         val owedIds = owed.mapTo(HashSet()) { task -> task.id }
 
         var failures = 0
-        fun attempt(taskId: String, action: () -> Unit) {
+        fun attempt(taskId: String, action: () -> Unit): Boolean =
             try {
                 action()
+                true
             } catch (error: Exception) {
                 failures++
                 onFailure(taskId, error)
+                false
             }
-        }
 
         tasks
             .filter { task -> task.id !in owedIds }
             .forEach { task -> attempt(task.id) { alarms.cancel(task.id) } }
 
-        owed.take(MaxScheduledReminders).forEach { task ->
+        val scheduled = owed.take(MaxScheduledReminders).mapNotNull { task ->
             // Every owed task rings at some moment; the queries saw to that.
-            val ringsAt = task.ringsAt ?: return@forEach
-            attempt(task.id) { alarms.schedule(task.id, reminderTrigger(ringsAt, here, now)) }
+            val ringsAt = task.ringsAt ?: return@mapNotNull null
+            val set = attempt(task.id) {
+                alarms.schedule(task.id, reminderTrigger(ringsAt, here, now))
+            }
+            if (set) ScheduledReminder(taskId = task.id, title = task.title, ringsAt = ringsAt) else null
         }
 
-        return failures
+        return ReconcileResult(failures = failures, scheduled = scheduled)
     }
 }
+
+/**
+ * What one pass did: how many alarms the system refused, and which reminders now
+ * have one.
+ *
+ * The second half is what D-079 mirrors into device-protected storage, so the
+ * reminders can be set again before the first unlock after a restart.
+ */
+data class ReconcileResult(val failures: Int, val scheduled: List<ScheduledReminder>)
+
+/** A reminder that has an alarm, as much of it as ringing it needs. */
+data class ScheduledReminder(val taskId: String, val title: String, val ringsAt: LocalDateTime)
 
 /**
  * The most reminder alarms one pass asks the system to hold.
