@@ -5248,3 +5248,39 @@ used as a list of things to be nudged about rather than a list of things without
 a day, and the answer would be a separate decision about what Inbox is for, not
 a return to the split.
 
+## D-076. Today loses its finished-day state, superseding D-033
+
+**Decision.** A day whose work is all done no longer draws the happy cat, "All
+done for today" or its supporting line. Today shows what it has, which is the
+Completed disclosure. `today_empty_*` stays, for a day that never had anything
+on it, and so does the widget's own "all done" line.
+
+**What changed the answer.** The owner looked at the state on a device and found
+it unnecessary, the cat and the words both. D-033 was itself uneasy about it: it
+said the state "sits close to" `PRODUCT.md` principle 7's line on unnecessary
+celebrations, and that it is "the one state in the app that is not an empty state
+and draws like one". Seen on a phone, both were true at once. The illustration
+pushed the Completed rows down a screen that was not empty, and stacked under
+the app bar it read as a layout fault rather than as calm.
+
+**What is given up, said plainly.** D-033's argument was that a single collapsed
+"Completed · 6" is a control rather than an answer, and the same screen as a day
+where one of seven is done. That is true again. The difference is still there for
+anyone who looks: a day with work left shows its bands above Completed, and a
+finished day shows Completed alone.
+
+**What is kept from D-033.** The rows. The reason the state headed the list
+rather than replacing it, that the Completed disclosure is how a task finished
+today is reopened once the undo snackbar has gone, now simply holds without a
+header above it.
+
+**What else goes.** `AllDoneMascot` and `TaskListDoneHeader`, which nothing else
+draws, and the `cat-hd-all-done` row in D-074's pose table. D-074's other six
+poses are untouched. The widget is not affected: it has no Completed section, so
+its "all done" line is the only way it can tell a finished day from an empty one,
+which was D-033's point and is still right there.
+
+**What would reverse this.** Users opening Today on a finished day and reading
+the lone disclosure as the app having lost their work, which would show as
+Logbook visits to check rather than to read. The answer then is a line of text,
+not the illustration.

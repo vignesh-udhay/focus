@@ -142,17 +142,6 @@
     <string name="upcoming_empty_supporting">Tasks scheduled for a later day appear here.</string>
 
     <!--
-      A day that had work and finished it. Separate from today_empty_*, which is
-      a day that never had any: D-033 turns on the difference. It heads the list
-      rather than replacing it, so the completed rows are directly beneath and
-      the supporting line does not have to account for them. It points at where
-      the next work is instead, and it does not congratulate, which PRODUCT.md
-      principle 7 rules out.
-    -->
-    <string name="today_all_done_headline">All done for today</string>
-    <string name="today_all_done_supporting">Tomorrow\'s tasks are in Upcoming.</string>
-
-    <!--
       A read that failed. It must never mention a connection: Catimo has no
       account, no sync and no backend, so every read is local and telling anyone
       to check their connection sends them to fix something never involved.

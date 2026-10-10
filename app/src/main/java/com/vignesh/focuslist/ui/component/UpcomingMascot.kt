@@ -14,7 +14,7 @@ import androidx.compose.ui.unit.dp
  * Settled but awake, because nothing is coming yet and something eventually
  * will be. Between Inbox's sleep and Today's sitting up.
  *
- * Drawn from `cat-hd-empty-upcoming`. The seven poses share one scale factor
+ * Drawn from `cat-hd-empty-upcoming`. The six poses share one scale factor
  * rather than a common width or height: a cat sitting is taller than the same
  * cat lying down, and normalising either dimension would have made it read as
  * two differently sized animals. [MascotImage] explains why the paths are built

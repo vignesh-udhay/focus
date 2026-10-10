@@ -9,6 +9,19 @@ scope it delivers is in `PRODUCT.md`.
 
 ## Current phase
 
+**Today loses its finished-day state, D-076, superseding D-033.** Reported: the
+happy cat and "All done for today" stacked under the app bar above Completed and
+looked out of place. Centring the group was tried first and fixed the layout,
+then the owner judged the state unnecessary, cat and words both. A finished day
+now shows its Completed disclosure and nothing above it, as it did before D-033;
+the rows stay, so a task finished today is still reopened from Today.
+`AllDoneMascot`, `TaskListDoneHeader` and `today_all_done_*` are deleted, and the
+mascot set is six poses. The widget keeps its own "all done" line, because it has
+no Completed section. Seen on the Pixel 10 emulator. `TodayScreenSemanticsTest`
+39, with a new test that a finished day shows only its disclosure,
+`EmptyStateSemanticsTest` 11 and `ListLoadingSemanticsTest` 8 pass.
+`cat-hd-all-done` is still on the Figma illustrations page.
+
 **A capture with a reminder is scheduled for the day it rings, D-075.** Found
 in a review of the three lists. "call mom 5pm" typed into Inbox stayed in Inbox
 with a reminder ringing this afternoon, and the same title typed into Today

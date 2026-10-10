@@ -48,8 +48,6 @@ import com.vignesh.focuslist.core.domain.todayTasks
 import com.vignesh.focuslist.ui.component.AddTaskFab
 import com.vignesh.focuslist.ui.component.DurationLabel
 import com.vignesh.focuslist.ui.component.FocuslistTopAppBar
-import com.vignesh.focuslist.ui.component.AllDoneMascot
-import com.vignesh.focuslist.ui.component.TaskListDoneHeader
 import com.vignesh.focuslist.ui.component.TaskListEmptyState
 import com.vignesh.focuslist.ui.component.TaskListErrorState
 import com.vignesh.focuslist.ui.component.SectionLabel
@@ -262,20 +260,6 @@ private fun TodayContent(
     // so every task Today shows is in exactly one of them.
     val sections = todaySections(tasks, today)
 
-    // A day that had work and finished it, which D-033 separates from a day
-    // that never had any. Read off the bands rather than the tasks, so the one
-    // place that decides what is outstanding stays `todaySections`.
-    //
-    // A paused session still rules it out, and now for a narrower reason. When the
-    // paused task is on today's list it sits in a band that is not Completed, so
-    // the bands rule it out on their own. When it is not on today's list at all,
-    // which happens to a task focused from Inbox, the bands cannot see it: "all
-    // done" above a card reading "Paused, 15 min remaining" would be the two
-    // halves of the screen disagreeing.
-    val isEverythingDone = pausedTask == null &&
-        sections.isNotEmpty() &&
-        sections.all { it.band == TodayBand.COMPLETED }
-
     // Collapsed by default, per D-012, and screen state rather than app state:
     // whether the user opened Completed on Today says nothing about anything
     // else. Saveable, so it survives a rotation.
@@ -390,25 +374,9 @@ private fun TodayContent(
                     }
                 }
 
-                // Above the Completed disclosure, not instead of it. The
-                // day is finished, which is worth saying, but the rows are
-                // still how a task completed today is reopened once the undo
-                // snackbar has gone. D-033 records the version that replaced
-                // them and why it was wrong.
-                if (isEverythingDone) {
-                    item(key = "all-done") {
-                        TaskListDoneHeader(
-                            headline = stringResource(R.string.today_all_done_headline),
-                            supporting = stringResource(R.string.today_all_done_supporting),
-                            illustration = { AllDoneMascot() },
-                            modifier = Modifier.animateItem(
-                                fadeInSpec = FocuslistMotion.reveal(),
-                                placementSpec = FocuslistMotion.reveal(),
-                                fadeOutSpec = FocuslistMotion.reveal()
-                            )
-                        )
-                    }
-                }
+                // No finished-day header. D-076 removed D-033's cat and "All
+                // done for today": a finished day shows its Completed
+                // disclosure and nothing above it.
 
                 if (pausedTask != null) {
                     item(key = "paused-session") {

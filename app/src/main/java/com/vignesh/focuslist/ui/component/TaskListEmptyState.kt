@@ -93,9 +93,9 @@ internal fun TaskListEmptyState(
 /**
  * The statement itself: mascot, headline, supporting line, and any action.
  *
- * Lifted out of [TaskListEmptyState] because the finished-day state draws the
- * same thing at the head of a list rather than in the middle of a screen, and
- * two copies of this column would be two things to keep in step.
+ * Lifted out of [TaskListEmptyState] for D-033's finished-day header, which drew
+ * the same thing at the head of a list. D-076 removed that header, so this has
+ * one caller again.
  */
 @Composable
 private fun ColumnScope.EmptyStateBody(
@@ -136,42 +136,6 @@ private fun ColumnScope.EmptyStateBody(
     if (action != null) {
         Spacer(Modifier.height(FocuslistSpacing.lg))
         action()
-    }
-}
-
-/**
- * The finished-day statement, sized to its content so it can head a list.
- *
- * Today draws this rather than [TaskListEmptyState] when the day had work and
- * all of it is complete, because that day is not empty: its Completed
- * disclosure sits directly beneath this and stays the way a task finished today
- * is reopened. D-033 records why the finished-day state exists and why it heads
- * the list instead of replacing it.
- *
- * No gutter of its own. It is an item in a list whose content padding has
- * already inset it, where [TaskListEmptyState] is the whole screen and has to
- * find the content column for itself.
- */
-@Composable
-internal fun TaskListDoneHeader(
-    headline: String,
-    supporting: String,
-    modifier: Modifier = Modifier,
-    illustration: (@Composable () -> Unit)? = null
-) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(top = FocuslistSpacing.md, bottom = FocuslistSpacing.lg),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        EmptyStateBody(
-            headline = headline,
-            supporting = supporting,
-            tone = EmptyStateTone.Neutral,
-            illustration = illustration,
-            action = null
-        )
     }
 }
 

@@ -16,10 +16,10 @@ import androidx.compose.ui.unit.dp
  * of what this file said before: the sleeping cat moved to Inbox, where an
  * empty list is the finished state of the screen. Here work may still arrive.
  *
- * [AllDoneMascot] is the same sit with the eyes curved shut, which is what a
- * day with completed work in it earns under D-033.
+ * The finished-day pose, the same sit with the eyes curved shut, was removed
+ * with the state that drew it. D-076.
  *
- * Drawn from `cat-hd-empty-today`. The seven poses share one scale factor
+ * Drawn from `cat-hd-empty-today`. The six poses share one scale factor
  * rather than a common width or height: a cat sitting is taller than the same
  * cat lying down, and normalising either dimension would have made it read as
  * two differently sized animals. [MascotImage] explains why the paths are built

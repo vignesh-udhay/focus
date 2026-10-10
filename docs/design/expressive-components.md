@@ -490,7 +490,6 @@ its posture.
 | Today | sitting, eyes half shut, for a day that is clear and still open | `cat-hd-empty-today` | 182x190 |
 | Inbox | curled asleep, for a list with nothing left to decide | `cat-hd-empty-inbox` | 237x150 |
 | Upcoming | lying down but awake, for days still clear | `cat-hd-empty-upcoming` | 254x132 |
-| Today, finished | sitting, content, eyes curved shut | `cat-hd-all-done` | 193x198 |
 | Error | sitting, with a question mark | `cat-hd-error` | 207x229 |
 
 [CD] **D-074 redrew all of these, and Today and Inbox traded postures when it
@@ -509,7 +508,7 @@ nose and the question mark to `dark`. The source column names the file a pose
 was drawn from. The board node ids the old table carried were a record of where
 a pose came from and never a stable handle, and they are gone with the poses.
 
-[CD] **The seven share one scale factor, 0.26dp per viewport unit, not a common
+[CD] **The six share one scale factor, 0.26dp per viewport unit, not a common
 width or height.** A cat sitting is genuinely taller than the same cat lying
 down. Matching heights would shrink the sitting one and matching widths would
 swell it, and either reads as two differently sized animals. The factor was
@@ -523,10 +522,9 @@ question mark. It is the only prop in the set and the only pose that is not
 about an empty collection. It is also the tallest pose by some way, because the
 mark sits clear above the head.
 
-[CD] **Today has both sitting cats, and the eyes are the difference.** Half open
-and level on an empty day, curved shut on a finished one. Both sit because both
-are states where nothing is in motion; what separates them is whether the day
-had work in it, which is D-033's rule for when the content pose is earned.
+[CD] **Today had a second sitting cat, and D-076 removed it.** The finished-day
+pose, the same sit with the eyes curved shut, went with the state that drew it.
+`cat-hd-all-done` is still on the Figma illustrations page, and nothing draws it.
 
 [CD] **Every nose is `dark`.** The old set drew some noses lighter than the
 eyes, which this section first called a sitting-pose exception and D-046 then
@@ -649,10 +647,8 @@ and swapped to a filled `schedule`, which rendered a near-black disc on a pink
 container while the other two were dark red outlines.
 
 [CD] The copy is plain. An empty list is not an achievement, and nothing here
-congratulates the user. That holds for the finished-day state too, which is the
-closest this app comes to a celebration and is kept on the right side of
-`PRODUCT.md` principle 7 by the same rule as everything else: the line states a
-fact and points somewhere.
+congratulates the user. The finished-day state was the closest this app came to
+a celebration, and D-076 removed it.
 
 [CD] **A supporting line states a fact, and never instructs.** The headline names
 the state; the line under it says something true about the app. It does not tell
@@ -662,19 +658,10 @@ user rather than at the screen, and the mildest form of the motivational noise
 `PRODUCT.md` principle 7 rules out. It also sat under a cat drawn asleep, so the
 picture and the words wanted different things.
 
-[CD] Today has two of these, and D-033 turns on the difference. `today_empty_*`
-is a day that never had anything on it. `today_all_done_*` is a day that had work
-and finished it:
-
-    All done for today
-    Tomorrow's tasks are in Upcoming.
-
-[CD] The finished-day one is not an empty state and does not draw like the
-others. It heads the list through `TaskListDoneHeader`, with the Completed
-disclosure directly beneath it, because a finished day is full rather than empty
-and those rows are how a task completed today is reopened. Both forms share one
-body composable. Its supporting line points at Upcoming rather than at the rows
-below it, since those are already on screen and do not need announcing.
+[CD] Today has one of these. D-033 gave it a second, a finished-day header with
+its own cat and "All done for today" above the Completed disclosure, and D-076
+removed it: a finished day shows its Completed disclosure and nothing above it.
+`today_empty_*` is for a day that never had anything on it.
 
 [CD] Today is the screen where the pattern is hardest, because it is the only one
 that explains itself. `logbook.md` gives the supporting line its job, teaching a

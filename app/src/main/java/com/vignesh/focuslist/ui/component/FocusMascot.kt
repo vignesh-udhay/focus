@@ -163,7 +163,7 @@ private fun rememberSettle(running: Boolean): Animatable<Float, AnimationVector1
 private const val Settle = 0.02f
 
 /**
- * The scale factor all seven poses share, in dp per viewport unit. D-074.
+ * The scale factor all six poses share, in dp per viewport unit. D-074.
  *
  * The five list poses carry its products as literals. It is a number here
  * because this file has to do arithmetic with it.

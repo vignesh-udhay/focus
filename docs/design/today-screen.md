@@ -391,7 +391,7 @@ found something, not because the user did anything.
 
 **Where it sits in each branch.**
 
-- the collection: the first `item`, above the finished-day header and the Focus
+- the collection: the first `item`, above the Focus
   now card, guarded by `hasReminderHealthBanner()` so an absent banner does not
   leave the column's gap behind
 - the empty state: a `Column` above it, because the empty state replaces the

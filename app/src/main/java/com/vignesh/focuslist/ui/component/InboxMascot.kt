@@ -17,7 +17,7 @@ import androidx.compose.ui.unit.dp
  * and it is the reverse of what this file said before: the sitting cat moved
  * to Today, where the day is still open.
  *
- * Drawn from `cat-hd-empty-inbox`. The seven poses share one scale factor
+ * Drawn from `cat-hd-empty-inbox`. The six poses share one scale factor
  * rather than a common width or height: a cat sitting is taller than the same
  * cat lying down, and normalising either dimension would have made it read as
  * two differently sized animals. [MascotImage] explains why the paths are built

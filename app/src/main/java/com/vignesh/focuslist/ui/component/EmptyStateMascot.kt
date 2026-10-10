@@ -57,7 +57,7 @@ import androidx.compose.ui.unit.dp
  * ## Sizing
  *
  * [width] and [height] are the frame the pose was drawn in, scaled by one
- * factor shared across all seven poses, 0.26dp per viewport unit. Neither
+ * factor shared across all six poses, 0.26dp per viewport unit. Neither
  * dimension is normalised: a cat sitting is genuinely taller than the same cat
  * lying down, so matching heights would shrink the sitting one and matching
  * widths would swell it. The set was drawn at a consistent scale, so carrying

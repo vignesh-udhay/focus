@@ -482,6 +482,23 @@ class TodayScreenSemanticsTest {
     fun undo_reopensTheTask_at200() = assertUndoReopensTheTask(FontScale200)
 
     /**
+     * D-076. A finished day shows its Completed disclosure and nothing above it:
+     * no finished-day header, and not the empty day's words either, because a
+     * day full of completed work is not a day with nothing on it.
+     */
+    @Test
+    fun aFinishedDay_showsOnlyItsCompletedDisclosure() {
+        setToday(FontScale100, withOneTask())
+
+        rule.waitUntilExactlyOneExists(hasText(TITLE), TIMEOUT_MILLIS)
+        rule.onNodeWithContentDescription(MARK_COMPLETE).performClick()
+
+        rule.waitUntilExactlyOneExists(hasText(COMPLETED_ONE), TIMEOUT_MILLIS)
+        rule.onNodeWithText("All done for today").assertDoesNotExist()
+        rule.onNodeWithText(EMPTY_HEADLINE).assertDoesNotExist()
+    }
+
+    /**
      * The banner says which check failed, not that something is wrong.
      *
      * The sentence is the health screen's own, which is the point: a user who
