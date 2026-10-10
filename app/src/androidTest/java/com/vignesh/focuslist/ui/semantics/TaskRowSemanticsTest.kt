@@ -240,6 +240,58 @@ class TaskRowSemanticsTest {
         rule.onNode(hasText(":00", substring = true)).assertExists()
     }
 
+    // --- D-075: a reminder names its day when it is not the task's --------
+
+    /** An Inbox task has no day, so "5:00 PM" alone could be any day. */
+    @Test
+    fun anUndatedTask_namesItsReminderDay() {
+        setRow(FontScale100, outstanding().copy(scheduledDate = null, reminderAt = TestToday.atTime(17, 0)))
+
+        rule.onNode(hasText("Today, ", substring = true)).assertExists()
+    }
+
+    /** Under a later heading, a reminder on another day says which. */
+    @Test
+    fun aReminderOnAnotherDay_namesItsDay() {
+        setRow(
+            FontScale100,
+            outstanding().copy(
+                scheduledDate = TestToday.plusDays(5),
+                reminderAt = TestToday.plusDays(1).atTime(17, 0)
+            )
+        )
+
+        rule.onNode(hasText("Tomorrow, ", substring = true)).assertExists()
+    }
+
+    /** On its own day the time is enough, as it always was. */
+    @Test
+    fun aReminderOnTheTasksDay_isJustTheTime() {
+        setRow(FontScale100, outstanding().copy(reminderAt = TestToday.atTime(17, 0)))
+
+        rule.onNode(hasText(":00", substring = true)).assertExists()
+        rule.onNode(hasText("Today, ", substring = true)).assertDoesNotExist()
+    }
+
+    /** A reminder that rang days ago stops reading as one still to come. */
+    @Test
+    fun aReminderWhoseDayIsOver_isDropped() {
+        setRow(
+            FontScale100,
+            outstanding().copy(scheduledDate = null, reminderAt = TestToday.minusDays(2).atTime(17, 0))
+        )
+
+        rule.onNode(hasText(":00", substring = true)).assertDoesNotExist()
+    }
+
+    /** This morning's stays until tonight: plainly past, and it explains the band. */
+    @Test
+    fun thisMorningsReminder_staysForTheDay() {
+        setRow(FontScale100, outstanding().copy(reminderAt = TestToday.atTime(9, 0)))
+
+        rule.onNode(hasText(":00", substring = true)).assertExists()
+    }
+
     private fun outstanding(): Task = testTask(
         id = "1",
         title = TITLE,

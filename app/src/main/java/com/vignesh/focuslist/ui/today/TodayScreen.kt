@@ -57,13 +57,14 @@ import com.vignesh.focuslist.ui.component.TaskListRow
 import com.vignesh.focuslist.ui.component.TodayMascot
 import com.vignesh.focuslist.ui.component.durationLabel
 import com.vignesh.focuslist.ui.component.UndoSnackbarHost
+import com.vignesh.focuslist.core.domain.PrimaryList
 import com.vignesh.focuslist.ui.task.QuickAddSheet
 import com.vignesh.focuslist.ui.task.TaskListViewModel
+import com.vignesh.focuslist.ui.task.rememberCaptureLandingNotice
 import com.vignesh.focuslist.ui.task.UndoSnackbarEffect
 import com.vignesh.focuslist.ui.theme.FocuslistTheme
 import java.time.Instant
 import java.time.LocalDate
-import java.time.LocalDateTime
 
 /**
  * Today, the default task view.
@@ -95,7 +96,10 @@ fun TodayScreen(
     // The three dots at the end of the header row. A slot rather than a route,
     // because navigating is the host's job and this screen only has to leave
     // room for it.
-    overflow: @Composable RowScope.() -> Unit = {}
+    overflow: @Composable RowScope.() -> Unit = {},
+    // Where the View action on "Saved to Upcoming" goes. D-075. The host owns
+    // the routes, so the screen names a list and the host switches to it.
+    onOpenList: (PrimaryList) -> Unit = {}
 ) {
     val tasks by viewModel.todayTasks.collectAsStateWithLifecycle()
     val today by viewModel.today.collectAsStateWithLifecycle()
@@ -124,6 +128,11 @@ fun TodayScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
     UndoSnackbarEffect(viewModel = viewModel, snackbarHostState = snackbarHostState)
+    val announceLanding = rememberCaptureLandingNotice(
+        snackbarHostState = snackbarHostState,
+        currentList = PrimaryList.TODAY,
+        onOpenList = onOpenList
+    )
 
     TodayContent(
         tasks = tasks,
@@ -184,26 +193,18 @@ fun TodayScreen(
             // say so. D-053.
             fallbackDate = today,
             onDismiss = { isQuickAddVisible = false },
-            // Captured onto today's list unless the title named a day itself.
+            // Captured onto today's list unless the title named a day, or a
+            // reminder that rings on another one. D-075: "call mom 5pm" typed
+            // at six in the evening is tomorrow's, and lands in Upcoming.
             onSave = { parsed ->
-                // Read at save time, so a task captured after midnight gets
-                // the new day rather than the one the screen was built on. A
-                // blank title captures nothing and leaves the sheet open.
-                val day = parsed.date ?: viewModel.today.value
-                val captured = viewModel.createTask(
-                    title = parsed.title,
-                    scheduledDate = day,
-                    // A trailing time sets a reminder, per D-011. It lands on
-                    // the day the task is being saved to, so a time with no day
-                    // of its own is a reminder today, or tomorrow when today's
-                    // has gone by: D-030 resolves it forward rather than
-                    // capturing a moment that can only ring at once.
-                    //
-                    // The clock is read here for the same reason the day above
-                    // is, and from the same instant it is compared against.
-                    reminderAt = parsed.reminderAt(day, LocalDateTime.now())
-                )
-                if (captured) isQuickAddVisible = false
+                // Today read at save time, so a task captured after midnight
+                // gets the new day rather than the one the screen was built on.
+                // A blank title captures nothing and leaves the sheet open.
+                val landed = viewModel.capture(parsed, fallbackDate = viewModel.today.value)
+                if (landed != null) {
+                    isQuickAddVisible = false
+                    announceLanding(landed)
+                }
             }
         )
     }

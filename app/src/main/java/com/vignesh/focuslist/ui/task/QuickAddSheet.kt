@@ -61,7 +61,8 @@ import java.time.format.FormatStyle
  * decisions. Everything else about the task is decided later.
  *
  * The field reads a trailing day and, since `docs/decisions.md` D-011, a
- * trailing time as well. A day sets the scheduled date. A time sets a reminder.
+ * trailing time as well. A day sets the scheduled date. A time sets a reminder,
+ * and since D-075 the reminder's day is the scheduled date too.
  *
  * **The reminder is applied rather than offered**, and D-011 ranks the two
  * mistakes to explain why. A reminder set when it was not wanted costs one
@@ -88,10 +89,10 @@ import java.time.format.FormatStyle
 @Composable
 fun QuickAddSheet(
     today: LocalDate,
-    // **Where a capture goes when the title names no day**, per D-053. Today
-    // passes its own day, because it saves `parsed.date ?: today`. Inbox passes
-    // null, because it saves `parsed.date` and an undated task staying undated
-    // is the decision Inbox exists to defer.
+    // **Where a capture goes when the title says nothing about when**, per
+    // D-053. Today passes its own day and Inbox passes null, because an undated
+    // task staying undated is the decision Inbox exists to defer. A title with a
+    // day or a reminder does not use it: D-075.
     //
     // The fallback date rather than a destination flag, so this is the same
     // value the host acts on at save time and cannot drift from it. The line
@@ -256,8 +257,10 @@ fun QuickAddSheet(
             )
 
             // The one control on the sheet besides Save, and it appears only
-            // when there is a reminder to be dismissed.
-            parsed.time?.let {
+            // when there is a reminder to be dismissed. An offset is one too:
+            // keyed on the clock time alone, "in 2 hours" set a reminder this
+            // sheet never showed and could not take back. D-075.
+            if (parsed.hasReminder) {
                 ReminderChip(
                     parsed = parsed,
                     today = today,
@@ -302,7 +305,12 @@ private fun QuickAddSupportingText(
     today: LocalDate,
     fallbackDate: LocalDate?
 ) {
-    val day = parsed.date
+    // The day the save will use, worked out the way the save works it out. A
+    // reminder schedules the task for the day it rings, D-075, so "call mom
+    // 5pm" from Inbox reads "Scheduled for Today" here, and the line cannot
+    // name a destination the task is not going to. The clock is read here for
+    // the reason the chip reads it: D-030 can move the day.
+    val day = if (parsed.isPlain) null else parsed.scheduledDate(fallbackDate, today, LocalDateTime.now())
 
     Text(
         text = when {
@@ -317,9 +325,10 @@ private fun QuickAddSupportingText(
                 scheduledDateLabel(day, today)
             )
 
-            // No day typed, so the destination is the surprising part and this
-            // is the only branch that names one. Which it is depends on the
-            // host: Today dates an undated capture, Inbox leaves it undated.
+            // Nothing typed about when, so the destination is the surprising
+            // part and this is the only branch that names one. Which it is
+            // depends on the host: Today dates an undated capture, Inbox leaves
+            // it undated.
             fallbackDate != null -> stringResource(R.string.quick_add_saved_to_today)
             else -> stringResource(R.string.quick_add_saved_to_inbox)
         }

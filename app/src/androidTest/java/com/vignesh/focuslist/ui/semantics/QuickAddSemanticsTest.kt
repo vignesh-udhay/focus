@@ -52,14 +52,15 @@ class QuickAddSemanticsTest {
     private fun setSheet(
         fontScale: Float,
         onDismiss: () -> Unit = {},
-        onSave: (CapturedTask) -> Unit = {}
+        onSave: (CapturedTask) -> Unit = {},
+        today: LocalDate = TODAY
     ) {
         rule.setFocuslistContent(fontScale) {
             QuickAddSheet(
-                today = TODAY,
+                today = today,
                 // Today dates an undated capture. `QuickAddCaptureTest` covers
                 // the Inbox side, where it does not.
-                fallbackDate = TODAY,
+                fallbackDate = today,
                 onDismiss = onDismiss,
                 onSave = onSave
             )
@@ -169,7 +170,10 @@ class QuickAddSemanticsTest {
      * reader has to be able to read the promise from.
      */
     private fun assertATimeIsNamedByAChip(fontScale: Float) {
-        setSheet(fontScale)
+        // The real day, not the fixed one. Since D-075 the line names the day
+        // the reminder rings, which the sheet resolves against the clock, and a
+        // fixed day weeks behind it puts that on a date this test cannot name.
+        setSheet(fontScale, today = LocalDate.now())
 
         field().performTextInput(TIMED_TITLE)
 

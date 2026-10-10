@@ -138,9 +138,27 @@ private fun taskMetadata(
     // on a row from last Tuesday describes nothing that is going to happen. It
     // also keeps the date first on exactly the rows where being overdue is the
     // point, which is what `metadataText` colours.
+    //
+    // **And it names its day when that is not the task's day.** D-075. The time
+    // alone was written for Today, where the reminder is today's. On an Inbox
+    // task "5:00 PM" could be any day, and under a Friday heading a Wednesday
+    // reminder read as Friday's. A reminder whose own day is over is dropped,
+    // which is the overdue rule above applied to the reminder's day: an Inbox
+    // task has no scheduled day to pass, and went on showing a rung reminder
+    // as though it were still to come. This morning's stays until tonight,
+    // because it is plainly past and Today's band is explained by it.
     if (!task.isPastScheduled(today)) {
-        task.reminderAt?.let { at ->
-            segments += at.toLocalTime().format(rememberTimeFormat())
+        task.reminderAt?.takeUnless { at -> at.toLocalDate().isBefore(today) }?.let { at ->
+            val time = at.toLocalTime().format(rememberTimeFormat())
+            segments += if (at.toLocalDate() == task.scheduledDate) {
+                time
+            } else {
+                stringResource(
+                    R.string.task_row_reminder_on_day,
+                    scheduledDateLabel(at.toLocalDate(), today),
+                    time
+                )
+            }
         }
     }
 

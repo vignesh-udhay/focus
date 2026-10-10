@@ -9,6 +9,32 @@ scope it delivers is in `PRODUCT.md`.
 
 ## Current phase
 
+**A capture with a reminder is scheduled for the day it rings, D-075.** Found
+in a review of the three lists. "call mom 5pm" typed into Inbox stayed in Inbox
+with a reminder ringing this afternoon, and the same title typed into Today
+after five sat on Today with a reminder that was tomorrow's. D-011 worked the
+day and the time out separately. `CapturedTask.scheduledDate` now does both at
+once and `TaskListViewModel.capture` is the one path both screens save through.
+A capture with nothing about when still goes where the screen sends it.
+
+Two things went with it. A capture that lands on a list other than the one on
+screen shows "Saved to Upcoming" (or Today) with View, which switches lists as
+the bar does. A row, and a widget row, names a reminder's day when it is not the
+task's day ("Tomorrow, 5:00 PM") and drops a reminder whose day is over, which
+an Inbox row never did. The Reminder chip was also missing for an offset like
+"in 2 hours", against D-069's text, and now appears.
+
+Verified on the Pixel 10 emulator at 10:35: Inbox "Call mom at 5pm" read
+"Scheduled for Today" and landed in Later today; Inbox "Water plants at 9am" and
+Today "Pay rent at 7am" read "Scheduled for Tomorrow" and showed "Saved to
+Upcoming", and View opened Upcoming. The full JVM suite passes (745), and on the
+emulator `TaskRowSemanticsTest` 23, `QuickAddSemanticsTest` 17,
+`QuickAddCaptureTest` 6, `TodayScreenSemanticsTest` 38,
+`NavigationSemanticsTest` 14, `EmptyStateSemanticsTest` 11,
+`UndoSnackbarSemanticsTest` 4, `QuickAddRequestTest` 2 and the new
+`WidgetTaskTextTest` 3. Lint is unchanged. Known and left: on a fresh install the
+first reminder's permission prompt covers the snackbar until it times out.
+
 **The widget now follows the Dynamic color switch.** Reported: with the switch
 off, the widget kept the wallpaper palette. It never read the preference, and
 chose `GlanceTheme.colors` on any API 31+ device. It now collects

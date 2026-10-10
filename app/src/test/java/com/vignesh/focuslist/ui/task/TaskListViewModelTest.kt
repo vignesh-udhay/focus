@@ -5,6 +5,8 @@ import com.vignesh.focuslist.MainDispatcherRule
 import com.vignesh.focuslist.core.notification.FocusAlarms
 import com.vignesh.focuslist.core.domain.FocusSession
 import com.vignesh.focuslist.core.domain.FocusSessionStore
+import com.vignesh.focuslist.core.domain.PrimaryList
+import com.vignesh.focuslist.core.domain.splitTrailingCapture
 import com.vignesh.focuslist.core.domain.StoredFocusSession
 import com.vignesh.focuslist.core.domain.Recurrence
 import com.vignesh.focuslist.core.domain.RecurrenceUnit
@@ -561,6 +563,94 @@ class TaskListViewModelTest {
 
         repeat(20) { if (dao.inserted.isEmpty()) Thread.sleep(10) }
         assertTrue(dao.inserted.isEmpty())
+    }
+
+    // D-075: a capture with a reminder is scheduled for the day it rings
+
+    private fun parse(text: String) = splitTrailingCapture(text, today)
+
+    private fun morning() = today.atTime(10, 0)
+
+    private fun evening() = today.atTime(18, 0)
+
+    /** The case that started it: a time typed into Inbox stayed in Inbox. */
+    @Test
+    fun aTimeTypedIntoInboxLandsOnToday() {
+        val landed = viewModel().capture(parse("Call mom at 5pm"), fallbackDate = null, now = morning())
+
+        val stored = awaitInsert().toDomain()
+        assertEquals(PrimaryList.TODAY, landed)
+        assertEquals(today, stored.scheduledDate)
+        assertEquals(today.atTime(17, 0), stored.reminderAt)
+    }
+
+    @Test
+    fun aTimeTypedIntoInboxAfterTheHourLandsInUpcoming() {
+        val landed = viewModel().capture(parse("Call mom at 5pm"), fallbackDate = null, now = evening())
+
+        val stored = awaitInsert().toDomain()
+        assertEquals(PrimaryList.UPCOMING, landed)
+        assertEquals(tomorrow, stored.scheduledDate)
+        assertEquals(tomorrow.atTime(17, 0), stored.reminderAt)
+    }
+
+    /** The mirror on Today: dated today with a reminder ringing tomorrow. */
+    @Test
+    fun aTimeTypedIntoTodayAfterTheHourLandsInUpcoming() {
+        val landed = viewModel().capture(parse("Call mom at 5pm"), fallbackDate = today, now = evening())
+
+        val stored = awaitInsert().toDomain()
+        assertEquals(PrimaryList.UPCOMING, landed)
+        assertEquals(tomorrow, stored.scheduledDate)
+        assertEquals(tomorrow.atTime(17, 0), stored.reminderAt)
+    }
+
+    @Test
+    fun aTimeTypedIntoTodayBeforeTheHourStaysOnToday() {
+        val landed = viewModel().capture(parse("Call mom at 5pm"), fallbackDate = today, now = morning())
+
+        assertEquals(PrimaryList.TODAY, landed)
+        assertEquals(today, awaitInsert().toDomain().scheduledDate)
+    }
+
+    /** What D-075 leaves alone: nothing said about when, the screen decides. */
+    @Test
+    fun aPlainCaptureGoesWhereTheScreenSendsIt() {
+        val model = viewModel()
+
+        assertEquals(PrimaryList.INBOX, model.capture(parse("Find a dentist"), fallbackDate = null, now = morning()))
+        assertEquals(PrimaryList.TODAY, model.capture(parse("Buy milk"), fallbackDate = today, now = morning()))
+
+        val stored = awaitInserts(2).associate { it.title to it.toDomain() }
+        assertNull(stored.getValue("Find a dentist").scheduledDate)
+        assertNull(stored.getValue("Find a dentist").reminderAt)
+        assertEquals(today, stored.getValue("Buy milk").scheduledDate)
+    }
+
+    @Test
+    fun aNamedDayLandsOnItsListFromEitherScreen() {
+        val model = viewModel()
+
+        assertEquals(PrimaryList.UPCOMING, model.capture(parse("Buy milk tomorrow"), fallbackDate = today, now = morning()))
+        assertEquals(PrimaryList.UPCOMING, model.capture(parse("Find a dentist tomorrow"), fallbackDate = null, now = morning()))
+
+        assertTrue(awaitInserts(2).all { it.toDomain().scheduledDate == tomorrow })
+    }
+
+    /** D-069's offset lands where the arithmetic does. */
+    @Test
+    fun anOffsetPastMidnightIsScheduledForTomorrow() {
+        val landed = viewModel().capture(parse("Call mom in 2 hours"), fallbackDate = null, now = today.atTime(23, 0))
+
+        val stored = awaitInsert().toDomain()
+        assertEquals(PrimaryList.UPCOMING, landed)
+        assertEquals(tomorrow, stored.scheduledDate)
+        assertEquals(tomorrow.atTime(1, 0), stored.reminderAt)
+    }
+
+    @Test
+    fun aBlankCaptureLandsNowhere() {
+        assertNull(viewModel().capture(parse("   "), fallbackDate = today, now = morning()))
     }
 
     // Completion persists through the stack

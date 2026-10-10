@@ -10,7 +10,8 @@ import java.util.Locale
  * Reading a day *and* a time off the end of a Quick Add title.
  *
  * `docs/decisions.md` D-011. A day sets the scheduled date, as it always did. A
- * time now sets a reminder, which is the part that is new.
+ * time now sets a reminder, which is the part that is new. Since D-075 the
+ * reminder also sets the day when there is one: see [CapturedTask.scheduledDate].
  *
  * **Why a time is read at all**, when `date-parsing.md` deliberately excluded
  * one: its reason was stated plainly, that "a task carries a day and no time, so
@@ -60,6 +61,10 @@ data class CapturedTask(
     val isPlain: Boolean
         get() = date == null && time == null && offset == null
 
+    /** Whether the capture asks to be reminded, by a clock time or an offset. */
+    val hasReminder: Boolean
+        get() = time != null || offset != null
+
     /**
      * Everything the field should mark, as one span.
      *
@@ -105,6 +110,23 @@ data class CapturedTask(
         val at = time ?: return null
         return nextReminderOccurrence(LocalDateTime.of(date ?: defaultDate, at), now)
     }
+
+    /**
+     * The day the task is saved on.
+     *
+     * **A capture with a reminder is scheduled for the day it rings.** D-075. A
+     * time is a decision about when, so "call mom 5pm" typed into Inbox is
+     * today's, and typed at six in the evening it is tomorrow's, because that
+     * is when [reminderAt] resolves it to. Working the two out separately is
+     * what used to leave an Inbox task undated with a reminder this afternoon,
+     * and a Today task dated today with a reminder tomorrow.
+     *
+     * Without a reminder it is the day the title named, and failing that
+     * [fallbackDate], which is the capturing screen's: Today passes today, Inbox
+     * passes null and the task stays undated.
+     */
+    fun scheduledDate(fallbackDate: LocalDate?, today: LocalDate, now: LocalDateTime): LocalDate? =
+        reminderAt(today, now)?.toLocalDate() ?: date ?: fallbackDate
 
     /**
      * The same capture with the reminder dropped and its words unmarked.

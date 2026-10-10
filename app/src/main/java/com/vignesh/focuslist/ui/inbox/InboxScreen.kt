@@ -37,13 +37,14 @@ import com.vignesh.focuslist.ui.component.TaskListEmptyState
 import com.vignesh.focuslist.ui.component.TaskListErrorState
 import com.vignesh.focuslist.ui.component.TaskListRow
 import com.vignesh.focuslist.ui.component.UndoSnackbarHost
+import com.vignesh.focuslist.core.domain.PrimaryList
 import com.vignesh.focuslist.ui.task.QuickAddSheet
 import com.vignesh.focuslist.ui.task.TaskListViewModel
+import com.vignesh.focuslist.ui.task.rememberCaptureLandingNotice
 import com.vignesh.focuslist.ui.task.UndoSnackbarEffect
 import com.vignesh.focuslist.ui.theme.FocuslistTheme
 import java.time.Instant
 import java.time.LocalDate
-import java.time.LocalDateTime
 
 /**
  * Inbox: everything outstanding without a scheduled date.
@@ -51,7 +52,9 @@ import java.time.LocalDateTime
  * A task leaves by being scheduled, completed, or deleted.
  *
  * Quick Add here captures without a date, which is the difference from Today.
- * Deciding when to do it is exactly the decision Inbox exists to defer.
+ * Deciding when to do it is exactly the decision Inbox exists to defer. A title
+ * that says when, with a day or a reminder, has made that decision and lands on
+ * the list the day belongs to. D-075.
  */
 @Composable
 fun InboxScreen(
@@ -64,7 +67,9 @@ fun InboxScreen(
     // The three dots at the end of the header row. A slot rather than a route,
     // because navigating is the host's job and this screen only has to leave
     // room for it.
-    overflow: @Composable RowScope.() -> Unit = {}
+    overflow: @Composable RowScope.() -> Unit = {},
+    // Where the View action on "Saved to Today" goes. D-075.
+    onOpenList: (PrimaryList) -> Unit = {}
 ) {
     val tasks by viewModel.inboxTasks.collectAsStateWithLifecycle()
     val today by viewModel.today.collectAsStateWithLifecycle()
@@ -77,6 +82,11 @@ fun InboxScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
     UndoSnackbarEffect(viewModel = viewModel, snackbarHostState = snackbarHostState)
+    val announceLanding = rememberCaptureLandingNotice(
+        snackbarHostState = snackbarHostState,
+        currentList = PrimaryList.INBOX,
+        onOpenList = onOpenList
+    )
 
     InboxContent(
         tasks = tasks,
@@ -102,21 +112,18 @@ fun InboxScreen(
             // exists to defer, so the line names Inbox rather than Today. D-053.
             fallbackDate = null,
             onDismiss = { isQuickAddVisible = false },
-            // Captured without a date unless the title named one: deciding when
+            // Captured without a date unless the title said when: deciding when
             // to do it is the decision Inbox defers, but a user who already
-            // said "friday" has made it. A blank title captures nothing and
-            // leaves the sheet open.
+            // said "friday", or "5pm", has made it. D-075: a reminder schedules
+            // the task for the day it rings, so "call mom 5pm" lands on Today
+            // rather than staying here with a reminder this afternoon. A blank
+            // title captures nothing and leaves the sheet open.
             onSave = { parsed ->
-                val captured = viewModel.createTask(
-                    title = parsed.title,
-                    scheduledDate = parsed.date,
-                    // A time with no day still needs a day to ring on, and
-                    // Inbox has none to give. Today is the honest default:
-                    // a reminder is independent of a scheduled date, so the
-                    // task stays in Inbox and still speaks up this afternoon.
-                    reminderAt = parsed.reminderAt(viewModel.today.value, LocalDateTime.now())
-                )
-                if (captured) isQuickAddVisible = false
+                val landed = viewModel.capture(parsed, fallbackDate = null)
+                if (landed != null) {
+                    isQuickAddVisible = false
+                    announceLanding(landed)
+                }
             }
         )
     }

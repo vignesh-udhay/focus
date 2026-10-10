@@ -224,6 +224,23 @@ fun inboxTasks(tasks: List<Task>): List<Task> =
         }
         .sortedByDescending { task -> task.createdAt }
 
+/** The three lists `PRODUCT.md` names, which between them hold every outstanding task. */
+enum class PrimaryList { TODAY, INBOX, UPCOMING }
+
+/**
+ * Which list an outstanding task with [scheduledDate] is in.
+ *
+ * The same rule [todayTasks], [upcomingTasks] and [inboxTasks] filter on, said
+ * once as an answer rather than three times as a filter. Quick Add asks it
+ * after a capture, to tell whether the new row is on the screen the user is
+ * looking at. D-075.
+ */
+fun primaryListFor(scheduledDate: LocalDate?, today: LocalDate): PrimaryList = when {
+    scheduledDate == null -> PrimaryList.INBOX
+    scheduledDate.isAfter(today) -> PrimaryList.UPCOMING
+    else -> PrimaryList.TODAY
+}
+
 /**
  * Everything finished, and still recoverable.
  *

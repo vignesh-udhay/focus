@@ -807,6 +807,16 @@ confirmed, and the list follows from it. The line names a destination only when
 there is no date to name, which is also the only time the destination is the
 surprising part.
 
+**Since D-075 a reminder is a date for this line.** A capture with a time or an
+offset is scheduled for the day it rings, so "call mom 5pm" from Inbox reads
+"Scheduled for Today" rather than "Saved to Inbox", and the line uses the same
+`CapturedTask.scheduledDate` the save does. The Reminder chip now appears for an
+offset as well as a clock time.
+
+**After the save, a capture that landed on another list says so.** A snackbar,
+"Saved to Upcoming" with View, through the screen's own snackbar host and only
+when the new row is not on screen. `CaptureLandingNotice.kt`, D-075.
+
 **And it says nothing until there is a title.** It used to read "Saved to Today"
 over an empty field, asserting a destination for a task that did not exist. It
 is tied to the same test the Add button uses, so the line appears exactly when

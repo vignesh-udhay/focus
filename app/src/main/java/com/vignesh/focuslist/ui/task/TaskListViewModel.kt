@@ -6,8 +6,11 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.CreationExtras
+import com.vignesh.focuslist.core.domain.CapturedTask
 import com.vignesh.focuslist.core.domain.FocusSession
 import com.vignesh.focuslist.core.domain.FocusSessionStore
+import com.vignesh.focuslist.core.domain.PrimaryList
+import com.vignesh.focuslist.core.domain.primaryListFor
 import com.vignesh.focuslist.core.domain.StoredFocusSession
 import com.vignesh.focuslist.core.domain.Recurrence
 import com.vignesh.focuslist.core.domain.nextRecurringInstance
@@ -933,6 +936,38 @@ class TaskListViewModel(
         }
 
         alarms.scheduleEstimateReached(task.title, reachedAt)
+    }
+
+    /**
+     * Saves what Quick Add understood, and reports which list it landed in.
+     *
+     * Null when nothing was captured, which is a blank title. Both capturing
+     * screens come through here, so the day and the reminder are worked out once
+     * and together: since D-075 a capture with a reminder is scheduled for the
+     * day it rings, wherever it was typed. [fallbackDate] is the day an undated,
+     * reminderless capture gets, today from Today and null from Inbox.
+     *
+     * The list is returned rather than shown because telling the user is the
+     * screen's job, and only the screen knows which list it is.
+     *
+     * [now] and the day are read at save time, so a capture made after midnight
+     * gets the new day rather than the one the screen was built on.
+     */
+    fun capture(
+        parsed: CapturedTask,
+        fallbackDate: LocalDate?,
+        now: LocalDateTime = LocalDateTime.now()
+    ): PrimaryList? {
+        val day = today.value
+        val scheduledDate = parsed.scheduledDate(fallbackDate, day, now)
+
+        val captured = createTask(
+            title = parsed.title,
+            scheduledDate = scheduledDate,
+            reminderAt = parsed.reminderAt(day, now)
+        )
+
+        return if (captured) primaryListFor(scheduledDate, day) else null
     }
 
     /**

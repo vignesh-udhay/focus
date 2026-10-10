@@ -26,6 +26,7 @@ import androidx.navigation.compose.rememberNavController
 import com.vignesh.focuslist.FocuslistApplication
 import com.vignesh.focuslist.core.design.LocalContentWidth
 import com.vignesh.focuslist.core.design.focuslistUsesNavigationRail
+import com.vignesh.focuslist.core.domain.PrimaryList
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.vignesh.focuslist.ui.focus.FocusSheet
@@ -183,7 +184,8 @@ fun FocuslistNavHost(
                     onOpenReminderHealth = {
                         navController.openSecondary(FocuslistRoutes.REMINDER_HEALTH)
                     },
-                    onDismissReminderHealth = reminderHealthViewModel::dismissTodayBanner
+                    onDismissReminderHealth = reminderHealthViewModel::dismissTodayBanner,
+                    onOpenList = { list -> navController.openTopLevel(list.route) }
                 )
             }
 
@@ -194,7 +196,8 @@ fun FocuslistNavHost(
                         navController.navigate(FocuslistRoutes.taskDetails(id))
                     },
                     bottomBar = navigationBar,
-                    overflow = overflow
+                    overflow = overflow,
+                    onOpenList = { list -> navController.openTopLevel(list.route) }
                 )
             }
 
@@ -370,6 +373,19 @@ private fun NavHostController.openTopLevel(route: String) {
         launchSingleTop = true
     }
 }
+
+/**
+ * The bar route for one of the three lists.
+ *
+ * A capture's "Saved to Upcoming" snackbar names a list, D-075, and its View
+ * action switches to it exactly as the bar would.
+ */
+private val PrimaryList.route: String
+    get() = when (this) {
+        PrimaryList.TODAY -> FocuslistRoutes.TODAY
+        PrimaryList.INBOX -> FocuslistRoutes.INBOX
+        PrimaryList.UPCOMING -> FocuslistRoutes.UPCOMING
+    }
 
 /**
  * Opens a destination from the More menu.

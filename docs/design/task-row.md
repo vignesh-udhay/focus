@@ -93,6 +93,15 @@ on a row from last Tuesday describes nothing that is going to happen. That also
 keeps the date first on exactly the rows where being overdue is the point, which
 is the segment the overdue colour lands on.
 
+**A reminder on another day names that day, and one whose day is over is not
+shown.** D-075. The time alone assumes the reminder falls on the task's own day,
+which holds on Today and not on an Inbox task, which has no day, or under a
+Friday heading with a Wednesday reminder. Those rows read "Today, 5:00 PM" or
+"Sep 17, 5:00 PM". A reminder from a day already gone is dropped, the overdue
+rule above applied to the reminder's own day, so an Inbox task stops showing a
+rung reminder as still to come. This morning's reminder stays until tonight. The
+widget's rows follow the same rule.
+
 **A year only when the date is not in the current one.** One rule, every date
 the app writes: rows, Plan rows, section headings and a recurrence horizon.
 Always showing it puts a "2026" on a task scheduled next Tuesday, which is noise

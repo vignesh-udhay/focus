@@ -191,6 +191,11 @@ captures without a day, and a title that named a day overrides both — an Inbox
 capture that says "friday" has had the deciding done, which is the one decision
 Inbox exists to defer.
 
+A reminder wins too, since D-075. A capture with a time or an offset is
+scheduled for the day the reminder rings, on either screen: "call mom 5pm" from
+Inbox is today's, and typed after five it is tomorrow's, from Inbox or Today.
+`CapturedTask.scheduledDate` is the one place this is worked out.
+
 ---
 
 # Where it lives

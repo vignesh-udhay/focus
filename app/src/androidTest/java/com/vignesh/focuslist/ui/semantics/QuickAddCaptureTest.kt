@@ -91,6 +91,35 @@ class QuickAddCaptureTest {
         rule.onNodeWithText("Saved to Today").assertDoesNotExist()
     }
 
+    /**
+     * D-075. An offset is a reminder, and it was the one reminder the sheet did
+     * not show: the chip was keyed on a clock time, so "in 2 hours" set a promise
+     * nobody could see or take back. It also says when, so the line names a day
+     * rather than "Saved to Inbox".
+     *
+     * Against the real day, because the sheet reads the clock to resolve the
+     * reminder, and a fixed day behind it would put the answer on a date the
+     * test cannot name.
+     */
+    @Test
+    fun anOffsetShowsTheReminderAndNamesADay() {
+        rule.setFocuslistContent(fontScale = 1f) {
+            QuickAddSheet(
+                today = LocalDate.now(),
+                fallbackDate = null,
+                onDismiss = {},
+                onSave = {}
+            )
+        }
+        rule.waitUntilExactlyOneExists(hasText(SHEET_NAME), 5_000)
+
+        type("Call mom in 2 hours")
+
+        rule.onNodeWithText("Reminder", substring = true).assertExists()
+        rule.onNodeWithText("Scheduled for", substring = true).assertExists()
+        rule.onNodeWithText("Saved to Inbox").assertDoesNotExist()
+    }
+
     /** The keyboard's Done key commits, rather than only closing the keyboard. */
     @Test
     fun theDoneKeySaves() {

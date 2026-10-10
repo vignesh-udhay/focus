@@ -643,4 +643,64 @@ class CaptureParserTest {
         assertNull(result.markRange)
     }
 
+    // --- D-075: the day a capture is saved on -------------------------------
+
+    private val evening: LocalDateTime = today.atTime(18, 0)
+
+    @Test
+    fun aTimeWithNoDayIsScheduledForTheDayItRings() {
+        val result = capture("Call mom at 5pm")
+
+        assertEquals(today, result.scheduledDate(fallbackDate = null, today = today, now = morning))
+        assertEquals(tomorrow, result.scheduledDate(fallbackDate = null, today = today, now = evening))
+    }
+
+    /** Today's fallback no longer wins over a reminder that rolled to tomorrow. */
+    @Test
+    fun aRolledReminderTakesTheTaskWithIt() {
+        val result = capture("Call mom at 5pm")
+
+        assertEquals(tomorrow, result.scheduledDate(fallbackDate = today, today = today, now = evening))
+    }
+
+    /** "today at 3pm" typed at four: the chip already said tomorrow. */
+    @Test
+    fun aNamedTodayWhoseHourHasGoneIsScheduledTomorrow() {
+        val result = capture("Call the dentist today at 3pm")
+
+        assertEquals(tomorrow, result.scheduledDate(fallbackDate = null, today = today, now = today.atTime(16, 0)))
+    }
+
+    @Test
+    fun aNamedDayAndATimeStayOnTheNamedDay() {
+        val result = capture("Call the dentist friday at 3pm")
+
+        assertEquals(result.date, result.scheduledDate(fallbackDate = today, today = today, now = morning))
+    }
+
+    @Test
+    fun anOffsetIsScheduledWhereTheArithmeticLands() {
+        val result = capture("Call mom in 2 hours")
+
+        assertTrue(result.hasReminder)
+        assertEquals(tomorrow, result.scheduledDate(fallbackDate = null, today = today, now = today.atTime(23, 0)))
+    }
+
+    @Test
+    fun withNothingAboutWhenTheFallbackDecides() {
+        val result = capture("Call the plumber")
+
+        assertEquals(false, result.hasReminder)
+        assertNull(result.scheduledDate(fallbackDate = null, today = today, now = morning))
+        assertEquals(today, result.scheduledDate(fallbackDate = today, today = today, now = morning))
+    }
+
+    /** A dismissed chip leaves only the day, so the fallback is back in charge. */
+    @Test
+    fun aDismissedReminderNoLongerMovesTheDay() {
+        val result = capture("Call mom at 5pm").withoutReminder()
+
+        assertNull(result.scheduledDate(fallbackDate = null, today = today, now = evening))
+    }
+
 }

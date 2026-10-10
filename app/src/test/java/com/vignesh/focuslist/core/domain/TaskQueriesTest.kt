@@ -702,4 +702,35 @@ class TaskQueriesTest {
 
         assertEquals(listOf("kept"), ids(todaySections(tasks, today).flatMap { it.tasks }))
     }
+
+    // --- primaryListFor, D-075 ----------------------------------------------
+
+    @Test
+    fun theListForADayIsTheListThatShowsIt() {
+        assertEquals(PrimaryList.INBOX, primaryListFor(null, today))
+        assertEquals(PrimaryList.TODAY, primaryListFor(today, today))
+        assertEquals(PrimaryList.TODAY, primaryListFor(yesterday, today))
+        assertEquals(PrimaryList.UPCOMING, primaryListFor(tomorrow, today))
+    }
+
+    /** The answer and the three filters may never disagree about a task. */
+    @Test
+    fun primaryListForAgreesWithTheThreeQueries() {
+        val tasks = listOf(
+            task(id = "undated", scheduledDate = null),
+            task(id = "late", scheduledDate = yesterday),
+            task(id = "now", scheduledDate = today),
+            task(id = "later", scheduledDate = tomorrow)
+        )
+
+        tasks.forEach { task ->
+            val expected = when (primaryListFor(task.scheduledDate, today)) {
+                PrimaryList.INBOX -> inboxTasks(tasks)
+                PrimaryList.TODAY -> todayTasks(tasks, today)
+                PrimaryList.UPCOMING -> upcomingTasks(tasks, today)
+            }
+            assertEquals(task.id, true, task in expected)
+        }
+    }
+
 }

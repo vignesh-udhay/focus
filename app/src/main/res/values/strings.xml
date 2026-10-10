@@ -67,6 +67,9 @@
     <string name="task_row_due_tomorrow">Due tomorrow</string>
     <string name="task_row_due_on">Due %1$s</string>
     <string name="task_row_overdue">Overdue</string>
+    <!-- A reminder on a row whose day it is not, D-075: "Tomorrow, 5:00 PM".
+         The day is a scheduledDateLabel, the time the locale's short form. -->
+    <string name="task_row_reminder_on_day">%1$s, %2$s</string>
     <string name="task_open">Open task details</string>
     <!-- The row's actions menu had five more strings here: Show task actions,
          Focus, and three Move to... entries. D-023 removed the menu and left them
@@ -452,6 +455,12 @@
     -->
     <string name="quick_add_saved_to_today">Saved to Today</string>
     <string name="quick_add_saved_to_inbox">Saved to Inbox</string>
+    <!--
+      D-075. Only ever a snackbar, after a capture lands on a list other than the
+      one on screen. The sheet itself names the day, not the list.
+    -->
+    <string name="quick_add_saved_to_upcoming">Saved to Upcoming</string>
+    <string name="quick_add_view">View</string>
     <string name="quick_add_reminder">Reminder %1$s at %2$s</string>
     <string name="quick_add_reminder_dismiss">Remove reminder</string>
 

@@ -5167,3 +5167,84 @@ ceiling, or its reversal condition.
 bored or disapproving rather than calm, which is a judgement for a device and a
 few days of use. The answer then is to redraw the eyes, not to bring back the
 sleeping Today.
+
+## D-075. A capture with a reminder is scheduled for the day it rings, says so when it lands elsewhere, and a row names a reminder's day
+
+**Decision.** Three changes, one subject: where a capture lands and whether the
+user can tell.
+
+1. When Quick Add understands a reminder, the task is scheduled for the day the
+   reminder rings. This holds on Today and on Inbox alike. A capture with no day
+   and no time still goes where the screen sends it: Today dates it today, Inbox
+   leaves it undated.
+2. When a capture lands on a list other than the one on screen, a snackbar says
+   which, "Saved to Upcoming", with a View action that opens that list.
+3. A task row, and a widget row, names a reminder's day whenever it is not the
+   day the task is scheduled for, and stops showing a reminder once its day is
+   over.
+
+**Why the first. A time is a decision about when, and the app was ignoring
+it.** D-011 split the parse in two, "A day sets the scheduled date. A time sets a
+reminder", and Inbox does not date a capture. Together they put "call mom 5pm",
+typed into Inbox, into Inbox with a reminder ringing this afternoon. Nothing
+decided that on evidence; it fell out of the two rules, and the comment in
+`InboxScreen` explained the result after the fact. The same comment already held
+that a user who typed "friday" has made the decision Inbox exists to defer. A
+user who typed "5pm" has made the same decision more precisely, and the app had
+picked the day itself, since the reminder rode on today.
+
+Today had the mirror of it. A time that had gone by resolves forward to tomorrow
+under D-030, but Today saved the task to today anyway, so "call mom 5pm" typed
+at six in the evening sat in "Later today" showing 5:00 PM for a reminder that
+was tomorrow's. The day and the time were being worked out separately, and both
+defects are that.
+
+The rule is applied to every reminder Quick Add understands, not only a time
+with no day. A named day and a time land on the named day, except where D-030
+moves the reminder: "today at 3pm" typed at four now schedules tomorrow, which
+is the day the chip already said. An offset, D-069, schedules the day the
+arithmetic lands on.
+
+`PRODUCT.md` is untouched. It says a reminder is independent of a scheduled
+date, and Task Details still lets the two differ. This is about what a capture
+infers from a single line of text, where the user stated one moment.
+
+**Why the second.** A capture that lands on another list disappears from the
+screen the user is looking at. It already happened with a typed day before this
+entry, and the first change adds cases. The sheet names the day before the save,
+but it closes on the save, and after that nothing confirmed anything. The
+snackbar is only for the case where the new row is not on screen. Where it is,
+the row is the confirmation, and a snackbar on every capture is the noise
+`PRODUCT.md` principle 7 refuses. It goes through the screen's existing host, so
+TalkBack announces it through the same polite live region as the undo offer.
+
+**Why the third.** The row printed a reminder's time and never its day, and
+hid it only when the task's scheduled day had passed. That was written for
+Today, where the reminder is almost always today's. On an Inbox task, which has
+no scheduled day, "5:00 PM" could be any day and went on reading as pending
+after it had rung. Under a Friday heading in Upcoming, a Wednesday reminder read
+as Friday's. The first change stops Quick Add creating these, but Task Details
+sets the day and the reminder with separate pickers, and tasks captured before
+this entry keep their mismatch.
+
+A reminder from this morning is still shown on Today at three in the afternoon.
+It is plainly past, and hiding it would leave the task in "Later today" with
+nothing saying why. The day being over is the line, which is the rule the
+overdue row already follows.
+
+**What this supersedes.** D-011's "a time sets a reminder" where it implied the
+time leaves the day alone. D-053's two-branch supporting line, which now names
+the resolved day whenever a capture carries a day or a reminder. Neither
+decision is otherwise changed.
+
+**Found on the way, and fixed with it.** The Reminder chip was drawn only for a
+clock time, so an offset capture set a reminder the sheet never showed and
+could not dismiss, against D-069's own text that "the chip already names the
+day it landed on". The chip now appears for both.
+
+**What would reverse this.** Users capturing from Inbox with a time and
+expecting the task to stay undated, repeatedly. That would mean Inbox is being
+used as a list of things to be nudged about rather than a list of things without
+a day, and the answer would be a separate decision about what Inbox is for, not
+a return to the split.
+
