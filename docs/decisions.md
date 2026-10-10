@@ -5284,3 +5284,33 @@ which was D-033's point and is still right there.
 the lone disclosure as the app having lost their work, which would show as
 Logbook visits to check rather than to read. The answer then is a line of text,
 not the illustration.
+
+## D-077. Dynamic colour is off by default
+
+**Decision.** A fresh install draws in the Catimo scheme, from the `#4F5DFF`
+seed, in light and dark. Dynamic colour stays in the product and in Settings,
+one switch away, for anyone who wants the app to take their wallpaper's colours.
+A user who has already set the switch keeps their choice, and a backup restores
+whatever it holds.
+
+**What changed the answer.** `expressive-design-system.md` said dynamic colour
+"stays on by default", because a system-coloured list feels like part of the
+device. That is still true, and it costs the app its own colour everywhere a
+first impression is formed: the store screenshots are whatever wallpaper the
+capture device had, onboarding is a different app on every phone, and a launch
+with no audience has no other channel than the listing. A review of the app's
+identity found that, apart from the cat, Catimo read as a well-made Material
+sample, and the owner chose colour as the cheapest place to give it an identity
+that is the same on every phone.
+
+**The tension with `PRODUCT.md`, said plainly.** Principle 5 names dynamic colour
+among the Android conventions to embrace, and V1 scope lists it. Both still hold:
+the feature ships, works, and is honoured by the widget and every screen. What
+changes is only which side of the switch a new user starts on. Material itself
+treats a brand scheme as a legitimate default; dynamic colour is something an app
+may offer, not something it must impose.
+
+**What would reverse this.** Users finding the Catimo scheme jarring beside the
+rest of their phone, which would show as the switch being turned on by most
+people who find it. The answer then is to default it back on, and the fallback
+scheme is still what every pre-Android-12 user sees.

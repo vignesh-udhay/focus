@@ -9,6 +9,21 @@ scope it delivers is in `PRODUCT.md`.
 
 ## Current phase
 
+**Dynamic colour is off by default, D-077.** From a review of the app's identity:
+apart from the cat it read as a well-made Material sample, and with the
+wallpaper choosing its colours it had none of its own in the store screenshots
+or onboarding. A fresh install now opens in the Catimo scheme; the Settings
+switch still turns dynamic colour on, a user who set it keeps their choice, and
+restore applies what the backup holds. `FocuslistPreferences` takes a file name
+so `FocuslistPreferencesTest` can read a fresh store. Seen on the Pixel 10
+emulator after clearing data: onboarding and Today in Catimo lavender where the
+wallpaper made them blue. `FocuslistPreferencesTest` 2, `SettingsSemanticsTest`
+1, `FocuslistBackupCodecTest` 3, `BackupRepositoryTest` 6 and
+`OnboardingSemanticsTest` 1 pass. Found on the way and not fixed:
+`TaskListViewModelTest.theDurationCanBeSetChangedAndCleared` is flaky, failing
+about one run in six with the stored duration still null after the awaited
+update. Neither the test nor the code it exercises is touched by this change.
+
 **Today loses its finished-day state, D-076, superseding D-033.** Reported: the
 happy cat and "All done for today" stacked under the app bar above Completed and
 looked out of place. Centring the group was tried first and fixed the layout,

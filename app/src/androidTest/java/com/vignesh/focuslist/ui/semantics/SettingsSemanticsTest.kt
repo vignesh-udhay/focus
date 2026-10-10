@@ -36,8 +36,9 @@ class SettingsSemanticsTest {
             }
         }
 
+        // Off by default since D-077, so a tap on the row turns it on.
         composeRule.onNodeWithText("Dynamic color").performClick()
-        assertEquals(false, dynamicColor)
+        assertEquals(true, dynamicColor)
 
         composeRule.onNodeWithText("Theme").performClick()
         composeRule.onNodeWithText("Dark").assertIsDisplayed().performClick()

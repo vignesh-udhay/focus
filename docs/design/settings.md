@@ -28,7 +28,7 @@ otherwise covers what this particular screen holds and why the list is closed.
 Three sections, four rows, and that is the whole screen.
 
     Reminders     Reminder health      Check exact reminder reliability   >
-    Appearance    Dynamic color        Use colors from Android         [on]
+    Appearance    Dynamic color        Use colors from Android        [off]
                   Theme                System default                     >
     Data          Backup & restore     Export or restore a local file     >
 

@@ -109,8 +109,8 @@ here is in the app you install.
 
 **Built for Android**
 
-Material 3 throughout, dynamic color from your wallpaper, light and dark
-themes, and screens that still work at large system font sizes.
+Material 3 throughout, optional dynamic color from your wallpaper, light and
+dark themes, and screens that still work at large system font sizes.
 
 What Catimo does not do: habits, streaks, points, productivity scores, teams,
 or AI. The reward is getting the work done.
@@ -182,8 +182,8 @@ the first run, and at least one dark shot in the set.
 4. **Reminder health**, in the Ready state with the three checks passing. The
    thing no competitor screenshot has.
 5. **Upcoming**, showing the days ahead.
-6. **The widget** on a home screen, alongside the wallpaper the dynamic color
-   is drawn from.
+6. **The widget** on a home screen. In the Catimo colours like every other
+   shot, since dynamic color is off by default (D-077).
 7. **Focus**, a running session. Late, per D-004.
 8. **Dark theme**, whichever screen reads best. Today is the safe choice.
 

@@ -8,9 +8,15 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+/**
+ * Off on a fresh install, so the app opens in its own colours on every phone.
+ * D-077. The Settings switch turns it on.
+ */
+internal const val DefaultDynamicColor = false
+
 /** The two appearance choices the Settings screen owns. */
 data class AppearancePreferences(
-    val dynamicColor: Boolean = true,
+    val dynamicColor: Boolean = DefaultDynamicColor,
     val theme: ThemePreference = ThemePreference.System
 )
 
@@ -21,8 +27,12 @@ data class AppearancePreferences(
  * values. Keeping a StateFlow beside it makes selection immediately visible to
  * Compose while SharedPreferences carries it across process death.
  */
-class FocuslistPreferences(context: Context) {
-    private val storage = context.getSharedPreferences(FileName, Context.MODE_PRIVATE)
+class FocuslistPreferences(
+    context: Context,
+    // A parameter so a test can read a fresh store without clearing the app's.
+    fileName: String = FileName
+) {
+    private val storage = context.getSharedPreferences(fileName, Context.MODE_PRIVATE)
 
     private val mutableState = MutableStateFlow(read())
     val state: StateFlow<AppearancePreferences> = mutableState.asStateFlow()
@@ -58,7 +68,7 @@ class FocuslistPreferences(context: Context) {
             ?: ThemePreference.System
 
         return AppearancePreferences(
-            dynamicColor = storage.getBoolean(DynamicColorKey, true),
+            dynamicColor = storage.getBoolean(DynamicColorKey, DefaultDynamicColor),
             theme = theme
         )
     }

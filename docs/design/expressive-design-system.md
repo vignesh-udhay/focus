@@ -225,8 +225,10 @@ signal for completed, overdue, focused or selected.
 [M3] Dynamic colour derives the scheme from the user's wallpaper on Android 12
 and above.
 
-[CD] It stays on by default. Catimo is an Android-native product and a
-system-coloured task list feels like part of the device.
+[CD] It is off by default since D-077, and one switch away in Settings. A
+system-coloured list feels like part of the device, but it gives the app a
+different colour on every phone and none of its own in the store screenshots or
+onboarding. The Catimo scheme below is what a fresh install opens in.
 
 [CD] Below API 31, and wherever dynamic colour is switched off, the app falls
 back to an intentional Catimo scheme rather than the Material baseline. Both
