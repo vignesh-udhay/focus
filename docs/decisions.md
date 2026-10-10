@@ -5314,3 +5314,58 @@ may offer, not something it must impose.
 rest of their phone, which would show as the switch being turned on by most
 people who find it. The answer then is to default it back on, and the fallback
 scheme is still what every pre-Android-12 user sees.
+
+## D-078. Exact alarms are asked for, a snooze no longer moves the series, and the scheduler survives its own failures
+
+**Decision.** Five changes from the pre-release audit, all in the subsystem
+D-005 holds above everything else.
+
+1. The manifest declares `SCHEDULE_EXACT_ALARM` on every API level and drops
+   `USE_EXACT_ALARM`. The permission is asked for at the first reminder,
+   through the screen that already existed for it, and a grant made later in
+   system settings reconciles every alarm at once.
+2. A snooze is stored apart from the reminder, as `snoozedUntil`. It moves
+   one announcement and nothing else. A recurring task's next occurrence takes
+   its reminder from the series time, never from a snooze, and never lands at a
+   moment already gone.
+3. The reconciliation pass schedules soonest first and survives a failure on
+   any one alarm. One refusal used to stop every alarm after it and crash the
+   process on every start.
+4. The notification actions and the widget actions reconcile before their
+   receiver finishes, rather than leaving it to a collector that a frozen
+   process never runs.
+5. A reminder is only recorded as delivered when Android could actually show
+   it. Notifications switched off for the app, or the reminder channel set to
+   None, used to count as delivered.
+
+**Why the first, and what D-005's policy note got wrong.** D-005 said Google
+Play "permits `USE_EXACT_ALARM` for apps whose core user-facing function is
+alarms, timers or reminders". That was a paraphrase, and the word that mattered
+was the one it added. Play's policy, "Permissions and APIs that Access Sensitive
+Information", lists two cases: "The app is an alarm or timer app" and "The app
+is a calendar app that shows event notifications". For anything else it points
+at `SCHEDULE_EXACT_ALARM`, which "provides the same functionality but access
+must be granted by the user". A task app declaring `USE_EXACT_ALARM` is the case
+reviewers reject, and a first submission is the wrong place to argue it.
+
+**What it costs, said plainly.** From Android 14 a fresh install starts without
+the grant. Until the user allows it, reminders fall back to inexact alarms and
+can arrive minutes late, which the owner ranks with missing them. Three things
+stand between that and the user. The permission screen appears at the first
+reminder, the moment the request makes sense. The Today banner says so for as
+long as the grant is missing, as D-040 already does for a blocked check. And the
+grant, made from anywhere, rebuilds every alarm exact.
+
+**Why the second.** The drift was found by tracing, not reported. Snooze
+overwrote `reminderAt`, and the next occurrence shifted `reminderAt` by however
+far the scheduled day moved. So "tomorrow morning" on a daily 8:00 task skipped
+the next day and left the series at 9:00 for good, and a recurring task
+rescheduled in the list produced reminders already in the past, which ring the
+moment the task is completed. `reminderAt` is now the series' own time and only
+the user changes it; `snoozedUntil` is the one-off, cleared when the reminder is
+edited and never carried into the next occurrence.
+
+**What would reverse this.** For the first: Catimo gaining the full-screen alarm
+D-038 holds, at which point it is honestly an alarm app and the case for
+`USE_EXACT_ALARM` can be made on what it is. The others are fixes and are not
+reversed.

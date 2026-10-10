@@ -93,9 +93,29 @@ class ReminderRecoveryManifestTest {
                 "a day.",
             "android.intent.action.TIMEZONE_CHANGED" to
                 "A reminder is a local time, so crossing a zone moves the instant " +
-                "it resolves to."
+                "it resolves to.",
+            "android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" to
+                "Alarms set while the exact-alarm grant was missing are inexact. " +
+                "A grant from system settings has to turn them exact. D-078."
         )
 
         val RECOVERY_ACTIONS = WHY.keys
+    }
+
+    /**
+     * D-078. Play allows USE_EXACT_ALARM only for alarm, timer and calendar
+     * apps. Declaring it on a task app is a rejection waiting to happen, and
+     * SCHEDULE_EXACT_ALARM has to cover every API level in its place.
+     */
+    @Test
+    fun `exact alarms are asked for, not claimed`() {
+        assertTrue(
+            "USE_EXACT_ALARM is declared. Play reserves it for alarm and calendar apps.",
+            "android.permission.USE_EXACT_ALARM" !in manifest
+        )
+        assertTrue(
+            "SCHEDULE_EXACT_ALARM is missing, so no reminder can be exact.",
+            """<uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />""" in manifest
+        )
     }
 }

@@ -1178,7 +1178,11 @@ class TaskListViewModel(
                         task.reminderDeliveredAt
                     } else {
                         null
-                    }
+                    },
+                    // And a new time ends any snooze. The user has just said
+                    // when; a snooze from before that would ring in its place.
+                    // D-078.
+                    snoozedUntil = if (reminderAt == task.reminderAt) task.snoozedUntil else null
                 )
             )
 

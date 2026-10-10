@@ -703,4 +703,18 @@ class CaptureParserTest {
         assertNull(result.scheduledDate(fallbackDate = null, today = today, now = evening))
     }
 
+    // A count past a year is text, not a reminder, and never throws
+
+    @Test
+    fun `an absurd offset stays in the title instead of overflowing the calendar`() {
+        val result = capture("Pay rent in 9999999999999 hours")
+
+        assertEquals(false, result.hasReminder)
+        assertNull(result.reminderAt(today, morning))
+    }
+
+    @Test
+    fun `an offset within a year is still read`() {
+        assertTrue(capture("Renew passport in 8000 hours").hasReminder)
+    }
 }

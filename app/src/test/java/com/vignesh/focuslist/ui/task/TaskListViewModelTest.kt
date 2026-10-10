@@ -38,6 +38,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.UUID
+import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * A hand-written stand-in for the Room-generated DAO.
@@ -69,7 +70,7 @@ private class RefusingTaskDao(private val rows: List<TaskEntity>) : TaskDao {
 
     override suspend fun markReminderDelivered(id: String, deliveredAt: Long) = refuse()
 
-    override suspend fun rescheduleReminder(id: String, reminderAt: String?) = refuse()
+    override suspend fun snoozeReminder(id: String, snoozedUntil: String) = refuse()
 
     override suspend fun restore(id: String) = refuse()
 
@@ -81,8 +82,9 @@ private class RefusingTaskDao(private val rows: List<TaskEntity>) : TaskDao {
 private class FakeTaskDao : TaskDao {
 
     val emissions = MutableStateFlow<List<TaskEntity>>(emptyList())
-    val inserted = mutableListOf<TaskEntity>()
-    val updated = mutableListOf<TaskEntity>()
+    // Written from the view model's dispatcher and read from the test thread.
+    val inserted: MutableList<TaskEntity> = CopyOnWriteArrayList()
+    val updated: MutableList<TaskEntity> = CopyOnWriteArrayList()
     val softDeleted = mutableListOf<Pair<String, Long>>()
     val restored = mutableListOf<String>()
     val deleted = mutableListOf<String>()
@@ -103,24 +105,27 @@ private class FakeTaskDao : TaskDao {
 
     /** Stores the row so the flow re-emits, as the real DAO does. */
     override suspend fun insert(task: TaskEntity) {
-        inserted += task
+        // Applied before it is recorded. A test waits on the record and then
+        // reads the row, and the other order let it read the row too early.
         emissions.value = emissions.value + task
+        inserted += task
     }
 
     /** Replaces the row so the flow re-emits, as the real DAO does. */
     override suspend fun update(task: TaskEntity) {
-        updated += task
+        // Applied before it is recorded, for the reason `insert` gives.
         emissions.value = emissions.value.map { stored ->
             if (stored.id == task.id) task else stored
         }
+        updated += task
     }
 
     /** Marks the row rather than removing it, as the real UPDATE does. */
-    override suspend fun rescheduleReminder(id: String, reminderAt: String?) {
+    override suspend fun snoozeReminder(id: String, snoozedUntil: String) {
         emissions.value = emissions.value.map { stored ->
             if (stored.id == id) {
                 stored.copy(
-                    reminderAt = TaskConverters.textToLocalDateTime(reminderAt),
+                    snoozedUntil = TaskConverters.textToLocalDateTime(snoozedUntil),
                     reminderDeliveredAt = null
                 )
             } else {
@@ -651,6 +656,39 @@ class TaskListViewModelTest {
     @Test
     fun aBlankCaptureLandsNowhere() {
         assertNull(viewModel().capture(parse("   "), fallbackDate = today, now = morning()))
+    }
+
+    // D-078: a new reminder time ends a snooze, and nothing else does
+
+    @Test
+    fun editingTheReminderEndsASnooze() {
+        store(
+            task(id = "a", scheduledDate = today, reminderAt = today.atTime(8, 0))
+                .copy(snoozedUntil = today.atTime(9, 0))
+        )
+        val model = viewModel()
+        visible(model, 1)
+
+        model.edit(id = "a", reminderAt = today.atTime(18, 0))
+        awaitUpdates(1)
+
+        assertEquals(today.atTime(18, 0), storedRow("a").reminderAt)
+        assertNull(storedRow("a").snoozedUntil)
+    }
+
+    @Test
+    fun editingSomethingElseKeepsTheSnooze() {
+        store(
+            task(id = "a", scheduledDate = today, reminderAt = today.atTime(8, 0))
+                .copy(snoozedUntil = today.atTime(9, 0))
+        )
+        val model = viewModel()
+        visible(model, 1)
+
+        model.edit(id = "a", title = "Renamed")
+        awaitUpdates(1)
+
+        assertEquals(today.atTime(9, 0), storedRow("a").snoozedUntil)
     }
 
     // Completion persists through the stack

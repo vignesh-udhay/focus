@@ -125,7 +125,7 @@ interface TaskDao {
     suspend fun markReminderDelivered(id: String, deliveredAt: Long)
 
     /**
-     * Moves a reminder to a new time and forgets that the old one was
+     * Snoozes a reminder to a new moment and forgets that the old one was
      * announced.
      *
      * The two halves are one statement because they are one fact. A reminder
@@ -134,13 +134,16 @@ interface TaskDao {
      * already delivered, which never fires. That invariant is stated on
      * `Task.reminderDeliveredAt`; this is where it is kept.
      *
-     * @param reminderAt ISO-8601 local date and time, matching the column's
-     * encoding, or null to clear the reminder entirely.
+     * `reminderAt` is left alone. D-078: it is the time the user chose, and for
+     * a recurring task the series' time, which a snooze must not move.
+     *
+     * @param snoozedUntil ISO-8601 local date and time, matching the column's
+     * encoding.
      */
     @Query(
-        "UPDATE tasks SET reminderAt = :reminderAt, reminderDeliveredAt = NULL WHERE id = :id"
+        "UPDATE tasks SET snoozedUntil = :snoozedUntil, reminderDeliveredAt = NULL WHERE id = :id"
     )
-    suspend fun rescheduleReminder(id: String, reminderAt: String?)
+    suspend fun snoozeReminder(id: String, snoozedUntil: String)
 
     /**
      * Undoes a soft delete, returning the task to [observeTasks].

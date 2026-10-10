@@ -44,9 +44,11 @@ all of it.
 
 - **Notifications.** To show a reminder when one is due. Requested the first
   time it is needed rather than at launch.
-- **Exact alarms.** To make a reminder arrive at the time you set instead of
-  whenever the system next feels like waking the app. This is the app's core
-  function and is the category Google Play grants it for.
+- **Alarms & reminders.** To make a reminder arrive at the time you set
+  instead of whenever the system next feels like waking the app. Android asks
+  you for this one in its own settings, and Catimo takes you there the first
+  time you set a reminder. You can turn it off at any time; reminders still
+  arrive, but may be late.
 - **Run at startup.** Android discards every scheduled alarm when the device
   restarts. Without this, reminders set before a restart would never arrive.
 - **Package visibility.** Catimo can check whether a small list of known

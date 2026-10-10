@@ -57,11 +57,11 @@ something in.
 
 **Reminders built like alarms**
 
-A reminder is scheduled as an exact alarm, and it survives the things that
-usually lose one: the app closed, the screen off, the device restarted, the
-clock or the time zone changed. Snooze it for ten minutes, an hour, this
-evening or tomorrow morning, or complete the task, straight from the
-notification without opening the app.
+Allow alarms and reminders when Catimo asks, and every reminder is scheduled
+as an exact alarm. It survives the things that usually lose one: the app
+closed, the screen off, the device restarted, the clock or the time zone
+changed. Snooze it for ten minutes, an hour, this evening or tomorrow morning,
+or complete the task, straight from the notification without opening the app.
 
 **A screen that checks the reminders for you**
 
@@ -121,8 +121,8 @@ or AI. The reward is getting the work done.
 
 | Claim | Evidence |
 | --- | --- |
-| Exact alarms | `USE_EXACT_ALARM` in the manifest, `SCHEDULE_EXACT_ALARM` below API 33 |
-| Survives restart, clock and time zone changes | `ReminderRecoveryReceiver`, on `BOOT_COMPLETED`, `MY_PACKAGE_REPLACED`, `TIME_SET`, `TIMEZONE_CHANGED` |
+| Exact alarms | `SCHEDULE_EXACT_ALARM`, asked for at the first reminder by `ReminderPermissionGate` (D-078). Without the grant, reminders are inexact and the Today banner says so |
+| Survives restart, clock and time zone changes | `ReminderRecoveryReceiver`, on `BOOT_COMPLETED`, `MY_PACKAGE_REPLACED`, `TIME_SET`, `TIMEZONE_CHANGED`, and the exact-alarm grant changing |
 | Four snooze choices | `SnoozeOption`: ten minutes, an hour, this evening, tomorrow morning |
 | Complete from the notification | `ReminderActionReceiver`, through the same `TaskCompletion` as the checkbox |
 | Health screen checks three things | `reminder_health_check_notifications`, `_exact`, `_background` |

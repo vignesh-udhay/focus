@@ -4,6 +4,8 @@ import com.vignesh.focuslist.core.time.CurrentDay
 import com.vignesh.focuslist.data.repository.TaskRepository
 import kotlinx.coroutines.flow.first
 import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneId
 import java.util.UUID
 
 /**
@@ -29,7 +31,8 @@ class TaskCompletion(
     private val repository: TaskRepository,
     private val currentDay: CurrentDay,
     private val clock: () -> Instant = Instant::now,
-    private val newId: () -> String = { UUID.randomUUID().toString() }
+    private val newId: () -> String = { UUID.randomUUID().toString() },
+    private val zone: () -> ZoneId = ZoneId::systemDefault
 ) {
 
     /**
@@ -48,10 +51,12 @@ class TaskCompletion(
         val task = repository.findTask(id) ?: return null
         if (task.isCompleted) return null
 
+        val completedAt = clock()
         val next = task.nextRecurringInstance(
             today = currentDay.today.first(),
             id = newId(),
-            createdAt = clock()
+            createdAt = completedAt,
+            now = LocalDateTime.ofInstant(completedAt, zone())
         )
 
         // **One transaction, and D-063 is why.** This was an `update` followed
@@ -59,7 +64,7 @@ class TaskCompletion(
         // complete with no successor: its reminder gone, and nothing saying so.
         // `PRODUCT.md` puts that above a crash, and requires that completing an
         // occurrence produces the next one.
-        repository.completeWithNext(completed = task.copy(completedAt = clock()), next = next)
+        repository.completeWithNext(completed = task.copy(completedAt = completedAt), next = next)
 
         return next?.id
     }

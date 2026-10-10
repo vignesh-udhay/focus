@@ -252,7 +252,8 @@ class MigrationTest {
             MIGRATION_6_7,
             MIGRATION_7_8,
             MIGRATION_8_9,
-            MIGRATION_9_10
+            MIGRATION_9_10,
+            MIGRATION_10_11
         ).use { database ->
             database.query(
                 "SELECT notes, recurrence, spawnedFromId, reminderAt FROM tasks WHERE id = ?",
@@ -489,7 +490,8 @@ class MigrationTest {
             LatestVersion,
             true,
             MIGRATION_8_9,
-            MIGRATION_9_10
+            MIGRATION_9_10,
+            MIGRATION_10_11
         ).use { database ->
             database.query(
                 """
@@ -544,7 +546,9 @@ class MigrationTest {
                         "recurrenceWeekdays",
                         "recurrenceEndDate",
                         "recurrenceEndCount",
-                        "occurrenceNumber"
+                        "occurrenceNumber",
+                        // Appended by version 11, D-078.
+                        "snoozedUntil"
                     ),
                     columns
                 )
@@ -598,7 +602,8 @@ class MigrationTest {
             TEST_DB,
             LatestVersion,
             true,
-            MIGRATION_9_10
+            MIGRATION_9_10,
+            MIGRATION_10_11
         ).use { database ->
             database.query(
                 """
@@ -691,6 +696,27 @@ class MigrationTest {
         const val TEST_DB = "migration-test.db"
 
         /** The schema every migration in this test is aimed at. */
-        const val LatestVersion = 10
+        const val LatestVersion = 11
+    }
+
+    /**
+     * Version 11 adds the snooze column empty. D-078. A backfilled value would
+     * move the next announcement of every reminder on every existing install.
+     */
+    @Test
+    fun migratedRowsHaveNoSnooze() {
+        seedVersion1()
+
+        migrate().use { database ->
+            database.query("SELECT id, snoozedUntil FROM tasks").use { cursor ->
+                var rows = 0
+                while (cursor.moveToNext()) {
+                    rows++
+                    assertTrue(cursor.getString(0) + " was snoozed", cursor.isNull(1))
+                }
+
+                assertEquals(3, rows)
+            }
+        }
     }
 }

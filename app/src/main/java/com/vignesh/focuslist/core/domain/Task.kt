@@ -77,6 +77,17 @@ data class Task(
     val dueDate: LocalDate? = null,
     val reminderAt: LocalDateTime? = null,
     val reminderDeliveredAt: Instant? = null,
+    /**
+     * When a snooze moved this reminder's next announcement, or null.
+     *
+     * Kept apart from [reminderAt] by `docs/decisions.md` D-078. A snooze moves
+     * one announcement; [reminderAt] is the time the user chose, and for a
+     * recurring task it is the series' time. Writing the snooze over it made
+     * "tomorrow morning" on a daily 8:00 task skip a day and stay at 9:00 for
+     * good. Cleared when the reminder is edited, and never carried into the
+     * next occurrence.
+     */
+    val snoozedUntil: LocalDateTime? = null,
     val estimatedDurationMinutes: Int? = null,
     val recurrence: Recurrence? = null,
     val occurrenceNumber: Int = 1,
@@ -109,4 +120,14 @@ data class Task(
      */
     val isDeleted: Boolean
         get() = deletedAt != null
+
+    /**
+     * The moment this task's reminder will next ring: a snooze if there is one,
+     * otherwise the reminder itself. Null when the task never speaks up.
+     *
+     * What scheduling, delivery and the rows read. [reminderAt] stays the time
+     * the user set, which is what Task Details edits and a series repeats.
+     */
+    val ringsAt: LocalDateTime?
+        get() = if (reminderAt == null) null else snoozedUntil ?: reminderAt
 }

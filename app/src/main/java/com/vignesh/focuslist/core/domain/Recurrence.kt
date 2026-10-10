@@ -3,6 +3,7 @@ package com.vignesh.focuslist.core.domain
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
 import java.time.temporal.TemporalAdjusters
 
@@ -271,7 +272,14 @@ private fun Recurrence.covers(date: LocalDate): Boolean = when (val stop = end) 
  * keeping its time of day, and arrives on the next occurrence not yet
  * announced.
  */
-fun Task.nextRecurringInstance(today: LocalDate, id: String, createdAt: Instant): Task? {
+fun Task.nextRecurringInstance(
+    today: LocalDate,
+    id: String,
+    createdAt: Instant,
+    // The moment of completing, so the next reminder is never one already
+    // gone. Optional so the date arithmetic stays testable on its own. D-078.
+    now: LocalDateTime? = null
+): Task? {
     val rule = recurrence ?: return null
     if (!rule.hasRoomAfter(occurrenceNumber)) return null
 
@@ -289,7 +297,23 @@ fun Task.nextRecurringInstance(today: LocalDate, id: String, createdAt: Instant)
         // The reminder moves with the task, by the same shift and at the same
         // time of day, on the same reasoning as the due date: whatever
         // relationship the two had is the one the series should keep.
-        reminderAt = reminderAt?.plusDays(shift),
+        //
+        // **Never at a moment already gone.** D-078. The reminder keeps its
+        // distance from the scheduled day, and that distance is only as good as
+        // the two staying in step. Moving the task in the list moves the day and
+        // not the reminder, so the shift could land the next reminder in the
+        // past, where it rang the instant the task was completed. Such a
+        // reminder goes on the new occurrence's own day, at its own time.
+        reminderAt = reminderAt?.plusDays(shift)?.let { shifted ->
+            if (now != null && !shifted.isAfter(now)) {
+                nextScheduled.atTime(shifted.toLocalTime())
+            } else {
+                shifted
+            }
+        },
+        // A snooze moved one announcement of the occurrence just finished. It
+        // says nothing about the next one, which rings at the series' time.
+        snoozedUntil = null,
         // And it has not been announced. Carrying the old delivery record
         // across left every occurrence after the first already marked
         // delivered, so a daily reminder fired once and then went silent for

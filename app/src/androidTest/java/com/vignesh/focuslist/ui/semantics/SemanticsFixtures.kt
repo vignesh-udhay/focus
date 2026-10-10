@@ -195,11 +195,11 @@ internal class FakeTaskDao(initial: List<Task> = emptyList()) : TaskDao {
         rows.value = rows.value.map { stored -> if (stored.id == task.id) task else stored }
     }
 
-    override suspend fun rescheduleReminder(id: String, reminderAt: String?) {
+    override suspend fun snoozeReminder(id: String, snoozedUntil: String) {
         rows.value = rows.value.map { stored ->
             if (stored.id == id) {
                 stored.copy(
-                    reminderAt = TaskConverters.textToLocalDateTime(reminderAt),
+                    snoozedUntil = TaskConverters.textToLocalDateTime(snoozedUntil),
                     reminderDeliveredAt = null
                 )
             } else {

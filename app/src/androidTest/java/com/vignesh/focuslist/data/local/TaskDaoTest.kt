@@ -74,6 +74,7 @@ class TaskDaoTest {
         dueDate = dueDate,
         reminderAt = reminderAt,
         reminderDeliveredAt = reminderDeliveredAt,
+        snoozedUntil = null,
         estimatedDurationMinutes = estimatedDurationMinutes,
         recurrence = recurrence,
         recurrenceInterval = null,

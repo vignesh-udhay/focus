@@ -24,7 +24,7 @@ internal fun widgetTaskText(context: Context, task: Task, today: LocalDate): Wid
         // The row's rule, D-075: a reminder names its day when that is not the
         // task's day, and is dropped once its own day is over.
         if (!overdue) {
-            task.reminderAt?.takeUnless { it.toLocalDate().isBefore(today) }?.let { at ->
+            task.ringsAt?.takeUnless { it.toLocalDate().isBefore(today) }?.let { at ->
                 val time = at.toLocalTime().format(context.timeFormatter())
                 add(
                     if (at.toLocalDate() == task.scheduledDate) time

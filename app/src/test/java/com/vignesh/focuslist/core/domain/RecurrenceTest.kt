@@ -250,4 +250,59 @@ class RecurrenceTest {
             undated.nextRecurringInstance(date("2026-09-02"), "next", createdAt)!!.scheduledDate
         )
     }
+
+    // D-078: a snooze moves one announcement, never the series
+
+    @Test
+    fun `a snooze does not move the next occurrence's reminder`() {
+        // A daily 8:00 task snoozed to 9:00 the next morning, then done. The
+        // series stays at 8:00 on the next day; it used to skip a day and stay
+        // at 9:00 for good.
+        val snoozed = chore.copy(
+            reminderAt = LocalDateTime.of(2026, 9, 2, 8, 0),
+            snoozedUntil = LocalDateTime.of(2026, 9, 3, 9, 0)
+        )
+
+        val next = snoozed.nextRecurringInstance(date("2026-09-03"), "next", createdAt)!!
+
+        assertEquals(date("2026-09-04"), next.scheduledDate)
+        assertEquals(LocalDateTime.of(2026, 9, 4, 8, 0), next.reminderAt)
+        assertNull(next.snoozedUntil)
+    }
+
+    @Test
+    fun `a next reminder that would already have gone lands on the occurrence's own day`() {
+        // Moved in the list to the 4th without its reminder, which stays on the
+        // 2nd. The shift would put the next one on the 3rd, already gone, and it
+        // would ring the moment the task is completed.
+        val moved = chore.copy(
+            scheduledDate = date("2026-09-04"),
+            reminderAt = LocalDateTime.of(2026, 9, 2, 8, 0)
+        )
+
+        val next = moved.nextRecurringInstance(
+            today = date("2026-09-04"),
+            id = "next",
+            createdAt = createdAt,
+            now = LocalDateTime.of(2026, 9, 4, 10, 0)
+        )!!
+
+        assertEquals(date("2026-09-05"), next.scheduledDate)
+        assertEquals(LocalDateTime.of(2026, 9, 5, 8, 0), next.reminderAt)
+    }
+
+    @Test
+    fun `a next reminder still ahead keeps its distance from the day`() {
+        // Reminded the evening before: the relationship the user chose stays.
+        val eveBefore = chore.copy(reminderAt = LocalDateTime.of(2026, 9, 1, 20, 0))
+
+        val next = eveBefore.nextRecurringInstance(
+            today = date("2026-09-02"),
+            id = "next",
+            createdAt = createdAt,
+            now = LocalDateTime.of(2026, 9, 2, 10, 0)
+        )!!
+
+        assertEquals(LocalDateTime.of(2026, 9, 2, 20, 0), next.reminderAt)
+    }
 }

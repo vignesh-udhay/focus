@@ -42,6 +42,10 @@ class ReminderActionReceiver : BroadcastReceiver() {
                     ACTION_DONE -> {
                         TaskCompletion(application.taskRepository, application.currentDay)
                             .complete(taskId)
+                        // Before the receiver finishes, so a recurring task's
+                        // next reminder is set even if the process is frozen
+                        // the moment this returns. D-078.
+                        application.reconcileReminders()
                         context.cancelReminder(taskId)
                     }
 
@@ -66,7 +70,10 @@ class ReminderActionReceiver : BroadcastReceiver() {
                         // screen, so nothing is lost.
                         val until = snoozedUntil(option, LocalDateTime.now()) ?: return@launch
 
-                        application.taskRepository.rescheduleReminder(taskId, until)
+                        application.taskRepository.snoozeReminder(taskId, until)
+                        // The same reason as Done: the snooze is only a promise
+                        // once its alarm is set. D-078.
+                        application.reconcileReminders()
                         context.cancelReminder(taskId)
                     }
                 }

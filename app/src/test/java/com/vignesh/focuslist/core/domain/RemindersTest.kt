@@ -371,4 +371,23 @@ class RemindersTest {
 
         assertEquals(LocalDateTime.of(2026, 9, 5, 9, 30).toLocalTime(), moved.toLocalTime())
     }
+
+    // D-078: a snooze is owed at its own moment
+
+    @Test
+    fun `a snoozed reminder is owed at the snooze, not at the reminder`() {
+        val snoozed = task("a", reminderAt = now.minusHours(2)).copy(snoozedUntil = now.plusHours(1))
+
+        assertEquals(now.plusHours(1), snoozed.ringsAt)
+        assertEquals(listOf("a"), pendingReminders(listOf(snoozed), now).map { it.id })
+        assertTrue(missedReminders(listOf(snoozed), now).isEmpty())
+    }
+
+    @Test
+    fun `a snooze on a task whose reminder was cleared rings at nothing`() {
+        val cleared = task("a").copy(snoozedUntil = now.plusHours(1))
+
+        assertEquals(null, cleared.ringsAt)
+        assertFalse(cleared.hasLiveReminder())
+    }
 }

@@ -21,7 +21,7 @@ import androidx.room.RoomDatabase
  */
 @Database(
     entities = [TaskEntity::class, ReminderDeliveryEntity::class],
-    version = 10,
+    version = 11,
     exportSchema = true
 )
 abstract class FocuslistDatabase : RoomDatabase() {

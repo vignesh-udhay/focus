@@ -213,7 +213,9 @@ class ReminderReceiver : BroadcastReceiver() {
                 // of them is a delivery, so none is written down.
                 if (task == null || !task.hasLiveReminder()) return@launch
 
-                val dueAt = task.reminderAt ?: return@launch
+                // The moment it was owed at, which is a snooze's when there is
+                // one, so lateness is measured against what was promised. D-078.
+                val dueAt = task.ringsAt ?: return@launch
 
                 suspend fun record(outcome: DeliveryOutcome) {
                     application.reminderDeliveryRepository.record(
@@ -235,7 +237,7 @@ class ReminderReceiver : BroadcastReceiver() {
                     )
                 }
 
-                if (!context.canPostNotifications()) {
+                if (!context.canPostReminders()) {
                     // Deliberately left undelivered. Saying nothing is not
                     // delivering, and if the user grants notifications later
                     // the reminder is still owed and will be announced then.
@@ -293,6 +295,10 @@ class ReminderReceiver : BroadcastReceiver() {
 class ReminderRecoveryReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
+        // Exported, so anything could send it an explicit intent. Only the
+        // broadcasts the manifest names lead anywhere.
+        if (intent.action !in RecoveryActions) return
+
         val application = context.applicationContext as? FocuslistApplication ?: return
         val finish = goAsync()
 
@@ -300,11 +306,46 @@ class ReminderRecoveryReceiver : BroadcastReceiver() {
             try {
                 application.reminderScheduler
                     .reconcile(application.taskRepository.observeTasks().first())
+            } catch (error: Exception) {
+                // Logged rather than thrown, which would kill the process on the
+                // very boot that is meant to restore the alarms. D-078.
+                Log.e(LogTag, "Recovery could not reconcile reminders.", error)
             } finally {
                 finish.finish()
             }
         }
     }
+
+    private companion object {
+        val RecoveryActions = setOf(
+            Intent.ACTION_BOOT_COMPLETED,
+            Intent.ACTION_MY_PACKAGE_REPLACED,
+            Intent.ACTION_TIME_CHANGED,
+            Intent.ACTION_TIMEZONE_CHANGED,
+            // A grant made anywhere, including system settings, turns alarms
+            // set inexactly while it was missing into exact ones. D-078. The
+            // literal, because the constant is API 31 and this runs from 29.
+            "android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED"
+        )
+    }
+}
+
+/**
+ * Whether a reminder posted now would actually be shown.
+ *
+ * More than the runtime permission. D-078: notifications switched off for the
+ * whole app, which is the only switch below API 33, or the reminder channel set
+ * to None, both let `notify` succeed and show nothing. Counting either as a
+ * delivery marked the reminder told, so it was never offered again, and the
+ * health check called it fine. A channel not yet created counts as allowed,
+ * because it is about to be created at high importance.
+ */
+internal fun Context.canPostReminders(): Boolean {
+    if (!canPostNotifications()) return false
+    if (!NotificationManagerCompat.from(this).areNotificationsEnabled()) return false
+
+    val channel = getSystemService<NotificationManager>()?.getNotificationChannel(ReminderChannelId)
+    return channel == null || channel.importance != NotificationManager.IMPORTANCE_NONE
 }
 
 /**

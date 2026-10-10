@@ -19,6 +19,7 @@ class TaskMappersTest {
     private val dueDate: LocalDate = LocalDate.of(2026, 9, 4)
     private val reminderAt: LocalDateTime = LocalDateTime.of(2026, 8, 31, 9, 30)
     private val deliveredAt: Instant = Instant.parse("2026-08-31T04:00:12Z")
+    private val snoozedUntil: LocalDateTime = LocalDateTime.of(2026, 8, 31, 10, 30)
 
     private fun fullTask() = Task(
         id = "task-1",
@@ -29,6 +30,7 @@ class TaskMappersTest {
         dueDate = dueDate,
         reminderAt = reminderAt,
         reminderDeliveredAt = deliveredAt,
+        snoozedUntil = snoozedUntil,
         estimatedDurationMinutes = 45,
         recurrence = Recurrence(RecurrenceUnit.WEEKLY),
         spawnedFromId = "task-0",
@@ -45,6 +47,7 @@ class TaskMappersTest {
         dueDate = dueDate,
         reminderAt = reminderAt,
         reminderDeliveredAt = deliveredAt,
+        snoozedUntil = snoozedUntil,
         estimatedDurationMinutes = 45,
         recurrence = RecurrenceUnit.WEEKLY,
         recurrenceInterval = 1,
@@ -71,6 +74,7 @@ class TaskMappersTest {
         assertEquals(dueDate, entity.dueDate)
         assertEquals(reminderAt, entity.reminderAt)
         assertEquals(deliveredAt, entity.reminderDeliveredAt)
+        assertEquals(snoozedUntil, entity.snoozedUntil)
         assertEquals(45, entity.estimatedDurationMinutes)
         // Neither of these was checked here before, which is how a column can
         // be added to one side of the mapping and quietly dropped on the way
@@ -109,6 +113,7 @@ class TaskMappersTest {
         assertEquals(dueDate, task.dueDate)
         assertEquals(reminderAt, task.reminderAt)
         assertEquals(deliveredAt, task.reminderDeliveredAt)
+        assertEquals(snoozedUntil, task.snoozedUntil)
         assertEquals(45, task.estimatedDurationMinutes)
         assertEquals(Recurrence(RecurrenceUnit.WEEKLY), task.recurrence)
         assertEquals("task-0", task.spawnedFromId)

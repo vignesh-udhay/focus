@@ -308,7 +308,8 @@ private fun Context.reminderBuilder(task: Task, summary: String) =
  * notification.
  */
 private fun Task.reminderSummary(context: Context): String {
-    val at = reminderAt ?: return ""
+    // When it rang, which is a snooze's time when there was one. D-078.
+    val at = ringsAt ?: return ""
     val time = context.formatTime(at.toLocalTime())
     // Sentence form: "Every week" rather than "Weekly", which is how a line
     // read at a glance mid-task should phrase itself. `strings.xml` used to

@@ -230,6 +230,18 @@ val MIGRATION_9_10 = Migration(9, 10) { database ->
     )
 }
 
+/**
+ * Version 11 stores a snooze apart from the reminder it moves.
+ *
+ * `docs/decisions.md` D-078. A snooze used to overwrite `reminderAt`, which for
+ * a recurring task is the series' own time, so one snooze moved every later
+ * occurrence. Null for every existing row: a snooze already written into
+ * `reminderAt` stays there, which is what it meant when it was written.
+ */
+val MIGRATION_10_11 = Migration(10, 11) { database ->
+    database.execSQL("ALTER TABLE tasks ADD COLUMN snoozedUntil TEXT")
+}
+
 /** Every migration, in order, for the builder and the migration test. */
 val FocuslistMigrations = arrayOf(
     MIGRATION_1_2,
@@ -240,5 +252,6 @@ val FocuslistMigrations = arrayOf(
     MIGRATION_6_7,
     MIGRATION_7_8,
     MIGRATION_8_9,
-    MIGRATION_9_10
+    MIGRATION_9_10,
+    MIGRATION_10_11
 )

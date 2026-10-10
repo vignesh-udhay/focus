@@ -141,6 +141,7 @@ class BackupRepositoryTest {
         dueDate = null,
         reminderAt = null,
         reminderDeliveredAt = null,
+        snoozedUntil = null,
         estimatedDurationMinutes = null,
         recurrence = null,
         recurrenceInterval = null,

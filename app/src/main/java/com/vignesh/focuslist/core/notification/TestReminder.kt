@@ -127,7 +127,9 @@ class TestReminderReceiver : BroadcastReceiver() {
 
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
-                val posted = if (context.canPostNotifications()) {
+                // The reminder check, not the permission alone, so a channel set to
+                // None cannot pass the test. D-078.
+                val posted = if (context.canPostReminders()) {
                     context.ensureReminderChannel()
                     context.postTestReminder(arrivedWallAt).also { didPost ->
                         if (!didPost) {

@@ -75,6 +75,8 @@ class FocuslistBackupCodecTest {
         dueDate = LocalDate.parse("2026-09-10"),
         reminderAt = LocalDateTime.parse("2026-09-09T09:30:00"),
         reminderDeliveredAt = Instant.parse("2026-09-09T04:00:03Z"),
+        // A real value, so a codec that dropped the field fails. D-078.
+        snoozedUntil = LocalDateTime.parse("2026-09-09T10:30:00"),
         estimatedDurationMinutes = 45,
         recurrence = RecurrenceUnit.WEEKLY,
         recurrenceInterval = 2,

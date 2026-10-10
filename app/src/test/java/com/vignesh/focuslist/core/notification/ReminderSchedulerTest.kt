@@ -60,6 +60,20 @@ class ReminderSchedulerTest {
     private fun scheduler(alarms: ReminderAlarms, at: ZoneId = zone, clock: Instant = now) =
         ReminderScheduler(alarms, zone = { at }, clock = { clock })
 
+    /** Refuses the alarm for [refused], as Android does past its cap. */
+    private class RefusingAlarms(private val refused: String) : ReminderAlarms {
+        val scheduled = linkedMapOf<String, Instant>()
+
+        override fun schedule(taskId: String, at: Instant) {
+            if (taskId == refused) throw IllegalStateException("Maximum limit of concurrent alarms")
+            scheduled[taskId] = at
+        }
+
+        override fun cancel(taskId: String) = Unit
+
+        override fun canScheduleExact(): Boolean = true
+    }
+
     // 1. Scheduling what is owed
 
     @Test
@@ -248,5 +262,55 @@ class ReminderSchedulerTest {
         // 11:00 Kolkata was an hour ago, so it is owed immediately rather than
         // dropped. This is the case a plain reschedule would silently lose.
         assertEquals(now, alarms.scheduled["a"])
+    }
+
+    // D-078: one refusal does not stop the rest
+
+    @Test
+    fun `an alarm the system refuses does not stop the others being scheduled`() {
+        val alarms = RefusingAlarms(refused = "b")
+        val failed = mutableListOf<String>()
+        val tasks = listOf(
+            task("a", LocalDateTime.of(2026, 9, 5, 13, 0)),
+            task("b", LocalDateTime.of(2026, 9, 5, 14, 0)),
+            task("c", LocalDateTime.of(2026, 9, 5, 15, 0))
+        )
+
+        val failures = ReminderScheduler(
+            alarms,
+            zone = { zone },
+            clock = { now },
+            onFailure = { id, _ -> failed += id }
+        ).reconcile(tasks)
+
+        assertEquals(1, failures)
+        assertEquals(listOf("b"), failed)
+        assertEquals(setOf("a", "c"), alarms.scheduled.keys)
+    }
+
+    @Test
+    fun `the soonest reminders are scheduled first, and no more than the cap`() {
+        val alarms = RecordingAlarms()
+        // Given latest first, so the order scheduled is the scheduler's own.
+        val tasks = (MaxScheduledReminders + 5 downTo 1).map { minutes ->
+            task("t$minutes", LocalDateTime.of(2026, 9, 5, 12, 0).plusMinutes(minutes.toLong()))
+        }
+
+        scheduler(alarms).reconcile(tasks)
+
+        assertEquals(MaxScheduledReminders, alarms.scheduled.size)
+        assertEquals("t1", alarms.scheduled.keys.first())
+        assertEquals("t$MaxScheduledReminders", alarms.scheduled.keys.last())
+    }
+
+    @Test
+    fun `a snoozed reminder is scheduled at its snooze`() {
+        val alarms = RecordingAlarms()
+        val snoozed = task("a", LocalDateTime.of(2026, 9, 5, 9, 0))
+            .copy(snoozedUntil = LocalDateTime.of(2026, 9, 5, 14, 0))
+
+        scheduler(alarms).reconcile(listOf(snoozed))
+
+        assertEquals(mapOf("a" to Instant.parse("2026-09-05T08:30:00Z")), alarms.scheduled)
     }
 }

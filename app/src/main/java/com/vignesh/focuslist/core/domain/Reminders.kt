@@ -41,7 +41,7 @@ import java.time.temporal.ChronoUnit
  * habit that makes a real one fail later.
  */
 fun Task.hasLiveReminder(): Boolean =
-    reminderAt != null && reminderDeliveredAt == null && !isCompleted && !isDeleted
+    ringsAt != null && reminderDeliveredAt == null && !isCompleted && !isDeleted
 
 /**
  * Reminders still ahead of [now]: exactly the set that should be sitting in
@@ -57,9 +57,10 @@ fun Task.hasLiveReminder(): Boolean =
  */
 fun pendingReminders(tasks: List<Task>, now: LocalDateTime): List<Task> =
     tasks
-        .filter { task -> task.hasLiveReminder() && task.reminderAt!!.isAfter(now) }
-        // Every task here has a reminder; the filter saw to that.
-        .sortedBy { task -> task.reminderAt }
+        .filter { task -> task.hasLiveReminder() && task.ringsAt!!.isAfter(now) }
+        // Every task here has a reminder; the filter saw to that. Read through
+        // `ringsAt`, so a snoozed reminder is owed at its snooze. D-078.
+        .sortedBy { task -> task.ringsAt }
 
 /**
  * Reminders whose moment has already passed and which the user was never
@@ -84,9 +85,9 @@ fun pendingReminders(tasks: List<Task>, now: LocalDateTime): List<Task> =
  */
 fun missedReminders(tasks: List<Task>, now: LocalDateTime): List<Task> =
     tasks
-        .filter { task -> task.hasLiveReminder() && !task.reminderAt!!.isAfter(now) }
+        .filter { task -> task.hasLiveReminder() && !task.ringsAt!!.isAfter(now) }
         // Every task here has a reminder; the filter saw to that.
-        .sortedBy { task -> task.reminderAt }
+        .sortedBy { task -> task.ringsAt }
 
 /**
  * The moment to actually ask the system to fire, for a reminder that is owed.
@@ -107,6 +108,7 @@ fun missedReminders(tasks: List<Task>, now: LocalDateTime): List<Task> =
  */
 fun reminderTrigger(reminderAt: LocalDateTime, zone: ZoneId, now: Instant): Instant =
     maxOf(reminderAt.atZone(zone).toInstant(), now)
+
 
 /**
  * The same time of day, on the first day it is still ahead of [now].

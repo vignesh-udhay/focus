@@ -9,6 +9,45 @@ scope it delivers is in `PRODUCT.md`.
 
 ## Current phase
 
+**The pre-release audit found a Play policy blocker and four missed-reminder
+bugs, and D-078 fixes them.** Four reviewers audited the build, the reminder
+subsystem, the listing and the code.
+
+- **Exact alarms are asked for.** Play allows `USE_EXACT_ALARM` only for alarm,
+  timer and calendar apps, so the manifest now declares `SCHEDULE_EXACT_ALARM`
+  on every API level. The existing permission screen asks at the first
+  reminder, the Today banner says "Reminders may arrive late" while the grant
+  is missing, and the recovery receiver reconciles when it is granted from
+  anywhere.
+- **A snooze no longer moves the series.** It is stored in a new
+  `snoozedUntil` column, schema version 11, and a recurring task's next
+  reminder never lands at a moment already gone.
+- **The scheduler survives its own failures.** A refused alarm no longer stops
+  the rest or crashes the process; it schedules soonest first, at most 400.
+- **Notification and widget actions reconcile before they return.**
+- **Blocked notifications are not counted as delivered**, whether the app is
+  switched off or the reminder channel is set to None.
+- Also fixed: an absurd "in N hours" no longer crashes Quick Add, the offset
+  reminder now shows its chip, and the flaky view model test was the fake
+  DAO recording a write before applying it.
+
+Verified on the Pixel 10 emulator (API 37) from a fresh install: the grant
+started denied, and the 13:05:45 reminder was first set inexact with a 2m15s
+window. The permission screen opened Android's Alarms & reminders page;
+granting it made the alarm exact (`window=0`, `exactAllowReason=permission`)
+and cleared the banner. The reminder posted at 13:05:46. Snoozing 10 minutes
+set an exact alarm for 13:16:09 and left `reminderAt` at 13:05:45 with
+`snoozedUntil` 13:16:09. JVM suite 757 pass, and the view model tests pass 8
+runs of 8. On the emulator: `MigrationTest` 17, `TaskDaoTest` 25,
+`BackupDaoTest` 2, `FocuslistBackupCodecTest` 3, `BackupRepositoryTest` 6,
+`TaskRowSemanticsTest` 23, `TodayScreenSemanticsTest` 39,
+`QuickAddSemanticsTest` 17, `QuickAddCaptureTest` 6,
+`ReminderSheetSemanticsTest` 11, `ReminderHealthSemanticsTest` 3,
+`TaskDetailsSemanticsTest` 28, `ReminderGroupTest` 7 and `WidgetTaskTextTest`
+3. Lint 39, one fewer. Still open from the audit: signing, R8, the widget's
+midnight refresh, the listing corrections and TODOs, the restore file filter,
+the 24-hour clock setting, and the minor items.
+
 **Dynamic colour is off by default, D-077.** From a review of the app's identity:
 apart from the cat it read as a well-made Material sample, and with the
 wallpaper choosing its colours it had none of its own in the store screenshots

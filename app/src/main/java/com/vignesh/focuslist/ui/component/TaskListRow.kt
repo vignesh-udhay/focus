@@ -148,7 +148,7 @@ private fun taskMetadata(
     // as though it were still to come. This morning's stays until tonight,
     // because it is plainly past and Today's band is explained by it.
     if (!task.isPastScheduled(today)) {
-        task.reminderAt?.takeUnless { at -> at.toLocalDate().isBefore(today) }?.let { at ->
+        task.ringsAt?.takeUnless { at -> at.toLocalDate().isBefore(today) }?.let { at ->
             val time = at.toLocalTime().format(rememberTimeFormat())
             segments += if (at.toLocalDate() == task.scheduledDate) {
                 time

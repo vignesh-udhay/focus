@@ -89,16 +89,16 @@ class TaskRepository(private val dao: TaskDao) {
     }
 
     /**
-     * Moves [id]'s reminder to [reminderAt], or clears it when null.
+     * Snoozes [id]'s reminder to [until], leaving the reminder itself alone.
      *
      * Encoded the same way `TaskConverters` stores the column, and it clears
      * the delivery record in the same statement so the new time is owed rather
-     * than born already announced.
+     * than born already announced. D-078 says why the reminder is not moved.
      */
-    suspend fun rescheduleReminder(id: String, reminderAt: LocalDateTime?) {
-        dao.rescheduleReminder(
+    suspend fun snoozeReminder(id: String, until: LocalDateTime) {
+        dao.snoozeReminder(
             id = id,
-            reminderAt = TaskConverters.localDateTimeToText(reminderAt)
+            snoozedUntil = requireNotNull(TaskConverters.localDateTimeToText(until))
         )
     }
 

@@ -32,7 +32,7 @@ private class FakeTaskDao : TaskDao {
     val updated = mutableListOf<TaskEntity>()
     val softDeleted = mutableListOf<Pair<String, Long>>()
     val remindersDelivered = mutableListOf<Pair<String, Long>>()
-    val remindersRescheduled = mutableListOf<Pair<String, String?>>()
+    val remindersSnoozed = mutableListOf<Pair<String, String>>()
     val restored = mutableListOf<String>()
     val deleted = mutableListOf<String>()
 
@@ -61,8 +61,8 @@ private class FakeTaskDao : TaskDao {
         remindersDelivered += id to deliveredAt
     }
 
-    override suspend fun rescheduleReminder(id: String, reminderAt: String?) {
-        remindersRescheduled += id to reminderAt
+    override suspend fun snoozeReminder(id: String, snoozedUntil: String) {
+        remindersSnoozed += id to snoozedUntil
     }
 
     override suspend fun restore(id: String) {
@@ -106,6 +106,7 @@ class TaskRepositoryTest {
         dueDate = dueDate,
         reminderAt = reminderAt,
         reminderDeliveredAt = reminderDeliveredAt,
+        snoozedUntil = null,
         estimatedDurationMinutes = estimatedDurationMinutes,
         recurrence = recurrence,
         recurrenceInterval = null,
@@ -244,23 +245,16 @@ class TaskRepositoryTest {
     }
 
     @Test
-    fun `rescheduleReminder encodes the new time the way the column stores it`() = runBlocking {
-        repository.rescheduleReminder("a", LocalDateTime.of(2026, 9, 5, 9, 30))
+    fun `snoozeReminder encodes the new time the way the column stores it`() = runBlocking {
+        repository.snoozeReminder("a", LocalDateTime.of(2026, 9, 5, 9, 30))
 
-        assertEquals(listOf("a" to "2026-09-05T09:30"), dao.remindersRescheduled)
+        assertEquals(listOf("a" to "2026-09-05T09:30"), dao.remindersSnoozed)
     }
 
     @Test
-    fun `rescheduleReminder passes null through to clear a reminder`() = runBlocking {
-        repository.rescheduleReminder("a", null)
-
-        assertEquals(listOf("a" to null), dao.remindersRescheduled)
-    }
-
-    @Test
-    fun `rescheduling is one statement, so a new time cannot stay marked delivered`() =
+    fun `snoozing is one statement, so a new time cannot stay marked delivered`() =
         runBlocking {
-            repository.rescheduleReminder("a", LocalDateTime.of(2026, 9, 5, 9, 30))
+            repository.snoozeReminder("a", LocalDateTime.of(2026, 9, 5, 9, 30))
 
             // The clearing is in the SQL, not here, which is what makes it
             // impossible to move a reminder and forget. A second call to

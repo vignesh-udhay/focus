@@ -51,8 +51,10 @@ class AndroidReminderHealthChecks(
     private val manufacturer: String = Build.MANUFACTURER
 ) : ReminderHealthChecks {
 
+    // Reminders specifically, not the permission alone: the app switched off or
+    // the reminder channel set to None block them just as surely. D-078.
     override fun notifications(): CheckState =
-        if (context.canPostNotifications()) CheckState.Ok else CheckState.Blocked
+        if (context.canPostReminders()) CheckState.Ok else CheckState.Blocked
 
     override fun exactAlarms(): CheckState =
         if (alarms.canScheduleExact()) CheckState.Ok else CheckState.Blocked

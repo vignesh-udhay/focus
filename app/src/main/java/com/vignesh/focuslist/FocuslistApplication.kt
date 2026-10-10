@@ -1,6 +1,7 @@
 package com.vignesh.focuslist
 
 import android.app.Application
+import android.util.Log
 import androidx.room.Room
 import com.vignesh.focuslist.data.local.FocuslistDatabase
 import com.vignesh.focuslist.data.local.FocuslistMigrations
@@ -11,6 +12,7 @@ import com.vignesh.focuslist.data.local.ReminderHealthAcknowledgements
 import com.vignesh.focuslist.data.local.WidgetInteractionPreferences
 import com.vignesh.focuslist.core.notification.AndroidFocusAlarms
 import com.vignesh.focuslist.core.notification.AndroidReminderAlarms
+import com.vignesh.focuslist.core.notification.LogTag
 import com.vignesh.focuslist.core.notification.FocusAlarms
 import com.vignesh.focuslist.core.notification.ReminderAlarms
 import com.vignesh.focuslist.core.notification.AndroidReminderHealthChecks
@@ -20,6 +22,7 @@ import com.vignesh.focuslist.core.time.SystemCurrentDay
 import com.vignesh.focuslist.data.repository.ReminderDeliveryRepository
 import com.vignesh.focuslist.data.repository.BackupRepository
 import com.vignesh.focuslist.data.repository.TaskRepository
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -123,7 +126,29 @@ class FocuslistApplication : Application() {
      * Public because the recovery receiver runs it too, after a restart or a
      * clock change, when this process may have only just been created.
      */
-    val reminderScheduler: ReminderScheduler by lazy { ReminderScheduler(reminderAlarms) }
+    val reminderScheduler: ReminderScheduler by lazy {
+        ReminderScheduler(
+            alarms = reminderAlarms,
+            // Written down rather than swallowed, per `AGENTS.md`. D-078.
+            onFailure = { taskId, error ->
+                Log.e(LogTag, "The system refused the alarm for $taskId.", error)
+            }
+        )
+    }
+
+    /**
+     * Reconciles every alarm against storage, now, and returns when it is done.
+     *
+     * For code running in a broadcast receiver or a widget action, which writes
+     * a task and then lets its process go. The collector in
+     * [keepRemindersInStepWithStorage] would reconcile too, but only if the
+     * process lives long enough to run it, and a frozen one does not: a snooze
+     * or the next occurrence of a task ticked from the shade could be stored
+     * and never scheduled. D-078.
+     */
+    suspend fun reconcileReminders() {
+        reminderScheduler.reconcile(taskRepository.observeTasks().first())
+    }
 
     /** What the platform will admit about whether a reminder can arrive. */
     val reminderHealthChecks: ReminderHealthChecks by lazy {
@@ -136,7 +161,16 @@ class FocuslistApplication : Application() {
      * Never cancelled: there is no later moment at which reminders stop
      * mattering while the process is alive.
      */
-    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val applicationScope = CoroutineScope(
+        SupervisorJob() + Dispatchers.IO +
+            // A failure in one watcher is logged, not fatal. Without this an
+            // exception escaping a reconciliation killed the process on every
+            // start, and with it every alarm the next start would have set.
+            // D-078.
+            CoroutineExceptionHandler { _, error ->
+                Log.e(LogTag, "A background task failed.", error)
+            }
+    )
 
     override fun onCreate() {
         super.onCreate()

@@ -72,27 +72,66 @@ interface ReminderAlarms {
 class ReminderScheduler(
     private val alarms: ReminderAlarms,
     private val zone: () -> ZoneId = ZoneId::systemDefault,
-    private val clock: () -> Instant = Instant::now
+    private val clock: () -> Instant = Instant::now,
+    // Told about every alarm the system refused, so it is written down rather
+    // than swallowed. A parameter because this file stays free of Android.
+    private val onFailure: (taskId: String, error: Exception) -> Unit = { _, _ -> }
 ) {
 
-    fun reconcile(tasks: List<Task>) {
+    /**
+     * One pass, and the number of alarms the system refused during it.
+     *
+     * **A refusal on one alarm no longer stops the rest.** D-078. Android caps an
+     * app at 500 alarms and throws past it, and on API 31 and 32 a revoked
+     * exact-alarm grant throws too. The pass used to stop at the first throw,
+     * so every reminder after it went unscheduled, and the exception escaped
+     * into the caller, which crashed the process on every start.
+     *
+     * **Cancels first, then schedules soonest first, at most
+     * [MaxScheduledReminders].** Cancelling first frees the system's slots
+     * before anything asks for one. The soonest are the ones that cannot wait,
+     * and anything past the cap is scheduled by a later pass, which every
+     * delivery triggers by writing down that it was announced.
+     */
+    fun reconcile(tasks: List<Task>): Int {
         val now = clock()
         val here = zone()
         val localNow = LocalDateTime.ofInstant(now, here)
 
-        // Pending and missed together: both are owed. The trigger time is what
-        // separates them, and `reminderTrigger` decides that.
-        val owed = (pendingReminders(tasks, localNow) + missedReminders(tasks, localNow))
-            .associateBy { task -> task.id }
+        // Missed first, because they are already late, then pending, which is
+        // sorted soonest first. The trigger time is what separates them, and
+        // `reminderTrigger` decides that.
+        val owed = missedReminders(tasks, localNow) + pendingReminders(tasks, localNow)
+        val owedIds = owed.mapTo(HashSet()) { task -> task.id }
 
-        tasks.forEach { task ->
-            val reminderAt = owed[task.id]?.reminderAt
-
-            if (reminderAt == null) {
-                alarms.cancel(task.id)
-            } else {
-                alarms.schedule(task.id, reminderTrigger(reminderAt, here, now))
+        var failures = 0
+        fun attempt(taskId: String, action: () -> Unit) {
+            try {
+                action()
+            } catch (error: Exception) {
+                failures++
+                onFailure(taskId, error)
             }
         }
+
+        tasks
+            .filter { task -> task.id !in owedIds }
+            .forEach { task -> attempt(task.id) { alarms.cancel(task.id) } }
+
+        owed.take(MaxScheduledReminders).forEach { task ->
+            // Every owed task rings at some moment; the queries saw to that.
+            val ringsAt = task.ringsAt ?: return@forEach
+            attempt(task.id) { alarms.schedule(task.id, reminderTrigger(ringsAt, here, now)) }
+        }
+
+        return failures
     }
 }
+
+/**
+ * The most reminder alarms one pass asks the system to hold.
+ *
+ * Below Android's cap of 500 per app, with room for the focus estimate, the test
+ * reminder and alarms of deleted tasks that have not fired yet.
+ */
+internal const val MaxScheduledReminders = 400

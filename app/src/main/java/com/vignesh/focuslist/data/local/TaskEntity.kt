@@ -51,6 +51,8 @@ data class TaskEntity(
     val dueDate: LocalDate?,
     val reminderAt: LocalDateTime?,
     val reminderDeliveredAt: Instant?,
+    // Version 11, D-078: a snooze, kept apart from the reminder it moves.
+    val snoozedUntil: LocalDateTime?,
     val estimatedDurationMinutes: Int?,
     val recurrence: RecurrenceUnit?,
     val recurrenceInterval: Int?,

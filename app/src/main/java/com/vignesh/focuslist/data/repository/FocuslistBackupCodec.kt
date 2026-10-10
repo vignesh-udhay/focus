@@ -130,6 +130,7 @@ object FocuslistBackupCodec {
         writer.name("dueDate").nullableValue(task.dueDate?.toString())
         writer.name("reminderAt").nullableValue(task.reminderAt?.toString())
         writer.name("reminderDeliveredAt").nullableValue(task.reminderDeliveredAt?.toString())
+        writer.name("snoozedUntil").nullableValue(task.snoozedUntil?.toString())
         writer.name("estimatedDurationMinutes").nullableValue(task.estimatedDurationMinutes)
         writer.name("recurrenceUnit").nullableValue(task.recurrence?.name)
         writer.name("recurrenceInterval").nullableValue(task.recurrenceInterval)
@@ -158,6 +159,8 @@ object FocuslistBackupCodec {
         var dueDate: LocalDate? = null
         var reminderAt: LocalDateTime? = null
         var reminderDeliveredAt: Instant? = null
+        // Absent from backups written before D-078, which reads as no snooze.
+        var snoozedUntil: LocalDateTime? = null
         var estimatedDurationMinutes: Int? = null
         var recurrence: RecurrenceUnit? = null
         var recurrenceInterval: Int? = null
@@ -181,6 +184,8 @@ object FocuslistBackupCodec {
                 "reminderAt" -> reminderAt = reader.nextNullableString()?.let(LocalDateTime::parse)
                 "reminderDeliveredAt" -> reminderDeliveredAt =
                     reader.nextNullableString()?.let(Instant::parse)
+                "snoozedUntil" -> snoozedUntil =
+                    reader.nextNullableString()?.let(LocalDateTime::parse)
                 "estimatedDurationMinutes" -> estimatedDurationMinutes = reader.nextNullableInt()
                 "recurrenceUnit" -> recurrence = reader.nextNullableString()?.let(RecurrenceUnit::valueOf)
                 "recurrenceInterval" -> recurrenceInterval = reader.nextNullableInt()
@@ -209,6 +214,7 @@ object FocuslistBackupCodec {
             dueDate = dueDate,
             reminderAt = reminderAt,
             reminderDeliveredAt = reminderDeliveredAt,
+            snoozedUntil = snoozedUntil,
             estimatedDurationMinutes = estimatedDurationMinutes,
             recurrence = recurrence,
             recurrenceInterval = recurrenceInterval,

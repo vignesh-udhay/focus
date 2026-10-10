@@ -25,6 +25,9 @@ class CompleteWidgetTaskAction : ActionCallback {
         val today = application.currentDay.today.value
 
         TaskCompletion(application.taskRepository, application.currentDay).complete(task.id)
+        // Before the action returns, so a recurring task's next reminder is set
+        // whether or not the process outlives it. D-078.
+        application.reconcileReminders()
 
         // No index is recorded. D-049 draws the just-completed task as though it
         // were still outstanding, which puts it back in its own band in its own
@@ -49,6 +52,7 @@ class UndoWidgetTaskAction : ActionCallback {
         val application = context.applicationContext as FocuslistApplication
 
         TaskCompletion(application.taskRepository, application.currentDay).reopen(taskId)
+        application.reconcileReminders()
         application.widgetInteractions.clearCompletion()
         FocuslistWidget().updateAll(context)
     }

@@ -401,12 +401,21 @@ fun parseRelativeTime(text: String): Duration? {
     val amount = words[1].toLongOrNull() ?: spokenNumber(words[1]) ?: return null
     if (amount < 1) return null
 
-    return when (words[2]) {
+    val offset = when (words[2]) {
         "hour", "hours" -> runCatching { Duration.ofHours(amount) }.getOrNull()
         "minute", "minutes" -> runCatching { Duration.ofMinutes(amount) }.getOrNull()
         else -> null
     }
+
+    // **No further out than a year.** A huge count still makes a valid
+    // `Duration`, and adding it to now then overflows the calendar and throws,
+    // in the middle of composition, as the user types. Past a year it is not a
+    // reminder anyone meant, so it stays in the title like anything unread.
+    return offset?.takeIf { it <= MaxOffset }
 }
+
+/** The furthest "in N hours" or "in N minutes" reaches before it is read as text. */
+private val MaxOffset: Duration = Duration.ofDays(366)
 
 /**
  * An hour, optional minutes, and a required meridiem: "3pm", "3:30 pm".
