@@ -3,6 +3,7 @@ package com.vignesh.focuslist.core.text
 import android.content.Context
 import android.icu.text.ListFormatter
 import android.icu.util.Calendar
+import android.text.format.DateFormat
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
@@ -282,7 +283,7 @@ private fun horizon(context: Context, end: RecurrenceEnd, today: LocalDate): Str
 
     is RecurrenceEnd.OnDate -> context.getString(
         R.string.task_repeat_until,
-        recurrenceEndDate(end.date, today)
+        recurrenceEndDate(context, end.date, today)
     )
 
     is RecurrenceEnd.AfterOccurrences -> context.resources.getQuantityString(
@@ -295,20 +296,24 @@ private fun horizon(context: Context, end: RecurrenceEnd, today: LocalDate): Str
 /**
  * An end date, written out.
  *
- * The localised medium form, which is what `DateLabel` falls back to for any
- * date it does not name. Not "Tomorrow": an end date is a horizon rather than a
- * plan, and naming it relative to today would go stale the moment it stopped
- * being tomorrow while the rule did not change.
+ * In the locale's own order, as `DateLabel` writes every date it does not
+ * name. Not "Tomorrow": an end date is a horizon rather than a plan, and naming
+ * it relative to today would go stale the moment it stopped being tomorrow
+ * while the rule did not change.
+ *
+ * A skeleton asked of the locale rather than a pattern of ours. A fixed
+ * "MMM d" wrote "Okt. 10" for German, where the locale says "10. Okt.".
  */
-fun recurrenceEndDate(date: LocalDate, today: LocalDate): String =
-    date.format(
-        DateTimeFormatter.ofPattern(
-            // The same rule `DateLabel` applies: a year only when the date is
-            // not in the current one. A horizon is the date most likely to
-            // cross a year, and the most misleading to write bare when it does.
-            if (date.year == today.year) "MMM d" else "MMM d, y"
-        )
+fun recurrenceEndDate(context: Context, date: LocalDate, today: LocalDate): String {
+    val locale = context.resources.configuration.locales[0] ?: Locale.getDefault()
+    // The same rule `DateLabel` applies: a year only when the date is not in
+    // the current one. A horizon is the date most likely to cross a year, and
+    // the most misleading to write bare when it does.
+    val skeleton = if (date.year == today.year) "MMMd" else "yMMMd"
+    return date.format(
+        DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, skeleton), locale)
     )
+}
 
 /**
  * Selected weekdays in week order: "Mon, Wed and Fri".

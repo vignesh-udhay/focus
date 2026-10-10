@@ -70,6 +70,9 @@
     <!-- A reminder on a row whose day it is not, D-075: "Tomorrow, 5:00 PM".
          The day is a scheduledDateLabel, the time the locale's short form. -->
     <string name="task_row_reminder_on_day">%1$s, %2$s</string>
+    <!-- The reminder segment as TalkBack reads it, so it is not mistaken for the
+         scheduled day beside it: "Reminder Tomorrow, 5:00 PM". -->
+    <string name="task_row_reminder_spoken">Reminder %1$s</string>
     <string name="task_open">Open task details</string>
     <!-- The row's actions menu had five more strings here: Show task actions,
          Focus, and three Move to... entries. D-023 removed the menu and left them

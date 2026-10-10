@@ -33,7 +33,8 @@ import com.vignesh.focuslist.core.design.FocuslistLightColorScheme
 @Composable
 fun FocuslistTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    // Off unless asked for, as the app itself is since D-077.
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current

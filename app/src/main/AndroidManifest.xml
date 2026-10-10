@@ -2,9 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- A focus session's estimate running out while the user is in another
-         app. Requested when the first session with an estimate starts, never
-         at launch. -->
+    <!-- Reminders, and a focus session's estimate running out while the user
+         is in another app. Requested at the first reminder or the first
+         session with an estimate, never at launch. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- Exact alarms, asked for at the first reminder. D-078: Play allows

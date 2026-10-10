@@ -32,6 +32,10 @@ Three sections, four rows, and that is the whole screen.
                   Theme                System default                     >
     Data          Backup & restore     Export or restore a local file     >
 
+On Android 10 and 11 the Dynamic color row is not drawn, because dynamic
+colour does not exist there and the switch changed nothing; Theme stands
+alone in Appearance. Still four rows wherever all four mean something.
+
 Every row carries supporting text, because a settings row whose label alone
 explains it does not need a settings screen, and one that needs a paragraph is a
 feature wearing a row.

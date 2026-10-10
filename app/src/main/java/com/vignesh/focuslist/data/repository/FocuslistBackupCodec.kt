@@ -204,6 +204,15 @@ object FocuslistBackupCodec {
 
         val occurrence = requireNotNull(occurrenceNumber) { "Missing occurrence number" }
         require(occurrence > 0) { "Invalid occurrence number" }
+        // The same invariants the app holds when a task is edited, so a file
+        // cannot bring in a row the app would never have written: a blank title,
+        // or a duration of zero or less, which showed as "-5m".
+        require(!title.isNullOrBlank()) { "Blank task title" }
+        require(estimatedDurationMinutes == null || estimatedDurationMinutes > 0) {
+            "Invalid estimated duration"
+        }
+        require(recurrenceInterval == null || recurrenceInterval > 0) { "Invalid repeat interval" }
+        require(recurrenceEndCount == null || recurrenceEndCount > 0) { "Invalid repeat count" }
 
         return TaskEntity(
             id = requireNotNull(id) { "Missing task id" },

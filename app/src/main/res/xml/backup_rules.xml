@@ -1,13 +1,12 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample backup rules file; uncomment and customize as necessary.
-   See https://developer.android.com/guide/topics/data/autobackup
-   for details.
-   Note: This file is ignored for devices older than API 31
-   See https://developer.android.com/about/versions/12/backup-restore
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 11 and earlier, which read this file instead of
+  data_extraction_rules.xml. The same rules, for the same reasons: D-080.
 -->
 <full-backup-content>
-    <!--
-   <include domain="sharedpref" path="."/>
-   <exclude domain="sharedpref" path="device.xml"/>
--->
+    <exclude domain="sharedpref" path="focus_session.xml" />
+    <exclude domain="sharedpref" path="widget_interaction.xml" />
+    <exclude domain="sharedpref" path="reminder_health_acknowledgements.xml" />
+    <exclude domain="sharedpref" path="reminder_scheduling.xml" />
+    <exclude domain="device_sharedpref" path="locked_reminders.xml" />
 </full-backup-content>

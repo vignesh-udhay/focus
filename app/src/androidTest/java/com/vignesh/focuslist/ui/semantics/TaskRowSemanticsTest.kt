@@ -292,6 +292,31 @@ class TaskRowSemanticsTest {
         rule.onNode(hasText(":00", substring = true)).assertExists()
     }
 
+    /** An overdue task keeps showing a reminder that has not rung yet. */
+    @Test
+    fun anOverdueTask_stillShowsAReminderStillToCome() {
+        setRow(
+            FontScale100,
+            outstanding().copy(
+                scheduledDate = TestToday.minusDays(2),
+                reminderAt = TestToday.plusDays(1).atTime(17, 0)
+            )
+        )
+
+        rule.onNode(hasText("Tomorrow, ", substring = true)).assertExists()
+    }
+
+    /** Read aloud, the reminder says it is one, not just another day. */
+    @Test
+    fun theReminder_isAnnouncedAsAReminder() {
+        setRow(
+            FontScale100,
+            outstanding().copy(scheduledDate = null, reminderAt = TestToday.plusDays(1).atTime(17, 0))
+        )
+
+        rule.onNodeWithContentDescription("Reminder Tomorrow, ", substring = true).assertExists()
+    }
+
     private fun outstanding(): Task = testTask(
         id = "1",
         title = TITLE,

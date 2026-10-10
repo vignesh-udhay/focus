@@ -22,9 +22,17 @@ android {
 
     buildTypes {
         release {
+            // R8 on: shrinking, optimisation and resource shrinking. The release
+            // otherwise shipped every unused Compose, Material, Glance, Room and
+            // WorkManager class, a larger download and slower screens. Those
+            // libraries bring their own keep rules, and nothing in the app is
+            // reached by reflection. The one exception is in proguard-rules.pro:
+            // an old WorkManager rule that full-mode R8 reads too narrowly,
+            // which left the widget loading forever.
             optimization {
-                enable = false
+                enable = true
             }
+            proguardFiles("proguard-rules.pro")
         }
     }
     compileOptions {

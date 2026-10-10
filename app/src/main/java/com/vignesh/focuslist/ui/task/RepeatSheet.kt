@@ -453,7 +453,7 @@ private fun EndsPane(
             PlanRowGroup(modifier = Modifier.padding(top = FocuslistSpacing.xs)) {
                 PlanRow(
                     label = stringResource(R.string.task_date_choose),
-                    value = draft.endDate?.let { recurrenceEndDate(it, today) }.orEmpty(),
+                    value = draft.endDate?.let { recurrenceEndDate(LocalContext.current, it, today) }.orEmpty(),
                     shapes = ListItemDefaults.segmentedShapes(index = 0, count = 1),
                     onClick = { isPickerOpen = true }
                 )
@@ -571,7 +571,7 @@ private val ChoiceRowMinHeight = 56.dp
 @Composable
 private fun endsValue(draft: RepeatDraft, today: LocalDate): String = when (draft.endKind) {
     EndKind.NEVER -> stringResource(R.string.task_repeat_ends_never)
-    EndKind.ON_DATE -> draft.endDate?.let { recurrenceEndDate(it, today) }
+    EndKind.ON_DATE -> draft.endDate?.let { recurrenceEndDate(LocalContext.current, it, today) }
         ?: stringResource(R.string.task_repeat_ends_on_date)
 
     EndKind.AFTER -> stringResource(

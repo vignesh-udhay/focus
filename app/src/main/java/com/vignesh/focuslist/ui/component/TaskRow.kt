@@ -95,6 +95,9 @@ fun TaskRow(
     onLongClickLabel: String? = null,
     colors: ListItemColors = ListItemDefaults.segmentedColors(),
     metadata: List<String> = emptyList(),
+    // How TalkBack should read the metadata line, when that differs from what
+    // is drawn. Null reads the line as it is.
+    metadataSpoken: String? = null,
     trailingContent: (@Composable () -> Unit)? = null,
     isOverdue: Boolean = false
 ) {
@@ -190,7 +193,12 @@ fun TaskRow(
                 // beats a clipped one.
                 Text(
                     text = metadataText,
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = if (metadataSpoken.isNullOrEmpty()) {
+                        Modifier
+                    } else {
+                        Modifier.semantics { contentDescription = metadataSpoken }
+                    }
                 )
             }
         }

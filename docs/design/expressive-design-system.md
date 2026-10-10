@@ -576,5 +576,5 @@ What remains:
    2026-09-14, and nothing was found that needs fixing. The semantics stay
    machine-verified, and the rule above still holds for what the tests alone
    establish: say "semantics are verified" when that is all you ran.
-2. **`ui/playground/TaskRowPlayground.kt`** is a leftover harness, wired to
-   nothing. Harmless, and not the design system's problem.
+2. ~~**`ui/playground/TaskRowPlayground.kt`** is a leftover harness.~~
+   Deleted before release, 2026-10-10, so it no longer ships in the app.

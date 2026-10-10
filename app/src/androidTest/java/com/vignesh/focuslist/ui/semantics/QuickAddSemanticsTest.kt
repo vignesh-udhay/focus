@@ -1,5 +1,9 @@
 package com.vignesh.focuslist.ui.semantics
 
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
@@ -177,8 +181,8 @@ class QuickAddSemanticsTest {
 
         field().performTextInput(TIMED_TITLE)
 
-        rule.waitUntilExactlyOneExists(hasContentDescription(REMINDER_DISMISS), TIMEOUT_MILLIS)
-        rule.onNodeWithContentDescription(REMINDER_DISMISS).assertIsDisplayed()
+        rule.waitUntilExactlyOneExists(hasClickLabel(REMINDER_DISMISS), TIMEOUT_MILLIS)
+        rule.onNode(hasClickLabel(REMINDER_DISMISS)).assertIsDisplayed()
         // The day still has its own line. The two facts are separate and the
         // line never becomes the reminder's only description.
         rule.onNodeWithText(SCHEDULED_FOR_TOMORROW).assertIsDisplayed()
@@ -190,13 +194,30 @@ class QuickAddSemanticsTest {
     @Test
     fun aTime_isNamedByAChip_at200() = assertATimeIsNamedByAChip(FontScale200)
 
+    /**
+     * Read as a button that removes the reminder, never as a checked control.
+     * Drawn selected, the input chip announced "checked", and a double-tap
+     * silently took the reminder away.
+     */
+    @Test
+    fun theReminderChip_isAButtonNotAToggle() {
+        setSheet(FontScale100, today = LocalDate.now())
+        field().performTextInput(TIMED_TITLE)
+        rule.waitUntilExactlyOneExists(hasClickLabel(REMINDER_DISMISS), TIMEOUT_MILLIS)
+
+        rule.onNode(hasClickLabel(REMINDER_DISMISS))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Selected))
+            .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.ToggleableState))
+    }
+
     @Test
     fun aTime_becomesAReminderOnSave() {
         val saved = mutableListOf<CapturedTask>()
         setSheet(FontScale100, onSave = { parsed -> saved += parsed })
 
         field().performTextInput(TIMED_TITLE)
-        rule.waitUntilExactlyOneExists(hasContentDescription(REMINDER_DISMISS), TIMEOUT_MILLIS)
+        rule.waitUntilExactlyOneExists(hasClickLabel(REMINDER_DISMISS), TIMEOUT_MILLIS)
         rule.onNodeWithText(SAVE).performClick()
 
         val captured = saved.single()
@@ -218,12 +239,12 @@ class QuickAddSemanticsTest {
         setSheet(FontScale100, onSave = { parsed -> saved += parsed })
 
         field().performTextInput(TIMED_TITLE)
-        rule.waitUntilExactlyOneExists(hasContentDescription(REMINDER_DISMISS), TIMEOUT_MILLIS)
-        rule.onNodeWithContentDescription(REMINDER_DISMISS).performClick()
+        rule.waitUntilExactlyOneExists(hasClickLabel(REMINDER_DISMISS), TIMEOUT_MILLIS)
+        rule.onNode(hasClickLabel(REMINDER_DISMISS)).performClick()
 
         // The chip goes with the reminder it named.
         rule.waitUntilExactlyOneExists(hasText(SCHEDULED_FOR_TOMORROW), TIMEOUT_MILLIS)
-        rule.onAllNodesWithContentDescription(REMINDER_DISMISS).assertCountEquals(0)
+        rule.onAllNodes(hasClickLabel(REMINDER_DISMISS)).assertCountEquals(0)
 
         rule.onNodeWithText(SAVE).performClick()
 
@@ -243,14 +264,14 @@ class QuickAddSemanticsTest {
         setSheet(FontScale100)
 
         field().performTextInput(TIMED_TITLE)
-        rule.waitUntilExactlyOneExists(hasContentDescription(REMINDER_DISMISS), TIMEOUT_MILLIS)
-        rule.onNodeWithContentDescription(REMINDER_DISMISS).performClick()
+        rule.waitUntilExactlyOneExists(hasClickLabel(REMINDER_DISMISS), TIMEOUT_MILLIS)
+        rule.onNode(hasClickLabel(REMINDER_DISMISS)).performClick()
         rule.waitUntilExactlyOneExists(hasText(SCHEDULED_FOR_TOMORROW), TIMEOUT_MILLIS)
 
         // Retyping the same trailing time, which is a fresh promise.
         field().performTextInput(" at 4pm")
 
-        rule.waitUntilExactlyOneExists(hasContentDescription(REMINDER_DISMISS), TIMEOUT_MILLIS)
+        rule.waitUntilExactlyOneExists(hasClickLabel(REMINDER_DISMISS), TIMEOUT_MILLIS)
     }
 
     /** Nothing understood still says where the task will land. */
@@ -261,7 +282,7 @@ class QuickAddSemanticsTest {
         field().performTextInput(TITLE)
 
         rule.waitUntilExactlyOneExists(hasText(SAVED_TO_TODAY), TIMEOUT_MILLIS)
-        rule.onAllNodesWithContentDescription(REMINDER_DISMISS).assertCountEquals(0)
+        rule.onAllNodes(hasClickLabel(REMINDER_DISMISS)).assertCountEquals(0)
     }
 
     @Test
@@ -284,7 +305,7 @@ class QuickAddSemanticsTest {
         field().performTextInput("tomorrow at 3pm")
 
         rule.onNodeWithText(SAVE).assertIsEnabled()
-        rule.onAllNodesWithContentDescription(REMINDER_DISMISS).assertCountEquals(0)
+        rule.onAllNodes(hasClickLabel(REMINDER_DISMISS)).assertCountEquals(0)
         rule.onAllNodesWithText(SCHEDULED_FOR_TOMORROW).assertCountEquals(0)
     }
 

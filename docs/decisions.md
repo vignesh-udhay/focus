@@ -5428,3 +5428,41 @@ meet.
 **What would reverse this.** For the first: storing titles before unlock being
 judged worse than a late reminder, at which point the copy keeps ids and times
 and the locked notification says only that a reminder is due.
+
+## D-080. Android Auto Backup stays on, without the state that belongs to one phone
+
+**Decision.** `android:allowBackup` stays true, so the task database and the
+appearance settings travel to a new phone with the rest of the user's data. Five
+files are excluded from cloud backup and from device-to-device transfer, on
+every Android version: `focus_session`, `widget_interaction`,
+`reminder_health_acknowledgements`, `reminder_scheduling`, and the
+device-protected `locked_reminders` from D-079.
+
+**Why on.** `docs/play-listing.md` left this as an open question with three
+options and recommended this one. It is the shipped default, so taking it
+reverses nothing. And it is the only migration most people will ever use: with
+backup off, Catimo's own Export becomes the only way a user's tasks survive a
+lost or replaced phone, and most people never export anything. The listing and
+the privacy policy already disclose the Auto Backup path; the app itself still
+sends nothing anywhere.
+
+**Why those five out.** Each describes this device rather than the user's work,
+and each is wrong on another one. A paused Focus clock measured against this
+phone's time. What this phone's widget last drew. A missed reminder this phone
+noticed and the user dismissed. Whether this phone's `AlarmManager` refused an
+alarm. The copy of upcoming reminders for this phone's locked boot, which the
+first reconciliation rebuilds from the restored database anyway. Restored, they
+were stale at best: a paused session for a task that might be done, a health
+banner silenced by an acknowledgement made somewhere else.
+
+**What is not handled.** The delivery history lives in the database, so a
+restore carries the old phone's records with it, and for a few days the health
+screen can say reminders were seen to arrive when that was on the other phone.
+It cannot report a failure that did not happen, and the window ages it out. A
+table cannot be excluded from a database backup, and splitting the database for
+this would be a schema change before launch for a few days of an optimistic
+health line.
+
+**What would reverse this.** Users asking for their tasks to stay off Google's
+servers, or Google changing how Auto Backup is encrypted. The answer then is
+option 2 in the listing's note: exclude the database and keep only settings.

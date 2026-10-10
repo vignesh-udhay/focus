@@ -20,19 +20,18 @@ internal data class WidgetTaskText(
 
 internal fun widgetTaskText(context: Context, task: Task, today: LocalDate): WidgetTaskText {
     val overdue = task.scheduledDate?.isBefore(today) == true && !task.isCompleted
+    // The row's rule, D-075: a reminder names its day when that is not the
+    // task's day, and is dropped once its own day is over. On an overdue task it
+    // follows the date, as on the app's row, so one still to come is not hidden.
+    val reminder = task.ringsAt?.takeUnless { it.toLocalDate().isBefore(today) }?.let { at ->
+        val time = at.toLocalTime().format(context.timeFormatter())
+        if (at.toLocalDate() == task.scheduledDate) time
+        else context.getString(R.string.task_row_reminder_on_day, context.dayLabel(at.toLocalDate(), today), time)
+    }
     val metadata = buildList {
-        // The row's rule, D-075: a reminder names its day when that is not the
-        // task's day, and is dropped once its own day is over.
-        if (!overdue) {
-            task.ringsAt?.takeUnless { it.toLocalDate().isBefore(today) }?.let { at ->
-                val time = at.toLocalTime().format(context.timeFormatter())
-                add(
-                    if (at.toLocalDate() == task.scheduledDate) time
-                    else context.getString(R.string.task_row_reminder_on_day, context.dayLabel(at.toLocalDate(), today), time)
-                )
-            }
-        }
+        if (!overdue) reminder?.let(::add)
         if (overdue) task.scheduledDate?.let { add(it.format(context.dateFormatter(it, today))) }
+        if (overdue) reminder?.let(::add)
         task.recurrence?.let { add(recurrenceSummary(context, it, today)) }
     }.takeIf(List<String>::isNotEmpty)?.joinToString(Separator)
 

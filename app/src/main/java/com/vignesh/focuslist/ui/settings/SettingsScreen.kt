@@ -1,5 +1,6 @@
 package com.vignesh.focuslist.ui.settings
 
+import android.os.Build
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,7 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,9 +52,13 @@ fun SettingsScreen(
     onOpenReminderHealth: () -> Unit,
     onOpenBackup: () -> Unit,
     onBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // Dynamic colour exists from Android 12. Below that the switch changed
+    // nothing, so the row is not drawn. A parameter so both are testable.
+    dynamicColorAvailable: Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 ) {
-    var showThemeDialog by remember { mutableStateOf(false) }
+    // Saveable, so turning the phone does not close the dialog under the user.
+    var showThemeDialog by rememberSaveable { mutableStateOf(false) }
     val gutter = focuslistContentGutter()
 
     Scaffold(
@@ -98,21 +103,23 @@ fun SettingsScreen(
             SettingsSection(
                 label = stringResource(R.string.settings_section_appearance)
             ) {
-                val shapes = ListItemDefaults.segmentedShapes(index = 0, count = 2)
-                ToggleSettingRow(
-                    title = stringResource(R.string.settings_dynamic_color),
-                    supporting = stringResource(R.string.settings_dynamic_color_supporting),
-                    checked = preferences.dynamicColor,
-                    onCheckedChange = onDynamicColorChange,
-                    shape = shapes.shape,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                val rows = if (dynamicColorAvailable) 2 else 1
+                if (dynamicColorAvailable) {
+                    ToggleSettingRow(
+                        title = stringResource(R.string.settings_dynamic_color),
+                        supporting = stringResource(R.string.settings_dynamic_color_supporting),
+                        checked = preferences.dynamicColor,
+                        onCheckedChange = onDynamicColorChange,
+                        shape = ListItemDefaults.segmentedShapes(index = 0, count = rows).shape,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
 
                 NavigationSettingRow(
                     title = stringResource(R.string.settings_theme),
                     supporting = stringResource(preferences.theme.label),
                     onClick = { showThemeDialog = true },
-                    shape = ListItemDefaults.segmentedShapes(index = 1, count = 2).shape,
+                    shape = ListItemDefaults.segmentedShapes(index = rows - 1, count = rows).shape,
                     modifier = Modifier.fillMaxWidth()
                 )
             }

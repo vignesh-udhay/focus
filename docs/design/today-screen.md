@@ -588,11 +588,11 @@ The populated preview must include:
 
 so that all three ordering bands are visible. Every task in Today has a
 scheduled date and therefore carries at least one metadata segment, so a row
-with no metadata cannot occur on this screen. `TaskRowPlayground` covers that
-case instead.
+with no metadata cannot occur on this screen. `TaskRowSemanticsTest` covers the
+row on its own.
 
-`TaskRowPlayground` already covers the row in isolation. These previews cover
-the screen: the app bar, the collection, the spacing, and the FAB together.
+These previews cover the screen: the app bar, the collection, the spacing, and
+the FAB together.
 
 ---
 
@@ -705,5 +705,3 @@ Cut, not pending: Areas and Projects. See `docs/decisions.md`, D-003.
 
 Settings is built, and reachable from this screen's overflow. D-028. This line
 used to say it was waiting on Phase 5.
-
-`TaskRowPlayground` remains a temporary harness, separate from this screen.

@@ -66,6 +66,32 @@ class FocuslistBackupCodecTest {
         }
     }
 
+    /** A file cannot bring in a row the app would never have written. */
+    @Test
+    fun aTaskTheAppWouldRefuseIsRejected() {
+        listOf(
+            completeTask().copy(title = "   "),
+            completeTask().copy(estimatedDurationMinutes = -5),
+            completeTask().copy(recurrenceInterval = 0),
+            completeTask().copy(recurrenceEndDate = null, recurrenceEndCount = 0)
+        ).forEach { invalid ->
+            val bytes = ByteArrayOutputStream().also { output ->
+                FocuslistBackupCodec.write(
+                    output = output,
+                    backup = FocuslistBackup(
+                        preferences = AppearancePreferences(),
+                        tasks = listOf(invalid)
+                    ),
+                    createdAt = Instant.parse("2026-09-08T00:00:00Z")
+                )
+            }.toByteArray()
+
+            assertThrows(IllegalArgumentException::class.java) {
+                FocuslistBackupCodec.read(ByteArrayInputStream(bytes))
+            }
+        }
+    }
+
     private fun completeTask() = TaskEntity(
         id = "task-1",
         title = "Call the plumber",

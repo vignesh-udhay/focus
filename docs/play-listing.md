@@ -243,7 +243,13 @@ which is the user moving their own file, not the developer receiving anything.
 
 ---
 
-## Open question, for the developer rather than the code
+## Settled: Android Auto Backup (D-080)
+
+Option 1 below was taken: backup stays on, and five files that describe one
+phone rather than the user's work are excluded. The note is kept for the
+reasoning.
+
+### The question as it was asked
 
 **Android Auto Backup is on, and the listing copy accounts for it.**
 `android:allowBackup="true"` is set, and `backup_rules.xml` and

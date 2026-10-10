@@ -9,6 +9,49 @@ scope it delivers is in `PRODUCT.md`.
 
 ## Current phase
 
+**The pre-ship hardening pass is done, and R8 is on.** Every in-app finding from
+the pre-release audit that was not shipping work is fixed:
+
+- the permission screen closes itself when the grant is made elsewhere
+- the dynamic colour row is not drawn below Android 12, where it did nothing
+- an overdue task shows a reminder still to come
+- TalkBack reads a row's reminder as "Reminder ..."
+- the Reminder chip reads as a button that removes it, not a checked control
+- restore refuses blank titles, non-positive durations and bad repeat counts
+- the recurrence end date follows the locale
+- the theme dialog survives rotation
+- Auto Backup stays on without the five files that describe one phone (D-080)
+- the playground and an unused helper are gone
+
+Release, with R8 on, is 4.9 MB, down from an unshrunk 11 MB bundle. Signed
+locally with the debug key and installed on the Pixel 10 emulator, it passed:
+
+- launch
+- capture with a reminder, which posted within a second
+- Done from the notification
+- Snooze, giving an exact alarm 10 minutes out
+- an orderly restart, after which the snoozed alarm was re-armed exact
+- Task Details, and Focus pausing on leave
+- a backup export and restore through the system picker, with `snoozedUntil`
+  carried
+
+No crashes. JVM 763 pass; instrumented 300 pass on the emulator, after the
+Reminder chip went back to exposing its label as text rather than a content
+description; lint 39, unchanged.
+
+**The widget was the one thing the emulator could not show, and R8 broke it.**
+On the OnePlus 8T the release build left the widget on its loading spinner.
+Glance runs the widget through WorkManager 2.7.1, whose keep rule for input
+mergers names no constructor. Full-mode R8 kept the class and dropped
+`<init>()`, so every WorkManager job failed. `app/proguard-rules.pro` now keeps
+the constructor. After that fix, on the phone with the release build installed
+over the debug build:
+
+- data, the paused Focus session and both exact alarms survived the upgrade
+- cold start 243 ms
+- a Quick Add reminder posted 109 ms after its minute
+- the widget draws, ticks a task, and its + opens Quick Add
+
 **Tried on the owner's OnePlus 8T (Android 14), 2026-10-10, and one fix came
 out of it.** Today's build installed over the September one and migrated the
 real data to schema 11. Losing `USE_EXACT_ALARM` left the upgrade without the

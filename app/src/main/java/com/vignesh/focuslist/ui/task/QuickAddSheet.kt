@@ -27,6 +27,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.text
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -363,6 +368,8 @@ private fun ReminderChip(
         time
     )
 
+    val dismissLabel = stringResource(R.string.quick_add_reminder_dismiss)
+
     InputChip(
         selected = true,
         onClick = onDismiss,
@@ -376,6 +383,17 @@ private fun ReminderChip(
                 modifier = Modifier.size(InputChipDefaults.IconSize)
             )
         },
-        modifier = modifier
+        // **A button that removes the reminder, read as one.** An input chip
+        // drawn selected announced itself as a checked checkbox, so TalkBack
+        // said "checked" and a double-tap silently took the reminder away. It
+        // now reads its label and names what a double-tap does.
+        modifier = modifier.clearAndSetSemantics {
+            text = AnnotatedString(label)
+            role = Role.Button
+            onClick(label = dismissLabel) {
+                onDismiss()
+                true
+            }
+        }
     )
 }

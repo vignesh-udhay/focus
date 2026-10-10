@@ -1,19 +1,34 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample data extraction rules file; uncomment and customize as necessary.
-   See https://developer.android.com/about/versions/12/backup-restore#xml-changes
-   for details.
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12 and later. docs/decisions.md D-080.
+
+  Auto Backup stays on: the tasks and the appearance settings move to a new
+  phone with the rest of the user's data, which is the only migration most
+  people will ever use. What is excluded is state that describes this device
+  rather than the user's work, and would be wrong on another one.
+
+  focus_session                     a running clock and a pause on this phone
+  widget_interaction                what this phone's widget last drew
+  reminder_health_acknowledgements  a missed reminder noticed on this phone
+  reminder_scheduling               whether this phone's AlarmManager refused
+  locked_reminders                  the copy for this phone's locked boot
+
+  Each is rebuilt or starts empty on the new phone, and the first
+  reconciliation sets every alarm from the restored database.
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <exclude domain="sharedpref" path="focus_session.xml" />
+        <exclude domain="sharedpref" path="widget_interaction.xml" />
+        <exclude domain="sharedpref" path="reminder_health_acknowledgements.xml" />
+        <exclude domain="sharedpref" path="reminder_scheduling.xml" />
+        <exclude domain="device_sharedpref" path="locked_reminders.xml" />
     </cloud-backup>
-    <!--
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <exclude domain="sharedpref" path="focus_session.xml" />
+        <exclude domain="sharedpref" path="widget_interaction.xml" />
+        <exclude domain="sharedpref" path="reminder_health_acknowledgements.xml" />
+        <exclude domain="sharedpref" path="reminder_scheduling.xml" />
+        <exclude domain="device_sharedpref" path="locked_reminders.xml" />
     </device-transfer>
-    -->
 </data-extraction-rules>

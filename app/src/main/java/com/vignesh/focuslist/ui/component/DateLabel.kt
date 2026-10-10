@@ -79,17 +79,6 @@ fun sectionDateLabel(date: LocalDate, today: LocalDate): String =
     }
 
 /**
- * Weekday, month and day, arranged the way the locale arranges them.
- *
- * A skeleton rather than a literal pattern, because field order is not
- * universal: `getBestDateTimePattern` returns what the locale actually uses,
- * which a hardcoded "EEE, MMM d" would get wrong everywhere it differs.
- */
-@Composable
-fun rememberDayMonthFormat(): DateTimeFormatter =
-    rememberDateFormat(WeekdayDayMonthSkeleton, withYear = false)
-
-/**
  * A date formatter for [skeleton], carrying a year only when [withYear].
  *
  * **The year appears when the date is not in the current one, and never

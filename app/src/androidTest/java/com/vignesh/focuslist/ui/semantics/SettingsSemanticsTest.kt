@@ -18,6 +18,27 @@ class SettingsSemanticsTest {
     @get:Rule
     val composeRule = createAndroidComposeRule<ComponentActivity>()
 
+    /** Below Android 12 dynamic colour does not exist, so the switch is not drawn. */
+    @Test
+    fun theDynamicColorRowIsAbsentWhereTheSystemHasNone() {
+        composeRule.setContent {
+            FocuslistTheme(dynamicColor = false) {
+                SettingsScreen(
+                    preferences = AppearancePreferences(),
+                    onDynamicColorChange = {},
+                    onThemeChange = {},
+                    onOpenReminderHealth = {},
+                    onOpenBackup = {},
+                    onBack = {},
+                    dynamicColorAvailable = false
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Dynamic color").assertDoesNotExist()
+        composeRule.onNodeWithText("Theme").assertIsDisplayed()
+    }
+
     @Test
     fun wholeToggleRowChangesDynamicColorAndThemeDialogCommitsOnSelection() {
         var dynamicColor: Boolean? = null

@@ -52,6 +52,8 @@ internal fun TaskListRow(
     modifier: Modifier = Modifier,
     showDate: Boolean = true
 ) {
+    val metadata = taskMetadata(task = task, today = today, showDate = showDate)
+
     TaskRow(
         title = task.title,
         isCompleted = task.isCompleted,
@@ -61,7 +63,8 @@ internal fun TaskListRow(
         onClickLabel = stringResource(R.string.task_open),
         modifier = modifier,
         colors = colors,
-        metadata = taskMetadata(task = task, today = today, showDate = showDate),
+        metadata = metadata.segments,
+        metadataSpoken = metadata.spoken,
         // **The estimate sits at the end of the row, not in the metadata line.**
         // Date and repeat both answer *when*; a duration answers *how much*, and
         // folding a number into a comma-list of words means reading a sentence
@@ -126,18 +129,22 @@ private fun taskMetadata(
     task: Task,
     today: LocalDate,
     showDate: Boolean
-): List<String> {
+): RowMetadata {
     val segments = mutableListOf<String>()
+    // The same line as TalkBack should say it. Only the reminder differs: read
+    // aloud, "Tomorrow, 5:00 PM" beside a scheduled "Today" does not say which
+    // of the two will interrupt you.
+    val spoken = mutableListOf<String>()
 
     // **First, because it is the one that will interrupt you.** `PRODUCT.md`
     // principle 1 makes the reminder the product, and `TodayBand.LATER_TODAY`
     // promises a task there "will announce itself" without saying when. The row
     // is where that gets answered.
     //
-    // Suppressed on an overdue task, whose reminder has already fired: "6:00 PM"
-    // on a row from last Tuesday describes nothing that is going to happen. It
-    // also keeps the date first on exactly the rows where being overdue is the
-    // point, which is what `metadataText` colours.
+    // Not first on an overdue task, where the date leads because being overdue
+    // is the point and `metadataText` colours the first segment. A reminder
+    // that fired on that past day is gone by the rule below: "6:00 PM" on a row
+    // from last Tuesday describes nothing that is going to happen.
     //
     // **And it names its day when that is not the task's day.** D-075. The time
     // alone was written for Today, where the reminder is today's. On an Inbox
@@ -147,26 +154,46 @@ private fun taskMetadata(
     // task has no scheduled day to pass, and went on showing a rung reminder
     // as though it were still to come. This morning's stays until tonight,
     // because it is plainly past and Today's band is explained by it.
-    if (!task.isPastScheduled(today)) {
-        task.ringsAt?.takeUnless { at -> at.toLocalDate().isBefore(today) }?.let { at ->
-            val time = at.toLocalTime().format(rememberTimeFormat())
-            segments += if (at.toLocalDate() == task.scheduledDate) {
+    //
+    // **An overdue task still shows a reminder that has not rung.** Moved to
+    // tomorrow while the task stayed on a day gone by, it used to vanish from
+    // the row because the rule above was written for reminders that fired on
+    // that day. It now follows the date, so the date stays first and keeps the
+    // overdue colour, and it names its day because that is not the task's.
+    val reminder = task.ringsAt?.takeUnless { at -> at.toLocalDate().isBefore(today) }?.let { at ->
+        val time = at.toLocalTime().format(rememberTimeFormat())
+        if (at.toLocalDate() == task.scheduledDate) {
+            time
+        } else {
+            stringResource(
+                R.string.task_row_reminder_on_day,
+                scheduledDateLabel(at.toLocalDate(), today),
                 time
-            } else {
-                stringResource(
-                    R.string.task_row_reminder_on_day,
-                    scheduledDateLabel(at.toLocalDate(), today),
-                    time
-                )
-            }
+            )
         }
+    }
+    val reminderSpoken = reminder?.let { stringResource(R.string.task_row_reminder_spoken, it) }
+    val overdue = task.isPastScheduled(today)
+
+    if (!overdue && reminder != null) {
+        segments += reminder
+        spoken += reminderSpoken!!
     }
 
     // Omitted where a section heading already names the day. Upcoming groups by
     // date and Today by band, so repeating it on every row would say the same
     // thing twice.
     if (showDate) {
-        task.scheduledDate?.let { segments += scheduledDateLabel(it, today) }
+        task.scheduledDate?.let { date ->
+            val label = scheduledDateLabel(date, today)
+            segments += label
+            spoken += label
+        }
+    }
+
+    if (overdue && reminder != null) {
+        segments += reminder
+        spoken += reminderSpoken!!
     }
 
     // **After the scheduled date, because it answers the next question.** The
@@ -179,15 +206,24 @@ private fun taskMetadata(
     // *scheduled* for, which is a different day and a different claim, so there
     // is nothing here for a heading to be repeating.
     task.dueDate?.let { due ->
-        segments += dueDateLabel(date = due, today = today, isCompleted = task.isCompleted)
+        val label = dueDateLabel(date = due, today = today, isCompleted = task.isCompleted)
+        segments += label
+        spoken += label
     }
 
     // Last, because it says something about the task's future rather than
     // about the occurrence in front of the user. It earns a place at all
     // because completing a repeating task does something a one-off does not,
     // and the row is the only warning before the tap.
-    task.recurrence?.let { segments += recurrenceSummary(it, today) }
+    task.recurrence?.let { rule ->
+        val label = recurrenceSummary(rule, today)
+        segments += label
+        spoken += label
+    }
 
-    return segments
+    return RowMetadata(segments = segments, spoken = spoken.joinToString(", "))
 }
+
+/** The row's second line as drawn, and as TalkBack should read it. */
+private data class RowMetadata(val segments: List<String>, val spoken: String)
 
