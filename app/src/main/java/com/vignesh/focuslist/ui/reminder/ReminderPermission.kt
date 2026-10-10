@@ -39,6 +39,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.vignesh.focuslist.R
 import com.vignesh.focuslist.core.design.FocuslistSpacing
 import com.vignesh.focuslist.core.notification.canPostNotifications
@@ -116,6 +117,25 @@ fun ReminderPermissionGate(
         // can promise about it has, so the alarms are rebuilt on the new
         // answer rather than left as the degraded ones already set.
         if (isExactGranted) onPermissionGranted()
+    }
+
+    // **Asked again every time the app comes back**, not only when Settings
+    // returns through the launcher above. The grant is often made somewhere
+    // else: App info, or Android's own Alarms & reminders list. In either, this
+    // screen stayed up asking for a permission that was already granted. It is
+    // also the safe answer if a settings page reports back before the user has
+    // touched the switch, which OxygenOS appears to do: back from that page
+    // there went to the home screen rather than to the app. Found on a OnePlus
+    // 8T on 2026-10-10.
+    LifecycleResumeEffect(Unit) {
+        if (!isNotificationAsked && context.canPostNotifications()) {
+            isNotificationAsked = true
+        }
+        if (!isExactGranted && canScheduleExact()) {
+            isExactGranted = true
+            onPermissionGranted()
+        }
+        onPauseOrDispose {}
     }
 
     LaunchedEffect(isNotificationAsked, isExactGranted) {

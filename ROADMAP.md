@@ -9,6 +9,40 @@ scope it delivers is in `PRODUCT.md`.
 
 ## Current phase
 
+**Tried on the owner's OnePlus 8T (Android 14), 2026-10-10, and one fix came
+out of it.** Today's build installed over the September one and migrated the
+real data to schema 11. Losing `USE_EXACT_ALARM` left the upgrade without the
+grant; the Today banner said so and the health screen's button opened
+OxygenOS's Alarms & reminders page. With the grant, a reminder posted 257 ms
+after its time. After an `adb reboot` with a PIN set, the reminder rang on the
+locked phone, the unlock settled it with one notification, and the delivery was
+recorded 73 s late: during the locked boot the system reported no exact-alarm
+permission, so it went in inexact. The grant itself did not survive that
+restart, and a second, orderly restart (`svc power reboot`, the power menu's
+path) showed why: after it the grant read `allow` and the boot recovery had
+already re-set the next reminder exact (`exactAllowReason=permission`). So
+`adb reboot`, which skips the framework shutdown, lost a grant made seven
+minutes earlier that Android had not yet written down. That was the test, not
+the app. The locked-phase lateness went with it. With the PIN back and an
+orderly restart, the phone booted `RUNNING_LOCKED` with the grant at `allow`, and
+both alarms were already re-set exact from the device-protected copy. "Locked
+test" rang on the lock screen **26 ms** after its time, and the unlock settled
+it as one notification with `reminderDeliveredAt` set. D-079 holds on real
+OnePlus hardware.
+
+**The permission screen now closes itself when the grant is made elsewhere.**
+It re-checks on every resume, not only when Settings returns through its own
+launcher, so a grant from App info no longer leaves "Allow precise reminders"
+asking for what is already allowed. `ReminderPermissionGateTest` passes 2 on the
+emulator, and its first test fails with the re-check disabled.
+
+**A blank Today on the phone is still unexplained.** It began after a blind adb
+tap at 14:45, persisted across Back and relaunch in that process, and was
+cleared by a force-stop. It did not reproduce on the emulator. An emulator
+"isn't responding" during the attempt came from CPU starvation, not app code:
+first frames took 30 s and 78 s with verification running at 100 to 737
+bytecodes per second, against a cold start of 0.9 to 1.1 s on the phone.
+
 **A reminder rings before the first unlock after a restart, D-079.** The last
 late-delivery case the audit found. Every reconciliation mirrors the reminders
 it scheduled into device-protected storage; the recovery and alarm receivers are
