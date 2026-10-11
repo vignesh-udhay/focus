@@ -36,6 +36,10 @@ saying "Today" and storing tomorrow. The same session fixed a race in
 `TaskListViewModelTest`'s undo test, which counted writes before the fake had
 recorded them.
 
+Release signing is set up. The upload key lives outside the repository, at
+`C:\Users\vigne\tellcat-signing\`, and a gitignored `keystore.properties` points
+the release build at it; without that file a release is left unsigned.
+
 Still to do for 1.0:
 
 - the Play developer account, which the owner is creating; expect the closed

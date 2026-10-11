@@ -17,3 +17,8 @@ local.properties
 
 # Kotlin compiler scratch output
 .kotlin/
+
+# Release signing. The key and its passwords live outside the repository.
+keystore.properties
+*.jks
+*.keystore
