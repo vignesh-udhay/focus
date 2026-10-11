@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -56,7 +57,10 @@ import app.tellcat.core.domain.splitTrailingCapture
 import app.tellcat.ui.component.scheduledDateLabel
 import app.tellcat.ui.component.rememberTimeFormat
 import java.time.LocalDate
+import java.time.Duration
 import java.time.LocalDateTime
+import java.time.temporal.ChronoUnit
+import kotlinx.coroutines.delay
 
 /**
  * Quick Add.
@@ -104,8 +108,14 @@ fun QuickAddSheet(
     fallbackDate: LocalDate?,
     onDismiss: () -> Unit,
     onSave: (CapturedTask) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // A parameter for the reason `TaskDetailsSheets` takes one: the behaviour
+    // worth proving happens when a minute ends, and only a test can make that
+    // happen on demand.
+    clock: () -> LocalDateTime = LocalDateTime::now
 ) {
+    val now = rememberCurrentMinute(clock)
+
     var title by rememberSaveable { mutableStateOf("") }
 
     // Whether the user has dismissed the reminder for what is currently typed.
@@ -239,6 +249,7 @@ fun QuickAddSheet(
                         QuickAddSupportingText(
                             parsed = parsed,
                             today = today,
+                            now = now,
                             fallbackDate = fallbackDate
                         )
                     }
@@ -268,6 +279,7 @@ fun QuickAddSheet(
                 ReminderChip(
                     parsed = parsed,
                     today = today,
+                    now = now,
                     onDismiss = { reminderDismissed = true },
                     modifier = Modifier.padding(top = TellcatSpacing.xs)
                 )
@@ -307,6 +319,7 @@ fun QuickAddSheet(
 private fun QuickAddSupportingText(
     parsed: CapturedTask,
     today: LocalDate,
+    now: LocalDateTime,
     fallbackDate: LocalDate?
 ) {
     // The day the save will use, worked out the way the save works it out. A
@@ -314,7 +327,7 @@ private fun QuickAddSupportingText(
     // 5pm" from Inbox reads "Scheduled for Today" here, and the line cannot
     // name a destination the task is not going to. The clock is read here for
     // the reason the chip reads it: D-030 can move the day.
-    val day = if (parsed.isPlain) null else parsed.scheduledDate(fallbackDate, today, LocalDateTime.now())
+    val day = if (parsed.isPlain) null else parsed.scheduledDate(fallbackDate, today, now)
 
     Text(
         text = when {
@@ -353,6 +366,7 @@ private fun QuickAddSupportingText(
 private fun ReminderChip(
     parsed: CapturedTask,
     today: LocalDate,
+    now: LocalDateTime,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -360,7 +374,7 @@ private fun ReminderChip(
     // the reminder actually lands: D-030 resolves a time that has gone by to
     // tomorrow, and a chip still reading "Today" would be the disagreement
     // between the chip and the saved value that D-011 exists to prevent.
-    val at = parsed.reminderAt(today, LocalDateTime.now()) ?: return
+    val at = parsed.reminderAt(today, now) ?: return
     val time = at.toLocalTime().format(rememberTimeFormat())
     val label = stringResource(
         R.string.quick_add_reminder,
@@ -396,4 +410,34 @@ private fun ReminderChip(
             }
         }
     )
+}
+
+/**
+ * The time, refreshed as each minute starts, so what the sheet says about a
+ * reminder stays true while it is open.
+ *
+ * The chip and the line under the field read the clock to resolve a time of
+ * day, D-030, and they used to read it only when typing redrew them. Typed at
+ * 2:38:50 and saved at 2:39:05, "at 2:38" showed "Today at 2:38" and saved
+ * for 2:38 tomorrow, because the save reads the clock again and by then the
+ * minute was over: the sheet said one thing and stored another, which is what
+ * D-011 forbids. Now the chip turns to "Tomorrow" as the minute ends, before
+ * anything is saved.
+ *
+ * The minute is what matters because a reminder is chosen to the minute:
+ * `nextReminderOccurrence` keeps the current one and moves anything older.
+ */
+@Composable
+private fun rememberCurrentMinute(clock: () -> LocalDateTime): LocalDateTime {
+    val minute by produceState(clock()) {
+        while (true) {
+            val current = clock()
+            val nextMinute = current.truncatedTo(ChronoUnit.MINUTES).plusMinutes(1)
+            // A millisecond past the boundary, so the read lands in the new
+            // minute rather than on the last instant of the old one.
+            delay(Duration.between(current, nextMinute).toMillis() + 1)
+            value = clock()
+        }
+    }
+    return minute
 }

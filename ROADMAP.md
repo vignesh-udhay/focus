@@ -20,6 +20,22 @@ registered at Cloudflare, auto-renewing. A WIPO brand search found no
 from 2026-10-10 restored into Tellcat on the emulator: 5 tasks, every field
 equal, snoozes carried. Export now suggests `Tellcat-backup-<date>.json`.
 
+**A reminder set for the current minute rang a day late, and no longer does.**
+On the owner's phone, a 2:38 reminder set during 2:38 rang at 2:38 the next
+day. `nextReminderOccurrence` compared the chosen minute against now to the
+second, so 14:38:00 against 14:38:30 counted as gone and D-030 moved it a day;
+`RemindersTest` asserted exactly that. It now compares by the minute, as its
+KDoc always said, and so does the Task Details sheet's "has passed" check. A
+reminder kept that way is a few seconds overdue, and `reconcile` already rings
+an overdue reminder at once. Todoist documents the same rule for a bare time,
+"today at 6pm (unless 6pm has passed, in which case tomorrow)", so no grace
+window was added. What was added is a minute ticker on Quick Add: the chip and
+the "Scheduled for" line re-resolve as each minute starts, so a capture typed
+at 2:38:50 and saved at 2:39:05 shows "Tomorrow" before Save rather than
+saying "Today" and storing tomorrow. The same session fixed a race in
+`TaskListViewModelTest`'s undo test, which counted writes before the fake had
+recorded them.
+
 Still to do for 1.0:
 
 - the Play developer account, which the owner is creating; expect the closed

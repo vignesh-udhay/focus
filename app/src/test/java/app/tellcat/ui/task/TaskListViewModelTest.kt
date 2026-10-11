@@ -1332,7 +1332,13 @@ class TaskListViewModelTest {
         val offer = awaitUndoOffer(model)
         model.toggleComplete("a")
         awaitTodayTask(model) { !it.isCompleted }
+        // The fake applies a write to the list before it records it, so the
+        // reopen can be on screen a beat before it is counted. Counting then
+        // read 1, the late record arrived during the undo, and the test failed
+        // on a write the undo never made. Both toggles are counted first.
+        repeat(50) { if (dao.updated.size < 2) Thread.sleep(10) }
         val writes = dao.updated.size
+        assertEquals(2, writes)
 
         model.undoComplete((offer as PendingUndo.Completion).taskId)
 

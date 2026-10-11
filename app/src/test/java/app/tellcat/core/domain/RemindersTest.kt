@@ -318,15 +318,26 @@ class RemindersTest {
         assertEquals(at, nextReminderOccurrence(at, at))
     }
 
-    /** One second past is past, and moves. */
+    /**
+     * A reminder is chosen to the minute, so the minute the user is in still
+     * counts as now. This asserted the opposite, that one second past moved a
+     * day, and so 2:38 picked at 2:38 and thirty seconds rang at 2:38 the next
+     * day. Found on the owner's phone on 2026-10-11.
+     */
     @Test
-    fun `a reminder one second gone moves to the next day`() {
+    fun `a reminder for the current minute is kept, seconds into it`() {
         val at = LocalDateTime.of(2026, 9, 5, 18, 0)
 
-        assertEquals(
-            at.plusDays(1),
-            nextReminderOccurrence(at, at.plusSeconds(1))
-        )
+        assertEquals(at, nextReminderOccurrence(at, at.plusSeconds(1)))
+        assertEquals(at, nextReminderOccurrence(at, at.plusSeconds(59).plusNanos(999_999_999)))
+    }
+
+    /** Once that minute is over, the time has gone, and it moves. */
+    @Test
+    fun `a reminder whose minute is over moves to the next day`() {
+        val at = LocalDateTime.of(2026, 9, 5, 18, 0)
+
+        assertEquals(at.plusDays(1), nextReminderOccurrence(at, at.plusMinutes(1)))
     }
 
     /**

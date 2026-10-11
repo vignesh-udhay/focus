@@ -30,6 +30,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 
 /**
@@ -57,11 +58,13 @@ class QuickAddSemanticsTest {
         fontScale: Float,
         onDismiss: () -> Unit = {},
         onSave: (CapturedTask) -> Unit = {},
-        today: LocalDate = TODAY
+        today: LocalDate = TODAY,
+        clock: () -> LocalDateTime = LocalDateTime::now
     ) {
         rule.setTellcatContent(fontScale) {
             QuickAddSheet(
                 today = today,
+                clock = clock,
                 // Today dates an undated capture. `QuickAddCaptureTest` covers
                 // the Inbox side, where it does not.
                 fallbackDate = today,
@@ -199,6 +202,27 @@ class QuickAddSemanticsTest {
      * Drawn selected, the input chip announced "checked", and a double-tap
      * silently took the reminder away.
      */
+    /**
+     * The chip keeps telling the truth while the sheet is open. Typed in the
+     * last seconds of 2:38, "at 2:38pm" is today's; once 2:39 starts the save
+     * would put it on tomorrow, so the chip has to say Tomorrow before anyone
+     * presses Save. It used to keep saying Today until the next keystroke.
+     */
+    @Test
+    fun theReminderChipTurnsToTomorrowWhenItsMinuteEnds() {
+        val today = LocalDate.now()
+        var now = today.atTime(14, 38, 50)
+        setSheet(FontScale100, today = today, clock = { now })
+
+        field().performTextInput("Call mom at 2:38pm")
+        rule.onNodeWithText("Reminder Today at", substring = true).assertExists()
+
+        now = today.atTime(14, 39, 1)
+        rule.mainClock.advanceTimeBy(11_000)
+
+        rule.onNodeWithText("Reminder Tomorrow at", substring = true).assertExists()
+    }
+
     @Test
     fun theReminderChip_isAButtonNotAToggle() {
         setSheet(FontScale100, today = LocalDate.now())

@@ -145,10 +145,14 @@ val EarlyArrivalTolerance: Duration = Duration.ofMinutes(1)
  * parse: "next Tuesday" never means last Tuesday, so "at 3pm" must not mean
  * three hours ago.
  *
- * **Strictly before, not at.** A reminder set for the current minute is kept
- * rather than pushed a day out, which agrees with [missedReminders]: a reminder
- * due at exactly now was owed, and it is delivered at once rather than being
- * silently moved to tomorrow.
+ * **Strictly before the current minute, not before now.** A reminder set for
+ * the minute the user is in is kept rather than pushed a day out, which agrees
+ * with [missedReminders]: a reminder due at exactly now was owed, and it is
+ * delivered at once rather than being silently moved to tomorrow. The minute
+ * and not the second, because a reminder is chosen to the minute: picking 2:38
+ * at 2:38 and thirty seconds compared 14:38:00 against 14:38:30, called it gone
+ * and moved it to 2:38 tomorrow, a day late for a moment the user had just
+ * named. Found on the owner's phone on 2026-10-11.
  *
  * Whole days, in local wall-clock terms, so an afternoon reminder stays in the
  * afternoon across a daylight-saving change. That is what [LocalDateTime]
@@ -161,12 +165,13 @@ val EarlyArrivalTolerance: Duration = Duration.ofMinutes(1)
  * Details answers it there.
  */
 fun nextReminderOccurrence(at: LocalDateTime, now: LocalDateTime): LocalDateTime {
-    if (!at.isBefore(now)) return at
+    val thisMinute = now.truncatedTo(ChronoUnit.MINUTES)
+    if (!at.isBefore(thisMinute)) return at
 
     // Land on today first, then step one more day if the time has already gone
     // by. Two statements rather than a loop, because the answer is always one
     // of these two and a loop would invite reading it as unbounded.
     val alignedToToday = at.plusDays(ChronoUnit.DAYS.between(at.toLocalDate(), now.toLocalDate()))
 
-    return if (alignedToToday.isBefore(now)) alignedToToday.plusDays(1) else alignedToToday
+    return if (alignedToToday.isBefore(thisMinute)) alignedToToday.plusDays(1) else alignedToToday
 }

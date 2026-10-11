@@ -760,7 +760,9 @@ internal fun ReminderSheet(
         LocalDate.ofEpochDay(chosenDay).atTime(time)
     }
 
-    val hasPassed = at.isBefore(now)
+    // To the minute, as `nextReminderOccurrence` counts it: the minute the user
+    // is in has not passed, and a reminder chosen for it rings at once.
+    val hasPassed = at.isBefore(now.truncatedTo(ChronoUnit.MINUTES))
 
     if (isTimeOpen) {
         ReminderTimePickerDialog(
