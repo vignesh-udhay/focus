@@ -5523,3 +5523,23 @@ the move to Play-signed builds needs anyway.
 **What would reverse this.** Nothing about the name short of a trademark
 conflict. The package cannot change again after the first upload, so there is
 nothing to reverse there.
+
+---
+
+## D-082. Restore reads only `tellcat-backup`
+
+Supersedes D-081 on one clause: restore no longer accepts `focuslist-backup`.
+A backup is marked `tellcat-backup`, and that is the only marker read or
+written. A file from Focuslist or Catimo is refused with the same message as
+any other file that is not a Tellcat backup.
+
+**What changed since D-081.** D-081 kept the old marker readable so that a user
+moving from a Catimo install could export and restore. The only such user is
+the owner: neither name was ever published, so no backup with the old marker
+exists outside the owner's own phone and the test emulator. Carrying a second
+format forever, with its own branch in the codec and its own test, buys
+nothing for anyone else. The owner's move is done once, by changing the marker
+in the exported file by hand before restoring it.
+
+**What would reverse this.** Nothing. The marker is now the only format there
+has been since the first public release.

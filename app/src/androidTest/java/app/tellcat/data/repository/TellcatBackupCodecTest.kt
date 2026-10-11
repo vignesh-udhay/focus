@@ -52,11 +52,11 @@ class TellcatBackupCodecTest {
     }
 
     /**
-     * D-081. Every backup written before the rename says `focuslist-backup`,
-     * Catimo's included, and the move from a Catimo install is a restore of one.
+     * D-082. A file from before the rename is someone else's file as far as
+     * restore is concerned. Otherwise valid, so the marker is all it fails on.
      */
     @Test
-    fun aBackupFromBeforeTheRenameStillOpens() {
+    fun aBackupFromBeforeTheRenameIsRefused() {
         val bytes = """
             {
               "format":"focuslist-backup",
@@ -66,13 +66,12 @@ class TellcatBackupCodecTest {
             }
         """.trimIndent().toByteArray()
 
-        val backup = TellcatBackupCodec.read(ByteArrayInputStream(bytes))
-
-        assertEquals(listOf("Kept"), backup.tasks.map { it.title })
-        assertEquals(ThemePreference.Dark, backup.preferences.theme)
+        assertThrows(IllegalArgumentException::class.java) {
+            TellcatBackupCodec.read(ByteArrayInputStream(bytes))
+        }
     }
 
-    /** New files carry the new name; the old one is only ever read. */
+    /** New files carry the one marker restore accepts. */
     @Test
     fun aNewBackupSaysTellcat() {
         val output = ByteArrayOutputStream()

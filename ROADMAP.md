@@ -13,8 +13,8 @@ scope it delivers is in `PRODUCT.md`.
 product was renamed from Catimo, and the `applicationId` moved to `app.tellcat`
 before the first Play upload, the last moment that was free. The internals went
 with it: package `app.tellcat`, `Tellcat*` classes, `tellcat.db`, `tellcat`
-channels and extras, and new backups marked `tellcat-backup`, while restore
-still reads `focuslist-backup`. `tellcat.app` is
+channels and extras, and backups marked `tellcat-backup`, the only format
+restore reads, D-082. `tellcat.app` is
 registered at Cloudflare, auto-renewing. A WIPO brand search found no
 "tellcat" mark; the nearest live marks are telecom "TELCAT"s. A Catimo backup
 from 2026-10-10 restored into Tellcat on the emulator: 5 tasks, every field
@@ -46,7 +46,8 @@ Still to do for 1.0:
   test of 12 testers for 14 days that new personal accounts need
 - the privacy policy at `https://tellcat.app/privacy`, and a contact address
 - the listing graphics, Data safety, content rating and target audience
-- moving the owner's phone: Export from Catimo, install Tellcat, Restore
+- moving the owner's phone: Export from Catimo, change the file's marker to
+  `tellcat-backup` by hand (D-082), install Tellcat, Restore
 
 **The pre-ship hardening pass is done, and R8 is on.** Every in-app finding from
 the pre-release audit that was not shipping work is fixed:

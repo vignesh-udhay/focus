@@ -33,13 +33,10 @@ data class TellcatBackup(
  * future field would make a restore look successful when it was not.
  */
 object TellcatBackupCodec {
+    // The only marker read or written, D-082. Files from before the rename say
+    // `focuslist-backup` and are refused like any other foreign file: no user
+    // ever held one, and the owner's own was converted by hand.
     private const val Format = "tellcat-backup"
-
-    // What every backup said before D-081, from Focuslist and from Catimo. Read
-    // forever and never written: a file a user keeps must still open, and the
-    // move from a Catimo install to Tellcat is an export and a restore.
-    private const val LegacyFormat = "focuslist-backup"
-
     private const val Version = 1
 
     fun write(
@@ -82,7 +79,7 @@ object TellcatBackupCodec {
             reader.endObject()
         }
 
-        require(format == Format || format == LegacyFormat) { "Not a Tellcat backup" }
+        require(format == Format) { "Not a Tellcat backup" }
         require(version == Version) { "Unsupported Tellcat backup version" }
         val restoredPreferences = requireNotNull(preferences) { "Missing settings" }
         val restoredTasks = requireNotNull(tasks) { "Missing tasks" }
