@@ -1,8 +1,8 @@
-# Catimo
+# Tellcat
 
 ## Product
 
-Catimo is a calm, highly polished personal task manager built specifically
+Tellcat is a calm, highly polished personal task manager built specifically
 for Android.
 
 It should feel native to Android rather than like an iOS productivity app
@@ -10,7 +10,7 @@ ported to Android.
 
 ## What the app is for
 
-Catimo tells you about your work at the moment it matters, and it does not
+Tellcat tells you about your work at the moment it matters, and it does not
 miss.
 
 That is the job. Not filing, not organising, not planning. A task app earns
@@ -120,7 +120,7 @@ The reward is getting the work done.
 
 ## 8. Free, with nothing held back
 
-Catimo has no subscription, no paid tier, no in-app purchases, no ads and
+Tellcat has no subscription, no paid tier, no in-app purchases, no ads and
 no account.
 
 This is a product decision, not a temporary state. See `docs/decisions.md`,

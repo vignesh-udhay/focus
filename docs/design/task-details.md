@@ -456,7 +456,7 @@ worked.
 **The weekday chips are sized rather than laid out by their labels.** At their
 natural width the seven came to 1002px inside a 992px column on a 1080px screen,
 so the last day wrapped to a line of its own at the default font scale.
-`FocuslistDimensions.WeekdayChipSize` is the board's own 48dp, from a node called
+`TellcatDimensions.WeekdayChipSize` is the board's own 48dp, from a node called
 "Weekday selector / 7 equal 48dp targets", and the row spreads them with
 `SpaceBetween` so the gaps are the remainder rather than a number chosen here.
 The width is fixed and the height is a floor, so a letter at 200% makes its chip

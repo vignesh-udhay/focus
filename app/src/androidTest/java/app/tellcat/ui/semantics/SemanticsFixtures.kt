@@ -1,0 +1,327 @@
+package app.tellcat.ui.semantics
+
+import android.os.Build
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.junit4.ComposeContentTestRule
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.unit.Density
+import androidx.lifecycle.SavedStateHandle
+import androidx.test.platform.app.InstrumentationRegistry
+import app.tellcat.core.notification.FocusAlarms
+import app.tellcat.core.domain.Recurrence
+import app.tellcat.core.domain.Task
+import app.tellcat.core.time.CurrentDay
+import app.tellcat.data.local.TaskDao
+import app.tellcat.data.local.TaskConverters
+import app.tellcat.data.local.TaskEntity
+import app.tellcat.data.local.toEntity
+import app.tellcat.data.repository.TaskRepository
+import app.tellcat.ui.task.TaskListViewModel
+import app.tellcat.ui.theme.TellcatTheme
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalDateTime
+
+/**
+ * The two font scales every semantics contract in this package is checked at.
+ *
+ * `PRODUCT.md` requires system font scaling, and 200% is where a layout either
+ * holds or hides something. Checking semantics at both is how we know a control
+ * that is reachable at 100% has not been pushed off screen, clipped, or merged
+ * into its neighbour at 200%.
+ */
+internal const val FontScale100 = 1f
+internal const val FontScale200 = 2f
+
+/**
+ * Renders [content] in the real Tellcat theme at a chosen font scale.
+ *
+ * The scale is imposed by overriding [LocalDensity] rather than by changing the
+ * device configuration, so a test needs no permissions, leaves no state behind
+ * on the emulator, and cannot leak a scale into the next test.
+ *
+ * Dynamic colour is off for the same reason the previews turn it off: the
+ * fallback schemes are the ones the design was measured against, and a test
+ * should not depend on the wallpaper the emulator happens to have.
+ */
+internal fun ComposeContentTestRule.setTellcatContent(
+    fontScale: Float,
+    content: @Composable () -> Unit
+) {
+    setContent {
+        val base = LocalDensity.current
+
+        CompositionLocalProvider(
+            LocalDensity provides Density(density = base.density, fontScale = fontScale)
+        ) {
+            TellcatTheme(dynamicColor = false) { content() }
+        }
+    }
+}
+
+/**
+ * Grants a runtime permission to the app under test.
+ *
+ * A screen that asks for a permission gets a system dialog, and that dialog is
+ * a window belonging to another process drawn over ours. Compose then finds no
+ * hierarchy to assert against and the failure reads as though the app died,
+ * which is a long way from what happened. Granting first keeps the dialog from
+ * ever opening, so the test sees the screen it came to look at.
+ *
+ * Done through `UiAutomation` rather than `GrantPermissionRule`, which lives in
+ * `androidx.test:rules` and is not a dependency of this project. `AGENTS.md`
+ * asks for a reason before adding one, and there is none: this is four lines.
+ *
+ * A no-op below API 33, where the runtime notification permission does not
+ * exist and granting it throws.
+ */
+internal fun grantRuntimePermission(permission: String) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+
+    val instrumentation = InstrumentationRegistry.getInstrumentation()
+    instrumentation.uiAutomation.grantRuntimePermission(
+        instrumentation.targetContext.packageName,
+        permission
+    )
+}
+
+/** Matches a node marked as a heading for accessibility services. */
+internal fun isHeading(): SemanticsMatcher =
+    SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)
+
+/**
+ * Matches a node a screen reader announces when it appears or changes.
+ *
+ * Polite rather than assertive, so it waits for the reader to finish the
+ * sentence it is on. Assertive interrupts mid-word and nothing in this app
+ * earns that.
+ */
+internal fun isPoliteLiveRegion(): SemanticsMatcher =
+    SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite)
+
+/**
+ * Matches a node whose tap action is announced as [label].
+ *
+ * The label is what a screen reader reads as "double tap to <label>", so it is
+ * the contract, not the presence of a click handler.
+ */
+internal fun hasClickLabel(label: String): SemanticsMatcher =
+    SemanticsMatcher("click action labelled '$label'") { node ->
+        node.config.contains(SemanticsActions.OnClick) &&
+            node.config[SemanticsActions.OnClick].label == label
+    }
+
+/** Matches a node that publishes a live region, at [mode]. */
+internal fun hasLiveRegion(mode: androidx.compose.ui.semantics.LiveRegionMode): SemanticsMatcher =
+    SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, mode)
+
+/**
+ * A stand-in for the Room-generated DAO, mirroring the real query's
+ * `WHERE deletedAt IS NULL` so a soft-deleted row stays stored but stops being
+ * observed.
+ *
+ * [TaskDao] is an interface, so the real [TaskRepository] and the real
+ * [TaskListViewModel] stay in the loop and only storage is replaced.
+ */
+/**
+ * A DAO whose read throws, for D-034's failed-read state.
+ *
+ * Room hands the app a cold `Flow` and a `Flow` that throws is finished, which
+ * is the whole reason `TaskListViewModel` catches once and carries the failure
+ * as a value. Nothing tested that until D-062 found Task Details hanging on it.
+ *
+ * Delegates every write so the type is satisfied; only the read differs.
+ */
+internal class FailingTaskDao(
+    private val delegate: FakeTaskDao = FakeTaskDao()
+) : TaskDao by delegate {
+
+    override fun observeTasks(): Flow<List<TaskEntity>> =
+        flow { throw IllegalStateException("read failed") }
+}
+
+/**
+ * A DAO whose read never answers, for D-065's not-read-yet state.
+ *
+ * `emptyFlow` completes without emitting anything, so the view model stays on
+ * `Loading` for the whole test. That is the first frame of every launch held
+ * still: on real storage the read resolves in a frame, which is exactly why
+ * nothing could test what the lists drew before it did.
+ *
+ * Delegates every write so the type is satisfied; only the read differs.
+ */
+internal class SilentTaskDao(
+    private val delegate: FakeTaskDao = FakeTaskDao()
+) : TaskDao by delegate {
+
+    override fun observeTasks(): Flow<List<TaskEntity>> = emptyFlow()
+}
+
+internal class FakeTaskDao(initial: List<Task> = emptyList()) : TaskDao {
+
+    private val rows = MutableStateFlow(initial.map { task -> task.toEntity() })
+
+    override fun observeTasks(): Flow<List<TaskEntity>> =
+        rows.map { stored ->
+            stored.filter { row -> row.deletedAt == null }
+                .sortedWith(compareBy({ it.createdAt }, { it.id }))
+        }
+
+    override suspend fun findTask(id: String): TaskEntity? =
+        rows.value.firstOrNull { row -> row.id == id && row.deletedAt == null }
+
+    override suspend fun findSpawnsOf(parentId: String): List<TaskEntity> =
+        rows.value.filter { row -> row.spawnedFromId == parentId && row.deletedAt == null }
+
+    override suspend fun insert(task: TaskEntity) {
+        rows.value = rows.value + task
+    }
+
+    override suspend fun update(task: TaskEntity) {
+        rows.value = rows.value.map { stored -> if (stored.id == task.id) task else stored }
+    }
+
+    override suspend fun snoozeReminder(id: String, snoozedUntil: String) {
+        rows.value = rows.value.map { stored ->
+            if (stored.id == id) {
+                stored.copy(
+                    snoozedUntil = TaskConverters.textToLocalDateTime(snoozedUntil),
+                    reminderDeliveredAt = null
+                )
+            } else {
+                stored
+            }
+        }
+    }
+
+    override suspend fun markReminderDelivered(id: String, deliveredAt: Long) {
+        rows.value = rows.value.map { stored ->
+            if (stored.id == id) {
+                stored.copy(reminderDeliveredAt = Instant.ofEpochMilli(deliveredAt))
+            } else {
+                stored
+            }
+        }
+    }
+
+    override suspend fun softDelete(id: String, deletedAt: Long) {
+        rows.value = rows.value.map { stored ->
+            if (stored.id == id) stored.copy(deletedAt = Instant.ofEpochMilli(deletedAt)) else stored
+        }
+    }
+
+    override suspend fun restore(id: String) {
+        rows.value = rows.value.map { stored ->
+            if (stored.id == id) stored.copy(deletedAt = null) else stored
+        }
+    }
+
+    override suspend fun deleteById(id: String) {
+        rows.value = rows.value.filterNot { stored -> stored.id == id }
+    }
+
+    /** What storage currently holds, deleted rows included. */
+    fun stored(): List<TaskEntity> = rows.value
+}
+
+/** A calendar day the test owns, in place of the device clock. */
+internal class FakeCurrentDay(initial: LocalDate) : CurrentDay {
+
+    private val _today = MutableStateFlow(initial)
+
+    override val today: StateFlow<LocalDate> = _today.asStateFlow()
+}
+
+/** The fixed day every test in this package derives its dated views against. */
+internal val TestToday: LocalDate = LocalDate.of(2026, 9, 2)
+
+/** A fixed capture time, so ordering never depends on how fast a test runs. */
+internal val TestCreatedAt: Instant = Instant.parse("2026-01-01T09:00:00Z")
+
+/** Builds a task with the fixture defaults, overriding only what a test cares about. */
+internal fun testTask(
+    id: String,
+    title: String,
+    scheduledDate: LocalDate? = null,
+    dueDate: LocalDate? = null,
+    estimatedDurationMinutes: Int? = null,
+    notes: String? = null,
+    recurrence: Recurrence? = null,
+    completedAt: Instant? = null,
+    reminderAt: LocalDateTime? = null,
+    createdAt: Instant = TestCreatedAt
+): Task = Task(
+    id = id,
+    title = title,
+    createdAt = createdAt,
+    notes = notes,
+    scheduledDate = scheduledDate,
+    dueDate = dueDate,
+    estimatedDurationMinutes = estimatedDurationMinutes,
+    recurrence = recurrence,
+    completedAt = completedAt,
+    reminderAt = reminderAt
+)
+
+/**
+ * A reminder on the fixture day, already in the past.
+ *
+ * [TestToday] is a fixed date behind the real clock, so a task carrying this is
+ * the Focus now card's `ReminderPassed` case whenever a test runs. Since D-035
+ * that is the only reason a test can reach without starting a session.
+ */
+internal val TestPassedReminder: LocalDateTime = TestToday.atTime(9, 0)
+
+/**
+ * A real view model over fake storage and a fixed day.
+ *
+ * Screens are driven through this rather than through a stripped-down copy of
+ * their state, so what the tests exercise is the production composition.
+ */
+internal fun testViewModel(
+    dao: TaskDao,
+    today: LocalDate = TestToday
+): TaskListViewModel = TaskListViewModel(
+    repository = TaskRepository(dao),
+    currentDay = FakeCurrentDay(today),
+    // A real handle with nothing in it. Tests start no session, and the ones
+    // that do only need it to hold a value, not to survive anything.
+    savedState = SavedStateHandle(),
+    alarms = RecordingFocusAlarms()
+)
+
+/**
+ * A [FocusAlarms] that records instead of asking the system for anything.
+ *
+ * Scheduling a real alarm from a test would put a notification on the device
+ * running the suite, minutes later, unrelated to anything the user did.
+ */
+internal class RecordingFocusAlarms : FocusAlarms {
+
+    val scheduled = mutableListOf<Pair<String, Instant>>()
+    var cancellations = 0
+        private set
+
+    override fun scheduleEstimateReached(taskTitle: String, at: Instant) {
+        scheduled += taskTitle to at
+    }
+
+    override fun cancel() {
+        cancellations++
+    }
+}
+

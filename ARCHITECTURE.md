@@ -46,7 +46,7 @@ notification must agree on, belongs here.
 
 ## Composition root
 
-`FocuslistApplication` owns the small set of process-scoped services:
+`TellcatApplication` owns the small set of process-scoped services:
 
 - `database`, a Room database, created lazily so nothing touches disk until a
   task is asked for
@@ -108,7 +108,7 @@ the platform.
 
 Room, one entity, `TaskEntity`, currently at schema version 4.
 
-Migrations are explicit in `FocuslistMigrations`. There is no destructive
+Migrations are explicit in `TellcatMigrations`. There is no destructive
 fallback: a missing migration fails loudly rather than quietly emptying
 someone's task list. Schema JSON is exported and committed, and
 `MigrationTest` runs each version forward.
@@ -129,7 +129,7 @@ The widget's completion evidence is another small preference record and is
 retired on the first later task or day snapshot.
 
 First-run completion is its own SharedPreferences record. It is app state rather
-than user task data, so Catimo's JSON backup does not carry it to another
+than user task data, so Tellcat's JSON backup does not carry it to another
 install.
 
 Today's missed-reminder acknowledgement is also one SharedPreferences scalar:
@@ -138,7 +138,7 @@ in Room as Reminder Health evidence, and any newer delivery ID is visible.
 
 ## Navigation
 
-Compose Navigation. Routes are string constants in `FocuslistRoutes`, named
+Compose Navigation. Routes are string constants in `TellcatRoutes`, named
 rather than positional, so a route survives screens being reordered.
 
 Destinations are split into primary, which appear in the navigation bar, and
@@ -146,7 +146,7 @@ rooms. Logbook and Settings are reached through More; Reminder health is reached
 through Settings.
 
 Focus is a sheet rather than a destination, which matches `PRODUCT.md`
-treating it as a mode rather than a place. `FocuslistNavHost` opens
+treating it as a mode rather than a place. `TellcatNavHost` opens
 `FocusSheet` over whatever list the user was on.
 
 Launcher-widget intents enter through the single-top `MainActivity` and become
@@ -197,7 +197,7 @@ The shape that follows:
 
 - A `Reminders` interface in `core/notification`, following the `FocusAlarms`
   pattern, with an `AndroidReminders` implementation owned by
-  `FocuslistApplication`.
+  `TellcatApplication`.
 - Scheduling driven from the write path, not the UI. When a task with a
   `reminderAt` is saved, the alarm is scheduled. When it is completed,
   cleared, or rescheduled, the alarm follows. `TaskRepository` is the point

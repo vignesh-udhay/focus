@@ -38,7 +38,7 @@ And the study is Android-only, because Apple retired its public review feed.
 
 ---
 
-## D-001. Catimo is free, with no purchases of any kind
+## D-001. Tellcat is free, with no purchases of any kind
 
 **Decision.** No subscription, no paid tier, no in-app purchases, no ads, no
 account. Not a free tier. No purchases at all.
@@ -73,7 +73,7 @@ are removed. Today is derived from scheduled date, never hand-curated.
 works in Things on iOS because Things inherited a decade of GTD-literate Mac
 users. Android's audience is broader and does not arrive with that training.
 
-Memorigi is the closest existing app to the original Catimo plan: a
+Memorigi is the closest existing app to the original Tellcat plan: a
 beautiful, Material-designed, Android-native, Things-shaped task manager. Its
 reviewers describe getting lost in exactly this structure:
 
@@ -91,7 +91,7 @@ And on manual Today curation, which the reviewer reads as a defect:
 Three destinations cover everything the five did. Each is explainable in one
 sentence without teaching a system.
 
-**What would reverse this.** Real Catimo users asking for a place to put
+**What would reverse this.** Real Tellcat users asking for a place to put
 undated work, repeatedly and unprompted, after 1.0 has shipped. The answer
 then is probably flat Lists (D-003), not the reinstatement of Someday.
 
@@ -193,7 +193,7 @@ Layer 3 is the differentiator. Layers 1 and 2 are table stakes that nobody
 has actually met.
 
 **Policy note.** Google Play permits `USE_EXACT_ALARM` for apps whose core
-user-facing function is alarms, timers or reminders. Catimo qualifies
+user-facing function is alarms, timers or reminders. Tellcat qualifies
 because of this decision. An app where reminders were a side feature would
 not.
 
@@ -511,7 +511,7 @@ An app has no API to read a scheduled alarm's window back, so it cannot tell
 these devices apart except by watching what arrives.
 
 **And the Xiaomi showed what the health screen is for.** Its Background
-autostart screen listed six apps allowed to start in the background. Catimo
+autostart screen listed six apps allowed to start in the background. Tellcat
 was not among them, so on that phone the app could not have rebuilt its alarms
 after a restart at all. The warning the health screen shows on a Xiaomi is not
 a precaution about what MIUI might do. It was, on this handset, a correct
@@ -1209,7 +1209,7 @@ own treatment, and that treatment is the absence of a tint.
 The body of a Warning says what the app cannot know:
 
     Sleep standby can delay reminders.
-    Catimo cannot tell whether it is on.
+    Tellcat cannot tell whether it is on.
 
 **Why.** `CheckState` already made this distinction and the screen threw it
 away. `Badge()` branched on `Ok` against not-`Ok`, so a feature the app is
@@ -1432,7 +1432,7 @@ notification; drawing them again here would mean maintaining that story twice.
 
 **One thing the frames do not show, and it is the expensive part.** Both
 Appearance rows need persistence the app does not have. There is no DataStore
-and no SharedPreferences in `app/src/main`, and `FocuslistTheme` takes
+and no SharedPreferences in `app/src/main`, and `TellcatTheme` takes
 `darkTheme` and `dynamicColor` as parameters that nothing outside previews
 overrides. Phase 5's first bullet is a preferences store, and the screen after
 it.
@@ -2168,7 +2168,7 @@ repository.
 than the last good one, because a screen drawing stale rows beneath an error
 message makes two claims at once and the older one cannot be checked.
 
-**The copy must never mention a connection.** Catimo has no account, no sync
+**The copy must never mention a connection.** Tellcat has no account, no sync
 and no backend, all three permanently out of scope in `PRODUCT.md`, so every
 read is local. Earlier draft copy on Inbox and Upcoming read "Check your
 connection and try again", which sends the user to fix something that was never
@@ -2273,7 +2273,7 @@ RemoteViews it builds.
 **It reproduces the old table exactly at both declared sizes.** All eight
 combinations of the two sizes, lead or no lead, and normal or large text come out
 at the counts the hand-tuned `when` returned, which is what makes this a
-generalisation rather than a retune. `FocuslistWidgetModelTest` pins those eight
+generalisation rather than a retune. `TellcatWidgetModelTest` pins those eight
 so a change to any constant has to admit which case it moved.
 
 **The disclosure is reserved whether or not it appears.** It costs 20dp on a
@@ -2301,7 +2301,7 @@ assumed.
 
 `expressive-components.md` lists `FloatingToolbar` under "Do not introduce,
 unless a later product decision explicitly requires one", noting the exclusion
-was "because Catimo has no use for them, not because they are unsound".
+was "because Tellcat has no use for them, not because they are unsound".
 This is that decision. The list also still forbids `ButtonGroup`, which D-026
 introduced through the same escape hatch and nobody removed from the list; that
 line needs correcting either way.
@@ -2361,14 +2361,14 @@ discoverability: a first-time user sees two glyphs rather than a worded action.
 That is the trade this decision makes, and if it turns out to cost more than the
 overflow did, the entry to supersede is this one.
 
-**Clearance.** The scrolling column reserves `FocuslistDimensions.FabClearance`
+**Clearance.** The scrolling column reserves `TellcatDimensions.FabClearance`
 beneath its last Plan row, on the same terms the lists reserve it under their
 FAB: a floating control that covers the thing it acts on is worse than one that
 scrolls.
 
 ## D-038. The full-screen alarm is deferred past 1.0, and the board frame stops looking built
 
-**Decision.** Catimo ships 1.0 without `setFullScreenIntent`. The
+**Decision.** Tellcat ships 1.0 without `setFullScreenIntent`. The
 `notify/Full screen alarm` frame is marked as a design held rather than as
 behaviour, and the item moves to the After 1.0 list in `ROADMAP.md`, ordered by
 review evidence like everything else there.
@@ -2409,7 +2409,7 @@ hold the launch.
 
 **Some of the demand is already met, which is easy to miss.** The reviews asking
 for an alarm are mostly people whose notifications were silent, late or absent.
-Catimo answers that with `IMPORTANCE_HIGH`, `CATEGORY_REMINDER`, exact alarms
+Tellcat answers that with `IMPORTANCE_HIGH`, `CATEGORY_REMINDER`, exact alarms
 that survive a restart and a clock change, the OEM layer, and the trust layer no
 competitor ships. The full-screen intent is one expression of alarm-like, not
 the whole of the ask, and shipping it is not the same as answering the
@@ -2418,7 +2418,7 @@ complaint.
 **The door is demonstrably open, and this is worth recording while it is fresh.**
 TickTick 8.1.3.6, installed from `com.android.vending` on the emulator, declares
 `USE_FULL_SCREEN_INTENT` alongside `SYSTEM_ALERT_WINDOW` and `WAKE_LOCK`, and
-holds it `granted=true` at `targetSdk=37`, the same target Catimo builds
+holds it `granted=true` at `targetSdk=37`, the same target Tellcat builds
 against. So a task app rather than an alarm clock does hold this permission
 through Play today. What the dump cannot say is how: the package app op reads
 `default` while the UID mode reads `allow`, and the op changed about four days
@@ -2487,7 +2487,7 @@ user would read as a score. If it ever counts something the shade does not
 currently hold, it has become a statistic and this entry no longer covers it.
 
 **The board draws the app name and should not.** `notify/Grouped` reads
-"Catimo · 3 reminders". Android already renders the app name in the
+"Tellcat · 3 reminders". Android already renders the app name in the
 notification header, so posting that string produces the name twice. The summary
 text is the count alone. This is the same class of finding as the duration
 strings D-018 normalised: the board drew what it saw on a phone, including the
@@ -2598,7 +2598,7 @@ strings the health screen already owns, and a chevron. No body copy, no button,
 no list of checks. Its job is to get the user to the screen that can fix the
 problem, not to become that screen on top of their day. Reusing the health
 screen's own strings is what stops the same fact being phrased two ways in two
-places, which is how "Catimo cannot show notifications" and some second
+places, which is how "Tellcat cannot show notifications" and some second
 wording of it end up disagreeing.
 
 **What would reverse this.** A user reporting the banner as noise would mean one
@@ -2630,7 +2630,7 @@ three and left the rest blank. At 266dp the model computes
 `(266 - 60 - 8 - 20) / 48 = 3`, and it computes that no matter how tall the
 widget really is.
 
-**`FocuslistWidgetModelTest` could not have caught it.** Its eight pinned cases
+**`TellcatWidgetModelTest` could not have caught it.** Its eight pinned cases
 are the two declared sizes crossed with lead and text scale, which is exactly the
 assumption that was wrong. A test that fixes the same two heights the production
 code was stuck at will pass forever. Cases at heights no breakpoint would ever
@@ -2683,7 +2683,7 @@ a scrolling `ListView` fed by an adapter, so the platform fills the height and
 the remainder scrolls. It never measures, which makes blank space impossible and
 `+N more` unnecessary. That is a sound design and it is not this one: D-031
 allows the widget one count, "disclosing rows that did not fit", and a scrolling
-home-screen surface cuts against the restraint that entry is built on. Catimo
+home-screen surface cuts against the restraint that entry is built on. Tellcat
 keeps the measured design and fixes the measurement.
 
 **What would reverse this.** A launcher reporting a size the widget does not get,
@@ -2738,7 +2738,7 @@ rather than the multi-minute delivery window reported against the old path.
 
 **The cost is visible and is why the branch is narrow.** Android exposes the
 earliest task reminder as the device's next alarm, including in system surfaces
-that show that value. Tapping that affordance opens Catimo rather than one
+that show that value. Tapping that affordance opens Tellcat rather than one
 task, because several reminders can exist and the system supplies one shared
 show intent. A false positive therefore changes the phone outside the app, so
 OPPO and realme do not inherit the branch merely because they share ColorOS
@@ -2757,7 +2757,7 @@ until Android exposes one the boundary cannot be learned at runtime.
 RemoteViews terms, so every outstanding task for today is in the widget and the
 overflow scrolls. `+N more` is removed. `rowCapacity` and the composable heights
 it divided are removed, along with the `heightDp` and `fontScale` inputs to
-`focuslistWidgetModel`. Nothing reads `LocalSize` any more, so `sizeMode` becomes
+`tellcatWidgetModel`. Nothing reads `LocalSize` any more, so `sizeMode` becomes
 `SizeMode.Single`.
 
 The lead card is the list's first item rather than a pinned header, so it scrolls
@@ -2790,7 +2790,7 @@ discovered the division had been fed one of two constants for its whole life. Th
 honest reading of that sequence is that measuring was the liability: two entries
 and three bugs went into computing a number the platform will work out for
 itself if asked. `ListView` fills the height and stops. Nothing to keep in step
-with the composables, and the obligation `FocuslistWidgetModel` carried, that a
+with the composables, and the obligation `TellcatWidgetModel` carried, that a
 row changing height without changing `RowHeight` silently breaks the
 calculation, goes with it.
 
@@ -2825,7 +2825,7 @@ a footer under a fixed list, and this entry is the one to supersede.
 ## D-044. A missed-reminder notice can be acknowledged on Today
 
 **Decision.** The missed-reminder banner on Today has a dismiss action. Dismissal
-acknowledges one delivery incident: Catimo stores that delivery's ID and hides
+acknowledges one delivery incident: Tellcat stores that delivery's ID and hides
 the matching banner on Today across process restarts. It does not delete or alter
 the delivery record, so the incident remains visible in Reminder Health until
 the existing seven-day concern window expires. A later missed delivery has a
@@ -2864,14 +2864,14 @@ incidents with a broader acknowledgement.
 
 ## D-045. The widget reads its data as a stream, because a Glance session outlives one read
 
-**Decision.** `FocuslistWidget.provideGlance` stops capturing a snapshot and
+**Decision.** `TellcatWidget.provideGlance` stops capturing a snapshot and
 starts observing one. The tasks, the day, the stored Focus session and the
 completion evidence become a single `Flow<WidgetSnapshot>`, seeded once so the
 first frame is real, then collected inside `provideContent` with
 `collectAsState`. The widget follows the data for as long as its session is
 alive.
 
-`WidgetSnapshot` and the flow that builds it move to `FocuslistWidgetModel.kt`,
+`WidgetSnapshot` and the flow that builds it move to `TellcatWidgetModel.kt`,
 which is the file that exists so this kind of decision can be covered by JVM
 tests.
 
@@ -3049,7 +3049,7 @@ drawings dissolving.
 
 **What it costs.** The app's shape work stops being a thing the app does. That
 was distinctive, and D-014 had already reduced it to a two-state toggle, but it
-is a real loss and this is where it is recorded. `FocuslistDimensions.FocusShapeSize`
+is a real loss and this is where it is recorded. `TellcatDimensions.FocusShapeSize`
 is gone with it, and the poses take the mascot scale, 192.72 x 178.87 and
 202.55 x 119.13, rather than a 180dp box.
 
@@ -3206,7 +3206,7 @@ a row; the widget's was never only a card.
 
 The shared rule is untouched, which is the thing D-035 unified and this entry
 keeps unified. One rule, `ReminderPassed` gone from both readers, and the
-`lead.reason == FocusNowReason.ResumePaused` branch in `FocuslistWidget.kt`
+`lead.reason == FocusNowReason.ResumePaused` branch in `TellcatWidget.kt`
 disappears because it is now always true.
 
 **Superseded by D-049, written the same day.** The two paragraphs above are kept
@@ -3889,11 +3889,11 @@ observed a reminder land on this device. The frame, the colour and D-021's
 ordering are unchanged; the words are not:
 
     unverified   Not yet verified   Permissions are in place
-                                    Catimo has not seen a reminder arrive
+                                    Tellcat has not seen a reminder arrive
                                     on this device yet.
 
     verified     Ready              Reminders are arriving on time
-                                    The last reminder Catimo sent arrived
+                                    The last reminder Tellcat sent arrived
                                     when it was due.
 
 A recent delivery that was not concerning makes it verified. The recency window
@@ -4618,7 +4618,7 @@ It also confirms the growth path, without licensing the toolbar to be built for
 it: when a floating toolbar runs out of room, the trailing actions collapse into
 an overflow menu. And the 16dp the group sits above the bottom of the content is
 the specified minimum margin for a horizontal floating toolbar, so
-`FocuslistSpacing.md` there is the rule rather than a choice.
+`TellcatSpacing.md` there is the rule rather than a choice.
 
 **Why two floating elements are acceptable when two bare buttons were not.** The
 arrangement considered and rejected before this was a circular Delete and a
@@ -4917,7 +4917,7 @@ needs a time attached to it before it can be stored, and a fixed morning hour is
 the ordinary answer, because there the time is ceremony and the day is the
 question. A reminder inverts that. It is an interruption, asked for in the
 middle of the thing it interrupts, and the common request is later today.
-Catimo was answering a question about days with a control the product says is
+Tellcat was answering a question about days with a control the product says is
 about moments.
 
 **What it looked like from the user's side, which is how this was found.** Open
@@ -4957,9 +4957,9 @@ and the default day the right one. `reminder_deliveries` records what was
 scheduled and when it was placed, so the distance between placing a reminder and
 its firing is measurable rather than a matter of opinion.
 
-## D-072. A reminder arrives under the Catimo mark, not a stock bell
+## D-072. A reminder arrives under the Tellcat mark, not a stock bell
 
-**Decision.** The three reminder notifications take the Catimo cat as their
+**Decision.** The three reminder notifications take the Tellcat cat as their
 small icon, drawn as a 24dp monochrome silhouette in
 `ic_notification_cat.xml`. `ic_notifications`, Material's bell, stays where it
 belongs: an icon inside the app's own UI. Focus's estimate notification keeps
@@ -5287,7 +5287,7 @@ not the illustration.
 
 ## D-077. Dynamic colour is off by default
 
-**Decision.** A fresh install draws in the Catimo scheme, from the `#4F5DFF`
+**Decision.** A fresh install draws in the Tellcat scheme, from the `#4F5DFF`
 seed, in light and dark. Dynamic colour stays in the product and in Settings,
 one switch away, for anyone who wants the app to take their wallpaper's colours.
 A user who has already set the switch keeps their choice, and a backup restores
@@ -5299,7 +5299,7 @@ device. That is still true, and it costs the app its own colour everywhere a
 first impression is formed: the store screenshots are whatever wallpaper the
 capture device had, onboarding is a different app on every phone, and a launch
 with no audience has no other channel than the listing. A review of the app's
-identity found that, apart from the cat, Catimo read as a well-made Material
+identity found that, apart from the cat, Tellcat read as a well-made Material
 sample, and the owner chose colour as the cheapest place to give it an identity
 that is the same on every phone.
 
@@ -5310,7 +5310,7 @@ changes is only which side of the switch a new user starts on. Material itself
 treats a brand scheme as a legitimate default; dynamic colour is something an app
 may offer, not something it must impose.
 
-**What would reverse this.** Users finding the Catimo scheme jarring beside the
+**What would reverse this.** Users finding the Tellcat scheme jarring beside the
 rest of their phone, which would show as the switch being turned on by most
 people who find it. The answer then is to default it back on, and the fallback
 scheme is still what every pre-Android-12 user sees.
@@ -5365,7 +5365,7 @@ moment the task is completed. `reminderAt` is now the series' own time and only
 the user changes it; `snoozedUntil` is the one-off, cleared when the reminder is
 edited and never carried into the next occurrence.
 
-**What would reverse this.** For the first: Catimo gaining the full-screen alarm
+**What would reverse this.** For the first: Tellcat gaining the full-screen alarm
 D-038 holds, at which point it is honestly an alarm app and the case for
 `USE_EXACT_ALARM` can be made on what it is. The others are fixes and are not
 reversed.
@@ -5400,7 +5400,7 @@ three smaller fixes users would notice.
 5. **Restore offers every file**, not only those labelled JSON. Files arriving
    through a messaging app or a drive are often labelled as plain text or as
    bytes, and a valid backup appeared greyed out. The codec already refuses
-   anything that is not a Catimo backup.
+   anything that is not a Tellcat backup.
 6. **Times follow the phone's 24-hour setting** on rows, the widget, Quick Add
    and Task Details, as notifications and the time picker already did.
 
@@ -5441,7 +5441,7 @@ device-protected `locked_reminders` from D-079.
 **Why on.** `docs/play-listing.md` left this as an open question with three
 options and recommended this one. It is the shipped default, so taking it
 reverses nothing. And it is the only migration most people will ever use: with
-backup off, Catimo's own Export becomes the only way a user's tasks survive a
+backup off, Tellcat's own Export becomes the only way a user's tasks survive a
 lost or replaced phone, and most people never export anything. The listing and
 the privacy policy already disclose the Auto Backup path; the app itself still
 sends nothing anywhere.
@@ -5466,3 +5466,60 @@ health line.
 **What would reverse this.** Users asking for their tasks to stay off Google's
 servers, or Google changing how Auto Backup is encrypted. The answer then is
 option 2 in the listing's note: exclude the database and keep only settings.
+
+---
+
+## D-081. The app is called Tellcat, everywhere, and its package is `app.tellcat`
+
+Supersedes D-055 entirely: the name, the package, the class and file names, and
+the backup marker, which is now read in both spellings.
+
+**Decision.** The product is Tellcat, no longer Catimo. Every string a user reads says so, the
+exported file is `Tellcat-backup-<date>.json`, and the `applicationId` is
+`app.tellcat`, the reverse of the domain `tellcat.app`, registered on
+2026-10-11. The Kotlin package and `namespace` are `app.tellcat` too, the
+`Focuslist*` classes are `Tellcat*`, the database is `tellcat.db`, and the
+notification channels, intent extras and widget files say `tellcat`. New
+backups are marked `tellcat-backup`; restore also accepts `focuslist-backup`,
+which every file written by Focuslist or Catimo carries, and always will.
+
+**Why the internals too, and why now.** Several of these names are pinned by
+Android to an installed app. Home-screen icons point at the launcher activity
+by class name, placed widgets at the widget receiver, set alarms at the alarm
+receivers, and a user's data sits in files named `focuslist.db` and
+`focuslist_preferences.xml`. After the first release each of those is
+permanent or needs a migration; before it, with no install of `app.tellcat`
+anywhere but the test emulator, each is free. The rest, the package and the
+class names, cost nothing at any time and were moved in the same pass so the
+code says one name. D-055's reasoning, that a rename of internals was a large
+diff for no behaviour, held while there were installs to protect. There are
+none of this package.
+
+**What changed since D-055.** Two things. First, the name: "Tellcat" says what
+the app is for. The product's one-line purpose is that it tells you about your
+work at the moment it matters, and the cat mark is already the face of the app.
+Second, the package. D-055 kept `com.vignesh.focuslist` because changing it
+publishes a second app, stranding every install and its tasks. That cost is
+real only once someone has installed the app from a store. Before the first
+Play upload nobody has, and the package becomes permanent and public at that
+upload, in the store URL. This is the one moment the change is free, and a
+leftover of a name the product dropped twice would otherwise ship forever.
+
+**Checked before committing to it.** WIPO's Global Brand Database has no mark
+containing "tellcat" (stemming search: no results). Sound-alikes are dead or
+unrelated: TELCAD and TeleCat expired, Cellcat expired, HELLCAT is a car. The
+nearest live marks are "TELCAT" in telecom: telcat multicom GmbH in Germany
+(classes 38 and 42), SIS Telematica in Italy (9, 35, 38, from 1994) and a
+pending Spanish application in class 38. Different spelling and a different
+trade, so not a blocker; worth a professional look if Tellcat ever registers
+its own mark. `tellcat.com` is parked for sale on a domain marketplace, not in
+use.
+
+**What it costs.** Installs of the old package, which today means the owner's
+phone and the test emulator, become a different app. Moving them is Export,
+install, Restore, which the backup format was kept stable to allow, and which
+the move to Play-signed builds needs anyway.
+
+**What would reverse this.** Nothing about the name short of a trademark
+conflict. The package cannot change again after the first upload, so there is
+nothing to reverse there.

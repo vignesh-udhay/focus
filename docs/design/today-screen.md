@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Today is the default view and the first real screen in Catimo.
+Today is the default view and the first real screen in Tellcat.
 
 It answers one question:
 
@@ -70,7 +70,7 @@ The public entry point is one composable:
 
 `TodayScreen` holds no task state of its own. It reads the shared
 `TaskListViewModel` through `taskListViewModel()`, which builds it from the
-repository and the current day that `FocuslistApplication` owns, and hands
+repository and the current day that `TellcatApplication` owns, and hands
 the result to a private stateless `TodayContent` that owns the layout.
 
 The scaffolding every task list shares is not Today's. The undo offer is
@@ -90,7 +90,7 @@ for.
 
 # Top app bar
 
-A compact 64dp M3 `TopAppBar`, start-aligned, through `FocuslistTopAppBar`.
+A compact 64dp M3 `TopAppBar`, start-aligned, through `TellcatTopAppBar`.
 
 - title: `Text("Today")`
 - subtitle: none
@@ -202,17 +202,17 @@ That holds only if the list can scroll clear of it. See Spacing.
 
 # Spacing
 
-Use `FocuslistSpacing` for spacing the components do not own.
+Use `TellcatSpacing` for spacing the components do not own.
 
-- horizontal list padding: `FocuslistSpacing.md`
+- horizontal list padding: `TellcatSpacing.md`
 - vertical padding at the top and bottom of the collection:
-  `FocuslistSpacing.xs`
-- between segments: `ListItemDefaults.SegmentedGap`, never a Catimo token
+  `TellcatSpacing.xs`
+- between segments: `ListItemDefaults.SegmentedGap`, never a Tellcat token
 
 The bottom content padding must clear the floating action button, or the last
 task sits underneath it and cannot be tapped. Combine the Scaffold's bottom
 inset with the height of the FAB, the spacing the Scaffold leaves beneath it,
-and a gap above it, composed from `FocuslistSpacing` tokens rather than written
+and a gap above it, composed from `TellcatSpacing` tokens rather than written
 as one hard-coded figure. The FAB is the 56dp default size, so that is roughly
 72dp of clearance before the navigation bar is counted.
 
@@ -230,7 +230,7 @@ spacing as the specification.
 ## Section labels align with the group, not the text inside it
 
 A band label starts where the group it heads starts. The task cards sit at
-`FocuslistSpacing.md` from the screen edge, so the label starts there too, and
+`TellcatSpacing.md` from the screen edge, so the label starts there too, and
 the two form one column.
 
 An earlier version indented Today's labels a further 16dp, which aligned them
@@ -261,7 +261,7 @@ shut, which says the day is clear and still open. D-074 moved the sleeping cat
 to Inbox. `expressive-components.md` owns the variant, its colour
 roles, and why the headline did not follow the board up to Title Large.
 
-Every style comes from `FocuslistTypography`. Do not define new text styles
+Every style comes from `TellcatTypography`. Do not define new text styles
 for this screen.
 
 ---
@@ -285,7 +285,7 @@ site rather than inside `TaskRow`.
 Keep the contrast slight. The list should read as one coherent surface with
 soft edges, not as six separate tiles.
 
-All colors come from `MaterialTheme.colorScheme`, through `FocuslistTheme`,
+All colors come from `MaterialTheme.colorScheme`, through `TellcatTheme`,
 so dynamic color and both themes work without further work. Do not hard-code
 a color anywhere on this screen.
 
@@ -403,7 +403,7 @@ found something, not because the user did anything.
   user who cannot see their tasks at all
 
 [IMPL] `TodayScreen` takes the Today-filtered state and callbacks as parameters
-and does not read a health view model itself. `FocuslistNavHost` owns one
+and does not read a health view model itself. `TellcatNavHost` owns one
 `ReminderHealthViewModel` above the graph and hands its full state to Reminder
 Health and its acknowledgement-filtered state to Today. The acknowledged
 delivery ID lives in a small process-scoped SharedPreferences store. The host
@@ -697,7 +697,7 @@ Built and working:
 - the reminder health banner, for `ActionNeeded` and `Missed` only, opening
   Reminder health; see the section above and `docs/decisions.md` D-040
 
-Tasks are stored in a Room database owned by `FocuslistApplication`, read
+Tasks are stored in a Room database owned by `TellcatApplication`, read
 through `TaskRepository`, and derived into Today by `TaskQueries.todayTasks`.
 The schema, its versions, and its migrations are described in `storage.md`.
 

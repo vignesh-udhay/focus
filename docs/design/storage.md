@@ -40,7 +40,7 @@ forgotten.
 # Migrations
 
 `Migrations.kt` holds one `Migration` per version step and a
-`FocuslistMigrations` array. `FocuslistApplication` registers the array on the
+`TellcatMigrations` array. `TellcatApplication` registers the array on the
 builder.
 
 The builder deliberately does **not** call `fallbackToDestructiveMigration`.
@@ -123,8 +123,8 @@ captured in the same millisecond, so the primary key is added to make it one.
 
 # Write-ahead logging
 
-Room uses WAL, so a live database is a `focuslist.db` alongside a
-`focuslist.db-wal`. On a running install the main file can hold almost nothing:
+Room uses WAL, so a live database is a `tellcat.db` alongside a
+`tellcat.db-wal`. On a running install the main file can hold almost nothing:
 observed on the development emulator, a database with seven tasks was a 4 KB
 main file and a 144 KB WAL.
 
@@ -142,7 +142,7 @@ back up is an open product decision rather than a setting to change quietly.
 `MigrationTest` builds a genuine version-1 database, writes rows with raw SQL
 as the old app would have, runs the real migrations, validates the result
 against the exported schema for the current version, and reopens the file
-through `FocuslistDatabase`. It covers the three starting points that exist: a
+through `TellcatDatabase`. It covers the three starting points that exist: a
 version-1 install, a version-2 one, and a fully populated version-8 row
 crossing the recreated table at version 9. A version-9 row with a recurrence
 crosses version 10 as well, asserted in SQL and then read back through the DAO,

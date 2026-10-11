@@ -1,9 +1,9 @@
 # Motion
 
-What moves in Catimo, how, and why. Read `expressive-design-system.md`
+What moves in Tellcat, how, and why. Read `expressive-design-system.md`
 first for the tags and the principles.
 
-Catimo takes more from Material 3 Expressive here than anywhere else. The
+Tellcat takes more from Material 3 Expressive here than anywhere else. The
 visual language is deliberately restrained, so motion is where the product gets
 to have a character.
 
@@ -51,14 +51,14 @@ This is worth knowing before reaching for the expressive scheme to make
 something feel livelier: if the thing you are animating is a colour, the scheme
 makes no difference at all.
 
-[IMPL] `FocuslistTheme` calls `MaterialExpressiveTheme` without passing
+[IMPL] `TellcatTheme` calls `MaterialExpressiveTheme` without passing
 `motionScheme`, and that function defaults it to `MotionScheme.expressive()`.
 The app therefore already runs on the expressive scheme. Nothing has to be
 switched on; the specs simply have to be used.
 
 ---
 
-# Catimo motion tokens
+# Tellcat motion tokens
 
 [CD] Composables do not choose springs. They ask for a named intent, and the
 token decides. Five tokens cover the whole app.
@@ -276,7 +276,7 @@ appropriate. This is a deliberate absence, not an oversight.
 
 ## Sheets and the snackbar
 
-[CD] Material defaults, unchanged. There is no Catimo-specific reason to
+[CD] Material defaults, unchanged. There is no Tellcat-specific reason to
 override them, and overriding them would be motion for its own sake.
 
 ---
@@ -300,7 +300,7 @@ nothing that plays without the user having done something.
 
 **No shape morphing, and there is no longer an exception.** The one carve-out was
 the Focus session shape, and D-046 replaced it with the cat, which crossfades
-rather than morphing. `expressive-design-system.md` says Catimo takes almost
+rather than morphing. `expressive-design-system.md` says Tellcat takes almost
 none of what Material 3 Expressive offers here, and that now holds without a
 footnote. If a morph is ever proposed, it has to clear the bar the exception
 cleared once and then lost: what does it tell the user that nothing else on
@@ -318,7 +318,7 @@ the session transition, which is slow rather than lively.
 scale means transitions do not play. It does not mean information is withheld:
 the session shape keeps showing where the session has got to, because freezing
 it would answer a request for stillness by removing the answer. `Motion.kt`
-exposes `focuslistMotionEnabled()`, observed rather than read once, since the
+exposes `tellcatMotionEnabled()`, observed rather than read once, since the
 setting can change while the app is open.
 
 ---

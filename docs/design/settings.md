@@ -135,7 +135,7 @@ An illustration reading "Your data stays on this device", then two blocks: a
 heading, a line of description, and a full-width button.
 
     Backup     Export tasks, reminders, recurrence, and settings.  [Export backup]
-    Restore    Restore from a Catimo backup file.               [Restore from file]
+    Restore    Restore from a Tellcat backup file.               [Restore from file]
 
 **Export is filled and Restore is tonal.** Export is safe and repeatable;
 restore overwrites what is on the device. The weaker button is the one that
@@ -191,7 +191,7 @@ afterwards and a weaker button before it is the whole of the protection here.~~
 ## Restore errors
 
 A Material alert dialog over the Backup page: "Couldn't restore this file", "The
-file may not be a Catimo backup, or it may be damaged.", with Cancel and
+file may not be a Tellcat backup, or it may be damaged.", with Cancel and
 Choose another file.
 
 **The primary action is Choose another file, not Retry.** Retrying the same
@@ -212,9 +212,9 @@ screen the moment it was fixed. The page is rebuilt behind it.
 
 # Appearance persistence
 
-`FocuslistPreferences` stores the two scalar choices with Android
+`TellcatPreferences` stores the two scalar choices with Android
 `SharedPreferences` and exposes them as a `StateFlow`. `MainActivity` resolves
-System, Light or Dark before calling `FocuslistTheme`; the dynamic-colour flag is
+System, Light or Dark before calling `TellcatTheme`; the dynamic-colour flag is
 passed alongside it. Selection therefore changes the visible app immediately
 and survives process death, without adding a persistence dependency for two
 values the Android SDK already knows how to store.
@@ -278,7 +278,7 @@ theme dialog, and the existing navigation behavior. The Settings and Backup
 pages were also inspected on the emulator against board node `161:3409`.
 
 The two row components exist and are current: `Focuslist / Settings /
-Navigation row` and `Catimo / Settings / Toggle row`, both carrying Enabled,
+Navigation row` and `Tellcat / Settings / Toggle row`, both carrying Enabled,
 Pressed and Focused, both bound to the shared `Segmented/*` variables. Their
 Pressed state was repaired during the Task setup pass, twelve variants that
 rendered white because `On Surface` sat as the base fill at full opacity.

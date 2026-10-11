@@ -5,13 +5,13 @@ plugins {
 }
 
 android {
-    namespace = "com.vignesh.focuslist"
+    namespace = "app.tellcat"
     compileSdk {
         version = release(37)
     }
 
     defaultConfig {
-        applicationId = "com.vignesh.focuslist"
+        applicationId = "app.tellcat"
         minSdk = 29
         targetSdk = 37
         versionCode = 1

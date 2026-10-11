@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The Task Row is the primary interaction surface in Catimo.
+The Task Row is the primary interaction surface in Tellcat.
 
 Its visual and motion specification now lives in `expressive-components.md`,
 under "Task row", with the tokens it spends in `expressive-design-system.md`.
@@ -202,7 +202,7 @@ Metadata appears below the title when present.
 vertical alignment of its slots. Prefer `ListItemDefaults.ContentPadding`
 over re-deriving the row's internal padding from spacing tokens.
 
-Use FocuslistSpacing tokens for the spacing the component does not own, such
+Use TellcatSpacing tokens for the spacing the component does not own, such
 as the padding around a collection.
 
 Do not introduce arbitrary spacing values unless necessary.

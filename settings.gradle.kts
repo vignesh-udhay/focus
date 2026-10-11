@@ -22,5 +22,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Focuslist"
+rootProject.name = "Tellcat"
 include(":app")

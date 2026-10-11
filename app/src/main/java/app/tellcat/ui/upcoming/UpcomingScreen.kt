@@ -1,0 +1,293 @@
+package app.tellcat.ui.upcoming
+
+import android.content.res.Configuration
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.tellcat.R
+import app.tellcat.core.design.TellcatMotion
+import app.tellcat.core.design.TellcatSpacing
+import app.tellcat.core.design.tellcatContentGutter
+import app.tellcat.core.domain.Task
+import app.tellcat.core.domain.upcomingSections
+import app.tellcat.core.domain.upcomingTasks
+import app.tellcat.ui.component.TellcatTopAppBar
+import app.tellcat.ui.component.TaskListEmptyState
+import app.tellcat.ui.component.TaskListErrorState
+import app.tellcat.ui.component.UpcomingMascot
+import app.tellcat.ui.component.SectionLabel
+import app.tellcat.ui.component.TaskListRow
+import app.tellcat.ui.component.sectionDateLabel
+import app.tellcat.ui.component.UndoSnackbarHost
+import app.tellcat.ui.task.TaskListViewModel
+import app.tellcat.ui.task.UndoSnackbarEffect
+import app.tellcat.ui.theme.TellcatTheme
+import java.time.Instant
+import java.time.LocalDate
+
+/**
+ * Upcoming: what is scheduled beyond today.
+ *
+ * The counterpart to Today, over the same tasks and the same view model.
+ * Everything a row can do here it already does on Today, so this screen adds
+ * only its own query, title, and empty state.
+ *
+ * There is no add-task button. Quick Add schedules for today, so a task
+ * captured here would not belong here.
+ */
+@Composable
+fun UpcomingScreen(
+    viewModel: TaskListViewModel,
+    // Tapping a row opens Task Details, which is a destination since D-018
+    // rather than a sheet this screen hosts. The route is the host's to know.
+    onOpenTask: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    bottomBar: @Composable () -> Unit = {},
+    // The three dots at the end of the header row. A slot rather than a route,
+    // because navigating is the host's job and this screen only has to leave
+    // room for it.
+    overflow: @Composable RowScope.() -> Unit = {}
+) {
+    val tasks by viewModel.upcomingTasks.collectAsStateWithLifecycle()
+    val today by viewModel.today.collectAsStateWithLifecycle()
+    val readFailed by viewModel.readFailed.collectAsStateWithLifecycle()
+    val tasksLoaded by viewModel.tasksLoaded.collectAsStateWithLifecycle()
+
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    UndoSnackbarEffect(viewModel = viewModel, snackbarHostState = snackbarHostState)
+
+    UpcomingContent(
+        tasks = tasks,
+        today = today,
+        readFailed = readFailed,
+        // D-065. Until this is true, an empty list means the read has not
+        // answered rather than that nothing is scheduled ahead.
+        tasksLoaded = tasksLoaded,
+        onRetry = viewModel::retryRead,
+        onToggleComplete = viewModel::toggleComplete,
+        onOpenTask = onOpenTask,
+        modifier = modifier,
+        snackbarHostState = snackbarHostState,
+        bottomBar = bottomBar,
+        overflow = overflow
+    )
+
+}
+
+/**
+ * The Upcoming layout.
+ *
+ * Stateless, and the same segmented collection Today uses. [tasks] arrives
+ * already filtered and ordered by `upcomingTasks`; this screen neither filters
+ * nor sorts.
+ */
+@Composable
+private fun UpcomingContent(
+    tasks: List<Task>,
+    today: LocalDate,
+    onToggleComplete: (String) -> Unit,
+    onOpenTask: (String) -> Unit,
+    readFailed: Boolean = false,
+    // Defaults to true, so a preview or a test handing in a list is showing a
+    // list that has been read. Only the live screen can be in the other state.
+    tasksLoaded: Boolean = true,
+    onRetry: () -> Unit = {},
+    modifier: Modifier = Modifier,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+    bottomBar: @Composable () -> Unit = {},
+    overflow: @Composable RowScope.() -> Unit = {}
+) {
+    // Collapses as the list moves under it, as Today and Inbox do. A pinned
+    // behaviour would hold the full height of a two-row bar in every scroll
+    // position, which is a lot of chrome for a screen that is only a list.
+    val taskColors = ListItemDefaults.segmentedColors(
+        containerColor = MaterialTheme.colorScheme.surfaceContainer
+    )
+
+    // The days upcomingTasks already ordered the list into. Read here rather
+    // than re-derived, so the ordering stays owned by TaskQueries.
+    val sections = upcomingSections(tasks, today)
+
+    val gutter = tellcatContentGutter()
+
+    Scaffold(
+        modifier = modifier,
+        containerColor = MaterialTheme.colorScheme.surface,
+        snackbarHost = { UndoSnackbarHost(snackbarHostState) },
+        bottomBar = bottomBar,
+        topBar = {
+            TellcatTopAppBar(
+                actions = overflow,
+                title = stringResource(R.string.upcoming_title)
+            )
+        }
+    ) { innerPadding ->
+        if (readFailed) {
+            TaskListErrorState(
+                headline = stringResource(R.string.error_tasks_headline),
+                supporting = stringResource(R.string.error_tasks_supporting),
+                onRetry = onRetry,
+                modifier = Modifier.padding(innerPadding)
+            )
+        } else if (!tasksLoaded) {
+            // Nothing, per D-065. "Nothing scheduled ahead" is a claim about
+            // the user's plans, and the app has not looked yet.
+        } else if (tasks.isEmpty()) {
+            TaskListEmptyState(
+                headline = stringResource(R.string.upcoming_empty_headline),
+                supporting = stringResource(R.string.upcoming_empty_supporting),
+                modifier = Modifier.padding(innerPadding),
+                illustration = { UpcomingMascot() }
+            )
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = TellcatSpacing.md + gutter,
+                    end = TellcatSpacing.md + gutter,
+                    top = innerPadding.calculateTopPadding() + TellcatSpacing.xs,
+                    // No floating action button here, so nothing to clear.
+                    bottom = innerPadding.calculateBottomPadding() + TellcatSpacing.md
+                ),
+                verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
+            ) {
+                sections.forEach { section ->
+                    item(key = "label-" + section.date) {
+                        SectionLabel(
+                            text = sectionDateLabel(section.date, today),
+                            modifier = Modifier.animateItem(
+                                placementSpec = TellcatMotion.listChange()
+                            )
+                        )
+                    }
+
+                    itemsIndexed(
+                        items = section.tasks,
+                        key = { _, task -> task.id }
+                    ) { index, task ->
+                        TaskListRow(
+                            task = task,
+                            today = today,
+                            // Each day rounds its own corners, so a section
+                            // reads as one collection rather than a slice of a
+                            // longer one.
+                            shapes = ListItemDefaults.segmentedShapes(
+                                index = index,
+                                count = section.tasks.size
+                            ),
+                            colors = taskColors,
+                            onToggleComplete = { onToggleComplete(task.id) },
+                            onOpen = { onOpenTask(task.id) },
+                            // The heading above already names the day.
+                            showDate = false,
+                            modifier = Modifier.animateItem(
+                                placementSpec = TellcatMotion.listChange()
+                            )
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** A fixed timestamp, so previews do not shift with the clock. */
+private val SampleTimestamp: Instant = Instant.parse("2026-01-01T09:00:00Z")
+
+private fun sampleUpcomingTasks(): List<Task> {
+    val today = LocalDate.now()
+
+    return listOf(
+        Task(
+            id = "1",
+            title = "Book the dentist",
+            createdAt = SampleTimestamp,
+            scheduledDate = today.plusDays(1)
+        ),
+        Task(
+            id = "2",
+            title = "Draft the quarterly review, including the parts nobody wants " +
+                "to write down",
+            createdAt = SampleTimestamp,
+            scheduledDate = today.plusDays(3),
+            estimatedDurationMinutes = 90
+        ),
+        Task(
+            id = "3",
+            title = "Renew the domain",
+            createdAt = SampleTimestamp,
+            scheduledDate = today.plusDays(12),
+            estimatedDurationMinutes = 10
+        ),
+        // Excluded: scheduled for today, not beyond it.
+        Task(
+            id = "4",
+            title = "Chase the missing invoice",
+            createdAt = SampleTimestamp,
+            scheduledDate = today
+        )
+    )
+}
+
+@Preview(name = "Upcoming light", heightDp = 640)
+@Preview(name = "Upcoming dark", heightDp = 640, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun UpcomingScreenPreview() {
+    val today = LocalDate.now()
+    TellcatTheme(dynamicColor = false) {
+        UpcomingContent(
+            tasks = upcomingTasks(sampleUpcomingTasks(), today),
+            today = today,
+            onToggleComplete = {},
+            onOpenTask = {},
+        )
+    }
+}
+
+@Preview(name = "Upcoming empty light", heightDp = 640)
+@Preview(name = "Upcoming empty dark", heightDp = 640, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun UpcomingScreenEmptyPreview() {
+    TellcatTheme(dynamicColor = false) {
+        UpcomingContent(
+            tasks = emptyList(),
+            today = LocalDate.now(),
+            onToggleComplete = {},
+            onOpenTask = {},
+        )
+    }
+}
+
+@Preview(name = "Upcoming large font", heightDp = 640, fontScale = 2f)
+@Composable
+private fun UpcomingScreenLargeFontPreview() {
+    val today = LocalDate.now()
+    TellcatTheme(dynamicColor = false) {
+        UpcomingContent(
+            tasks = upcomingTasks(sampleUpcomingTasks(), today),
+            today = today,
+            onToggleComplete = {},
+            onOpenTask = {},
+        )
+    }
+}

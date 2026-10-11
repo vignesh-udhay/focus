@@ -1,6 +1,6 @@
-# Catimo design system
+# Tellcat design system
 
-The contract for how Catimo looks. If you are building or changing a screen,
+The contract for how Tellcat looks. If you are building or changing a screen,
 this file and its two companions decide the colours, type, shape, spacing and
 motion you use. Do not invent values; if something you need is not here, say so
 rather than choosing.
@@ -12,7 +12,7 @@ rather than choosing.
 Every rule is tagged:
 
     [M3]    a Material 3 or Material 3 Expressive capability
-    [CD]    a Catimo decision, ours to make and ours to change
+    [CD]    a Tellcat decision, ours to make and ours to change
     [IMPL]  how to build it in this codebase
 
 Material guidance and our decisions are tagged apart on purpose. Do not quote a
@@ -26,7 +26,7 @@ Material guidance and our decisions are tagged apart on purpose. Do not quote a
 
 **Expressiveness comes from motion and hierarchy, not decoration.** Material 3
 Expressive offers shape morphing, expressive shapes and playful componentry.
-Catimo takes almost none of it. What it takes is the motion physics and the
+Tellcat takes almost none of it. What it takes is the motion physics and the
 emphasized type scale.
 
 **Calm, focused, warm, deliberate.** In that order when they conflict.
@@ -211,7 +211,7 @@ section of `expressive-components.md`, and do not "fix" it to match the button.
 
 [IMPL] This is worth stating because Material's own component defaults do not
 always pick the family a given product wants. `FloatingActionButton` defaults
-to `primaryContainer`, and Catimo keeps that default. See
+to `primaryContainer`, and Tellcat keeps that default. See
 `expressive-components.md`.
 
 ## Never
@@ -228,10 +228,10 @@ and above.
 [CD] It is off by default since D-077, and one switch away in Settings. A
 system-coloured list feels like part of the device, but it gives the app a
 different colour on every phone and none of its own in the store screenshots or
-onboarding. The Catimo scheme below is what a fresh install opens in.
+onboarding. The Tellcat scheme below is what a fresh install opens in.
 
 [CD] Below API 31, and wherever dynamic colour is switched off, the app falls
-back to an intentional Catimo scheme rather than the Material baseline. Both
+back to an intentional Tellcat scheme rather than the Material baseline. Both
 the light and the dark fallback come from one seed so the two themes are
 recognisably the same product.
 
@@ -323,7 +323,7 @@ expressive additions.
 [M3] `MaterialShapes` provides thirty-five morphable polygons (Burst, Flower,
 Sunny, Puffy and so on) for shape morphing.
 
-[CD] Catimo uses **none**. It used two until D-046, both on one screen: the
+[CD] Tellcat uses **none**. It used two until D-046, both on one screen: the
 Focus session's `Cookie4Sided` at rest and `Cookie12Sided` while running. That
 screen draws the app's own cat now, so no polygon is left anywhere in the app.
 No expressive shape as an interaction pattern, no shape change for novelty. A
@@ -331,7 +331,7 @@ task list still has nothing to gain from a button that becomes a flower.
 
 [CD] It used to be seven, and the count coming back down belongs here, because
 this is where the worry was written. An earlier version of this document said
-Catimo used none of them, which was true when it was written. Then Focus grew
+Tellcat used none of them, which was true when it was written. Then Focus grew
 a ring of six shapes for a session with no estimate and a pair for one with an
 estimate, and this passage recorded the drift honestly: Focus is meant to be the
 calmest screen in the app and it had come to hold the most expressive thing in
@@ -348,7 +348,7 @@ expressive thing in it.
 that the question is narrower than it was: is this session running? Neither
 decorates anything, and `focus.md` records the reasoning.
 
-[CD] The Catimo scale is softer than Material's at the small end and stops
+[CD] The Tellcat scale is softer than Material's at the small end and stops
 where Material's does at the top:
 
     extraSmall           8dp
@@ -365,7 +365,7 @@ while `largeIncreased` is left at the Material default of 20dp, so a component
 reaching for the larger token gets a smaller radius. Recorded as a conflict
 below.
 
-[CD] Shape does not communicate hierarchy in Catimo. It communicates
+[CD] Shape does not communicate hierarchy in Tellcat. It communicates
 component identity: a row is a row, a sheet is a sheet. Two components at
 different levels of importance do not get different corner radii to say so.
 
@@ -408,7 +408,7 @@ The mock is not wrong, it is drawn with short titles. Any future attempt at
 weighed together, because they spend the same width.
 
 [IMPL] Never write a raw dimension in a screen or component. Every value comes
-from `FocuslistSpacing`, from `MaterialTheme.shapes`, or from a Material
+from `TellcatSpacing`, from `MaterialTheme.shapes`, or from a Material
 default such as `SegmentedGap`. The codebase currently has zero violations of
 this rule outside preview fixtures; keep it that way.
 
@@ -442,7 +442,7 @@ turning it into a pane would be a product change rather than a layout one.
 
 ## The content column
 
-[IMPL] Built, and the whole of it is one function. `focuslistContentGutter()`
+[IMPL] Built, and the whole of it is one function. `tellcatContentGutter()`
 returns the padding a screen adds at each side: zero while the window is
 narrower than `ContentMaxWidth`, and half the excess once it is wider.
 
@@ -468,7 +468,7 @@ Nothing becomes reachable or unreachable by resizing the window; only where the
 control sits changes. That is the whole rule, and it is what makes resizing
 safe.
 
-[IMPL] `FocuslistNavigationBar` and `FocuslistNavigationRail` read one
+[IMPL] `TellcatNavigationBar` and `TellcatNavigationRail` read one
 `TopLevelDestinations` list and open one `MoreMenu`. `NavigationBarItem` is a
 `RowScope` extension and `NavigationRailItem` is not, so the two cannot share a
 single item composable; sharing the data and the menu is as close as the
@@ -494,7 +494,7 @@ over after the rail, not inside the window; centring on the window would put it
 half a rail off centre.
 
 [IMPL] That is why `LocalContentWidth` exists. The host measures what remains
-beside the rail and publishes it, and `focuslistContentGutter` prefers it over
+beside the rail and publishes it, and `tellcatContentGutter` prefers it over
 the window. Everything that lines up on the content column keeps agreeing.
 
 ---
@@ -549,9 +549,9 @@ encodes Material's internals into our suite.
 
 | Token group | Holds | Status |
 | --- | --- | --- |
-| `FocuslistSpacing` | the 4dp scale | exists, unchanged |
-| `FocuslistShapes` | the eight corner sizes | exists, needs the monotonic fix |
-| `FocuslistTypography` | the nine customised roles | exists |
+| `TellcatSpacing` | the 4dp scale | exists, unchanged |
+| `TellcatShapes` | the eight corner sizes | exists, needs the monotonic fix |
+| `TellcatTypography` | the nine customised roles | exists |
 | Fallback colour scheme | light and dark, from one seed | to be built |
 | Motion tokens | the four semantic animation specs | to be built, see `expressive-motion.md` |
 | Dimension tokens | touch target, row height, FAB clearance, content width | to be built |

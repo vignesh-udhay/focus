@@ -244,7 +244,7 @@ Today.
 
 # The content column
 
-Two insets, named in `FocuslistWidget.kt` rather than spelled out per element.
+Two insets, named in `TellcatWidget.kt` rather than spelled out per element.
 
     ContentInset   24dp   where text begins and ends, both edges
     SurfaceInset    8dp   where a filled surface's edge and a 48dp target begin
@@ -511,7 +511,7 @@ every filled surface in the widget is drawn and has not been made.
 # Implementation status
 
 **Built with Jetpack Glance.** One provider renders the six states,
-uses dynamic colour on API 31 and later with Catimo light/dark fallbacks,
+uses dynamic colour on API 31 and later with Tellcat light/dark fallbacks,
 keeps add at both sizes, and keeps a just-completed row in place until the next
 data or day change. Its checked row is the undo target the consultation chose.
 

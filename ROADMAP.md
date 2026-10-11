@@ -9,6 +9,25 @@ scope it delivers is in `PRODUCT.md`.
 
 ## Current phase
 
+**Phase 5, shipping, has started, and the app is now Tellcat, D-081.** The
+product was renamed from Catimo, and the `applicationId` moved to `app.tellcat`
+before the first Play upload, the last moment that was free. The internals went
+with it: package `app.tellcat`, `Tellcat*` classes, `tellcat.db`, `tellcat`
+channels and extras, and new backups marked `tellcat-backup`, while restore
+still reads `focuslist-backup`. `tellcat.app` is
+registered at Cloudflare, auto-renewing. A WIPO brand search found no
+"tellcat" mark; the nearest live marks are telecom "TELCAT"s. A Catimo backup
+from 2026-10-10 restored into Tellcat on the emulator: 5 tasks, every field
+equal, snoozes carried. Export now suggests `Tellcat-backup-<date>.json`.
+
+Still to do for 1.0:
+
+- the Play developer account, which the owner is creating; expect the closed
+  test of 12 testers for 14 days that new personal accounts need
+- the privacy policy at `https://tellcat.app/privacy`, and a contact address
+- the listing graphics, Data safety, content rating and target audience
+- moving the owner's phone: Export from Catimo, install Tellcat, Restore
+
 **The pre-ship hardening pass is done, and R8 is on.** Every in-app finding from
 the pre-release audit that was not shipping work is fixed:
 
@@ -155,7 +174,7 @@ and cleared the banner. The reminder posted at 13:05:46. Snoozing 10 minutes
 set an exact alarm for 13:16:09 and left `reminderAt` at 13:05:45 with
 `snoozedUntil` 13:16:09. JVM suite 757 pass, and the view model tests pass 8
 runs of 8. On the emulator: `MigrationTest` 17, `TaskDaoTest` 25,
-`BackupDaoTest` 2, `FocuslistBackupCodecTest` 3, `BackupRepositoryTest` 6,
+`BackupDaoTest` 2, `TellcatBackupCodecTest` 3, `BackupRepositoryTest` 6,
 `TaskRowSemanticsTest` 23, `TodayScreenSemanticsTest` 39,
 `QuickAddSemanticsTest` 17, `QuickAddCaptureTest` 6,
 `ReminderSheetSemanticsTest` 11, `ReminderHealthSemanticsTest` 3,
@@ -167,13 +186,13 @@ the 24-hour clock setting, and the minor items.
 **Dynamic colour is off by default, D-077.** From a review of the app's identity:
 apart from the cat it read as a well-made Material sample, and with the
 wallpaper choosing its colours it had none of its own in the store screenshots
-or onboarding. A fresh install now opens in the Catimo scheme; the Settings
+or onboarding. A fresh install now opens in the Tellcat scheme; the Settings
 switch still turns dynamic colour on, a user who set it keeps their choice, and
-restore applies what the backup holds. `FocuslistPreferences` takes a file name
-so `FocuslistPreferencesTest` can read a fresh store. Seen on the Pixel 10
-emulator after clearing data: onboarding and Today in Catimo lavender where the
-wallpaper made them blue. `FocuslistPreferencesTest` 2, `SettingsSemanticsTest`
-1, `FocuslistBackupCodecTest` 3, `BackupRepositoryTest` 6 and
+restore applies what the backup holds. `TellcatPreferences` takes a file name
+so `TellcatPreferencesTest` can read a fresh store. Seen on the Pixel 10
+emulator after clearing data: onboarding and Today in Tellcat lavender where the
+wallpaper made them blue. `TellcatPreferencesTest` 2, `SettingsSemanticsTest`
+1, `TellcatBackupCodecTest` 3, `BackupRepositoryTest` 6 and
 `OnboardingSemanticsTest` 1 pass. Found on the way and not fixed:
 `TaskListViewModelTest.theDurationCanBeSetChangedAndCleared` is flaky, failing
 about one run in six with the stored duration still null after the awaited
@@ -225,7 +244,7 @@ chose `GlanceTheme.colors` on any API 31+ device. It now collects
 path watches `dynamicColor` so a widget with no live session redraws when the
 switch changes, including through a restore. Light and dark still come from the
 system, per `widget.md`, which now says so. Seen on the Pixel 10 emulator: blue
-with the switch on, Catimo lavender off, blue again on. The 17 widget JVM tests
+with the switch on, Tellcat lavender off, blue again on. The 17 widget JVM tests
 pass.
 
 **All seven mascot poses are redrawn, D-074, and two of them changed what they
@@ -379,11 +398,11 @@ be rooted, so TalkBack's own verbose logging is out of reach as well. A screen
 reader on this platform is driven by a person or not at all.
 
 **First-run onboarding is built and verified as Phase 5 release work.** It is
-one screen that explains Catimo's core promise and core loop before opening the
+one screen that explains Tellcat's core promise and core loop before opening the
 existing Today screen. It does not ask for notification or exact-alarm
 permission: those requests remain attached to the first reminder, where the
 user has the context to understand them. Completion is app state and is
-deliberately not included in Catimo's JSON backup.
+deliberately not included in Tellcat's JSON backup.
 
 The normal and 200% font layouts were inspected on the emulator. The last line
 remains reachable by scrolling at 200%, the action stays above system
@@ -436,7 +455,7 @@ emulator at 14:50: Day reads Today, Time reads 3:00 PM, Save is live, and
 choosing Today keeps it that way. D-030 is unchanged and still holds every
 case it was written for.
 
-**Reminders arrive under the Catimo mark instead of a stock bell, D-072.** The
+**Reminders arrive under the Tellcat mark instead of a stock bell, D-072.** The
 small icon was `ic_notifications`, Material's bell, on all three reminder
 notifications. The launcher icon could never have been passed there, because
 Android masks a small icon down to its alpha and tints it, so an opaque
@@ -522,7 +541,7 @@ product's central claim, asserted on a check this project had already written do
 as unreliable.
 
 `Ready` now carries whether a delivery has been observed. Unverified reads "Not
-yet verified / Permissions are in place / Catimo has not seen a reminder arrive on
+yet verified / Permissions are in place / Tellcat has not seen a reminder arrive on
 this device yet"; verified reads "Ready / Reminders are arriving on time". Same
 frame, same colour, same place in D-021's ordering, because not-yet-measured is
 not worse than measured-fine.
@@ -983,7 +1002,7 @@ rows differing on any field**. The theme came back as Dark against a light syste
 which is the preferences half arriving.
 
 **A pre-rename backup still restores, which is the claim the rename rested on.**
-`Focuslist-backup-2026-09-09.json` was written by the app before the rename to Catimo and
+`Focuslist-backup-2026-09-09.json` was written by the app before the rename to Tellcat and
 restores cleanly now, swapping the list to its own older snapshot. The export
 filename moved with the app name and the `focuslist-backup` marker inside the file
 did not, which is why. Had that marker been renamed with everything else, every
@@ -1343,8 +1362,8 @@ and `onPrimaryFixedVariant` at runtime, which is what makes the cat follow
 dynamic colour where baked artwork could not. One function came out of it,
 `rememberMascotImage`, because `FocusMascot` lays its two poses out itself and
 cannot use `MascotImage`'s sizing. Everything else is two path sets, a crossfade
-and a moved `Text`. `FocuslistMotion.mascotSettle` is the one new token;
-`FocuslistDimensions.FocusShapeSize` is gone.
+and a moved `Text`. `TellcatMotion.mascotSettle` is the one new token;
+`TellcatDimensions.FocusShapeSize` is gone.
 
 **Sequenced deliberately against D-013's tripwire**, which said that if Phase 4
 slipped while Focus grew, D-004 was right about sequencing after all. The reason
@@ -1508,7 +1527,7 @@ to go. The maximums are gone, `minResizeHeight` is 140 and `minResizeWidth` is
 250, both sized to the row rather than copied from a frame.
 
 **The tests could not have caught it, which is the part worth remembering.**
-`FocuslistWidgetModelTest` pinned eight cases at 190 and 266, the two values
+`TellcatWidgetModelTest` pinned eight cases at 190 and 266, the two values
 production was trapped at. A suite that only asks about the heights the code can
 actually receive will pass forever. It now has a ladder at heights no breakpoint
 could produce, and its fixture takes a task count, because six filler tasks made
@@ -1531,8 +1550,8 @@ bugs.** D-039. Every reminder carries `setGroup` and a summary counts them, whic
 closes the other frame the board drew and the app had never built. The count is
 allowed under D-031's carve-out, disclosing what a collapsed stack hides, and it
 counts notifications on screen rather than reminders fired or tasks outstanding.
-The board's "Catimo · 3 reminders" lost its app name, because Android draws
-that in the header and the string would have said Catimo twice.
+The board's "Tellcat · 3 reminders" lost its app name, because Android draws
+that in the header and the string would have said Tellcat twice.
 
 **The first bug would have shipped and would have been severe.** The summary was
 cancelled once fewer than two reminders remained, which is the obvious rule and
@@ -1588,7 +1607,7 @@ reminder deep links may take a user directly to the health screen when action is
 needed", and no such warning existed at the time. This is that warning, so the
 entry point D-029 traded away now has its replacement.
 
-`FocuslistNavHost` owns one `ReminderHealthViewModel` above the graph now, handed
+`TellcatNavHost` owns one `ReminderHealthViewModel` above the graph now, handed
 to both Today and the health screen, and refreshes it from a
 `LifecycleResumeEffect` on the Today destination. Permissions change while the
 user is in Settings and Android offers nothing to observe, so without the re-read
@@ -1624,7 +1643,7 @@ costing a feature.
 **Checked rather than recalled, which changed the shape of the entry.** TickTick
 8.1.3.6 on the emulator, installed by `com.android.vending`, declares
 `USE_FULL_SCREEN_INTENT` and holds it `granted=true` at `targetSdk=37`, the same
-target Catimo builds against. So the permission is obtainable by a task app
+target Tellcat builds against. So the permission is obtainable by a task app
 rather than reserved to alarm clocks, and D-038 defers on sequencing alone
 rather than on a policy wall that is not there. The dump cannot say whether Play
 pre-granted it or the user did; that is recorded as a lead.
@@ -1731,7 +1750,7 @@ card rather than tripping a `largeText` threshold. The enum is gone. The two
 `DpSize`s stay, because Glance needs them to pick which RemoteViews it builds.
 
 It reproduces the old table exactly at both declared sizes across all eight
-combinations, and `FocuslistWidgetModelTest` pins those eight so any change to a
+combinations, and `TellcatWidgetModelTest` pins those eight so any change to a
 height constant has to say which case it moved. The reported bug has its own
 test at 320dp.
 
@@ -1798,7 +1817,7 @@ is what D-004 removed the queue for.
 The reason is gone from the enum, so the card now speaks only for a paused
 session or a reminder that fired and was not acted on. Both are events; neither
 can be read off a list. The knock-on is that D-031's widget threshold is no
-longer a threshold: the filter came out of `FocuslistWidgetModel` because the
+longer a threshold: the filter came out of `TellcatWidgetModel` because the
 rule it was correcting no longer produces the reason, and `focusNow` lost its
 `today` parameter because nothing left in it asks what day it is.
 
@@ -1915,7 +1934,7 @@ inset without reducing the 48dp target. The pure widget model covers state selec
 capacity, completion evidence, urgency and large font scaling with JVM tests;
 manifest tests cover the provider and closed-app refresh wiring.
 
-**The three lists have their mascots, and Catimo has a cat.** The empty
+**The three lists have their mascots, and Tellcat has a cat.** The empty
 states had been two lines of text on an otherwise blank screen. Each now draws
 the same cat in a different posture, and the posture is what says why the screen
 is empty: curled asleep for a day with nothing on it, sitting upright for an
@@ -2050,11 +2069,11 @@ the OxygenOS demotion survives the Doze allowlist, exactly as D-009 recorded.
 **Settings and local continuity were pulled forward under D-028.** D-024's list
 is now the implementation: Reminder health, Dynamic color, Theme, and Backup &
 restore, in three sections and no fifth row. Settings is a room in the app-bar
-overflow, the appearance choices persist and drive `FocuslistTheme`, and Theme
+overflow, the appearance choices persist and drive `TellcatTheme`, and Theme
 commits from its three-radio dialog without an extra confirmation step.
 
 Backup & restore uses the Storage Access Framework, so the user chooses the
-file and Catimo never invents a cloud destination. Its versioned JSON carries
+file and Tellcat never invents a cloud destination. Its versioned JSON carries
 every stored task field and both appearance settings. A restore validates the
 whole file before one row changes, then replaces the task set in a Room
 transaction. Reminder delivery history is cleared because it measures the old
@@ -2161,7 +2180,7 @@ already use.
 **Two defects were found by looking rather than by testing.** The seven weekday
 chips at their natural width came to 1002px inside a 992px column, so the last
 day wrapped to a line of its own at the default font scale;
-`FocuslistDimensions.WeekdayChipSize` fixes the width at the board's own 48dp and
+`TellcatDimensions.WeekdayChipSize` fixes the width at the board's own 48dp and
 floors the height there. And `occurrenceNumber` had its default only in the
 migration, so
 the table Room creates on a fresh install had `NOT NULL` with nothing to fall
@@ -2301,12 +2320,12 @@ The rule now is that **the app colours what it knows.** `Blocked` keeps the
 error container because the app was refused and can say so; `Warning` takes the
 ordinary row surface and a question mark because it is a guess. The headline
 follows: a device whose only problem is inferred reads "Worth checking" on a
-neutral card, and the body says what the app cannot know, "Catimo cannot tell
+neutral card, and the body says what the app cannot know, "Tellcat cannot tell
 whether it is on."
 
 **Tertiary was tried first and rejected on the render**, which surfaced a
 palette fact worth keeping: `tertiaryContainer` is `#FFD7E3` and `errorContainer`
-is `#FFD8D6`, one step apart in green. The Catimo palette has three usable
+is `#FFD8D6`, one step apart in green. The Tellcat palette has three usable
 container families, lavender, pink and neutral, because primary/secondary and
 tertiary/error each collapse into one. That constrains any future state colour,
 not just this screen's.
@@ -2418,14 +2437,14 @@ constants are gone. This is the code arriving at the same drift the board had,
 from the other direction: a second copy of three numbers is how one group of
 rows ends up disagreeing with itself about its own corners.
 
-`TaskDetailsScreen` had bypassed `FocuslistTopAppBar` for a raw `TopAppBar`,
+`TaskDetailsScreen` had bypassed `TellcatTopAppBar` for a raw `TopAppBar`,
 because the shared component required a non-null title and this screen has none.
 The component's own KDoc says it exists because screens that wrote their own bar
 drifted apart. `title` is nullable now, and the reason a screen may pass null is
 documented on the parameter, so the next title-less screen has a supported route
 rather than a precedent for bypassing.
 
-**Reminder health moved onto the shared bar too**, so `FocuslistTopAppBar` is
+**Reminder health moved onto the shared bar too**, so `TellcatTopAppBar` is
 now the only file in `ui/` that references `TopAppBar` at all. It also gained
 the heading semantics the shared bar applies and its own bar did not, which a
 screen reader uses to say where the user is.
@@ -2470,7 +2489,7 @@ neutral, and the second cue is a question mark rather than a colour.
 
 Verified on the emulator with the manufacturer temporarily forced to OnePlus,
 since a Pixel infers no restriction. The Warning-only screen reads calm: no red
-anywhere, "Worth checking", and "Sleep standby can delay reminders. Catimo
+anywhere, "Worth checking", and "Sleep standby can delay reminders. Tellcat
 cannot tell whether it is on." The mixed state renders both at once, a red
 Notifications row and a neutral Sleep standby row on the same screen, which is
 the rule that certainty belongs to the check rather than to the headline. The
@@ -2572,7 +2591,7 @@ on the way in. The task being genuinely gone is now watched in the view model
 against `repository.observeTasks()`, which only emits once it has really read.
 
 **The header is built to D-017 and D-020, and the code no longer trails them.**
-`FocuslistTopAppBar` wraps the compact 64dp `TopAppBar`, pinned, with a title
+`TellcatTopAppBar` wraps the compact 64dp `TopAppBar`, pinned, with a title
 and one side slot and nothing else. The `subtitle` and `scrollBehavior`
 parameters are gone from the component, so no screen can pass either.
 
@@ -2669,7 +2688,7 @@ Today now matches them, carrying its own calendar icon the way they carry
 theirs.
 
 The copy bug is the more useful find. Inbox and Upcoming both read **"Check your
-connection and try again."** Catimo has no accounts, no cloud sync and no
+connection and try again."** Tellcat has no accounts, no cloud sync and no
 backend, all three permanently out of scope in `PRODUCT.md`, so every read is
 local and no connection is ever involved. The line sent users to fix something
 that was not the problem and implied a server the app does not have. All four
@@ -2811,7 +2830,7 @@ and a task row's trailing is a duration string and an icon button together.
 and are fixed. `focus.md`'s Completion section still described the session
 continuing onto the next task, which needs the queue D-004 removed and which its
 own "Which task" section already contradicted. And `expressive-design-system.md`
-still said Catimo used seven Material shapes, recording a worry about that
+still said Tellcat used seven Material shapes, recording a worry about that
 accumulation; it uses two now, and the worry is answered.
 
 ---
@@ -2821,7 +2840,7 @@ than the app.** No Kotlin was touched, none of it is reflected in code yet, and
 the work is in Figma on the `Focuslist — M3 Expressive` page.
 
 - **Colour.** Every M3 library component on the board was still bound to the
-  library's own `Schemes/*` variables, which carry no Catimo modes, so the
+  library's own `Schemes/*` variables, which carry no Tellcat modes, so the
   Start focus button and the FAB stayed baseline purple in the wallpaper
   frames. 929 bindings moved onto the `Focuslist Brand` collection. The Light
   value of `On Primary Container` was corrected from `#001356`, a blue that did
@@ -2898,7 +2917,7 @@ That is a board-wide convention to change in one pass or not at all, not a
 Settings defect.
 
 **And one gap the frames cannot show.** Both Appearance rows need persistence
-the app does not have: no DataStore, no SharedPreferences, and `FocuslistTheme`
+the app does not have: no DataStore, no SharedPreferences, and `TellcatTheme`
 takes `darkTheme` and `dynamicColor` as parameters nothing outside previews
 overrides. Phase 5's first bullet is a preferences store, and the screen after
 it.
@@ -2954,7 +2973,7 @@ preset would move it with nothing to say so.
 be", not as how tall a button is. 48dp is not on the expressive scale at all,
 which runs 32, 40, 56, 96, 136. Start focus had the right 56dp through
 `FocusControlSize`, a token named for the Focus screen's action row. Both are
-now `FocuslistDimensions.ActionHeight`, and `FocusControlSize` is left
+now `TellcatDimensions.ActionHeight`, and `FocusControlSize` is left
 describing only the square clock control it is named for. The board had drawn
 every one of these at Medium all along.
 
@@ -3012,7 +3031,7 @@ vocabulary, and the two frames that describe work not done.
 **Two frames describe work that does not exist, and the board makes it look
 done.** There is no `setFullScreenIntent` anywhere, though D-005 commits to
 "full-screen intents where warranted"; and nothing calls `setGroup`, so the
-"Catimo · 3 reminders" summary never appears, Android bundling only at four
+"Tellcat · 3 reminders" summary never appears, Android bundling only at four
 or more. Both are now recorded as unbuilt rather than left to be discovered.
 
 **What to settle before the full-screen alarm is built:** what warrants one.
@@ -3035,7 +3054,7 @@ The demotion is a minority behaviour, not how Android works.
 The decision stands and is stronger for it. All three reported the permission
 granted and all three said "Exact alarms: Allowed", while the behaviour
 differed by three orders of magnitude, so only measuring delivery tells them
-apart. The Xiaomi also showed the health screen earning its place: Catimo
+apart. The Xiaomi also showed the health screen earning its place: Tellcat
 was absent from MIUI's Background autostart list, so on that phone it could
 not have rebuilt its alarms after a restart at all.
 
@@ -3142,7 +3161,7 @@ something on a Xiaomi, a Samsung or a Huawei.
 failed, because it only asks whether a screen resolves, and resolving is not
 permission to start it. Resolution and launch are separate questions on these
 skins, and only the second one matters. Trust the log line over the test:
-`FocuslistReminder` records which screen was opened, or that none was.
+`TellcatReminder` records which screen was opened, or that none was.
 
 **Phase 2's exit criteria are met.**
 
@@ -3236,7 +3255,7 @@ is already open.
 
 Give the app the feature it is named for and does not have.
 
-Catimo currently schedules exactly one kind of alarm, for a focus session
+Tellcat currently schedules exactly one kind of alarm, for a focus session
 overrunning its estimate. There are no task reminders at all, the manifest
 declares only `POST_NOTIFICATIONS`, and there is no boot receiver, so a device
 restart would silently lose every alarm ever set.

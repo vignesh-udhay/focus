@@ -1,0 +1,318 @@
+package app.tellcat.ui.inbox
+
+import android.content.res.Configuration
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.tellcat.R
+import app.tellcat.core.design.TellcatDimensions
+import app.tellcat.core.design.TellcatMotion
+import app.tellcat.core.design.TellcatSpacing
+import app.tellcat.core.design.tellcatContentGutter
+import app.tellcat.core.domain.Task
+import app.tellcat.core.domain.inboxTasks
+import app.tellcat.ui.component.AddTaskFab
+import app.tellcat.ui.component.TellcatTopAppBar
+import app.tellcat.ui.component.InboxMascot
+import app.tellcat.ui.component.TaskListEmptyState
+import app.tellcat.ui.component.TaskListErrorState
+import app.tellcat.ui.component.TaskListRow
+import app.tellcat.ui.component.UndoSnackbarHost
+import app.tellcat.core.domain.PrimaryList
+import app.tellcat.ui.task.QuickAddSheet
+import app.tellcat.ui.task.TaskListViewModel
+import app.tellcat.ui.task.rememberCaptureLandingNotice
+import app.tellcat.ui.task.UndoSnackbarEffect
+import app.tellcat.ui.theme.TellcatTheme
+import java.time.Instant
+import java.time.LocalDate
+
+/**
+ * Inbox: everything outstanding without a scheduled date.
+ *
+ * A task leaves by being scheduled, completed, or deleted.
+ *
+ * Quick Add here captures without a date, which is the difference from Today.
+ * Deciding when to do it is exactly the decision Inbox exists to defer. A title
+ * that says when, with a day or a reminder, has made that decision and lands on
+ * the list the day belongs to. D-075.
+ */
+@Composable
+fun InboxScreen(
+    viewModel: TaskListViewModel,
+    // Tapping a row opens Task Details, which is a destination since D-018
+    // rather than a sheet this screen hosts. The route is the host's to know.
+    onOpenTask: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    bottomBar: @Composable () -> Unit = {},
+    // The three dots at the end of the header row. A slot rather than a route,
+    // because navigating is the host's job and this screen only has to leave
+    // room for it.
+    overflow: @Composable RowScope.() -> Unit = {},
+    // Where the View action on "Saved to Today" goes. D-075.
+    onOpenList: (PrimaryList) -> Unit = {}
+) {
+    val tasks by viewModel.inboxTasks.collectAsStateWithLifecycle()
+    val today by viewModel.today.collectAsStateWithLifecycle()
+    val readFailed by viewModel.readFailed.collectAsStateWithLifecycle()
+    val tasksLoaded by viewModel.tasksLoaded.collectAsStateWithLifecycle()
+
+    // Screen state, not app state: opening Quick Add here says nothing about
+    // whether Today has its own sheet open.
+    var isQuickAddVisible by rememberSaveable { mutableStateOf(false) }
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    UndoSnackbarEffect(viewModel = viewModel, snackbarHostState = snackbarHostState)
+    val announceLanding = rememberCaptureLandingNotice(
+        snackbarHostState = snackbarHostState,
+        currentList = PrimaryList.INBOX,
+        onOpenList = onOpenList
+    )
+
+    InboxContent(
+        tasks = tasks,
+        today = today,
+        onToggleComplete = viewModel::toggleComplete,
+        onOpenTask = onOpenTask,
+        onAddTask = { isQuickAddVisible = true },
+        readFailed = readFailed,
+        // D-065. Until this is true, an empty list means the read has not
+        // answered rather than that nothing is waiting.
+        tasksLoaded = tasksLoaded,
+        onRetry = viewModel::retryRead,
+        modifier = modifier,
+        snackbarHostState = snackbarHostState,
+        bottomBar = bottomBar,
+        overflow = overflow
+    )
+
+    if (isQuickAddVisible) {
+        QuickAddSheet(
+            today = today,
+            // Inbox leaves an undated capture undated, which is the decision it
+            // exists to defer, so the line names Inbox rather than Today. D-053.
+            fallbackDate = null,
+            onDismiss = { isQuickAddVisible = false },
+            // Captured without a date unless the title said when: deciding when
+            // to do it is the decision Inbox defers, but a user who already
+            // said "friday", or "5pm", has made it. D-075: a reminder schedules
+            // the task for the day it rings, so "call mom 5pm" lands on Today
+            // rather than staying here with a reminder this afternoon. A blank
+            // title captures nothing and leaves the sheet open.
+            onSave = { parsed ->
+                val landed = viewModel.capture(parsed, fallbackDate = null)
+                if (landed != null) {
+                    isQuickAddVisible = false
+                    announceLanding(landed)
+                }
+            }
+        )
+    }
+
+}
+
+/**
+ * The Inbox layout.
+ *
+ * Stateless, and the same segmented collection Today and Upcoming use. [tasks]
+ * arrives already filtered and ordered by `inboxTasks`; this screen neither
+ * filters nor sorts.
+ */
+@Composable
+private fun InboxContent(
+    tasks: List<Task>,
+    today: LocalDate,
+    onToggleComplete: (String) -> Unit,
+    onOpenTask: (String) -> Unit,
+    onAddTask: () -> Unit,
+    readFailed: Boolean = false,
+    // Defaults to true, so a preview or a test handing in a list is showing a
+    // list that has been read. Only the live screen can be in the other state.
+    tasksLoaded: Boolean = true,
+    onRetry: () -> Unit = {},
+    modifier: Modifier = Modifier,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+    bottomBar: @Composable () -> Unit = {},
+    overflow: @Composable RowScope.() -> Unit = {}
+) {
+    // The large title collapses as the list moves under it, as on Today.
+    val taskColors = ListItemDefaults.segmentedColors(
+        containerColor = MaterialTheme.colorScheme.surfaceContainer
+    )
+
+    val gutter = tellcatContentGutter()
+
+    Scaffold(
+        modifier = modifier,
+        containerColor = MaterialTheme.colorScheme.surface,
+        snackbarHost = { UndoSnackbarHost(snackbarHostState) },
+        bottomBar = bottomBar,
+        topBar = {
+            TellcatTopAppBar(
+                actions = overflow,
+                title = stringResource(R.string.inbox_title)
+                // The count went with D-020, which made every bar 64dp and
+                // subtitleless. It was the strongest of the three subtitles and
+                // it still went, because the height it justified was the thing
+                // being bought back and a subtitle and the height are one
+                // decision. The list below says how much is waiting.
+            )
+        },
+        floatingActionButton = {
+            AddTaskFab(
+                onClick = onAddTask,
+                // Follows the content column in on a wide window, as on Today.
+                modifier = Modifier.padding(end = gutter)
+            )
+        }
+    ) { innerPadding ->
+        if (readFailed) {
+            TaskListErrorState(
+                headline = stringResource(R.string.error_tasks_headline),
+                supporting = stringResource(R.string.error_tasks_supporting),
+                onRetry = onRetry,
+                modifier = Modifier.padding(innerPadding)
+            )
+        } else if (!tasksLoaded) {
+            // Nothing, per D-065. "Inbox is empty" is a claim about the user's
+            // work, and the app has not looked yet.
+        } else if (tasks.isEmpty()) {
+            TaskListEmptyState(
+                headline = stringResource(R.string.inbox_empty_headline),
+                supporting = stringResource(R.string.inbox_empty_supporting),
+                modifier = Modifier.padding(innerPadding),
+                illustration = { InboxMascot() }
+            )
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = TellcatSpacing.md + gutter,
+                    end = TellcatSpacing.md + gutter,
+                    top = innerPadding.calculateTopPadding() + TellcatSpacing.xs,
+                    // Clears the floating action button, as on Today.
+                    bottom = innerPadding.calculateBottomPadding() + TellcatDimensions.FabClearance
+                ),
+                verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
+            ) {
+                itemsIndexed(tasks, key = { _, task -> task.id }) { index, task ->
+                    TaskListRow(
+                        task = task,
+                        today = today,
+                        shapes = ListItemDefaults.segmentedShapes(
+                            index = index,
+                            count = tasks.size
+                        ),
+                        colors = taskColors,
+                        onToggleComplete = { onToggleComplete(task.id) },
+                        onOpen = { onOpenTask(task.id) },
+                        // A task leaving the list when it is scheduled or
+                        // completed travels out rather than vanishing.
+                        modifier = Modifier.animateItem(
+                            placementSpec = TellcatMotion.listChange()
+                        )
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** A fixed timestamp, so previews do not shift with the clock. */
+private val SampleTimestamp: Instant = Instant.parse("2026-01-01T09:00:00Z")
+
+private fun sampleInboxTasks(): List<Task> = listOf(
+    Task(
+        id = "1",
+        title = "Ask Priya about the contract renewal",
+        createdAt = SampleTimestamp
+    ),
+    Task(
+        id = "2",
+        title = "Work out whether the analytics migration is worth doing at all, " +
+            "or whether it can simply be dropped",
+        createdAt = SampleTimestamp.plusSeconds(60)
+    ),
+    Task(
+        id = "3",
+        title = "Replace the kitchen bulb",
+        createdAt = SampleTimestamp.plusSeconds(120),
+        estimatedDurationMinutes = 5
+    ),
+    // Excluded: scheduled, so it belongs in a dated list.
+    Task(
+        id = "4",
+        title = "Chase the missing invoice",
+        createdAt = SampleTimestamp.plusSeconds(180),
+        scheduledDate = LocalDate.now()
+    ),
+    // Included: it has no scheduled date.
+    Task(
+        id = "5",
+        title = "Read the Compose performance guide",
+        createdAt = SampleTimestamp.plusSeconds(240)
+    )
+)
+
+@Preview(name = "Inbox light", heightDp = 640)
+@Preview(name = "Inbox dark", heightDp = 640, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun InboxScreenPreview() {
+    TellcatTheme(dynamicColor = false) {
+        InboxContent(
+            tasks = inboxTasks(sampleInboxTasks()),
+            today = LocalDate.now(),
+            onToggleComplete = {},
+            onOpenTask = {},
+            onAddTask = {}
+        )
+    }
+}
+
+@Preview(name = "Inbox empty light", heightDp = 640)
+@Preview(name = "Inbox empty dark", heightDp = 640, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun InboxScreenEmptyPreview() {
+    TellcatTheme(dynamicColor = false) {
+        InboxContent(
+            tasks = emptyList(),
+            today = LocalDate.now(),
+            onToggleComplete = {},
+            onOpenTask = {},
+            onAddTask = {}
+        )
+    }
+}
+
+@Preview(name = "Inbox large font", heightDp = 640, fontScale = 2f)
+@Composable
+private fun InboxScreenLargeFontPreview() {
+    TellcatTheme(dynamicColor = false) {
+        InboxContent(
+            tasks = inboxTasks(sampleInboxTasks()),
+            today = LocalDate.now(),
+            onToggleComplete = {},
+            onOpenTask = {},
+            onAddTask = {}
+        )
+    }
+}

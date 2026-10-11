@@ -1,4 +1,4 @@
-# Catimo, Claude Instructions
+# Tellcat, Claude Instructions
 
 ## Start of every session
 
@@ -49,7 +49,7 @@ say which decision it touches.
 
 ## What the app is for
 
-Catimo tells you about your work at the moment it matters, and it does not
+Tellcat tells you about your work at the moment it matters, and it does not
 miss.
 
 A reminder that does not fire is the most severe class of bug in this
@@ -74,9 +74,9 @@ Before implementing a feature:
 
 ## Design
 
-Catimo is a native Android application.
+Tellcat is a native Android application.
 
-Use the existing Material 3 theme and Catimo design system.
+Use the existing Material 3 theme and Tellcat design system.
 
 Prefer Material 3 components over custom implementations.
 

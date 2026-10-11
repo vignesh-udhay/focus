@@ -76,7 +76,7 @@ notification permission the user had refused.
 
 Three pieces, each doing a different job:
 
-    title    OnePlus may put Catimo to sleep      who is doing it
+    title    OnePlus may put Tellcat to sleep      who is doing it
     body     Sleep standby can delay reminders.      what it is called
     button   Open Sleep standby settings             where to go
 
@@ -178,7 +178,7 @@ restriction reads **Worth checking** on a neutral card, not **Action needed** in
 error colours, and the body says what the app cannot know:
 
     Sleep standby can delay reminders.
-    Catimo cannot tell whether it is on.
+    Tellcat cannot tell whether it is on.
 
 **The screen used to render Warning and Blocked identically.** `Badge()`
 branched on `Ok` against not-`Ok`, so a feature the app was guessing at looked
@@ -193,7 +193,7 @@ a third colour, and the app already uses `tertiary` for an overdue date. It does
 not work here: this palette puts `tertiaryContainer` at `#FFD7E3` and
 `errorContainer` at `#FFD8D6`, one step apart in green, so the caution and the
 error were indistinguishable. That is worth knowing beyond this screen. The
-Catimo palette has three usable container families, lavender, pink and
+Tellcat palette has three usable container families, lavender, pink and
 neutral, and primary/secondary and tertiary/error each collapse into one.
 
 **What stays loud.** A refused permission is an error, because the app was told.

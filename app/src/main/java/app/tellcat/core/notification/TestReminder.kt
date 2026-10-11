@@ -1,0 +1,174 @@
+package app.tellcat.core.notification
+
+import android.app.AlarmManager
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.os.SystemClock
+import android.util.Log
+import androidx.core.content.getSystemService
+import app.tellcat.TellcatApplication
+import app.tellcat.core.domain.DeliveryOutcome
+import app.tellcat.core.domain.ReminderDelivery
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import java.time.Duration
+import java.time.Instant
+import java.time.ZoneId
+import java.util.UUID
+
+/**
+ * A reminder the user can fire on purpose, to see whether this phone delivers.
+ *
+ * The one part of reminder health that is not an inference. Everything else on
+ * that screen reads a permission or guesses from a manufacturer name; this
+ * actually schedules an alarm, waits, and reports what happened. On a device
+ * that quietly throttles background work it is the fastest way for someone to
+ * find out, without setting a real reminder and hoping.
+ *
+ * It travels the same road as a real one: `AlarmManager`, a broadcast
+ * receiver, a notification, and a row in the delivery record. A test that took
+ * a shortcut past any of those would be testing the shortcut.
+ *
+ * Thirty seconds, as `reminder/Test Reminder — Clean Slate` promises. Long
+ * enough that the user can lock the phone and put it down, short enough that
+ * nobody abandons the test. It is deliberately too short to count as evidence
+ * that the device behaves: half a minute cannot reach Doze, and clearing a
+ * warning on it would be the app marking its own homework.
+ */
+object TestReminder {
+
+    val Delay: Duration = Duration.ofSeconds(30)
+
+    /** The id the delivery record files these under. */
+    const val TaskId = "tellcat.test-reminder"
+
+    /**
+     * Schedules the test, exactly as a real reminder is scheduled.
+     *
+     * It uses the same vendor-specific delivery mode as a real reminder. A
+     * test that stayed on `setExactAndAllowWhileIdle` after OnePlus reminders
+     * moved to `setAlarmClock` would be testing a path the user no longer has.
+     */
+    fun schedule(context: Context) {
+        val alarms = context.getSystemService<AlarmManager>() ?: run {
+            Log.e(LogTag, "No AlarmManager. Test reminder cannot be scheduled.")
+            return
+        }
+
+        val at = Instant.now().plus(Delay)
+        val intent = pendingIntent(context, at)
+
+        val canScheduleExact = context.applicationContext
+            .let { it as? TellcatApplication }
+            ?.reminderAlarms
+            ?.canScheduleExact() == true
+
+        if (canScheduleExact) {
+            if (usesAlarmClockDelivery(Build.MANUFACTURER)) {
+                alarms.setAlarmClock(reminderAlarmClockInfo(context, at), intent)
+            } else {
+                alarms.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    at.toEpochMilli(),
+                    intent
+                )
+            }
+        } else {
+            alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at.toEpochMilli(), intent)
+        }
+    }
+
+    private fun pendingIntent(context: Context, at: Instant): PendingIntent {
+        val intent = Intent(context, TestReminderReceiver::class.java).apply {
+            data = Uri.parse("tellcat://test-reminder")
+            putExtra(TestReminderReceiver.EXTRA_SCHEDULED_WALL, at.toEpochMilli())
+            putExtra(
+                TestReminderReceiver.EXTRA_SCHEDULED_ELAPSED,
+                SystemClock.elapsedRealtime() + (at.toEpochMilli() - System.currentTimeMillis())
+            )
+        }
+
+        return PendingIntent.getBroadcast(
+            context,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+}
+
+/**
+ * Posts the test, and writes down how it went.
+ *
+ * Recorded in the same table as every real delivery, because it is the same
+ * measurement. Its futurity is thirty seconds, which is under
+ * `EvidenceHorizon`, so it can never clear a warning about background work. It
+ * can raise one: a test that arrives two minutes late is the device telling
+ * the user something, and the health screen will say so.
+ */
+class TestReminderReceiver : BroadcastReceiver() {
+
+    override fun onReceive(context: Context, intent: Intent) {
+        val arrivedWallAt = Instant.now()
+        val arrivedElapsedAt = SystemClock.elapsedRealtime()
+        val scheduledWallAt = Instant.ofEpochMilli(
+            intent.getLongExtra(EXTRA_SCHEDULED_WALL, arrivedWallAt.toEpochMilli())
+        )
+        val scheduledElapsedAt = intent.getLongExtra(EXTRA_SCHEDULED_ELAPSED, arrivedElapsedAt)
+
+        val application = context.applicationContext as? TellcatApplication ?: return
+        val finish = goAsync()
+
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            try {
+                // The reminder check, not the permission alone, so a channel set to
+                // None cannot pass the test. D-078.
+                val posted = if (context.canPostReminders()) {
+                    context.ensureReminderChannel()
+                    context.postTestReminder(arrivedWallAt).also { didPost ->
+                        if (!didPost) {
+                            Log.w(LogTag, "Test reminder permission changed before posting.")
+                        }
+                    }
+                } else {
+                    Log.w(LogTag, "Cannot post. Test reminder fired and said nothing.")
+                    false
+                }
+
+                application.reminderDeliveryRepository.record(
+                    ReminderDelivery(
+                        id = UUID.randomUUID().toString(),
+                        taskId = TestReminder.TaskId,
+                        taskTitle = context.getString(
+                            app.tellcat.R.string.reminder_test_title
+                        ),
+                        dueAt = scheduledWallAt.atZone(ZoneId.systemDefault()).toLocalDateTime(),
+                        scheduledWallAt = scheduledWallAt,
+                        scheduledElapsedAt = scheduledElapsedAt,
+                        arrivedWallAt = arrivedWallAt,
+                        arrivedElapsedAt = arrivedElapsedAt,
+                        scheduledAhead = TestReminder.Delay,
+                        outcome = if (posted) {
+                            DeliveryOutcome.Announced
+                        } else {
+                            DeliveryOutcome.Suppressed
+                        }
+                    )
+                )
+            } finally {
+                finish.finish()
+            }
+        }
+    }
+
+    companion object {
+        const val EXTRA_SCHEDULED_WALL = "tellcat.extra.testScheduledWall"
+        const val EXTRA_SCHEDULED_ELAPSED = "tellcat.extra.testScheduledElapsed"
+    }
+}

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    The Focuslist app icon, from board node `1065:28`.
+    The Tellcat app icon, from board node `1065:28`.
 
     Fixed hex rather than colour roles. A launcher renders outside the app's
     theme, so `primaryFixed` and its neighbours do not resolve here. The values

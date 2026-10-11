@@ -1,0 +1,423 @@
+package app.tellcat.ui.navigation
+
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import app.tellcat.TellcatApplication
+import app.tellcat.core.design.LocalContentWidth
+import app.tellcat.core.design.tellcatUsesNavigationRail
+import app.tellcat.core.domain.PrimaryList
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
+import app.tellcat.ui.focus.FocusSheet
+import app.tellcat.ui.inbox.InboxScreen
+import app.tellcat.ui.logbook.LogbookScreen
+import app.tellcat.ui.task.TaskDetailsScreen
+import app.tellcat.ui.health.ReminderHealthScreen
+import app.tellcat.ui.health.ReminderHealthViewModel
+import app.tellcat.ui.reminder.ReminderPermissionGate
+import app.tellcat.ui.settings.BackupScreen
+import app.tellcat.ui.settings.BackupViewModel
+import app.tellcat.ui.settings.SettingsScreen
+import app.tellcat.ui.task.TaskListViewModel
+import app.tellcat.ui.today.TodayScreen
+import app.tellcat.ui.upcoming.UpcomingScreen
+import app.tellcat.ui.widget.WidgetLaunchCommand
+
+/**
+ * The navigation graph.
+ *
+ * Every screen sits directly in it and every screen carries the bar, so any
+ * destination is one or two taps from any other. Nothing has to be reached by
+ * going back to Today first.
+ *
+ * Back is the navigation back stack's own, not a hand-written one: back from a
+ * secondary destination returns to whichever list it was opened from, back
+ * from Inbox returns to Today, and back from Today leaves the app.
+ */
+@Composable
+fun TellcatNavHost(
+    modifier: Modifier = Modifier,
+    navController: NavHostController = rememberNavController(),
+    widgetCommand: WidgetLaunchCommand? = null,
+    onWidgetCommandHandled: (WidgetLaunchCommand) -> Unit = {}
+) {
+    val currentEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = currentEntry?.destination?.route
+
+    val application = LocalContext.current.applicationContext as TellcatApplication
+
+    // Obtained here, above the graph, and handed to every screen. Inside a
+    // destination the view model store owner is that destination's back stack
+    // entry, which would give each list its own view model and split the undo
+    // offer five ways.
+    val viewModel = taskListViewModel()
+    // A count rather than a flag, so pressing add on the widget again while
+    // Today is already open changes the key and fires the effect a second time.
+    // Zero means nothing is pending: Today sets it back there once it has
+    // opened the sheet, because a request left standing is replayed by every
+    // later composition of a destination that gets disposed on every navigation.
+    var quickAddRequest by rememberSaveable { mutableIntStateOf(0) }
+
+    // Built here for the same reason, and now for a second one: since D-040 two
+    // screens read it. The health screen is the room, and Today's banner is the
+    // contextual warning D-029 said would take a user there. Built inside the
+    // health destination it would have been that destination's own, so Today
+    // would have had a second instance answering the same question separately.
+    val reminderHealthViewModel: ReminderHealthViewModel = viewModel(
+        factory = ReminderHealthViewModel.Factory(
+            deliveries = application.reminderDeliveryRepository,
+            checks = application.reminderHealthChecks,
+            acknowledgements = application.reminderHealthAcknowledgements
+        )
+    )
+
+    LaunchedEffect(widgetCommand) {
+        val command = widgetCommand ?: return@LaunchedEffect
+        when (command) {
+            WidgetLaunchCommand.Today -> navController.openTopLevel(TellcatRoutes.TODAY)
+            WidgetLaunchCommand.Add -> {
+                navController.openTopLevel(TellcatRoutes.TODAY)
+                quickAddRequest += 1
+            }
+            is WidgetLaunchCommand.TaskDetails -> {
+                navController.navigate(TellcatRoutes.taskDetails(command.taskId)) {
+                    launchSingleTop = true
+                }
+            }
+        }
+        onWidgetCommandHandled(command)
+    }
+
+    // Whether the Focus sheet is on screen, which since D-015 is a different
+    // question from whether a session exists: leaving pauses rather than stops,
+    // so a paused session outlives the sheet and driving the sheet off the
+    // session would reopen it on the next frame.
+    val isFocusOpen by viewModel.isFocusSheetOpen.collectAsStateWithLifecycle()
+
+    // One navigation model, two presentations. Which one is on screen is the
+    // only thing this decides; the graph, the destinations and the back stack
+    // are identical either way.
+    val usesRail = tellcatUsesNavigationRail()
+
+    // Screens take their navigation as a bottom bar. With a rail beside them
+    // there is no bottom bar to give, so they are handed nothing and the rail
+    // sits outside them, full height, as Material specifies.
+    val navigationBar: @Composable () -> Unit = if (usesRail) {
+        {}
+    } else {
+        {
+            TellcatNavigationBar(
+                currentRoute = currentRoute,
+                onOpenTopLevel = navController::openTopLevel
+            )
+        }
+    }
+
+    // Built once for the same reason the bar is: three screens must offer the
+    // same places, and two copies of a menu drift.
+    val overflow: @Composable RowScope.() -> Unit = {
+        TellcatOverflowMenu(onOpen = navController::openSecondary)
+    }
+
+    val graph: @Composable (Modifier) -> Unit = { hostModifier ->
+        NavHost(
+            navController = navController,
+            startDestination = TellcatRoutes.TODAY,
+            modifier = hostModifier
+        ) {
+            composable(TellcatRoutes.TODAY) {
+                // Permissions change while the user is away in Settings and
+                // Android offers nothing to observe, so Today asks again every
+                // time it comes back. Without this the banner would outlive the
+                // problem: the user turns notifications on, returns, and is
+                // still being told they are off.
+                //
+                // Here rather than inside the screen, because the question is
+                // the host's: `TodayScreen` is handed an answer and does not
+                // know which view model produced it.
+                LifecycleResumeEffect(Unit) {
+                    reminderHealthViewModel.refresh()
+                    onPauseOrDispose {}
+                }
+
+                val reminderHealth by reminderHealthViewModel.todayState
+                    .collectAsStateWithLifecycle()
+
+                TodayScreen(
+                    viewModel = viewModel,
+                    quickAddRequest = quickAddRequest,
+                    onQuickAddRequestHandled = { quickAddRequest = 0 },
+                    onOpenTask = { id ->
+                        navController.navigate(TellcatRoutes.taskDetails(id))
+                    },
+                    bottomBar = navigationBar,
+                    overflow = overflow,
+                    // Nothing to navigate to any more. Choosing a task is what
+                    // opens Focus, and the sheet appears over whatever screen
+                    // asked for it.
+                    onOpenFocus = {},
+                    reminderHealth = reminderHealth,
+                    // An ordinary forward move, like the overflow's, so back
+                    // returns to Today rather than to whatever Today was
+                    // reached from.
+                    onOpenReminderHealth = {
+                        navController.openSecondary(TellcatRoutes.REMINDER_HEALTH)
+                    },
+                    onDismissReminderHealth = reminderHealthViewModel::dismissTodayBanner,
+                    onOpenList = { list -> navController.openTopLevel(list.route) }
+                )
+            }
+
+            composable(TellcatRoutes.INBOX) {
+                InboxScreen(
+                    viewModel = viewModel,
+                    onOpenTask = { id ->
+                        navController.navigate(TellcatRoutes.taskDetails(id))
+                    },
+                    bottomBar = navigationBar,
+                    overflow = overflow,
+                    onOpenList = { list -> navController.openTopLevel(list.route) }
+                )
+            }
+
+            composable(TellcatRoutes.UPCOMING) {
+                UpcomingScreen(
+                    viewModel = viewModel,
+                    onOpenTask = { id ->
+                        navController.navigate(TellcatRoutes.taskDetails(id))
+                    },
+                    bottomBar = navigationBar,
+                    overflow = overflow
+                )
+            }
+
+            // A room: back arrow, no bottom bar, and back returns to the list
+            // the row was tapped on, which the back stack does without help.
+            composable(
+                route = TellcatRoutes.TASK_DETAILS,
+                arguments = listOf(navArgument(TellcatRoutes.TASK_ID_ARG) {
+                    type = NavType.StringType
+                })
+            ) { entry ->
+                TaskDetailsScreen(
+                    taskId = entry.arguments?.getString(TellcatRoutes.TASK_ID_ARG).orEmpty(),
+                    viewModel = viewModel,
+                    onBack = navController::popBackStack,
+                    // Starting a session from here leaves the screen: Focus is
+                    // a sheet over a list, and leaving it on top of Task
+                    // Details would return the user to an edit screen they
+                    // finished with.
+                    onOpenFocus = { navController.popBackStack() }
+                )
+            }
+
+            composable(TellcatRoutes.LOGBOOK) {
+                // No bottom bar. Logbook is reached from the overflow and left
+                // by the arrow.
+                LogbookScreen(
+                    viewModel = viewModel,
+                    onOpenTask = { id ->
+                        navController.navigate(TellcatRoutes.taskDetails(id))
+                    },
+                    onBack = navController::popBackStack
+                )
+            }
+
+            // No bottom bar. Reminder health is the room behind Settings'
+            // first row, and the frame draws a back arrow instead.
+            composable(TellcatRoutes.REMINDER_HEALTH) {
+                // The same view model Today's banner reads. Two answers to
+                // "can a reminder arrive" would be one answer too many, and
+                // the banner sends the user straight here.
+                ReminderHealthScreen(
+                    viewModel = reminderHealthViewModel,
+                    onBack = navController::popBackStack
+                )
+            }
+
+            composable(TellcatRoutes.SETTINGS) {
+                val preferences by application.preferences.state.collectAsStateWithLifecycle()
+
+                SettingsScreen(
+                    preferences = preferences,
+                    onDynamicColorChange = application.preferences::setDynamicColor,
+                    onThemeChange = application.preferences::setTheme,
+                    onOpenReminderHealth = {
+                        navController.navigate(TellcatRoutes.REMINDER_HEALTH)
+                    },
+                    onOpenBackup = { navController.navigate(TellcatRoutes.BACKUP) },
+                    onBack = navController::popBackStack
+                )
+            }
+
+            composable(TellcatRoutes.BACKUP) {
+                BackupScreen(
+                    viewModel = viewModel(
+                        factory = BackupViewModel.Factory(
+                            repository = application.backupRepository,
+                            contentResolver = application.contentResolver
+                        )
+                    ),
+                    onBack = navController::popBackStack
+                )
+            }
+        }
+    }
+
+    if (usesRail) {
+        Row(modifier = modifier.fillMaxSize()) {
+            TellcatNavigationRail(
+                currentRoute = currentRoute,
+                onOpenTopLevel = navController::openTopLevel,
+                modifier = Modifier.fillMaxHeight()
+            )
+
+            // The rail's width is chrome, not content. Measuring what is left
+            // and publishing it means the content column centres inside the
+            // area it actually has rather than inside the window, which would
+            // push it off centre by half the rail.
+            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                CompositionLocalProvider(LocalContentWidth provides maxWidth) {
+                    graph(Modifier)
+                }
+            }
+        }
+    } else {
+        graph(modifier)
+    }
+
+    // Focus sits beside the graph rather than in it, and owns no back stack
+    // entry. It is a mode over whatever the user was looking at, not a place
+    // they navigated to: open it anywhere and it appears over that screen.
+    //
+    // What closes it is leaving, which pauses, or completing the task, which
+    // ends it. Neither destroys the choice of task silently; D-015 has the
+    // reasoning and `TaskListViewModel` holds both.
+    //
+    // Neither the bar nor the rail is hidden for it. The scrim covers them,
+    // which is the honest version of what the old Ready state was arguing
+    // about: a mode that draws over the navigation has not taken it away.
+    if (isFocusOpen) {
+        FocusSheet(viewModel = viewModel)
+    }
+
+    // Beside the graph for the same reason Focus is: it is something that
+    // happens to the user rather than a place they went, and it has to be able
+    // to appear over any screen, since a reminder can be set from any of them.
+    //
+    // After Focus, and so drawn over it. A session running while a reminder is
+    // set is not a reason to hide the question, and the question is the one
+    // thing on screen that cannot simply be asked again later.
+    val reminderJustSet by viewModel.reminderJustSet.collectAsStateWithLifecycle()
+
+    ReminderPermissionGate(
+        isRequested = reminderJustSet,
+        // A function, not a value: the answer changes while the screen is up,
+        // because the way to change it is to leave for settings and come back.
+        canScheduleExact = application.reminderAlarms::canScheduleExact,
+        onPermissionGranted = application::refreshReminders,
+        onDone = viewModel::acknowledgeReminder
+    )
+}
+
+/**
+ * Switches to one of the destinations the bar holds.
+ *
+ * Everything above Today is cleared first, so tapping around the bar never
+ * grows the stack and back from a bar destination always means Today, then
+ * out. Tapping the current destination again does nothing.
+ *
+ * Deliberately without `saveState`/`restoreState`. Those save the stack that
+ * was popped and put it back on return, which is right for a bar whose items
+ * each own a nested graph. This graph is flat and the secondary destinations
+ * sit on top of it, so restoring would return the user to a secondary list
+ * they had already left.
+ */
+private fun NavHostController.openTopLevel(route: String) {
+    // **The paragraph above promised this and the code did not do it.**
+    // `launchSingleTop` stops a second Today being stacked on the first, which
+    // is what it was there for, but it still swaps the top entry for a fresh
+    // instance of the same destination. `NavHost` animates per entry rather
+    // than per route, so tapping Today while on Today played a full
+    // Today-to-Today transition: the screen faded out and back in for a tap
+    // that changed nothing.
+    //
+    // Guarded here rather than in the bar so the rail gets it too, and so a
+    // widget asking for Today while Today is open is a no-op rather than a
+    // flicker.
+    if (currentDestination?.route == route) return
+
+    navigate(route) {
+        popUpTo(graph.findStartDestination().id)
+        launchSingleTop = true
+    }
+}
+
+/**
+ * The bar route for one of the three lists.
+ *
+ * A capture's "Saved to Upcoming" snackbar names a list, D-075, and its View
+ * action switches to it exactly as the bar would.
+ */
+private val PrimaryList.route: String
+    get() = when (this) {
+        PrimaryList.TODAY -> TellcatRoutes.TODAY
+        PrimaryList.INBOX -> TellcatRoutes.INBOX
+        PrimaryList.UPCOMING -> TellcatRoutes.UPCOMING
+    }
+
+/**
+ * Opens a destination from the More menu.
+ *
+ * An ordinary forward move, so back returns to the list it was opened from
+ * rather than jumping to Today.
+ */
+private fun NavHostController.openSecondary(route: String) {
+    navigate(route) { launchSingleTop = true }
+}
+
+/**
+ * Builds the one [TaskListViewModel] the whole app reads.
+ *
+ * Private, and called only from [TellcatNavHost], because where it is called
+ * decides how many view models exist. `viewModel()` resolves against the
+ * current `LocalViewModelStoreOwner`; here that is the Activity, but inside a
+ * destination it is that destination's back stack entry, which would hand
+ * every list its own view model and split the undo offer between them.
+ *
+ * Screens receive the result as a parameter and know nothing about this.
+ */
+@Composable
+private fun taskListViewModel(): TaskListViewModel {
+    val application = LocalContext.current.applicationContext as TellcatApplication
+
+    return viewModel(
+        factory = TaskListViewModel.Factory(
+            repository = application.taskRepository,
+            currentDay = application.currentDay,
+            alarms = application.focusAlarms,
+            focusSessionStore = application.focusSessionStore
+        )
+    )
+}

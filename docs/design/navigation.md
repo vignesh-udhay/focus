@@ -42,7 +42,7 @@ it. That is a mode the user started and can stop, not a destination they
 wandered into, and the session carries its own visible exit. `focus.md` covers
 why the distinction is what makes it safe.
 
-[IMPL] Decided above the graph, in `FocuslistNavHost`, rather than inside the
+[IMPL] Decided above the graph, in `TellcatNavHost`, rather than inside the
 screen. The bar is handed to screens and could have been withheld by one, but
 the rail is a sibling of the whole graph, so the two would behave differently
 if the decision were made in either place other than here.
@@ -94,7 +94,7 @@ the seven board frames and D-024 closes the list at four rows.
 Not on the screens it opens, because each of those already has a back arrow
 and offering a way in from inside would be a loop.
 
-The menu contents are one list in `FocuslistNavigation.kt`, shared by whatever
+The menu contents are one list in `TellcatNavigation.kt`, shared by whatever
 anchors it, so the bar and the rail cannot drift into offering different
 places.
 
@@ -114,7 +114,7 @@ bar are two answers to the same question.
 
 # The graph
 
-`FocuslistNavHost` declares one flat graph with Today as the start
+`TellcatNavHost` declares one flat graph with Today as the start
 destination. Every screen is a direct child of it; there are no nested graphs,
 because nothing yet needs one.
 
@@ -165,7 +165,7 @@ Every destination reads one `TaskListViewModel`, so the lists agree with each
 other and a single undo offer stands for the whole app rather than per screen.
 An action taken on one screen is still undoable after moving to another.
 
-It is built once in `FocuslistNavHost`, above the graph, and handed to each
+It is built once in `TellcatNavHost`, above the graph, and handed to each
 screen as a parameter. Where it is built decides how many exist: `viewModel()`
 resolves against the current `LocalViewModelStoreOwner`, and inside a
 destination that owner is the destination's own back stack entry. Building it

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    The Catimo mark as a notification small icon. D-072.
+    The Tellcat mark as a notification small icon. D-072.
 
     Android draws this as a mask: it keeps the alpha, throws the colour away and
     applies its own tint. So this is the same silhouette as

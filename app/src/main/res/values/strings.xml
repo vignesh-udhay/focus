@@ -1,13 +1,13 @@
 <resources>
-    <string name="app_name">Catimo</string>
-    <string name="onboarding_title">Welcome to Catimo</string>
+    <string name="app_name">Tellcat</string>
+    <string name="onboarding_title">Welcome to Tellcat</string>
     <string name="onboarding_promise">If you write it down here, you will be told.</string>
     <string name="onboarding_capture_title">Capture it</string>
     <string name="onboarding_capture_body">A title is enough. Add the rest only when it helps.</string>
     <string name="onboarding_schedule_title">Say when</string>
     <string name="onboarding_schedule_body">Choose the day and moment your task matters.</string>
     <string name="onboarding_reminder_title">Be told</string>
-    <string name="onboarding_reminder_body">Catimo reminds you even when the app is closed.</string>
+    <string name="onboarding_reminder_body">Tellcat reminds you even when the app is closed.</string>
     <string name="onboarding_get_started">Get started</string>
     <string name="task_row_mark_complete">Mark \"%1$s\" complete</string>
     <string name="task_row_mark_incomplete">Mark \"%1$s\" not complete</string>
@@ -15,7 +15,7 @@
     <string name="task_add">Add task</string>
     <string name="today_empty_headline">Nothing scheduled for today</string>
     <string name="today_empty_supporting">Tasks without a day wait in your Inbox.</string>
-    <string name="widget_description">Today’s tasks from Catimo</string>
+    <string name="widget_description">Today’s tasks from Tellcat</string>
     <string name="widget_all_done">All done for today</string>
     <string name="widget_add_task">Add a task</string>
     <string name="today_section_overdue">Overdue</string>
@@ -145,7 +145,7 @@
     <string name="upcoming_empty_supporting">Tasks scheduled for a later day appear here.</string>
 
     <!--
-      A read that failed. It must never mention a connection: Catimo has no
+      A read that failed. It must never mention a connection: Tellcat has no
       account, no sync and no backend, so every read is local and telling anyone
       to check their connection sends them to fix something never involved.
       The Logbook differs on purpose, per expressive-components.md: it is the
@@ -181,7 +181,7 @@
     <string name="backup_export_description">Export tasks, reminders, recurrence, and settings.</string>
     <string name="backup_export_action">Export backup</string>
     <string name="backup_restore_heading">Restore</string>
-    <string name="backup_restore_description">Restore from a Catimo backup file.</string>
+    <string name="backup_restore_description">Restore from a Tellcat backup file.</string>
     <string name="backup_restore_action">Restore from file</string>
     <!--
       What the running half of the page says while it runs, D-066. Both
@@ -226,10 +226,10 @@
     <string name="backup_restore_confirm_action">Restore</string>
     <string name="backup_restore_confirm_cancel">Cancel</string>
     <string name="backup_restore_error_title">Couldn\'t restore this file</string>
-    <string name="backup_restore_error_body">The file may not be a Catimo backup, or it may be damaged.</string>
+    <string name="backup_restore_error_body">The file may not be a Tellcat backup, or it may be damaged.</string>
     <string name="backup_restore_error_choose_another">Choose another file</string>
     <string name="backup_export_error_title">Couldn\'t export this backup</string>
-    <string name="backup_export_error_body">Catimo couldn\'t write to this location.</string>
+    <string name="backup_export_error_body">Tellcat couldn\'t write to this location.</string>
     <string name="backup_export_error_choose_another">Choose another location</string>
     <string name="backup_error_cancel">Cancel</string>
     <!-- Task Details, rebuilt to D-018: a screen of picker rows, no Save. -->
@@ -468,7 +468,7 @@
          Slate. Android shows no dialog for exact alarms, so the screen walks
          the user to the settings page instead, and says so. -->
     <string name="reminder_permission_title">Allow precise reminders</string>
-    <string name="reminder_permission_body">Catimo needs permission to deliver reminders at the exact time you choose.</string>
+    <string name="reminder_permission_body">Tellcat needs permission to deliver reminders at the exact time you choose.</string>
     <string name="reminder_permission_why">Why this matters</string>
     <string name="reminder_permission_bullet">• %1$s</string>
     <string name="reminder_permission_reason_closed">Reminders can fire while the app is closed</string>
@@ -489,17 +489,17 @@
          second, which is the claim D-009 says a permission check cannot support. -->
     <string name="reminder_health_ready_label">Ready</string>
     <string name="reminder_health_ready_title">Reminders are arriving on time</string>
-    <string name="reminder_health_ready_body">The last reminder Catimo sent arrived when it was due.</string>
+    <string name="reminder_health_ready_body">The last reminder Tellcat sent arrived when it was due.</string>
     <string name="reminder_health_unverified_label">Not yet verified</string>
     <string name="reminder_health_unverified_title">Permissions are in place</string>
-    <string name="reminder_health_unverified_body">Catimo has not seen a reminder arrive on this device yet. Send a test reminder to check.</string>
+    <string name="reminder_health_unverified_body">Tellcat has not seen a reminder arrive on this device yet. Send a test reminder to check.</string>
     <string name="reminder_health_action_label">Action needed</string>
     <!-- A risk the app inferred rather than a refusal it was told about. D-021. -->
     <string name="reminder_health_caution_label">Worth checking</string>
-    <string name="reminder_health_no_notifications_title">Catimo cannot show notifications</string>
+    <string name="reminder_health_no_notifications_title">Tellcat cannot show notifications</string>
     <string name="reminder_health_no_notifications_body">A reminder will fire and nothing will appear.</string>
     <string name="reminder_health_no_exact_title">Reminders may arrive late</string>
-    <string name="reminder_health_no_exact_body">Catimo has not been allowed to schedule alarms for an exact time.</string>
+    <string name="reminder_health_no_exact_body">Tellcat has not been allowed to schedule alarms for an exact time.</string>
     <string name="reminder_health_missed_label">Missed reminder</string>
     <string name="reminder_health_missed_title">A reminder arrived %1$s late</string>
     <string name="reminder_health_missed_silent_title">A reminder arrived and said nothing</string>
@@ -526,17 +526,17 @@
     <string name="reminder_restriction_sleeping_apps">Sleeping apps</string>
     <string name="reminder_restriction_protected_apps">Protected apps</string>
     <string name="reminder_restriction_may_block">May block background alarms</string>
-    <string name="reminder_restriction_action_title">%1$s may put Catimo to sleep</string>
-    <string name="reminder_restriction_action_body">%1$s can delay reminders. Catimo cannot tell whether it is on.</string>
+    <string name="reminder_restriction_action_title">%1$s may put Tellcat to sleep</string>
+    <string name="reminder_restriction_action_body">%1$s can delay reminders. Tellcat cannot tell whether it is on.</string>
     <string name="reminder_test_scheduled_title">Test reminder scheduled</string>
-    <string name="reminder_test_scheduled_body">You can close the app. Catimo will notify you in 30 seconds.</string>
+    <string name="reminder_test_scheduled_body">You can close the app. Tellcat will notify you in 30 seconds.</string>
     <string name="reminder_test_scheduled_done">Done</string>
     <string name="reminder_test_title">Test reminder</string>
     <string name="reminder_test_body">Arrived at %1$s.</string>
     <!--
       The group summary, per D-039. The count alone: Android already draws the
-      app name in the notification header, so the board's "Catimo · 3
-      reminders" would say Catimo twice. The number is a disclosure of what
+      app name in the notification header, so the board's "Tellcat · 3
+      reminders" would say Tellcat twice. The number is a disclosure of what
       the collapsed stack is hiding, which is the only count this app allows
       itself outside the widget's "+N more".
     -->

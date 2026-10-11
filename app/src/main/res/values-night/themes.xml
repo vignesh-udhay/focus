@@ -20,5 +20,5 @@
         light system still opens on a light frame; that is a launch flash rather
         than a navigation one, and fixing it means painting the window at runtime.
     -->
-    <style name="Theme.Focuslist" parent="android:Theme.Material.NoActionBar" />
+    <style name="Theme.Tellcat" parent="android:Theme.Material.NoActionBar" />
 </resources>

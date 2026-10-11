@@ -1,6 +1,6 @@
 # Components
 
-How each Catimo component looks and behaves. Read
+How each Tellcat component looks and behaves. Read
 `expressive-design-system.md` for the tokens this file spends, and
 `expressive-motion.md` for anything that moves.
 
@@ -9,7 +9,7 @@ new component because an existing one is nearly right; say what is missing.
 
 ---
 
-# What Catimo uses
+# What Tellcat uses
 
 [CD] Keep and refine, never replace:
 
@@ -27,11 +27,11 @@ Two have since been required and have left that list rather than been smuggled
 past it. `ButtonGroup` holds the Duration sheet's five options, per D-026.
 `FloatingToolbar` holds Task Details' two actions, per D-037, which is also the
 entry that noticed `ButtonGroup` was still listed here and said the line needed
-correcting either way. The exclusion was always "Catimo has no use for them",
+correcting either way. The exclusion was always "Tellcat has no use for them",
 not "they are unsound", so a use is what removes them.
 
 [M3] The first three are real Material 3 Expressive components. They are
-excluded because Catimo has no use for them, not because they are unsound.
+excluded because Tellcat has no use for them, not because they are unsound.
 
 ---
 
@@ -167,7 +167,7 @@ is competing with the title for it, which the removed trailing button proved:
 it pushed two of five seeded titles onto a second line until the screen margin
 was returned to `md`.
 
-[IMPL] The row carries a minimum height from `FocuslistDimensions`. A floor,
+[IMPL] The row carries a minimum height from `TellcatDimensions`. A floor,
 not a height: a row with metadata or a wrapped title is already taller and
 grows past it. It exists so a bare one-line row cannot come out shorter than
 its neighbours and leave the collection looking ragged.
@@ -300,7 +300,7 @@ the `completion` token. This is the only component with that privilege.
 
 # Top app bar
 
-[IMPL] `FocuslistTopAppBar`, one component for every list screen, wrapping the
+[IMPL] `TellcatTopAppBar`, one component for every list screen, wrapping the
 compact M3 `TopAppBar` at 64dp. Callers pass a title and, on the three primary
 destinations, the overflow. It is pinned: no scroll behaviour, no collapse.
 
@@ -390,7 +390,7 @@ Google Play reference, that was wrong. Play's pill is L\* 89.8, C\* 16.8, hue
 247; Play's primary button is L\* 40.2, C\* 72.5, hue 292. Forty-four degrees
 of hue apart and four times the chroma: they are different palettes, and the
 pill's chroma of about 16 is exactly what Material's tonal scheme generates for
-secondary. Catimo's own default pill measured C\* 12.1, already close to the
+secondary. Tellcat's own default pill measured C\* 12.1, already close to the
 reference. Switching it to `primaryContainer` raised chroma to 28 and dropped
 the tone from 90 to 82, moving it *away* from the reference on both counts.
 
@@ -455,7 +455,7 @@ plain glyph, because the container is already the circle.
 
 [CD] Keep the current behaviour exactly. It does not collapse or expand on
 scroll. Lists must reserve clearance beneath their last row so the button never
-covers a task; that clearance is `FocuslistDimensions.FabClearance`, a dimension
+covers a task; that clearance is `TellcatDimensions.FabClearance`, a dimension
 token composed from the spacing scale, not a number written into a screen.
 
 ---
@@ -463,7 +463,7 @@ token composed from the spacing scale, not a number written into a screen.
 # Empty states
 
 [IMPL] `TaskListEmptyState`. Material 3 has no empty-state component, so this is
-Catimo's own: a 24dp inset, an 80dp expressive icon container, a 12dp gap,
+Tellcat's own: a 24dp inset, an 80dp expressive icon container, a 12dp gap,
 then a centred headline and supporting line.
 
 [CD] Headline in `titleMediumEmphasized`, supporting line in `bodyMedium` and
@@ -697,7 +697,7 @@ is intact, because that is the question the user actually has:
 
 [CD] **It must not mention a connection.** Inbox and Upcoming both read "Check
 your connection and try again", and that was wrong in a way worth recording.
-Catimo has no accounts, no cloud sync and no backend, and `PRODUCT.md` puts
+Tellcat has no accounts, no cloud sync and no backend, and `PRODUCT.md` puts
 all three permanently out of scope. Every read is local. Telling users to check
 their connection sends them to fix something that was never involved, and it
 implies the app has a server it does not have. This is the same failure as the
@@ -926,7 +926,7 @@ writing on the tap is the whole interaction; a rule is four fields that only mea
 something together, and writing each tap would put half-built rules on the task.
 
 [CD] The weekday chips are `FilterChip`s at
-`FocuslistDimensions.WeekdayChipSize`, sized rather than left to their labels.
+`TellcatDimensions.WeekdayChipSize`, sized rather than left to their labels.
 Seven at their natural width came to 1002px inside a 992px column on a 1080px
 screen, so the last day wrapped to a line of its own at the default font scale.
 48dp is the board's own number and `SpaceBetween` spends the remainder, so the
@@ -965,7 +965,7 @@ than an argument for it.
 [IMPL] **No active indicator, and the large corner on all four sides.**
 Material's filled field ships a 1dp rule under it and a top-rounded,
 bottom-square container. Both are gone, through one shared
-`focuslistFieldColors()` and `FocuslistFieldShape` in
+`tellcatFieldColors()` and `TellcatFieldShape` in
 `ui/component/FieldStyle.kt`, read by all four fields that draw a container:
 Quick Add, the repeat interval and occurrences, and the custom-duration Hours
 and Minutes.
@@ -984,7 +984,7 @@ does not.
 [CD] This sits inside D-025 rather than against it. That entry argued for a
 *tinted container*, and the argument holds: every other surface in the app is
 one. The underline and the flat bottom edge came along with the component and
-were never argued for by anyone. Nothing else in Catimo has a rule line, and
+were never argued for by anyone. Nothing else in Tellcat has a rule line, and
 nothing else is rounded on two corners only, so the field was the one piece
 still speaking Material 2.
 
@@ -1155,7 +1155,7 @@ is `surfaceContainer` and both take it, because both are the same component and
 cannot have two container colours.
 
 [IMPL] **The corner is overridden.** `MenuDefaults.shape` resolves
-`CornerExtraSmall`, 4dp, and both menus pass `FocuslistMenuShape` instead, which
+`CornerExtraSmall`, 4dp, and both menus pass `TellcatMenuShape` instead, which
 is the theme's large corner. Everything the app draws on a surface is on that
 corner already: rows, cards, fields. A 4dp menu was the last square thing left
 and read as a component borrowed from another app. The board had drawn 16 all
@@ -1172,7 +1172,7 @@ than the left.
 
 [CD] **These icons were briefly deleted outright, and that was wrong.** The
 argument was that a *leading* icon here echoed a navigation bar these
-destinations are not in, which `FocuslistNavigation.kt` says plainly by calling
+destinations are not in, which `TellcatNavigation.kt` says plainly by calling
 them rooms you go into and come back from. The premise held; the conclusion did
 not. The icons belonged in the other slot, not in the bin. Worth recording,
 because the reasoning read as sound and produced the wrong screen.
@@ -1222,7 +1222,7 @@ what it shows and takes a back arrow.
 
 # Worded action buttons
 
-[IMPL] One height, `FocuslistDimensions.ActionHeight`, 56dp, read by Start
+[IMPL] One height, `TellcatDimensions.ActionHeight`, 56dp, read by Start
 focus on Task Details, Focus's worded button, both date sheets' Choose a date,
 the date presets, and Done in the custom-duration state.
 
@@ -1303,7 +1303,7 @@ a 48dp square could not be imposed from outside without the frame snapping back.
 A frame, a radius and a centred letter answer it exactly.
 
 [CD] Every fill was bound to the kit's `Schemes/*` variables, which carry no
-Catimo modes, so the chips would not have followed dark or wallpaper themes.
+Tellcat modes, so the chips would not have followed dark or wallpaper themes.
 The same leak found on two duration segments. Worth a sweep rather than another
 one-by-one fix.
 
@@ -1363,7 +1363,7 @@ observed, and the calculation was wrong in its details; the structural point did
 not depend on it.
 
 [CD] An earlier version of this section reached for sideways scrolling instead,
-and said so as a Catimo decision rather than Material guidance, because
+and said so as a Tellcat decision rather than Material guidance, because
 Material's toggle-button-group documentation gave no rule for labels that do not
 fit. Material has since answered it in the component. Overflow to a menu is
 better than scrolling for the same reason a menu beats a scroll anywhere: the

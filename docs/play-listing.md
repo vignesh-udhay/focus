@@ -13,7 +13,7 @@ Placeholders to fill before submission are marked `TODO`.
 
 ### App name
 
-    Catimo: Tasks & Reminders
+    Tellcat: Tasks & Reminders
 
 25 of 30 characters. The bare product name is six characters and says nothing
 to someone reading a search result, and Play's naming policy rules out the
@@ -43,7 +43,7 @@ Under 4000 characters. Play shows roughly the first three lines before the
 
 ---
 
-Catimo is a task app for Android with one job: telling you about your work at
+Tellcat is a task app for Android with one job: telling you about your work at
 the moment it matters. Free, with no account, no subscription and no ads.
 
 If you write it down here, you will be told.
@@ -57,7 +57,7 @@ something in.
 
 **Reminders built like alarms**
 
-Allow alarms and reminders when Catimo asks, and every reminder is scheduled
+Allow alarms and reminders when Tellcat asks, and every reminder is scheduled
 as an exact alarm. It survives the things that usually lose one: the app
 closed, the screen off, the device restarted, the clock or the time zone
 changed. Snooze it for ten minutes, an hour, this evening or tomorrow morning,
@@ -66,7 +66,7 @@ or complete the task, straight from the notification without opening the app.
 **A screen that checks the reminders for you**
 
 Android and phone manufacturers can stop any app delivering on time, and most
-task apps leave you to discover that when a reminder does not arrive. Catimo
+task apps leave you to discover that when a reminder does not arrive. Tellcat
 has a Reminder health screen. It checks notification access, exact alarm
 permission and battery restrictions, sends a test reminder when you ask, and
 tells you afterwards if a real reminder arrived late or arrived silently. When
@@ -97,7 +97,7 @@ without opening the app.
 
 **Your data stays on your phone**
 
-No account, no sign-up, no servers. Catimo does not request internet
+No account, no sign-up, no servers. Tellcat does not request internet
 permission, so the app itself sends nothing anywhere. Your tasks live in a
 database on the device. Back up to a JSON file you choose the location of, and
 restore it on a new phone.
@@ -112,7 +112,7 @@ here is in the app you install.
 Material 3 throughout, optional dynamic color from your wallpaper, light and
 dark themes, and screens that still work at large system font sizes.
 
-What Catimo does not do: habits, streaks, points, productivity scores, teams,
+What Tellcat does not do: habits, streaks, points, productivity scores, teams,
 or AI. The reward is getting the work done.
 
 ---
@@ -137,7 +137,7 @@ or AI. The reward is getting the work done.
 | No in-app purchases | No billing dependency, D-001 |
 
 **"The app itself sends nothing anywhere" is worded carefully.** No `INTERNET`
-permission is declared, which is a hard guarantee about Catimo's own code. It
+permission is declared, which is a hard guarantee about Tellcat's own code. It
 is not a guarantee that no copy of the data exists off the device: see the
 open question below.
 
@@ -182,7 +182,7 @@ the first run, and at least one dark shot in the set.
 4. **Reminder health**, in the Ready state with the three checks passing. The
    thing no competitor screenshot has.
 5. **Upcoming**, showing the days ahead.
-6. **The widget** on a home screen. In the Catimo colours like every other
+6. **The widget** on a home screen. In the Tellcat colours like every other
    shot, since dynamic color is off by default (D-077).
 7. **Focus**, a running session. Late, per D-004.
 8. **Dark theme**, whichever screen reads best. Today is the safe choice.
@@ -201,9 +201,9 @@ plain register as the app's own copy.
 | Category | Productivity |
 | Tags | Task management, Reminders, To-do list, Personal organiser |
 | Email address | TODO |
-| Website | TODO, optional |
+| Website | https://tellcat.app (registered 2026-10-11, D-081; site not yet up) |
 | Phone | Leave empty |
-| Privacy policy URL | TODO, hosting `docs/privacy-policy.md` |
+| Privacy policy URL | TODO, planned at https://tellcat.app/privacy, hosting `docs/privacy-policy.md` |
 
 ---
 
@@ -271,7 +271,7 @@ It is worth a deliberate answer rather than a default one. Three options:
    device-to-device migration for free.
 2. **Exclude the database** in `data_extraction_rules.xml`, keeping settings
    but not task content in the cloud.
-3. **Set `allowBackup="false"`**, making Catimo's own Export the only way data
+3. **Set `allowBackup="false"`**, making Tellcat's own Export the only way data
    leaves, which is the strongest reading of local-first.
 
 Two and three are code changes that reverse a shipped default and would need a
