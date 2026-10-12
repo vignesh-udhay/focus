@@ -159,13 +159,15 @@ open question below.
 
 ## Graphics
 
-Nothing here exists yet. All of it needs a device or the emulator.
+Made on 2026-10-12, in `docs/store/`. The screenshots were shot on the Pixel 10
+emulator at 1080 x 1920, with the status bar in demo mode and tasks restored
+from a hand-written backup through the app's own Restore.
 
 | Asset | Spec | Status |
 | --- | --- | --- |
-| App icon | 512 x 512 PNG, 32-bit, no alpha | TODO, from `ic_launcher` |
-| Feature graphic | 1024 x 500 PNG or JPEG | TODO |
-| Phone screenshots | 2 to 8, 9:16, 1080 x 1920 or larger | TODO |
+| App icon | 512 x 512 PNG, 32-bit | `icon-512.png`, the launcher icon's layers rendered at the size a launcher shows |
+| Feature graphic | 1024 x 500 PNG or JPEG, no alpha | `feature-1024x500.png`: the cat mark, "Tellcat" and "Reminders that actually go off." |
+| Phone screenshots | 2 to 8, 9:16, 1080 x 1920 or larger, no alpha | `screenshot-1` to `screenshot-7`, in the shot-list order below |
 
 ### Screenshot shot list
 
@@ -183,7 +185,9 @@ the first run, and at least one dark shot in the set.
    thing no competitor screenshot has.
 5. **Upcoming**, showing the days ahead.
 6. **The widget** on a home screen. In the Tellcat colours like every other
-   shot, since dynamic color is off by default (D-077).
+   shot, since dynamic color is off by default (D-077). *Not shot yet: placing
+   a widget on the emulator by script is unreliable, so this one is for a real
+   phone.*
 7. **Focus**, a running session. Late, per D-004.
 8. **Dark theme**, whichever screen reads best. Today is the safe choice.
 
