@@ -167,7 +167,7 @@ from a hand-written backup through the app's own Restore.
 | --- | --- | --- |
 | App icon | 512 x 512 PNG, 32-bit | `icon-512.png`, the launcher icon's layers rendered at the size a launcher shows |
 | Feature graphic | 1024 x 500 PNG or JPEG, no alpha | `feature-1024x500.png`: the cat mark, "Tellcat" and "Reminders that actually go off." |
-| Phone screenshots | 2 to 8, 9:16, 1080 x 1920 or larger, no alpha | `screenshot-1` to `screenshot-7`, in the shot-list order below |
+| Phone screenshots | 2 to 8, 9:16, 1080 x 1920 or larger, no alpha | `screenshot-1` to `screenshot-8`, in the shot-list order below |
 
 ### Screenshot shot list
 
@@ -190,6 +190,11 @@ the first run, and at least one dark shot in the set.
    phone.*
 7. **Focus**, a running session. Late, per D-004.
 8. **Dark theme**, whichever screen reads best. Today is the safe choice.
+9. **Backup & restore**, "Your data stays on this device" over Export and
+   Restore. Added 2026-10-12 as screenshot 7, before the dark one. The headline
+   is kept although Android Auto Backup copies the data, encrypted, into the
+   user's Google backup (D-080): Tellcat itself never sends it anywhere, and the
+   listing's section under the same heading says the app itself sends nothing.
 
 Caption text over screenshots is optional. If it is used, keep it to the same
 plain register as the app's own copy.

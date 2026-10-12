@@ -51,7 +51,8 @@ Still to do for 1.0:
   Aadhaar is not on Google's list for India, so passport, driving licence or
   voter ID
 - ~~the listing graphics~~ done 2026-10-12 in `docs/store/`: icon, feature
-  graphic and seven screenshots; the widget shot was skipped. Shooting them
+  graphic and eight screenshots, the last two Backup and dark Today; the widget
+  shot was skipped. Shooting them
   found a bug: with Dark chosen on a light phone the status bar kept dark
   icons on the dark app. The bars now follow the app's theme
 - Data safety, content rating and target audience, entered once Create app
