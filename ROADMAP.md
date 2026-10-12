@@ -44,7 +44,12 @@ Still to do for 1.0:
 
 - the Play developer account, which the owner is creating; expect the closed
   test of 12 testers for 14 days that new personal accounts need
-- the privacy policy at `https://tellcat.app/privacy`, and a contact address
+- ~~the privacy policy and a contact address~~ done 2026-10-12: the policy is
+  live at `https://tellcat.app/privacy` on Cloudflare Pages, built by
+  `tools/build_site.py`, and `hello@tellcat.app` forwards to the owner's Gmail
+- the owner's identity verification in Play Console, which locks Create app;
+  Aadhaar is not on Google's list for India, so passport, driving licence or
+  voter ID
 - the listing graphics, Data safety, content rating and target audience
 - moving the owner's phone: Export from Catimo, change the file's marker to
   `tellcat-backup` by hand (D-082), install Tellcat, Restore

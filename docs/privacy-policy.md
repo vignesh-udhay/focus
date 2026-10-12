@@ -1,9 +1,9 @@
 # Privacy policy for Tellcat
 
-Last updated: TODO, the date this is first published.
+Last updated: 12 October 2026.
 
-Tellcat is a task and reminder app for Android, published by TODO, developer
-name as it appears on Google Play.
+Tellcat is a task and reminder app for Android, published on Google Play under
+the developer name Tellcat.
 
 This policy is short because the app does very little with your data. It has
 no account, no servers and no analytics.
@@ -101,4 +101,4 @@ page is the only notice.
 
 Questions about this policy, or about privacy in Tellcat:
 
-TODO, contact email address.
+hello@tellcat.app

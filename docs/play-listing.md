@@ -200,10 +200,10 @@ plain register as the app's own copy.
 | Free or paid | Free |
 | Category | Productivity |
 | Tags | Task management, Reminders, To-do list, Personal organiser |
-| Email address | TODO |
-| Website | https://tellcat.app (registered 2026-10-11, D-081; site not yet up) |
+| Email address | hello@tellcat.app (Cloudflare Email Routing to the owner's Gmail, set up 2026-10-12) |
+| Website | https://tellcat.app |
 | Phone | Leave empty |
-| Privacy policy URL | TODO, planned at https://tellcat.app/privacy, hosting `docs/privacy-policy.md` |
+| Privacy policy URL | https://tellcat.app/privacy (Cloudflare Pages project `tellcat`, built by `tools/build_site.py`) |
 
 ---
 
