@@ -55,6 +55,12 @@ Still to do for 1.0:
   shot was skipped. Shooting them
   found a bug: with Dark chosen on a light phone the status bar kept dark
   icons on the dark app. The bars now follow the app's theme
+- ~~a landing page~~ done 2026-10-12: tellcat.app shows the short description,
+  four screenshots, four points from the listing copy and "Join the test",
+  which emails hello@tellcat.app until the closed-test link exists. Built by
+  `tools/build_site.py`. The feature graphic and the old home line said
+  "actually go off", which the listing doc rejects as a swipe at the category;
+  both now use "Write it down and you will be told."
 - Data safety, content rating and target audience, entered once Create app
   unlocks
 - moving the owner's phone: Export from Catimo, change the file's marker to

@@ -166,7 +166,7 @@ from a hand-written backup through the app's own Restore.
 | Asset | Spec | Status |
 | --- | --- | --- |
 | App icon | 512 x 512 PNG, 32-bit | `icon-512.png`, the launcher icon's layers rendered at the size a launcher shows |
-| Feature graphic | 1024 x 500 PNG or JPEG, no alpha | `feature-1024x500.png`: the cat mark, "Tellcat" and "Reminders that actually go off." |
+| Feature graphic | 1024 x 500 PNG or JPEG, no alpha | `feature-1024x500.png`: the cat mark, "Tellcat" and the short description's first sentence, "Write it down and you will be told." |
 | Phone screenshots | 2 to 8, 9:16, 1080 x 1920 or larger, no alpha | `screenshot-1` to `screenshot-8`, in the shot-list order below |
 
 ### Screenshot shot list
