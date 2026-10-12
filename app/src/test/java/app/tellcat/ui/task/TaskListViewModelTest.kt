@@ -1216,6 +1216,14 @@ class TaskListViewModelTest {
 
         val reopened = awaitTodayTask(model) { !it.isCompleted }
         assertNull(reopened.completedAt)
+        // The list can show the reopen a beat before the undo's write is
+        // stored, so the stored row is waited for rather than read at once. Read
+        // at once, it failed when the machine was busy.
+        repeat(50) {
+            if (repository.observeTasks().first().single { it.id == "a" }.completedAt != null) {
+                Thread.sleep(10)
+            }
+        }
         assertNull(repository.observeTasks().first().single { it.id == "a" }.completedAt)
     }
 

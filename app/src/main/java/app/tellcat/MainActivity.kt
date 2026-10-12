@@ -1,7 +1,9 @@
 package app.tellcat
 
+import android.graphics.Color
 import android.os.Bundle
 import android.content.Intent
+import androidx.activity.SystemBarStyle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -9,6 +11,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -50,6 +53,26 @@ class MainActivity : ComponentActivity() {
                 ThemePreference.System -> systemDark
                 ThemePreference.Light -> false
                 ThemePreference.Dark -> true
+            }
+
+            // **The system bars follow the app's theme, not the phone's.** The
+            // plain `enableEdgeToEdge()` above picks icon colours from the
+            // system's dark mode, so Dark chosen in Settings on a light phone
+            // drew dark clock and battery icons on a dark screen, and Light on
+            // a dark phone the reverse. Re-applied whenever the resolved theme
+            // changes. The scrims are the defaults `enableEdgeToEdge` uses.
+            DisposableEffect(darkTheme) {
+                enableEdgeToEdge(
+                    statusBarStyle = SystemBarStyle.auto(
+                        Color.TRANSPARENT,
+                        Color.TRANSPARENT
+                    ) { darkTheme },
+                    navigationBarStyle = SystemBarStyle.auto(
+                        LightNavigationScrim,
+                        DarkNavigationScrim
+                    ) { darkTheme }
+                )
+                onDispose {}
             }
 
             TellcatTheme(
@@ -99,3 +122,7 @@ class MainActivity : ComponentActivity() {
         widgetCommand.value = intent.widgetLaunchCommand()
     }
 }
+
+// The scrims `enableEdgeToEdge` applies by default, which are not public.
+private val LightNavigationScrim = Color.argb(0xe6, 0xFF, 0xFF, 0xFF)
+private val DarkNavigationScrim = Color.argb(0x80, 0x1b, 0x1b, 0x1b)
