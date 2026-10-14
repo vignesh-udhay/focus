@@ -43,7 +43,7 @@ import app.tellcat.data.local.AppearancePreferences
 import app.tellcat.ui.component.TellcatTopAppBar
 import app.tellcat.ui.component.SectionLabel
 
-/** D-024's closed four-row Settings screen. */
+/** D-024's closed Settings screen, with D-083's privacy policy link under Data. */
 @Composable
 fun SettingsScreen(
     preferences: AppearancePreferences,
@@ -51,6 +51,7 @@ fun SettingsScreen(
     onThemeChange: (ThemePreference) -> Unit,
     onOpenReminderHealth: () -> Unit,
     onOpenBackup: () -> Unit,
+    onOpenPrivacyPolicy: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     // Dynamic colour exists from Android 12. Below that the switch changed
@@ -131,6 +132,18 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_backup_restore),
                     supporting = stringResource(R.string.settings_backup_restore_supporting),
                     onClick = onOpenBackup,
+                    shape = ListItemDefaults.segmentedShapes(index = 0, count = 2).shape,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // Leaves the app for the browser, so it ends in open-in-new
+                // rather than the chevron the other rows use.
+                NavigationSettingRow(
+                    title = stringResource(R.string.settings_privacy_policy),
+                    supporting = stringResource(R.string.settings_privacy_policy_supporting),
+                    onClick = onOpenPrivacyPolicy,
+                    trailingIcon = R.drawable.ic_open_in_new,
+                    shape = ListItemDefaults.segmentedShapes(index = 1, count = 2).shape,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -166,6 +179,7 @@ private fun NavigationSettingRow(
     supporting: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    trailingIcon: Int = R.drawable.ic_chevron_forward,
     shape: androidx.compose.ui.graphics.Shape = MaterialTheme.shapes.large
 ) {
     Surface(
@@ -186,7 +200,7 @@ private fun NavigationSettingRow(
         ) {
             SettingText(title = title, supporting = supporting, modifier = Modifier.weight(1f))
             Icon(
-                painter = painterResource(R.drawable.ic_chevron_forward),
+                painter = painterResource(trailingIcon),
                 contentDescription = null
             )
         }

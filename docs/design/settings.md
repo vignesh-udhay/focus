@@ -1,7 +1,8 @@
 # Settings
 
-Four rows on one screen, plus two places they lead: the theme chooser and
-Backup & restore.
+Five rows on one screen, plus two places they lead: the theme chooser and
+Backup & restore. The fifth, Privacy policy, is a link out rather than a
+setting, D-083.
 
 **Built under D-028.** `SettingsScreen.kt` is reached from the app-bar overflow,
 and Backup & restore is the room behind its Data row. The work was pulled ahead
@@ -31,10 +32,16 @@ Three sections, four rows, and that is the whole screen.
     Appearance    Dynamic color        Use colors from Android        [off]
                   Theme                System default                     >
     Data          Backup & restore     Export or restore a local file     >
+                  Privacy policy       tellcat.app/privacy               [↗]
 
 On Android 10 and 11 the Dynamic color row is not drawn, because dynamic
 colour does not exist there and the switch changed nothing; Theme stands
-alone in Appearance. Still four rows wherever all four mean something.
+alone in Appearance.
+
+**Privacy policy opens the browser**, at `https://tellcat.app/privacy`, and ends
+in an open-in-new icon instead of the chevron, since it leaves the app. Play
+wants the policy reachable from inside the app. It is not a preference, so it
+does not count against the closed list below; D-083 has the argument.
 
 Every row carries supporting text, because a settings row whose label alone
 explains it does not need a settings screen, and one that needs a paragraph is a

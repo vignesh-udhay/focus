@@ -5543,3 +5543,38 @@ in the exported file by hand before restoring it.
 
 **What would reverse this.** Nothing. The marker is now the only format there
 has been since the first public release.
+
+---
+
+## D-083. Settings links to the privacy policy, under Data
+
+Amends D-024: Settings gains a fifth row, Privacy policy, the second row of the
+Data section. It opens `https://tellcat.app/privacy` in the browser.
+
+**What changed.** Google Play's User Data policy wants the privacy policy
+reachable inside the app as well as from the store listing. D-024 was written
+before the app had a policy to point at.
+
+**Why this passes D-024's test.** D-024 closed the list against preferences:
+"a setting is a decision the product refused to make", and a fifth row has to
+be one where the app cannot choose correctly for everyone. A link to a document
+is not a preference. It changes nothing about what a task is, how a list is
+ordered or when a reminder fires, and it asks the user to decide nothing. So it
+does not reopen the list for toggles, and the refusals D-024 names still stand.
+
+**Why Data, and why Settings.** Settings is where Android users look for a
+privacy policy, and the Data section is the one about where the user's work
+goes, which is what the policy describes. The Backup page was the other
+candidate, under its "Your data stays on this device" illustration, but it is
+the room for two operations, and a link hidden behind one of them is a link a
+user looking for it does not find.
+
+**The row says where it goes.** Its supporting text is the address, and it ends
+in an open-in-new icon rather than the chevron, because it leaves the app rather
+than opening another screen. Tellcat has no internet permission and does not
+need one: the browser loads the page. On a phone with no browser the tap does
+nothing, and the address on the row is the fallback.
+
+**What would reverse this.** Play dropping the in-app requirement would not, on
+its own: a user who wants to know what the app does with their data should be
+able to find out from the app.

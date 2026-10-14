@@ -173,6 +173,9 @@
     <string name="settings_choose_theme">Choose theme</string>
     <string name="settings_backup_restore">Backup &amp; restore</string>
     <string name="settings_backup_restore_supporting">Export or restore a local file</string>
+    <string name="settings_privacy_policy">Privacy policy</string>
+    <string name="settings_privacy_policy_supporting" translatable="false">tellcat.app/privacy</string>
+    <string name="privacy_policy_url" translatable="false">https://tellcat.app/privacy</string>
 
     <string name="backup_title">Backup &amp; restore</string>
     <string name="backup_back">Back</string>

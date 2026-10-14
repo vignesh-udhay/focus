@@ -72,9 +72,10 @@ Still to do for 1.0:
 - the closed test: upload `tellcat-1.0-1.aab`, add the testers' emails, pick
   countries, then send for review. The landing page's "Join the test" switches
   to the opt-in link once it exists
-- open question: Play's User Data policy asks for the privacy policy to be
-  reachable inside the app as well as in the listing. Settings is closed at
-  four rows (D-024), so a link there needs a decision entry first
+- ~~the privacy policy inside the app~~ done 2026-10-14: Play's User Data
+  policy wants it reachable in the app as well as the listing. Settings has a
+  Privacy policy row under Data that opens `https://tellcat.app/privacy` in the
+  browser, D-083. The release bundle was rebuilt with it
 - moving the owner's phone: Export from Catimo, change the file's marker to
   `tellcat-backup` by hand (D-082), install Tellcat, Restore
 

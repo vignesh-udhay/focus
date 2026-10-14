@@ -16,6 +16,8 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -23,6 +25,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import app.tellcat.R
 import app.tellcat.TellcatApplication
 import app.tellcat.core.design.LocalContentWidth
 import app.tellcat.core.design.tellcatUsesNavigationRail
@@ -258,6 +261,8 @@ fun TellcatNavHost(
 
             composable(TellcatRoutes.SETTINGS) {
                 val preferences by application.preferences.state.collectAsStateWithLifecycle()
+                val uriHandler = LocalUriHandler.current
+                val privacyPolicyUrl = stringResource(R.string.privacy_policy_url)
 
                 SettingsScreen(
                     preferences = preferences,
@@ -267,6 +272,9 @@ fun TellcatNavHost(
                         navController.navigate(TellcatRoutes.REMINDER_HEALTH)
                     },
                     onOpenBackup = { navController.navigate(TellcatRoutes.BACKUP) },
+                    // No browser installed throws. The row shows the address,
+                    // so the user still has it (D-083).
+                    onOpenPrivacyPolicy = { runCatching { uriHandler.openUri(privacyPolicyUrl) } },
                     onBack = navController::popBackStack
                 )
             }

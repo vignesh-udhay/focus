@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import app.tellcat.core.design.ThemePreference
 import app.tellcat.data.local.AppearancePreferences
 import app.tellcat.ui.settings.SettingsScreen
@@ -29,6 +30,7 @@ class SettingsSemanticsTest {
                     onThemeChange = {},
                     onOpenReminderHealth = {},
                     onOpenBackup = {},
+                    onOpenPrivacyPolicy = {},
                     onBack = {},
                     dynamicColorAvailable = false
                 )
@@ -52,6 +54,7 @@ class SettingsSemanticsTest {
                     onThemeChange = { selectedTheme = it },
                     onOpenReminderHealth = {},
                     onOpenBackup = {},
+                    onOpenPrivacyPolicy = {},
                     onBack = {}
                 )
             }
@@ -65,6 +68,31 @@ class SettingsSemanticsTest {
         composeRule.onNodeWithText("Dark").assertIsDisplayed().performClick()
         assertEquals(ThemePreference.Dark, selectedTheme)
         composeRule.onNodeWithText("Choose theme").assertDoesNotExist()
+    }
+
+    /** D-083: Play wants the privacy policy reachable inside the app. */
+    @Test
+    fun thePrivacyPolicyRowSitsUnderDataAndOpensThePolicy() {
+        var opened = false
+
+        composeRule.setContent {
+            TellcatTheme(dynamicColor = false) {
+                SettingsScreen(
+                    preferences = AppearancePreferences(),
+                    onDynamicColorChange = {},
+                    onThemeChange = {},
+                    onOpenReminderHealth = {},
+                    onOpenBackup = {},
+                    onOpenPrivacyPolicy = { opened = true },
+                    onBack = {}
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Privacy policy").performScrollTo()
+        composeRule.onNodeWithText("tellcat.app/privacy").assertIsDisplayed()
+        composeRule.onNodeWithText("Privacy policy").performClick()
+        assertEquals(true, opened)
     }
 }
 
