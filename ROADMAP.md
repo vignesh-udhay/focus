@@ -69,9 +69,14 @@ Still to do for 1.0:
   is 18 and over only, so the Families policy does not apply. The listing has
   the copy from that doc, the icon, the feature graphic and the eight
   screenshots in shot-list order, and is saved but not sent for review
-- the closed test: upload `tellcat-1.0-1.aab`, add the testers' emails, pick
-  countries, then send for review. The landing page's "Join the test" switches
-  to the opt-in link once it exists
+- the closed test: set up 2026-10-14 on the Alpha track. Build 1 (1.0) with
+  the privacy row, all 178 countries and regions, the email list "Tellcat
+  testers" (4 people, the owner included) and hello@tellcat.app for feedback.
+  The first review covers the listing, App content and the build together. Play
+  needs 12 testers opted in for 14 days in a row before production can be
+  applied for, and it is not clear the owner's own account counts, so the aim
+  is 12 besides the owner. Testers are added to the list without a new review.
+  The landing page's "Join the test" switches to the opt-in link once it exists
 - ~~the privacy policy inside the app~~ done 2026-10-14: Play's User Data
   policy wants it reachable in the app as well as the listing. Settings has a
   Privacy policy row under Data that opens `https://tellcat.app/privacy` in the
