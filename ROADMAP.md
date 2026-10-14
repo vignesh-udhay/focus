@@ -42,16 +42,16 @@ the release build at it; without that file a release is left unsigned.
 
 Still to do for 1.0:
 
-- the Play developer account, which the owner is creating; expect the closed
-  test of 12 testers for 14 days that new personal accounts need
+- ~~the Play developer account~~ done: a personal account named Tellcat,
+  identity and phone verified. New personal accounts need a closed test of 12
+  testers for 14 days before production
 - ~~the privacy policy and a contact address~~ done 2026-10-12: the policy is
   live at `https://tellcat.app/privacy` on Cloudflare Pages, built by
   `tools/build_site.py`, and `hello@tellcat.app` forwards to the owner's Gmail
-- the owner's identity verification in Play Console, which locks Create app:
-  submitted 2026-10-14 with the PAN card for identity and an HDFC statement for
-  the address, both matching the payments profile "Vignesh U" exactly. Google
-  says a few days; the phone check unlocks after it. The Monetization payments
-  profile in Settings is for selling and stays unset, per D-001
+- ~~the owner's identity verification in Play Console~~ done, with the PAN
+  card and an HDFC statement matching the payments profile "Vignesh U". The
+  Monetization payments profile in Settings is for selling and stays unset,
+  per D-001
 - ~~the listing graphics~~ done 2026-10-12 in `docs/store/`: icon, feature
   graphic and eight screenshots, the last two Backup and dark Today; the widget
   shot was skipped. Shooting them
@@ -63,8 +63,18 @@ Still to do for 1.0:
   `tools/build_site.py`. The feature graphic and the old home line said
   "actually go off", which the listing doc rejects as a swipe at the category;
   both now use "Write it down and you will be told."
-- Data safety, content rating and target audience, entered once Create app
-  unlocks
+- ~~Create app, App content and the store listing~~ done 2026-10-14: all 11
+  dashboard setup tasks are complete. Automatic
+  protection is off. Answers are in `docs/play-listing.md`; the target audience
+  is 18 and over only, so the Families policy does not apply. The listing has
+  the copy from that doc, the icon, the feature graphic and the eight
+  screenshots in shot-list order, and is saved but not sent for review
+- the closed test: upload `tellcat-1.0-1.aab`, add the testers' emails, pick
+  countries, then send for review. The landing page's "Join the test" switches
+  to the opt-in link once it exists
+- open question: Play's User Data policy asks for the privacy policy to be
+  reachable inside the app as well as in the listing. Settings is closed at
+  four rows (D-024), so a link there needs a decision entry first
 - moving the owner's phone: Export from Catimo, change the file's marker to
   `tellcat-backup` by hand (D-082), install Tellcat, Restore
 

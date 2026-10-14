@@ -196,6 +196,11 @@ the first run, and at least one dark shot in the set.
    user's Google backup (D-080): Tellcat itself never sends it anywhere, and the
    listing's section under the same heading says the app itself sends nothing.
 
+Uploaded to Play Console on 2026-10-14 in this order: 1 to 5, Focus, Backup,
+dark Today. The AI asset declaration is "Don't label assets": the screenshots
+are captures of the app and the icon and feature graphic were rendered by
+script from the launcher icon, with no image model involved.
+
 Caption text over screenshots is optional. If it is used, keep it to the same
 plain register as the app's own copy.
 
@@ -243,7 +248,7 @@ which is the user moving their own file, not the developer receiving anything.
 | User-generated content shared with others | No |
 | Ads | None, and the ads declaration is No |
 | In-app purchases | None |
-| Target audience | TODO, recommend 18 and over. Nothing in the app is aimed at children, and a younger band opts the listing into the Families policy and its extra requirements for no benefit |
+| Target audience | 18 and over only, entered 2026-10-14. Nothing in the app is aimed at children, and a younger band opts the listing into the Families policy and its extra requirements for no benefit. Worth revisiting only if accounts or sync arrive |
 | App access | All functionality is available with no restrictions. No login, no test credentials needed |
 | Government app | No |
 | Financial features | None |
