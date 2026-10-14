@@ -47,9 +47,11 @@ Still to do for 1.0:
 - ~~the privacy policy and a contact address~~ done 2026-10-12: the policy is
   live at `https://tellcat.app/privacy` on Cloudflare Pages, built by
   `tools/build_site.py`, and `hello@tellcat.app` forwards to the owner's Gmail
-- the owner's identity verification in Play Console, which locks Create app;
-  Aadhaar is not on Google's list for India, so passport, driving licence or
-  voter ID
+- the owner's identity verification in Play Console, which locks Create app:
+  submitted 2026-10-14 with the PAN card for identity and an HDFC statement for
+  the address, both matching the payments profile "Vignesh U" exactly. Google
+  says a few days; the phone check unlocks after it. The Monetization payments
+  profile in Settings is for selling and stays unset, per D-001
 - ~~the listing graphics~~ done 2026-10-12 in `docs/store/`: icon, feature
   graphic and eight screenshots, the last two Backup and dark Today; the widget
   shot was skipped. Shooting them
