@@ -84,9 +84,8 @@ Still to do for 1.0:
   only managers can post or see members. The Alpha track was switched from the
   email list to the group the same day (the two cannot be used together; the
   switch went through review). A tester joins
-  `https://groups.google.com/g/tellcat-testers`, then opts in. Still to do:
-  deploy the landing page, whose "Join the test" now opens the group, to
-  Cloudflare Pages
+  `https://groups.google.com/g/tellcat-testers`, then opts in. The landing
+  page's "Join the test" opens the group, deployed 2026-10-14
 - ~~the privacy policy inside the app~~ done 2026-10-14: Play's User Data
   policy wants it reachable in the app as well as the listing. Settings has a
   Privacy policy row under Data that opens `https://tellcat.app/privacy` in the
