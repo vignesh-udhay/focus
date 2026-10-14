@@ -40,6 +40,7 @@ footer { margin-top: 3rem; font-size: .9rem; opacity: .7; }
 .hero { text-align: center; margin-bottom: 2rem; } .hero h1 { margin: .5rem 0 0; font-size: 2.6rem; }
 .hero img { border-radius: 22%; } .lead { font-size: 1.35rem; margin: .4rem 0; }
 .small { font-size: .9rem; opacity: .75; }
+.steps { display: inline-block; text-align: left; margin: .25rem auto 0; padding-left: 1.4rem; }
 .button { display: inline-block; background: var(--accent); color: #fff; padding: .7rem 1.4rem; border-radius: 999px; text-decoration: none; font-weight: 500; }
 @media (prefers-color-scheme: dark) { .button { color: #1b1b2f; } }
 .shots { display: flex; gap: 12px; overflow-x: auto; padding: .5rem 0 1rem; scroll-snap-type: x mandatory; }
@@ -91,9 +92,12 @@ home = (
     '<p>A task app for Android, free, with no account, no subscription and no ads.</p>'
     f'<p><a class="button" href="{JOIN}">Join the test</a></p>'
     '<p class="small">Tellcat is in a closed test on Google Play before its release. '
-    'Join the test group with your Google account (the group page has no posts to show '
-    'you, so look for the Join group button at the top), then '
-    f'<a href="{OPT_IN}">opt in on Google Play</a> and install it from there.</p></header>'
+    'Use the same Google account for each step.</p>'
+    '<ol class="steps">'
+    f'<li><a href="{JOIN}">Open the test group</a> and tap <b>Join group</b>.</li>'
+    f'<li><a href="{OPT_IN}">Open the test on Google Play</a> and tap <b>Become a tester</b>.</li>'
+    '<li>Install Tellcat from the Google Play link on that page.</li>'
+    '</ol></header>'
     f'<div class="shots">{"".join(figures)}</div>'
     f'{points}'
     f'<p><a class="button" href="{JOIN}">Join the test</a></p>'
