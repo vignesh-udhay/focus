@@ -72,13 +72,15 @@ Still to do for 1.0:
 - the closed test: set up 2026-10-14 on the Alpha track. Build 1 (1.0) with
   the privacy row, all 178 countries and regions, the email list "Tellcat
   testers" (6 people, the owner included) and hello@tellcat.app for feedback.
-  Sent for review 2026-10-14; Google says reviews typically finish within 7
-  days. The first review covers the listing, App content and the build
+  Sent for review 2026-10-14. The first review covers the listing, App content and the build
   together, and with managed publishing off the test goes live on approval. Play
   needs 12 testers opted in for 14 days in a row before production can be
   applied for, and it is not clear the owner's own account counts, so the aim
   is 12 besides the owner. Testers are added to the list without a new review.
-  The landing page's "Join the test" switches to the opt-in link once it exists
+  Approved and live the same day: the track is Active. Testers opt in at
+  `https://play.google.com/apps/testing/app.tellcat`, which admits only
+  addresses on the list, so the landing page keeps "Join the test" as an email
+  and adds the opt-in link under it for people already added
 - ~~the privacy policy inside the app~~ done 2026-10-14: Play's User Data
   policy wants it reachable in the app as well as the listing. Settings has a
   Privacy policy row under Data that opens `https://tellcat.app/privacy` in the

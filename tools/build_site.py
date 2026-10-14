@@ -82,13 +82,17 @@ POINTS = [
 ]
 points = ''.join(f'<h2>{html.escape(t)}</h2><p>{html.escape(b)}</p>' for t, b in POINTS)
 JOIN = 'mailto:hello@tellcat.app?subject=Join%20the%20Tellcat%20test'
+# Play's opt-in page. It only lets in addresses already on the tester list, so
+# it sits under the email button rather than replacing it.
+OPT_IN = 'https://play.google.com/apps/testing/app.tellcat'
 home = (
     '<header class="hero"><img src="/img/icon.png" alt="" width="96" height="96">'
     '<h1>Tellcat</h1><p class="lead">Write it down and you will be told.</p>'
     '<p>A task app for Android, free, with no account, no subscription and no ads.</p>'
     f'<p><a class="button" href="{JOIN}">Join the test</a></p>'
     '<p class="small">Tellcat is in a closed test on Google Play before its release. '
-    'Email to be added, and you will get the link.</p></header>'
+    'Email to be added, and you will get the link. '
+    f'Already added? <a href="{OPT_IN}">Join on Google Play</a>.</p></header>'
     f'<div class="shots">{"".join(figures)}</div>'
     f'{points}'
     f'<p><a class="button" href="{JOIN}">Join the test</a></p>'
