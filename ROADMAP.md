@@ -79,8 +79,13 @@ Still to do for 1.0:
   is 12 besides the owner. Testers are added to the list without a new review.
   Approved and live the same day: the track is Active. Testers opt in at
   `https://play.google.com/apps/testing/app.tellcat`, which admits only
-  addresses on the list, so the landing page keeps "Join the test" as an email
-  and adds the opt-in link under it for people already added
+  addresses on the list. To make joining self-serve, a Google Group,
+  `tellcat-testers@googlegroups.com`, was created the same day: anyone can join,
+  only managers can post or see members, and the five testers besides the owner
+  were invited. Still to do: switch the Alpha track's testers from the email
+  list to the group once those five have joined (the two cannot be used
+  together), then deploy the landing page, whose "Join the test" now opens the
+  group, to Cloudflare Pages
 - ~~the privacy policy inside the app~~ done 2026-10-14: Play's User Data
   policy wants it reachable in the app as well as the listing. Settings has a
   Privacy policy row under Data that opens `https://tellcat.app/privacy` in the
