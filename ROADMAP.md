@@ -85,7 +85,10 @@ Still to do for 1.0:
   email list to the group the same day (the two cannot be used together; the
   switch went through review). A tester joins
   `https://groups.google.com/g/tellcat-testers`, then opts in. The landing
-  page's "Join the test" opens the group, deployed 2026-10-14
+  page's "Join the test" opens the group and lists the three steps, deployed
+  2026-10-14. The group's conversations are visible to anyone (there are none,
+  and only managers post): with them hidden, a visitor on a phone got "You
+  don't have permission" and no Join button at all
 - ~~the privacy policy inside the app~~ done 2026-10-14: Play's User Data
   policy wants it reachable in the app as well as the listing. Settings has a
   Privacy policy row under Data that opens `https://tellcat.app/privacy` in the
