@@ -71,8 +71,10 @@ Still to do for 1.0:
   screenshots in shot-list order, and is saved but not sent for review
 - the closed test: set up 2026-10-14 on the Alpha track. Build 1 (1.0) with
   the privacy row, all 178 countries and regions, the email list "Tellcat
-  testers" (4 people, the owner included) and hello@tellcat.app for feedback.
-  The first review covers the listing, App content and the build together. Play
+  testers" (6 people, the owner included) and hello@tellcat.app for feedback.
+  Sent for review 2026-10-14; Google says reviews typically finish within 7
+  days. The first review covers the listing, App content and the build
+  together, and with managed publishing off the test goes live on approval. Play
   needs 12 testers opted in for 14 days in a row before production can be
   applied for, and it is not clear the owner's own account counts, so the aim
   is 12 besides the owner. Testers are added to the list without a new review.
