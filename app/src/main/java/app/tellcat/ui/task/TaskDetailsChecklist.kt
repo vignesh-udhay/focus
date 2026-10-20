@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.runtime.LaunchedEffect
@@ -17,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import app.tellcat.core.design.TellcatMotion
 import app.tellcat.core.design.TellcatSpacing
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -41,6 +43,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.tellcat.R
 import app.tellcat.core.design.TellcatDimensions
@@ -131,6 +134,20 @@ private fun ChecklistRow(
     // the target already spaces them, and a list is easier to scan dense.
     val rowGap = if (lineCentre > targetCentre) TellcatSpacing.xxs else 0.dp
 
+    // The task title's treatment, `expressive-motion.md`: colour moves on the
+    // effects spec, the strikethrough simply appears. And not the completion
+    // spring on the checkbox, which the motion rules keep for completing a task
+    // alone; an item ticked in a shop is not that moment.
+    val textColor by animateColorAsState(
+        targetValue = if (item.done) {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        } else {
+            MaterialTheme.colorScheme.onSurface
+        },
+        animationSpec = TellcatMotion.stateColor(),
+        label = "ChecklistItemColor"
+    )
+
     Row(
         verticalAlignment = Alignment.Top,
         modifier = Modifier
@@ -152,11 +169,7 @@ private fun ChecklistRow(
         Text(
             text = item.text,
             style = MaterialTheme.typography.bodyLarge,
-            color = if (item.done) {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            } else {
-                MaterialTheme.colorScheme.onSurface
-            },
+            color = textColor,
             // Strikethrough as well as colour, as on a completed task row, so
             // a ticked item survives a greyscale screen and colour blindness.
             textDecoration = if (item.done) TextDecoration.LineThrough else null,
@@ -242,7 +255,11 @@ private fun AddChecklistItemField(taskId: String, itemCount: Int, onAdd: (String
                         else R.string.task_checklist_add
                     ),
                     style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    // One line at any font scale, so the empty field is never
+                    // taller than a filled one. `expressive-components.md`.
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             },
             singleLine = true,

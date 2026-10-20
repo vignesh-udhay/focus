@@ -101,6 +101,7 @@ licence to invent a fifth.
 | --- | --- | --- |
 | Completing a task | `completion` | **Strongest in the app** |
 | Task title colour and strikethrough | `stateColor` | Restrained |
+| A checklist item's text colour when ticked | `stateColor` | Restrained |
 | A task entering, leaving or moving in a list | `listChange` | Mild |
 | A task promoted into, or released from, the Focus now card | `listChange` | Mild |
 | The Focus now card appearing or leaving | `reveal` | Restrained |
@@ -143,6 +144,15 @@ ordering rather than a reshuffle.
 
 Mild rather than strong: a list of twelve rows springing every time one is
 ticked is noise.
+
+[CD] **Checklist items do not move, and their checkboxes do not spring.** An
+item is a line inside one task, not a task in a collection, so `listChange` does
+not reach it, and nothing reorders: ticked items stay where they are. Items are
+added in a typing run, one after another, and a row easing in under the field
+would make the field drift while the user is looking at it. Removal has the undo
+snackbar to say what happened. The checkbox keeps Material's own check
+animation and nothing more, because `completion` is the one expressive moment
+and an item ticked in a shop is not completing a task.
 
 [IMPL] Every task collection applies it, not only Today. A task leaving Inbox
 when it is scheduled, or leaving Today when it is completed, is the same event

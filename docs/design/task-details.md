@@ -342,6 +342,13 @@ item". Most tasks never have a checklist, and a heading over nothing on every
 one of them is a section to read past. The "Checklist" label arrives with the
 first item, and the placeholder becomes "Add item".
 
+**Plain rows, not a segmented group.** The Plan rows are a grouped list
+because each one is a setting that opens a sheet. Checklist items are the
+task's content, like the notes above them, so they take the identity region's
+treatment: no container, Material `Checkbox` unchanged, the whole line as the
+target with Material's ripple as the only press feedback. A container per item
+would make a shopping list read as a stack of cards.
+
 **Items line up with the task.** Each checkbox sits in the title checkbox's
 column, and the item text starts where the title and notes start. A wrapped
 item keeps its checkbox and remove button on its first line, on the title's
@@ -351,7 +358,9 @@ target, where they would otherwise touch.
 
 **The row ticks the item.** The whole line is the target, not only the box, so
 an item can be ticked one-handed in a shop. Ticked items stay in place, struck
-through and on `onSurfaceVariant` like a completed task row: the order is
+through and on `onSurfaceVariant` like a completed task row, the colour moving
+on `stateColor` as the title's does (`expressive-motion.md` says why there is no
+spring and no row motion): the order is
 usually the order of the shop, and moving rows under the user's thumb loses
 their place and invites mis-taps.
 
