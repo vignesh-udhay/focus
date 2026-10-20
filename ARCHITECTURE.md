@@ -21,7 +21,7 @@ needs a reason, per `AGENTS.md`.
 
 ## Packages
 
-    core/design       design tokens: color, spacing, dimensions, motion, layout
+    core/design       design tokens: color, spacing, dimensions, motion, haptics, layout
     core/domain       task model and pure business rules
     core/notification alarm seam and its Android implementation
     core/text         resource-backed wording shared by screens and notifications

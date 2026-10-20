@@ -118,6 +118,10 @@ The application should not use:
 
 The reward is getting the work done.
 
+This rules out keeping score, not stating facts. A count may say what something
+hides, such as how many items are left on a task's checklist; it never measures
+how much the user did. `docs/decisions.md` D-084.
+
 ## 8. Free, with nothing held back
 
 Tellcat has no subscription, no paid tier, no in-app purchases, no ads and

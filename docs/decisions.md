@@ -5578,3 +5578,50 @@ nothing, and the address on the row is the fallback.
 **What would reverse this.** Play dropping the in-app requirement would not, on
 its own: a user who wants to know what the app does with their data should be
 able to find out from the app.
+
+---
+
+## D-084. A count may say what something hides, never how much was done
+
+**Decision.** One rule for every number the app shows, stated once because it
+had only been stated case by case. A count is allowed when it discloses
+something the user cannot see from where they are. A count is refused when it
+measures throughput, totals the user's work, or passes judgement on their day.
+
+Applied here: a task row with a checklist says how many items are left, "Oct 20
+· 3 left", and "All ticked" once none are. Only on an outstanding task.
+
+**Why this needed an entry.** `PRODUCT.md` principle 7 rules out streaks,
+points, badges and productivity scores, and read loosely that reads as "no
+numbers". The owner asked whether the rule should be reverted, because a
+checklist has to be identifiable from the list and usability is not to be
+traded away for calm. It should not be reverted. It was never "no numbers", and
+three entries had already drawn the line in the same place:
+
+- D-016 kept the Logbook's day headings and refused a count beside them, the
+  step that turns a record into a scoreboard.
+- D-031 refused the widget "3 tasks left", a burn-down of the user's whole day
+  that refills every morning, and kept `+N more`, which discloses rows that did
+  not fit.
+- D-039 allowed "3 reminders" on a notification stack because it discloses what
+  the collapsed stack is hiding.
+
+**Why the checklist count is on the allowed side.** A task's items are hidden
+inside it. Without a count, "Groceries" holding eight items looked exactly like
+"Call mum", and the only way to learn otherwise was to open it. The count is
+about one task, not the day; it is the state of a list, not a measure of the
+user; and it does not refill.
+
+**Why "left" rather than "3/8".** A fraction reads as progress toward a goal,
+which is the shape of a score. What is left is what a person in a shop needs,
+and it reads as a note. It also stops at "All ticked" rather than zero, which is
+a statement of fact and not a finish line.
+
+**Where the line is.** No progress bar, ring or badge for it, which
+`expressive-design-system.md` forbids anyway. No count on a completed task,
+where "3 left" on the Logbook would be a verdict. No total of items across
+tasks, on any screen. No count of tasks done, today or ever.
+
+**What would reverse this.** A count appearing that measures what the user did
+rather than what a row hides, or the checklist count being summed anywhere.
+

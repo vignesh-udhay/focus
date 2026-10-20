@@ -4,6 +4,7 @@ import androidx.compose.material3.ListItemColors
 import androidx.compose.material3.ListItemShapes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -219,6 +220,25 @@ private fun taskMetadata(
         val label = recurrenceSummary(rule, today)
         segments += label
         spoken += label
+    }
+
+    // **Last, and only while the task is outstanding.** `docs/decisions.md`
+    // D-084. A task's checklist is hidden inside it, and without this "Groceries"
+    // with eight items looked exactly like "Call mum". The count discloses what
+    // the row hides, the same exception D-031 and D-039 make for `+N more` and a
+    // notification stack, and it counts what is left rather than what is done,
+    // so it reads as a shopping note and not a score. "All ticked" keeps the row
+    // saying it has a list once nothing is left. A completed task shows none: on
+    // the Logbook "3 left" would read as a verdict on the user.
+    if (task.checklist.isNotEmpty() && !task.isCompleted) {
+        val left = task.checklist.count { item -> !item.done }
+        if (left > 0) {
+            segments += pluralStringResource(R.plurals.task_row_checklist_left, left, left)
+            spoken += pluralStringResource(R.plurals.task_row_checklist_left_spoken, left, left)
+        } else {
+            segments += stringResource(R.string.task_row_checklist_all_ticked)
+            spoken += stringResource(R.string.task_row_checklist_all_ticked_spoken)
+        }
     }
 
     return RowMetadata(segments = segments, spoken = spoken.joinToString(", "))

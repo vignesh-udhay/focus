@@ -73,6 +73,18 @@
     <!-- The reminder segment as TalkBack reads it, so it is not mistaken for the
          scheduled day beside it: "Reminder Tomorrow, 5:00 PM". -->
     <string name="task_row_reminder_spoken">Reminder %1$s</string>
+    <!-- A row's count of its task's unticked checklist items, D-084. -->
+    <plurals name="task_row_checklist_left">
+        <item quantity="one">%d left</item>
+        <item quantity="other">%d left</item>
+    </plurals>
+    <!-- The same count read aloud, where "3 left" alone does not say of what. -->
+    <plurals name="task_row_checklist_left_spoken">
+        <item quantity="one">%d checklist item left</item>
+        <item quantity="other">%d checklist items left</item>
+    </plurals>
+    <string name="task_row_checklist_all_ticked">All ticked</string>
+    <string name="task_row_checklist_all_ticked_spoken">All checklist items ticked</string>
     <string name="task_open">Open task details</string>
     <!-- The row's actions menu had five more strings here: Show task actions,
          Focus, and three Move to... entries. D-023 removed the menu and left them

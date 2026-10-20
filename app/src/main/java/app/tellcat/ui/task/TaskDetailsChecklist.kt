@@ -34,7 +34,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -50,6 +49,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import app.tellcat.R
 import app.tellcat.core.design.TellcatMotion
+import app.tellcat.core.design.TellcatHaptics
 import app.tellcat.core.domain.ChecklistItem
 import app.tellcat.core.domain.Task
 import app.tellcat.ui.component.SectionLabel
@@ -204,9 +204,7 @@ private fun ChecklistRow(
                 // feedback is on. `expressive-motion.md` says why this one and
                 // not the completion spring.
                 onCheckedChange = { done ->
-                    haptics.performHapticFeedback(
-                        if (done) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff
-                    )
+                    TellcatHaptics.checklistTick(haptics, done)
                     onSetDone(done)
                 },
                 modifier = Modifier.semantics { contentDescription = item.text }

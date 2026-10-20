@@ -38,6 +38,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import app.tellcat.core.design.TellcatHaptics
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -105,6 +107,7 @@ fun FocusSheet(
 ) {
     val task by viewModel.focusedTask.collectAsStateWithLifecycle()
     val session by viewModel.focusSession.collectAsStateWithLifecycle()
+    val haptics = LocalHapticFeedback.current
 
     // The sheet carries its own, because the screen it opened over is behind a
     // scrim and a bar shown down there would be invisible. Both effects watch
@@ -149,7 +152,10 @@ fun FocusSheet(
         FocusSheetContent(
             task = current,
             session = active,
-            onComplete = { viewModel.completeFromFocus(current.id) },
+            onComplete = {
+                TellcatHaptics.taskCompletion(haptics, completed = true)
+                viewModel.completeFromFocus(current.id)
+            },
             onPause = viewModel::pauseFocusSession,
             onResume = viewModel::resumeFocusSession,
             onExtend = viewModel::extendFocusSession,

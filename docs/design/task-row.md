@@ -66,7 +66,14 @@ retired.
 
 # What the metadata line says
 
-`Today`, `Tomorrow`, or the date, then the repeat. Nothing else.
+`Today`, `Tomorrow`, or the date, then the repeat, then what a checklist has
+left. Nothing else.
+
+**A checklist says how much is left.** D-084. "Oct 20 · 3 left" while items
+remain and "All ticked" once none do, read aloud as "3 checklist items left".
+Last on the line, because it is about what is inside the task rather than when
+it is. Only on an outstanding task: on the Logbook "3 left" would be a verdict.
+It counts what is left, not what is done, so it is a note and not a score.
 
 **Not "Scheduled today".** The board drew that, and the word "Scheduled" repeats
 on every row while earning nothing. On Today the band heading already names the

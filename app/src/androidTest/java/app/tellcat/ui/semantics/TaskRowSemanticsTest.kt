@@ -10,6 +10,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import app.tellcat.core.domain.ChecklistItem
 import app.tellcat.core.domain.Task
 import app.tellcat.ui.component.TaskListRow
 import org.junit.Assert.assertEquals
@@ -315,6 +316,46 @@ class TaskRowSemanticsTest {
         )
 
         rule.onNodeWithContentDescription("Reminder Tomorrow, ", substring = true).assertExists()
+    }
+
+    /**
+     * D-084. A row with a checklist says how many items are left, drawn short
+     * and spoken in full, because "3 left" read aloud does not say of what.
+     */
+    private fun assertAChecklistSaysWhatIsLeft(fontScale: Float) {
+        setRow(
+            fontScale,
+            outstanding().copy(
+                checklist = listOf(ChecklistItem("Milk"), ChecklistItem("Eggs", done = true), ChecklistItem("Bread"))
+            )
+        )
+
+        rule.onNode(hasText("2 left", substring = true)).assertExists()
+        rule.onNodeWithContentDescription("2 checklist items left", substring = true).assertExists()
+    }
+
+    @Test
+    fun aChecklist_saysWhatIsLeft_at100() = assertAChecklistSaysWhatIsLeft(FontScale100)
+
+    @Test
+    fun aChecklist_saysWhatIsLeft_at200() = assertAChecklistSaysWhatIsLeft(FontScale200)
+
+    /** Nothing left still says there is a list, as a fact rather than a zero. */
+    @Test
+    fun aFullyTickedChecklist_readsAllTicked() {
+        setRow(FontScale100, outstanding().copy(checklist = listOf(ChecklistItem("Milk", done = true))))
+
+        rule.onNode(hasText("All ticked", substring = true)).assertExists()
+        rule.onNode(hasText("0 left", substring = true)).assertDoesNotExist()
+    }
+
+    /** A completed task shows no count: on the Logbook it would be a verdict. */
+    @Test
+    fun aCompletedTask_showsNoChecklistCount() {
+        setRow(FontScale100, completed().copy(checklist = listOf(ChecklistItem("Milk"))))
+
+        rule.onNode(hasText("left", substring = true)).assertDoesNotExist()
+        rule.onNode(hasText("All ticked", substring = true)).assertDoesNotExist()
     }
 
     private fun outstanding(): Task = testTask(

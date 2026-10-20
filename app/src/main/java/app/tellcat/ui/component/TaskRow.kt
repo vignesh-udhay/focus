@@ -22,6 +22,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalHapticFeedback
+import app.tellcat.core.design.TellcatHaptics
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
@@ -117,6 +119,7 @@ fun TaskRow(
     // The one expressive moment in the app. Completing a task presses the
     // control in and lets it spring back; the fast spatial spec overshoots,
     // and that overshoot is the whole gesture. Nothing else here moves.
+    val haptics = LocalHapticFeedback.current
     val completionScale = remember { Animatable(1f) }
     val completionSpec = TellcatMotion.completion<Float>()
     var isFirstComposition by remember { mutableStateOf(true) }
@@ -172,7 +175,10 @@ fun TaskRow(
         leadingContent = {
             Checkbox(
                 checked = isCompleted,
-                onCheckedChange = onToggleComplete,
+                onCheckedChange = { completed ->
+                    TellcatHaptics.taskCompletion(haptics, completed)
+                    onToggleComplete(completed)
+                },
                 modifier = Modifier
                     .graphicsLayer {
                         scaleX = completionScale.value

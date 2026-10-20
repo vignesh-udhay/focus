@@ -43,6 +43,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
+import app.tellcat.core.design.TellcatHaptics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -536,6 +538,7 @@ private fun TaskDetailsContent(
  */
 @Composable
 private fun IdentityRegion(task: Task, onToggleComplete: () -> Unit, onEdit: (Task) -> Unit) {
+    val haptics = LocalHapticFeedback.current
     Column(modifier = Modifier.padding(top = TellcatSpacing.xs)) {
         // The same description a task row's checkbox carries, because it is the
         // same act on the same task. A screen reader hearing two different
@@ -570,7 +573,10 @@ private fun IdentityRegion(task: Task, onToggleComplete: () -> Unit, onEdit: (Ta
         Row(verticalAlignment = Alignment.Top) {
             Checkbox(
                 checked = task.isCompleted,
-                onCheckedChange = { onToggleComplete() },
+                onCheckedChange = { completed ->
+                    TellcatHaptics.taskCompletion(haptics, completed)
+                    onToggleComplete()
+                },
                 modifier = Modifier
                     .padding(top = checkboxTop)
                     .sizeIn(

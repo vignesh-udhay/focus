@@ -298,22 +298,28 @@ it is listed here so it cannot spread one helpful buzz at a time.
 
 | Interaction | Feedback |
 | --- | --- |
+| Completing a task, anywhere it can be done in the app | `HapticFeedbackType.Confirm` |
+| Reopening a task | `HapticFeedbackType.ToggleOff` |
 | Ticking or unticking a checklist item | `HapticFeedbackType.ToggleOn` / `ToggleOff` |
 
+[IMPL] `TellcatHaptics` in `core/design` is this table in code, as
+`TellcatMotion` is the motion table: screens ask for an interaction by name and
+never choose a feedback type themselves.
+
 [CD] **Nothing else buzzes.** Not navigation, not sheets, not scrolling, not
-adding an item. A list ticked off in a shop is the one place a small physical
-answer helps, because the user is often not looking at the screen when they
-tap.
+adding an item. Completion is the strongest interaction in the app and answers
+firmest; a list ticked off in a shop answers lightly, because the user is often
+not looking at the screen when they tap. A tick never answers more firmly than
+finishing a task.
 
 [CD] **Only through `performHapticFeedback`**, never a direct vibration. The
 system plays it only when the user has touch feedback on, and at the strength
-the device chooses for a toggle, which is light: measured on the Pixel 10
-emulator as a `TICK` primitive at half scale.
+the device chooses for each type. Measured on the Pixel 10 emulator: a toggle
+plays a `TICK` primitive at half scale, and `Confirm` a medium `CLICK`.
 
-[CD] **Open: completing a task has none.** `expressive-design-system.md` makes
-completion the strongest interaction in the app, and an item tick that answers
-physically while completing the whole task does not inverts that order. If
-completion gains one, it is `Confirm`, a step firmer than a toggle.
+[CD] Not from a notification's Done or the widget. Those complete a task
+without the app on screen, and the system's own feedback for the tap is the
+right answer there.
 
 ---
 
