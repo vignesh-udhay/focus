@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
@@ -460,6 +461,12 @@ private fun TaskDetailsContent(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    // The scroll area ends at the keyboard. The app draws edge
+                    // to edge, so without this the viewport ran on underneath
+                    // it and a field low on the page could be typed into
+                    // unseen; nothing scrolls a field into a part of the
+                    // viewport the keyboard covers.
+                    .imePadding()
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = TellcatSpacing.md + gutter)
                     // Clearance beneath the last Plan row, on the same terms the

@@ -65,4 +65,17 @@ class ChecklistTest {
     fun `a removal on an index that now holds another item changes nothing`() {
         assertEquals(groceries, groceries.withoutItem(0, "Eggs"))
     }
+
+    @Test
+    fun `an item put back goes where it was`() {
+        assertEquals(groceries, groceries.withoutItem(1, "Eggs").withItemAt(1, ChecklistItem("Eggs")))
+    }
+
+    @Test
+    fun `an item put back past the end goes last`() {
+        assertEquals(
+            listOf(ChecklistItem("Milk"), ChecklistItem("Bread")),
+            listOf(ChecklistItem("Milk")).withItemAt(5, ChecklistItem("Bread"))
+        )
+    }
 }

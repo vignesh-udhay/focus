@@ -58,3 +58,10 @@ fun List<ChecklistItem>.withDone(index: Int, text: String, done: Boolean): List<
 fun List<ChecklistItem>.withoutItem(index: Int, text: String): List<ChecklistItem> =
     if (getOrNull(index)?.text != text) this
     else filterIndexed { i, _ -> i != index }
+
+/**
+ * This list with [item] put back at [index], or at the end if the list has
+ * since become shorter than that. What undoing a removal writes.
+ */
+fun List<ChecklistItem>.withItemAt(index: Int, item: ChecklistItem): List<ChecklistItem> =
+    toMutableList().apply { add(index.coerceIn(0, size), item) }

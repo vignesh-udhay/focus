@@ -9,7 +9,9 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import app.tellcat.core.domain.CapturedTask
 import app.tellcat.core.domain.checklistItem
 import app.tellcat.core.domain.withDone
+import app.tellcat.core.domain.withItemAt
 import app.tellcat.core.domain.withoutItem
+import app.tellcat.core.domain.ChecklistItem
 import app.tellcat.core.domain.FocusSession
 import app.tellcat.core.domain.FocusSessionStore
 import app.tellcat.core.domain.PrimaryList
@@ -88,6 +90,17 @@ sealed interface PendingUndo {
     data class Reschedule(
         override val taskId: String,
         val previousDate: LocalDate?
+    ) : PendingUndo
+
+    /**
+     * An item just removed from a task's checklist, and where it was.
+     *
+     * Carried whole, like [Reschedule]'s date, because the write destroys it.
+     */
+    data class ChecklistRemoval(
+        override val taskId: String,
+        val index: Int,
+        val item: ChecklistItem
     ) : PendingUndo
 }
 
@@ -1131,9 +1144,38 @@ class TaskListViewModel(
         write { repository.changeChecklist(id) { checklist -> checklist.withDone(index, text, done) } }
     }
 
-    /** Removes the item at [index] of [id]'s checklist, on the same terms. */
+    /**
+     * Removes the item at [index] of [id]'s checklist, on the same terms, and
+     * offers it back.
+     *
+     * The offer is raised only when an item actually went: a stale tap that
+     * matched nothing removed nothing, and an undo for it would put back an
+     * item that was never taken.
+     */
     fun removeChecklistItem(id: String, index: Int, text: String) {
-        write { repository.changeChecklist(id) { checklist -> checklist.withoutItem(index, text) } }
+        write {
+            var removed: ChecklistItem? = null
+            repository.changeChecklist(id) { checklist ->
+                checklist.withoutItem(index, text).also { next ->
+                    if (next.size < checklist.size) removed = checklist[index]
+                }
+            }
+            removed?.let { item -> _pendingUndo.value = PendingUndo.ChecklistRemoval(id, index, item) }
+        }
+    }
+
+    /**
+     * Puts back the item the standing offer for [id] removed, where it was.
+     * Applied to the stored list, so a tick made in the meantime survives.
+     */
+    fun undoChecklistRemoval(id: String) {
+        val offer = _pendingUndo.value as? PendingUndo.ChecklistRemoval ?: return
+        if (offer.taskId != id) return
+        if (!_pendingUndo.compareAndSet(expect = offer, update = null)) return
+
+        write {
+            repository.changeChecklist(id) { checklist -> checklist.withItemAt(offer.index, offer.item) }
+        }
     }
 
     /**

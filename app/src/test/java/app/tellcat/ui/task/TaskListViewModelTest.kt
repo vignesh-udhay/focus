@@ -3070,6 +3070,41 @@ class TaskListViewModelTest {
     }
 
     @Test
+    fun undoingARemovalPutsTheItemBackWhereItWas() {
+        store(
+            task(id = "a", scheduledDate = today).copy(
+                checklist = listOf(ChecklistItem("Milk"), ChecklistItem("Eggs"), ChecklistItem("Bread"))
+            )
+        )
+        val model = viewModel()
+        visible(model, 1)
+
+        model.removeChecklistItem("a", 1, "Eggs")
+        awaitChecklist("a", listOf(ChecklistItem("Milk"), ChecklistItem("Bread")))
+        runBlocking { model.pendingUndo.first { it is PendingUndo.ChecklistRemoval } }
+
+        model.undoChecklistRemoval("a")
+
+        awaitChecklist("a", listOf(ChecklistItem("Milk"), ChecklistItem("Eggs"), ChecklistItem("Bread")))
+    }
+
+    @Test
+    fun aStaleRemovalOffersNoUndo() {
+        store(task(id = "a", scheduledDate = today).copy(checklist = listOf(ChecklistItem("Milk"))))
+        val model = viewModel()
+        visible(model, 1)
+
+        // Index 0 holds Milk, not Eggs, so nothing is removed. A real removal
+        // after it proves the first write has run.
+        model.removeChecklistItem("a", 0, "Eggs")
+        model.removeChecklistItem("a", 0, "Milk")
+        awaitChecklist("a", emptyList())
+
+        val offer = runBlocking { model.pendingUndo.first { it != null } }
+        assertEquals(PendingUndo.ChecklistRemoval("a", 0, ChecklistItem("Milk")), offer)
+    }
+
+    @Test
     fun removingAnItemRemovesOnlyIt() {
         store(
             task(id = "a", scheduledDate = today)

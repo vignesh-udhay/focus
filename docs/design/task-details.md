@@ -41,6 +41,11 @@ Six fields, and only these six:
 Plus repeat, which is a rule rather than a value: a period, an interval, a
 weekday set and an end condition. See D-027.
 
+And the checklist, which `editTask` deliberately does not carry. Each checklist
+change is its own write, one change applied to the stored list inside a
+transaction, so a quick second tick cannot write back the list from before the
+first. See "Checklist" below.
+
 `TaskListViewModel.editTask` names the same fields and copies them onto the
 stored task, so `id`, `createdAt`, `completedAt` and `deletedAt` are carried
 through untouched.
@@ -52,9 +57,9 @@ have, and the view model holds both, so the out-of-scope line was the wrong one.
 
 ---
 
-# Three regions
+# Four regions
 
-The screen reads as three, top to bottom.
+The screen reads as four, top to bottom: identity, checklist, plan, actions.
 
 **Identity.** A checkbox, the title, the notes. The title is the screen's
 heading and its primary input at once, at Headline Small on `onSurface`. The
@@ -91,11 +96,14 @@ heading and the input at the same time.
 The duration used to appear here as a chip as well as in the Plan rows. It is
 one field and it is shown once.
 
+**Checklist.** The items under the notes, then a field to add one. Covered in
+its own section below.
+
 **Plan.** A section label, then five grouped rows: Scheduled, Due date,
 Reminder, Duration, Repeat. Each shows its current value and opens a sheet.
 
-**Actions.** A floating toolbar, pinned bottom centre, holding Delete and Start
-focus. D-037. Start focus is the toolbar's attached FAB and one of two ways into
+**Actions.** A floating toolbar, pinned bottom centre, holding Delete, Share
+when the task has a checklist, and Start focus. D-037. Start focus is the toolbar's attached FAB and one of two ways into
 Focus alongside the Focus now card, the row long-press having gone with D-023.
 `focus.md` carries the entry rules.
 
@@ -323,6 +331,50 @@ Required, every caller has to decide.
 
 ---
 
+# Checklist
+
+A shopping list lives here as a task with items: "Groceries", with Milk and
+Eggs under it, and a reminder for Saturday morning. A copy can be sent through
+Android's share sheet; nothing keeps two phones in step (D-006).
+
+**Empty, it is one line.** A task with no items shows only "+ Add checklist
+item". Most tasks never have a checklist, and a heading over nothing on every
+one of them is a section to read past. The "Checklist" label arrives with the
+first item, and the placeholder becomes "Add item".
+
+**Items line up with the task.** Each checkbox sits in the title checkbox's
+column, and the item text starts where the title and notes start. A wrapped
+item keeps its checkbox and remove button on its first line, on the title's
+rule above, measured from the line height for the same reason. Rows are 48dp
+at ordinary font sizes and gain a 4dp gap only once a line is taller than the
+target, where they would otherwise touch.
+
+**The row ticks the item.** The whole line is the target, not only the box, so
+an item can be ticked one-handed in a shop. Ticked items stay in place, struck
+through and on `onSurfaceVariant` like a completed task row: the order is
+usually the order of the shop, and moving rows under the user's thumb loses
+their place and invites mis-taps.
+
+**Removing is an X with an undo.** The X sits at the trailing end of every row
+on `onSurfaceVariant`. Removal raises the same single undo offer completing or
+deleting a task raises ("Item removed", Undo), and undo puts the item back where
+it was.
+
+**Typing a list is a run, not a series of taps.** Done adds the item and keeps
+the keyboard up. After each item the field is brought back into view, because
+every addition pushes it lower and it used to slide under the keyboard after a
+few. Done on an empty field closes the keyboard; it is how entry ends. Leaving
+the field adds whatever is in it, as the title and notes commit on blur.
+
+The scroll area ends at the keyboard (`imePadding`). The app draws edge to edge,
+and without that the viewport ran on underneath the keyboard, where nothing
+scrolls a field into view.
+
+**Not yet:** editing an item's text in place (remove and re-add), reordering,
+and any sign of a checklist on the task row in the lists.
+
+---
+
 # Committing
 
 Every control writes when it is chosen. There is no Save.
@@ -413,7 +465,8 @@ None on this screen. Repeat was the last one, and D-027 closed it.
 
 Not part of this screen:
 
-- subtasks, projects and areas
+- subtasks with their own dates or reminders, projects and areas (a checklist
+  item has neither, which is what keeps it a line rather than a task)
 - rich text or formatting in notes
 - a confirmation dialog before deleting
 - a typed date field, which is Quick Add's job

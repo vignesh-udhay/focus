@@ -10,6 +10,14 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import app.tellcat.core.design.TellcatSpacing
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Checkbox
@@ -45,9 +53,12 @@ import app.tellcat.ui.component.SectionLabel
  * one.
  *
  * Between the identity and the plan because on a task like "Groceries" the
- * items are what the user opened the screen for. Always drawn, even empty,
- * because the field is the only way to start a checklist; an empty one is that
- * field and its label and nothing else.
+ * items are what the user opened the screen for.
+ *
+ * **On a task without one, it is the add field and nothing else.** Most tasks
+ * never have a checklist, and a heading over nothing on every one of them is a
+ * section the screen asks the user to read past. The field says what it starts
+ * ("Add checklist item"); the heading arrives with the first item.
  *
  * Each control writes as it is used, like everything on Task Details, and each
  * write is one change applied to the stored list rather than the list as drawn.
@@ -68,7 +79,9 @@ internal fun ChecklistRegion(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
-        SectionLabel(text = stringResource(R.string.task_checklist))
+        if (checklist.isNotEmpty()) {
+            SectionLabel(text = stringResource(R.string.task_checklist))
+        }
 
         checklist.forEachIndexed { index, item ->
             // Keyed on what the row shows, so removing one item does not hand
@@ -82,13 +95,24 @@ internal fun ChecklistRegion(
             }
         }
 
-        AddChecklistItemField(taskId = taskId, onAdd = onAdd)
+        AddChecklistItemField(
+            taskId = taskId,
+            itemCount = checklist.size,
+            onAdd = onAdd
+        )
     }
 }
 
 /**
  * One item. The whole row ticks it, so the target is the line and not only the
  * box; the remove button is its own target at the trailing end.
+ *
+ * **The checkbox and the remove button mark the item's first line**, on the
+ * title's rule in `task-details.md`: centred on a three-line item they pointed
+ * at the middle line, and at large font scales at nothing in particular. The
+ * offsets are measured from the line height for the reason the title's are,
+ * because which of the line and the 48dp target is taller changes with the
+ * font scale.
  */
 @Composable
 private fun ChecklistRow(
@@ -96,18 +120,31 @@ private fun ChecklistRow(
     onSetDone: (Boolean) -> Unit,
     onRemove: () -> Unit
 ) {
+    val lineCentre = with(LocalDensity.current) {
+        MaterialTheme.typography.bodyLarge.lineHeight.toDp() / 2
+    }
+    val targetCentre = TellcatDimensions.TouchTargetMin / 2
+    val controlTop = (lineCentre - targetCentre).coerceAtLeast(0.dp)
+    val textTop = (targetCentre - lineCentre).coerceAtLeast(0.dp)
+    // A gap between rows only once a line is taller than the 48dp target, at
+    // large font scales, where rows would otherwise touch. At ordinary sizes
+    // the target already spaces them, and a list is easier to scan dense.
+    val rowGap = if (lineCentre > targetCentre) TellcatSpacing.xxs else 0.dp
+
     Row(
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.Top,
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = TellcatDimensions.TouchTargetMin)
             .toggleable(value = item.done, role = Role.Checkbox, onValueChange = onSetDone)
+            .padding(vertical = rowGap)
     ) {
         // Drawn only: the row above is the control, and a second one inside it
         // would be announced twice.
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier.size(TellcatDimensions.TouchTargetMin)
+            modifier = Modifier
+                .padding(top = controlTop)
+                .size(TellcatDimensions.TouchTargetMin)
         ) {
             Checkbox(checked = item.done, onCheckedChange = null)
         }
@@ -128,10 +165,10 @@ private fun ChecklistRow(
             // the left of the text inside it.
             modifier = Modifier
                 .weight(1f)
-                .padding(start = TextFieldHorizontalInset)
+                .padding(start = TextFieldHorizontalInset, top = textTop, bottom = textTop)
         )
 
-        IconButton(onClick = onRemove) {
+        IconButton(onClick = onRemove, modifier = Modifier.padding(top = controlTop)) {
             Icon(
                 painter = painterResource(R.drawable.ic_close),
                 contentDescription = stringResource(R.string.task_checklist_remove, item.text),
@@ -145,21 +182,42 @@ private fun ChecklistRow(
 private val TextFieldHorizontalInset = 16.dp
 
 /**
- * Where items are typed. Done adds the item and keeps the keyboard up, so a
- * shopping list is typed one item after another without reaching for the
- * field again. Leaving the field adds whatever is in it, the way the title and
- * notes commit on blur, so nothing typed is lost to a tap elsewhere.
+ * Where items are typed.
+ *
+ * - **Done adds the item and keeps the keyboard up**, so a shopping list is
+ *   typed one item after another without reaching for the field again.
+ * - **Done on an empty field closes the keyboard.** It is how entry ends; with
+ *   nothing typed there is nothing else Done could mean.
+ * - **The field follows the list down.** Each item added pushes it lower, and
+ *   it used to slide under the keyboard after a few, leaving the user typing
+ *   into a field they could not see. After each addition it is brought back
+ *   into view.
+ * - **Leaving the field adds whatever is in it**, the way the title and notes
+ *   commit on blur, so nothing typed is lost to a tap elsewhere.
  */
 @Composable
-private fun AddChecklistItemField(taskId: String, onAdd: (String) -> Unit) {
+private fun AddChecklistItemField(taskId: String, itemCount: Int, onAdd: (String) -> Unit) {
     var draft by rememberSaveable(taskId) { mutableStateOf("") }
+    var focused by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
+    val bringIntoView = remember { BringIntoViewRequester() }
 
     fun commit() {
         if (draft.isNotBlank()) onAdd(draft)
         draft = ""
     }
 
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    // After the new row has been laid out, which is what moved the field.
+    LaunchedEffect(itemCount) {
+        if (!focused) return@LaunchedEffect
+        withFrameNanos { }
+        bringIntoView.bringIntoView()
+    }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.bringIntoViewRequester(bringIntoView)
+    ) {
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier.size(TellcatDimensions.TouchTargetMin)
@@ -179,7 +237,10 @@ private fun AddChecklistItemField(taskId: String, onAdd: (String) -> Unit) {
             colors = borderlessFieldColors(),
             placeholder = {
                 Text(
-                    text = stringResource(R.string.task_checklist_add),
+                    text = stringResource(
+                        if (itemCount == 0) R.string.task_checklist_start
+                        else R.string.task_checklist_add
+                    ),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -189,10 +250,15 @@ private fun AddChecklistItemField(taskId: String, onAdd: (String) -> Unit) {
                 capitalization = KeyboardCapitalization.Sentences,
                 imeAction = ImeAction.Done
             ),
-            keyboardActions = KeyboardActions(onDone = { commit() }),
+            keyboardActions = KeyboardActions(
+                onDone = { if (draft.isBlank()) focusManager.clearFocus() else commit() }
+            ),
             modifier = Modifier
                 .weight(1f)
-                .onFocusChanged { state -> if (!state.isFocused) commit() }
+                .onFocusChanged { state ->
+                    focused = state.isFocused
+                    if (!state.isFocused) commit()
+                }
         )
     }
 }

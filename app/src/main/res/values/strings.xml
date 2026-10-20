@@ -253,6 +253,10 @@
     <string name="task_plan">Plan</string>
     <string name="task_checklist">Checklist</string>
     <string name="task_checklist_add">Add item</string>
+    <!-- Placeholder for the add field on a task that has no checklist yet. -->
+    <string name="task_checklist_start">Add checklist item</string>
+    <!-- Snackbar after removing one checklist item, with Undo beside it. -->
+    <string name="task_checklist_item_removed">Item removed</string>
     <!-- Content description for the button that removes one checklist item. %1$s is the item. -->
     <string name="task_checklist_remove">Remove %1$s</string>
     <string name="task_checklist_share">Share list</string>

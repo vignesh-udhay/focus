@@ -53,6 +53,7 @@ fun UndoSnackbarEffect(
     val completedMessage = stringResource(R.string.task_completed)
     val deletedMessage = stringResource(R.string.task_deleted)
     val rescheduledMessage = stringResource(R.string.task_rescheduled)
+    val itemRemovedMessage = stringResource(R.string.task_checklist_item_removed)
     val undoLabel = stringResource(R.string.undo)
 
     LaunchedEffect(pendingUndo) {
@@ -63,6 +64,7 @@ fun UndoSnackbarEffect(
                 is PendingUndo.Completion -> completedMessage
                 is PendingUndo.Deletion -> deletedMessage
                 is PendingUndo.Reschedule -> rescheduledMessage
+                is PendingUndo.ChecklistRemoval -> itemRemovedMessage
             },
             actionLabel = undoLabel,
             // Short, which is four seconds against the long form's ten.
@@ -86,6 +88,7 @@ fun UndoSnackbarEffect(
                 is PendingUndo.Completion -> viewModel.undoComplete(offer.taskId)
                 is PendingUndo.Deletion -> viewModel.undoDelete(offer.taskId)
                 is PendingUndo.Reschedule -> viewModel.undoReschedule(offer.taskId)
+                is PendingUndo.ChecklistRemoval -> viewModel.undoChecklistRemoval(offer.taskId)
             }
             // Let it pass and the action simply stands.
             SnackbarResult.Dismissed -> viewModel.dismissUndo(offer.taskId)
