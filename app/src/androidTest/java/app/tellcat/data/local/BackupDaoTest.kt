@@ -74,6 +74,7 @@ class BackupDaoTest {
         reminderDeliveredAt = null,
         snoozedUntil = null,
         alarm = false,
+        checklist = null,
         estimatedDurationMinutes = null,
         recurrence = null,
         recurrenceInterval = null,

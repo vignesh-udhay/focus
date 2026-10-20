@@ -1,5 +1,6 @@
 package app.tellcat.data.local
 
+import app.tellcat.core.domain.ChecklistItem
 import app.tellcat.core.domain.Task
 import app.tellcat.core.domain.Recurrence
 import app.tellcat.core.domain.RecurrenceUnit
@@ -21,12 +22,14 @@ class TaskMappersTest {
     private val reminderAt: LocalDateTime = LocalDateTime.of(2026, 8, 31, 9, 30)
     private val deliveredAt: Instant = Instant.parse("2026-08-31T04:00:12Z")
     private val snoozedUntil: LocalDateTime = LocalDateTime.of(2026, 8, 31, 10, 30)
+    private val checklist = listOf(ChecklistItem("Logo"), ChecklistItem("Copy", done = true))
 
     private fun fullTask() = Task(
         id = "task-1",
         title = "Finish the landing page",
         createdAt = createdAt,
         notes = "Ask Priya which logo to use",
+        checklist = checklist,
         scheduledDate = scheduledDate,
         dueDate = dueDate,
         reminderAt = reminderAt,
@@ -45,6 +48,7 @@ class TaskMappersTest {
         id = "task-1",
         title = "Finish the landing page",
         notes = "Ask Priya which logo to use",
+        checklist = checklist,
         createdAt = createdAt,
         scheduledDate = scheduledDate,
         dueDate = dueDate,
@@ -81,6 +85,7 @@ class TaskMappersTest {
         assertEquals(deliveredAt, entity.reminderDeliveredAt)
         assertEquals(snoozedUntil, entity.snoozedUntil)
         assertTrue(entity.alarm)
+        assertEquals(checklist, entity.checklist)
         assertEquals(45, entity.estimatedDurationMinutes)
         // Neither of these was checked here before, which is how a column can
         // be added to one side of the mapping and quietly dropped on the way
@@ -121,6 +126,7 @@ class TaskMappersTest {
         assertEquals(deliveredAt, task.reminderDeliveredAt)
         assertEquals(snoozedUntil, task.snoozedUntil)
         assertTrue(task.alarm)
+        assertEquals(checklist, task.checklist)
         assertEquals(45, task.estimatedDurationMinutes)
         assertEquals(Recurrence(RecurrenceUnit.WEEKLY), task.recurrence)
         assertEquals("task-0", task.spawnedFromId)
@@ -267,5 +273,11 @@ class TaskMappersTest {
 
         assertEquals("", blank.toEntity().notes)
         assertEquals("", blank.toEntity().toDomain().notes)
+    }
+
+    @Test
+    fun `no checklist is stored as null and read as empty`() {
+        assertNull(fullTask().copy(checklist = emptyList()).toEntity().checklist)
+        assertEquals(emptyList<ChecklistItem>(), fullEntity().copy(checklist = null).toDomain().checklist)
     }
 }

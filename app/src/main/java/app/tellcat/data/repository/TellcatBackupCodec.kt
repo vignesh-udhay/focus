@@ -4,7 +4,9 @@ import android.util.JsonReader
 import android.util.JsonToken
 import android.util.JsonWriter
 import app.tellcat.core.design.ThemePreference
+import app.tellcat.core.domain.ChecklistItem
 import app.tellcat.core.domain.RecurrenceUnit
+import app.tellcat.core.domain.checklistItem
 import app.tellcat.data.local.AppearancePreferences
 import app.tellcat.data.local.TaskEntity
 import java.io.InputStream
@@ -36,6 +38,8 @@ data class TellcatBackup(
  * arrives is exactly the kind an older app must not drop quietly, so it moved
  * the version rather than riding in as an ignored key. Version 1 files still
  * restore, with every alarm off, which is all a version 1 app could have meant.
+ * The same version carries a task's checklist, since neither has shipped yet;
+ * a file without one reads as a task without one.
  */
 object TellcatBackupCodec {
     // The only marker read or written, D-082. Files from before the rename say
@@ -134,6 +138,14 @@ object TellcatBackupCodec {
         writer.name("id").value(task.id)
         writer.name("title").value(task.title)
         writer.name("notes").nullableValue(task.notes)
+        writer.name("checklist").beginArray()
+        task.checklist.orEmpty().forEach { item ->
+            writer.beginObject()
+            writer.name("text").value(item.text)
+            writer.name("done").value(item.done)
+            writer.endObject()
+        }
+        writer.endArray()
         writer.name("createdAt").value(task.createdAt.toString())
         writer.name("scheduledDate").nullableValue(task.scheduledDate?.toString())
         writer.name("dueDate").nullableValue(task.dueDate?.toString())
@@ -164,6 +176,7 @@ object TellcatBackupCodec {
         var id: String? = null
         var title: String? = null
         var notes: String? = null
+        var checklist: List<ChecklistItem> = emptyList()
         var createdAt: Instant? = null
         var scheduledDate: LocalDate? = null
         var dueDate: LocalDate? = null
@@ -190,6 +203,7 @@ object TellcatBackupCodec {
                 "id" -> id = reader.nextString()
                 "title" -> title = reader.nextString()
                 "notes" -> notes = reader.nextNullableString()
+                "checklist" -> checklist = reader.nextChecklist()
                 "createdAt" -> createdAt = Instant.parse(reader.nextString())
                 "scheduledDate" -> scheduledDate = reader.nextNullableString()?.let(LocalDate::parse)
                 "dueDate" -> dueDate = reader.nextNullableString()?.let(LocalDate::parse)
@@ -232,6 +246,7 @@ object TellcatBackupCodec {
             id = requireNotNull(id) { "Missing task id" },
             title = requireNotNull(title) { "Missing task title" },
             notes = notes,
+            checklist = checklist.takeIf { it.isNotEmpty() },
             createdAt = requireNotNull(createdAt) { "Missing creation time" },
             scheduledDate = scheduledDate,
             dueDate = dueDate,
@@ -275,6 +290,31 @@ object TellcatBackupCodec {
         } else {
             nextInt()
         }
+
+    /**
+     * Items go through [checklistItem], the rule the app applies when one is
+     * typed, so a file cannot bring in a blank item or one spanning two lines.
+     * Such an item is dropped rather than refusing the whole file: it is one
+     * line of one list, not a task the app would never have written.
+     */
+    private fun JsonReader.nextChecklist(): List<ChecklistItem> = buildList {
+        beginArray()
+        while (hasNext()) {
+            var text: String? = null
+            var done = false
+            beginObject()
+            while (hasNext()) {
+                when (nextName()) {
+                    "text" -> text = nextString()
+                    "done" -> done = nextBoolean()
+                    else -> skipValue()
+                }
+            }
+            endObject()
+            text?.let(::checklistItem)?.let { add(it.copy(done = done)) }
+        }
+        endArray()
+    }
 
     private fun JsonReader.nextNullableWeekdays(): Set<DayOfWeek>? {
         if (peek() == JsonToken.NULL) {

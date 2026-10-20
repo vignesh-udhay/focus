@@ -252,6 +252,18 @@ val MIGRATION_11_12 = Migration(11, 12) { database ->
     database.execSQL("ALTER TABLE tasks ADD COLUMN alarm INTEGER NOT NULL DEFAULT 0")
 }
 
+/**
+ * Version 13 gives a task a checklist.
+ *
+ * Null for every existing row, which is what every existing task has: no
+ * checklist. One text column rather than a table, so a task and its items are
+ * still one row, read and written together, and every view keeps deriving from
+ * the one task list.
+ */
+val MIGRATION_12_13 = Migration(12, 13) { database ->
+    database.execSQL("ALTER TABLE tasks ADD COLUMN checklist TEXT")
+}
+
 /** Every migration, in order, for the builder and the migration test. */
 val TellcatMigrations = arrayOf(
     MIGRATION_1_2,
@@ -264,5 +276,6 @@ val TellcatMigrations = arrayOf(
     MIGRATION_8_9,
     MIGRATION_9_10,
     MIGRATION_10_11,
-    MIGRATION_11_12
+    MIGRATION_11_12,
+    MIGRATION_12_13
 )

@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import app.tellcat.core.domain.ChecklistItem
 import app.tellcat.core.domain.RecurrenceUnit
 import java.time.DayOfWeek
 import java.time.Instant
@@ -267,5 +268,41 @@ class TaskConvertersTest {
             TaskConverters.namesToWeekdays("MONDAY,MOONDAY,FRIDAY")
         )
         assertEquals(emptySet<DayOfWeek>(), TaskConverters.namesToWeekdays(""))
+    }
+
+    // Checklist
+
+    @Test
+    fun `a checklist round trips, ticks and order included`() {
+        val items = listOf(
+            ChecklistItem("Milk"),
+            ChecklistItem("Eggs", done = true),
+            ChecklistItem("[x] is part of this one's name")
+        )
+
+        assertEquals(items, TaskConverters.linesToChecklist(TaskConverters.checklistToLines(items)))
+    }
+
+    @Test
+    fun `a checklist is stored as lines a person can read`() {
+        assertEquals(
+            "[ ] Milk\n[x] Eggs",
+            TaskConverters.checklistToLines(listOf(ChecklistItem("Milk"), ChecklistItem("Eggs", true)))
+        )
+    }
+
+    @Test
+    fun `an empty checklist is stored as null`() {
+        assertNull(TaskConverters.checklistToLines(emptyList()))
+        assertNull(TaskConverters.checklistToLines(null))
+        assertNull(TaskConverters.linesToChecklist(null))
+    }
+
+    @Test
+    fun `an unmarked line reads as an open item and a blank one is dropped`() {
+        assertEquals(
+            listOf(ChecklistItem("Bread"), ChecklistItem("Milk")),
+            TaskConverters.linesToChecklist("Bread\n\n[ ] \n[ ] Milk")
+        )
     }
 }

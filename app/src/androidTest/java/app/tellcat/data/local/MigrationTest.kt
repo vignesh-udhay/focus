@@ -254,7 +254,8 @@ class MigrationTest {
             MIGRATION_8_9,
             MIGRATION_9_10,
             MIGRATION_10_11,
-            MIGRATION_11_12
+            MIGRATION_11_12,
+            MIGRATION_12_13
         ).use { database ->
             database.query(
                 "SELECT notes, recurrence, spawnedFromId, reminderAt FROM tasks WHERE id = ?",
@@ -493,7 +494,8 @@ class MigrationTest {
             MIGRATION_8_9,
             MIGRATION_9_10,
             MIGRATION_10_11,
-            MIGRATION_11_12
+            MIGRATION_11_12,
+            MIGRATION_12_13
         ).use { database ->
             database.query(
                 """
@@ -552,7 +554,9 @@ class MigrationTest {
                         // Appended by version 11, D-078.
                         "snoozedUntil",
                         // Appended by version 12, D-038.
-                        "alarm"
+                        "alarm",
+                        // Appended by version 13.
+                        "checklist"
                     ),
                     columns
                 )
@@ -608,7 +612,8 @@ class MigrationTest {
             true,
             MIGRATION_9_10,
             MIGRATION_10_11,
-            MIGRATION_11_12
+            MIGRATION_11_12,
+            MIGRATION_12_13
         ).use { database ->
             database.query(
                 """
@@ -701,7 +706,7 @@ class MigrationTest {
         const val TEST_DB = "migration-test.db"
 
         /** The schema every migration in this test is aimed at. */
-        const val LatestVersion = 12
+        const val LatestVersion = 13
     }
 
     /**
@@ -740,6 +745,24 @@ class MigrationTest {
                 while (cursor.moveToNext()) {
                     rows++
                     assertEquals(cursor.getString(0) + " became an alarm", 0, cursor.getInt(1))
+                }
+
+                assertEquals(3, rows)
+            }
+        }
+    }
+
+    /** Version 13 adds the checklist column empty: no existing task has one. */
+    @Test
+    fun migratedRowsHaveNoChecklist() {
+        seedVersion1()
+
+        migrate().use { database ->
+            database.query("SELECT id, checklist FROM tasks").use { cursor ->
+                var rows = 0
+                while (cursor.moveToNext()) {
+                    rows++
+                    assertTrue(cursor.getString(0) + " has a checklist", cursor.isNull(1))
                 }
 
                 assertEquals(3, rows)

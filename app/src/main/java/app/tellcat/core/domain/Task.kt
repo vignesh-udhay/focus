@@ -73,6 +73,16 @@ data class Task(
     val title: String,
     val createdAt: Instant,
     val notes: String? = null,
+    /**
+     * The items to get or do on the way to finishing this task, in the order
+     * the user wrote them. Empty for almost every task. See [ChecklistItem].
+     *
+     * Independent of completion in both directions. Ticking the last item does
+     * not finish the task, because the user may not be done; finishing the
+     * task does not tick the items, because they record what actually got
+     * done.
+     */
+    val checklist: List<ChecklistItem> = emptyList(),
     val scheduledDate: LocalDate? = null,
     val dueDate: LocalDate? = null,
     val reminderAt: LocalDateTime? = null,

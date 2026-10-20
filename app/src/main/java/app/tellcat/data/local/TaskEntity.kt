@@ -4,6 +4,7 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import androidx.room.TypeConverters
+import app.tellcat.core.domain.ChecklistItem
 import app.tellcat.core.domain.RecurrenceUnit
 import java.time.DayOfWeek
 import java.time.Instant
@@ -46,6 +47,8 @@ data class TaskEntity(
     @PrimaryKey val id: String,
     val title: String,
     val notes: String?,
+    // Version 13: the task's checklist, null when it has none.
+    val checklist: List<ChecklistItem>?,
     val createdAt: Instant,
     val scheduledDate: LocalDate?,
     val dueDate: LocalDate?,

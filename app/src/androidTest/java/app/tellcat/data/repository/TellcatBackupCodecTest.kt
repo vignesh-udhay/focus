@@ -2,6 +2,7 @@ package app.tellcat.data.repository
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.tellcat.core.design.ThemePreference
+import app.tellcat.core.domain.ChecklistItem
 import app.tellcat.core.domain.RecurrenceUnit
 import app.tellcat.data.local.AppearancePreferences
 import app.tellcat.data.local.TaskEntity
@@ -13,6 +14,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -117,6 +119,7 @@ class TellcatBackupCodecTest {
 
         assertEquals(1, restored.tasks.size)
         assertFalse(restored.tasks.single().alarm)
+        assertNull(restored.tasks.single().checklist)
     }
 
     /** A file cannot bring in a row the app would never have written. */
@@ -150,6 +153,8 @@ class TellcatBackupCodecTest {
         id = "task-1",
         title = "Call the plumber",
         notes = "Ask about the kitchen tap",
+        // Two items, one ticked, so dropping either the list or a tick fails.
+        checklist = listOf(ChecklistItem("Washer"), ChecklistItem("Tape", done = true)),
         createdAt = Instant.parse("2026-09-01T08:00:00Z"),
         scheduledDate = LocalDate.parse("2026-09-09"),
         dueDate = LocalDate.parse("2026-09-10"),

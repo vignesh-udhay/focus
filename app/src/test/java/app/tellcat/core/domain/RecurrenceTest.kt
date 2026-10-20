@@ -270,6 +270,17 @@ class RecurrenceTest {
         assertNull(next.snoozedUntil)
     }
 
+    @Test
+    fun `the next occurrence keeps the checklist with nothing ticked`() {
+        val groceries = chore.copy(
+            checklist = listOf(ChecklistItem("Milk", done = true), ChecklistItem("Eggs"))
+        )
+
+        val next = groceries.nextRecurringInstance(date("2026-09-02"), "next", createdAt)!!
+
+        assertEquals(listOf(ChecklistItem("Milk"), ChecklistItem("Eggs")), next.checklist)
+    }
+
     // D-038: the alarm is a property of the series, like its time
 
     @Test

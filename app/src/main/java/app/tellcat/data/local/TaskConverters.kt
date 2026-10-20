@@ -1,6 +1,7 @@
 package app.tellcat.data.local
 
 import androidx.room.TypeConverter
+import app.tellcat.core.domain.ChecklistItem
 import app.tellcat.core.domain.RecurrenceUnit
 import java.time.DayOfWeek
 import java.time.Instant
@@ -117,4 +118,37 @@ object TaskConverters {
         value?.split(",")
             ?.mapNotNull { name -> DayOfWeek.entries.firstOrNull { it.name == name.trim() } }
             ?.toSet()
+
+    /**
+     * A checklist persists as one line per item, each opened by `[ ]` or `[x]`.
+     *
+     * Text for the reason a reminder time is: legible when someone opens the
+     * database. Lines work because an item is one line by construction, which
+     * `checklistItem` enforces. An empty checklist stores as null, the way an
+     * empty weekday set does.
+     */
+    @TypeConverter
+    fun checklistToLines(value: List<ChecklistItem>?): String? =
+        value?.takeIf { it.isNotEmpty() }?.joinToString(separator = "\n") { item ->
+            (if (item.done) DoneLine else OpenLine) + item.text
+        }
+
+    /**
+     * A line with neither marker reads as an item not yet done, and a blank one
+     * is dropped. The same bargain as every converter here: an item losing its
+     * tick is recoverable, and a task list that cannot be read is not.
+     */
+    @TypeConverter
+    fun linesToChecklist(value: String?): List<ChecklistItem>? =
+        value?.lines()?.mapNotNull { line ->
+            val item = when {
+                line.startsWith(DoneLine) -> ChecklistItem(line.removePrefix(DoneLine), done = true)
+                line.startsWith(OpenLine) -> ChecklistItem(line.removePrefix(OpenLine))
+                else -> ChecklistItem(line)
+            }
+            item.takeIf { it.text.isNotBlank() }
+        }
+
+    private const val OpenLine = "[ ] "
+    private const val DoneLine = "[x] "
 }
