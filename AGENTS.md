@@ -385,7 +385,8 @@ For every requested feature:
 7. Implement the smallest coherent change.
 8. Build the project.
 9. Run relevant tests.
-10. Review the implementation against the product and design requirements.
+10. Review the implementation against the product and design requirements,
+    and against `ARCHITECTURE.md`. See "Architecture check" below.
 11. Report what changed and any remaining issues.
 12. If the work moved the project forward, update "Current phase" in
     `ROADMAP.md`.
@@ -399,6 +400,31 @@ a major product decision.
 
 ---
 
+# Architecture check
+
+Before calling a change done, check it against the map, not against memory of
+the map. Each question below is one a past change got wrong.
+
+- Is each new piece in the package `ARCHITECTURE.md` assigns it? Business rules
+  in `core/domain`, wording a screen and a notification share in `core/text`,
+  formatting only a screen reads in `ui`. A formatted string in `core/domain`
+  is in the wrong place, however pure the function.
+- Does every view still derive from the one task list by a pure function? A new
+  DAO query for one screen, or filtering in a composable, breaks the pattern.
+- Is every platform call behind a seam the application owns, so the decision
+  around it stays a JVM test?
+- Does a storage change carry all of its parts: an explicit migration, the
+  exported schema, `MigrationTest`, fixtures in both source sets, and the
+  backup codec?
+- Does `ARCHITECTURE.md` still describe the app? A change that makes it wrong
+  updates it in the same commit. A stale map is how the next session puts
+  code in the wrong place while following the map.
+
+If the right shape is unclear, say so and propose one before writing it. Do
+not settle an architectural question silently in code.
+
+---
+
 # Definition of done
 
 A feature is complete when:
@@ -406,6 +432,7 @@ A feature is complete when:
 - it implements the requested behavior
 - it follows PRODUCT.md
 - it follows the existing design system
+- it passes the architecture check above, and `ARCHITECTURE.md` is current
 - it builds successfully
 - relevant tests pass
 - it works with light and dark themes

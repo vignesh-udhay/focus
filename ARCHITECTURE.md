@@ -106,7 +106,15 @@ the platform.
 
 ## Persistence
 
-Room, one entity, `TaskEntity`, currently at schema version 4.
+Room, two entities, at schema version 13. `TaskEntity` is the task;
+`ReminderDeliveryEntity` records when each reminder was due and when it
+actually arrived, which is what Reminder health reads.
+
+Everything a task owns lives on its row, including small structured values: a
+recurrence rule's weekdays and a task's checklist are text columns written by
+`TaskConverters`. That keeps a task one row, read and written whole, so every
+view still derives from the one task list. A value that needed querying on its
+own, or that other tasks pointed at, would earn its own table instead.
 
 Migrations are explicit in `TellcatMigrations`. There is no destructive
 fallback: a missing migration fails loudly rather than quietly emptying
