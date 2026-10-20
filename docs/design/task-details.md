@@ -363,8 +363,8 @@ reader.
 
 **Ticked items stay in place, struck
 through and on `onSurfaceVariant` like a completed task row, the colour moving
-on `stateColor` as the title's does (`expressive-motion.md` says why there is no
-spring and no row motion): the order is
+on `stateColor` as the title's does, with a light toggle haptic
+(`expressive-motion.md` says why there is no spring and no row motion): the order is
 usually the order of the shop, and moving rows under the user's thumb loses
 their place and invites mis-taps.
 

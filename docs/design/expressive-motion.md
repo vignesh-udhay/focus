@@ -291,6 +291,32 @@ override them, and overriding them would be motion for its own sake.
 
 ---
 
+# Haptics
+
+[CD] Touch feedback is part of the motion system, with the same restraint, and
+it is listed here so it cannot spread one helpful buzz at a time.
+
+| Interaction | Feedback |
+| --- | --- |
+| Ticking or unticking a checklist item | `HapticFeedbackType.ToggleOn` / `ToggleOff` |
+
+[CD] **Nothing else buzzes.** Not navigation, not sheets, not scrolling, not
+adding an item. A list ticked off in a shop is the one place a small physical
+answer helps, because the user is often not looking at the screen when they
+tap.
+
+[CD] **Only through `performHapticFeedback`**, never a direct vibration. The
+system plays it only when the user has touch feedback on, and at the strength
+the device chooses for a toggle, which is light: measured on the Pixel 10
+emulator as a `TICK` primitive at half scale.
+
+[CD] **Open: completing a task has none.** `expressive-design-system.md` makes
+completion the strongest interaction in the app, and an item tick that answers
+physically while completing the whole task does not inverts that order. If
+completion gains one, it is `Confirm`, a step firmer than a toggle.
+
+---
+
 # Rules
 
 [CD]

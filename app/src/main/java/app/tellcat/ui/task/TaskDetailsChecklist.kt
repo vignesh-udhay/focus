@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.text.BasicTextField
@@ -33,7 +34,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
@@ -160,7 +164,17 @@ private fun ChecklistRow(
     // draft back over whatever item has moved into this position.
     var removed by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
+    val haptics = LocalHapticFeedback.current
     val removeLabel = stringResource(R.string.task_checklist_remove, item.text)
+
+    // The X is exactly as tall as the line it removes, so appearing never
+    // makes the row taller. At its own size it outgrew the 56dp row by about
+    // 4dp, and the line being edited pushed everything below it down. Its tap
+    // area still reaches the 48dp floor: the list item leaves the slot room
+    // and Compose extends a small target into it.
+    val removeSize = with(LocalDensity.current) {
+        MaterialTheme.typography.bodyLarge.lineHeight.toDp()
+    }
 
     fun remove() {
         removed = true
@@ -186,13 +200,21 @@ private fun ChecklistRow(
         leadingContent = {
             Checkbox(
                 checked = item.done,
-                onCheckedChange = onSetDone,
+                // A light toggle tick, which the system plays only if touch
+                // feedback is on. `expressive-motion.md` says why this one and
+                // not the completion spring.
+                onCheckedChange = { done ->
+                    haptics.performHapticFeedback(
+                        if (done) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff
+                    )
+                    onSetDone(done)
+                },
                 modifier = Modifier.semantics { contentDescription = item.text }
             )
         },
         trailingContent = if (editing) {
             {
-                IconButton(onClick = ::remove) {
+                IconButton(onClick = ::remove, modifier = Modifier.size(removeSize)) {
                     Icon(
                         painter = painterResource(R.drawable.ic_close),
                         contentDescription = removeLabel,
