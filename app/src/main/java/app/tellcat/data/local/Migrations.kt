@@ -242,6 +242,16 @@ val MIGRATION_10_11 = Migration(10, 11) { database ->
     database.execSQL("ALTER TABLE tasks ADD COLUMN snoozedUntil TEXT")
 }
 
+/**
+ * Version 12 lets a task's reminder ring as an alarm.
+ *
+ * `docs/decisions.md` D-038. Off for every existing row: the alarm is a per-task
+ * choice, and nobody has made it yet.
+ */
+val MIGRATION_11_12 = Migration(11, 12) { database ->
+    database.execSQL("ALTER TABLE tasks ADD COLUMN alarm INTEGER NOT NULL DEFAULT 0")
+}
+
 /** Every migration, in order, for the builder and the migration test. */
 val TellcatMigrations = arrayOf(
     MIGRATION_1_2,
@@ -253,5 +263,6 @@ val TellcatMigrations = arrayOf(
     MIGRATION_7_8,
     MIGRATION_8_9,
     MIGRATION_9_10,
-    MIGRATION_10_11
+    MIGRATION_10_11,
+    MIGRATION_11_12
 )

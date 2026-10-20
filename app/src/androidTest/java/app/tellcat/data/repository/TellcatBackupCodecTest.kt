@@ -12,6 +12,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -85,7 +86,7 @@ class TellcatBackupCodecTest {
         val bytes = """
             {
               "format":"tellcat-backup",
-              "version":2,
+              "version":3,
               "settings":{"dynamicColor":true,"theme":"System"},
               "tasks":[]
             }
@@ -96,6 +97,28 @@ class TellcatBackupCodecTest {
         }
     }
 
+    /**
+     * Version 1 files were written before a task could be an alarm, D-038.
+     * They still restore, and nothing in them comes back ringing as one.
+     */
+    @Test
+    fun aVersionOneBackupRestoresWithEveryAlarmOff() {
+        val bytes = """
+            {
+              "format":"tellcat-backup",
+              "version":1,
+              "settings":{"dynamicColor":false,"theme":"Dark"},
+              "tasks":[{"id":"a","title":"Kept","createdAt":"2026-10-10T07:00:00Z",
+                "reminderAt":"2026-10-11T09:00:00","occurrenceNumber":1}]
+            }
+        """.trimIndent().toByteArray()
+
+        val restored = TellcatBackupCodec.read(ByteArrayInputStream(bytes))
+
+        assertEquals(1, restored.tasks.size)
+        assertFalse(restored.tasks.single().alarm)
+    }
+
     /** A file cannot bring in a row the app would never have written. */
     @Test
     fun aTaskTheAppWouldRefuseIsRejected() {
@@ -103,7 +126,8 @@ class TellcatBackupCodecTest {
             completeTask().copy(title = "   "),
             completeTask().copy(estimatedDurationMinutes = -5),
             completeTask().copy(recurrenceInterval = 0),
-            completeTask().copy(recurrenceEndDate = null, recurrenceEndCount = 0)
+            completeTask().copy(recurrenceEndDate = null, recurrenceEndCount = 0),
+            completeTask().copy(reminderAt = null, snoozedUntil = null)
         ).forEach { invalid ->
             val bytes = ByteArrayOutputStream().also { output ->
                 TellcatBackupCodec.write(
@@ -133,6 +157,8 @@ class TellcatBackupCodecTest {
         reminderDeliveredAt = Instant.parse("2026-09-09T04:00:03Z"),
         // A real value, so a codec that dropped the field fails. D-078.
         snoozedUntil = LocalDateTime.parse("2026-09-09T10:30:00"),
+        // On, for the same reason. D-038.
+        alarm = true,
         estimatedDurationMinutes = 45,
         recurrence = RecurrenceUnit.WEEKLY,
         recurrenceInterval = 2,

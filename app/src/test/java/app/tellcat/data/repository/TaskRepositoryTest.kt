@@ -107,6 +107,7 @@ class TaskRepositoryTest {
         reminderAt = reminderAt,
         reminderDeliveredAt = reminderDeliveredAt,
         snoozedUntil = null,
+        alarm = false,
         estimatedDurationMinutes = estimatedDurationMinutes,
         recurrence = recurrence,
         recurrenceInterval = null,

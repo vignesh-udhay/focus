@@ -253,7 +253,8 @@ class MigrationTest {
             MIGRATION_7_8,
             MIGRATION_8_9,
             MIGRATION_9_10,
-            MIGRATION_10_11
+            MIGRATION_10_11,
+            MIGRATION_11_12
         ).use { database ->
             database.query(
                 "SELECT notes, recurrence, spawnedFromId, reminderAt FROM tasks WHERE id = ?",
@@ -491,7 +492,8 @@ class MigrationTest {
             true,
             MIGRATION_8_9,
             MIGRATION_9_10,
-            MIGRATION_10_11
+            MIGRATION_10_11,
+            MIGRATION_11_12
         ).use { database ->
             database.query(
                 """
@@ -548,7 +550,9 @@ class MigrationTest {
                         "recurrenceEndCount",
                         "occurrenceNumber",
                         // Appended by version 11, D-078.
-                        "snoozedUntil"
+                        "snoozedUntil",
+                        // Appended by version 12, D-038.
+                        "alarm"
                     ),
                     columns
                 )
@@ -603,7 +607,8 @@ class MigrationTest {
             LatestVersion,
             true,
             MIGRATION_9_10,
-            MIGRATION_10_11
+            MIGRATION_10_11,
+            MIGRATION_11_12
         ).use { database ->
             database.query(
                 """
@@ -696,7 +701,7 @@ class MigrationTest {
         const val TEST_DB = "migration-test.db"
 
         /** The schema every migration in this test is aimed at. */
-        const val LatestVersion = 11
+        const val LatestVersion = 12
     }
 
     /**
@@ -713,6 +718,28 @@ class MigrationTest {
                 while (cursor.moveToNext()) {
                     rows++
                     assertTrue(cursor.getString(0) + " was snoozed", cursor.isNull(1))
+                }
+
+                assertEquals(3, rows)
+            }
+        }
+    }
+
+    /**
+     * Version 12 adds the alarm column off. D-038. The alarm is a per-task
+     * choice, so an existing reminder that started ringing over the lock screen
+     * after an update would be the app making it for the user.
+     */
+    @Test
+    fun migratedRowsAreNotAlarms() {
+        seedVersion1()
+
+        migrate().use { database ->
+            database.query("SELECT id, alarm FROM tasks").use { cursor ->
+                var rows = 0
+                while (cursor.moveToNext()) {
+                    rows++
+                    assertEquals(cursor.getString(0) + " became an alarm", 0, cursor.getInt(1))
                 }
 
                 assertEquals(3, rows)

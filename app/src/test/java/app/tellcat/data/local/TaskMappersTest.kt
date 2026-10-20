@@ -5,6 +5,7 @@ import app.tellcat.core.domain.Recurrence
 import app.tellcat.core.domain.RecurrenceUnit
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Instant
 import java.time.LocalDate
@@ -31,6 +32,8 @@ class TaskMappersTest {
         reminderAt = reminderAt,
         reminderDeliveredAt = deliveredAt,
         snoozedUntil = snoozedUntil,
+        // True, so a mapping that dropped it would fall back to off and fail.
+        alarm = true,
         estimatedDurationMinutes = 45,
         recurrence = Recurrence(RecurrenceUnit.WEEKLY),
         spawnedFromId = "task-0",
@@ -48,6 +51,8 @@ class TaskMappersTest {
         reminderAt = reminderAt,
         reminderDeliveredAt = deliveredAt,
         snoozedUntil = snoozedUntil,
+        // True, so a mapping that dropped it would fall back to off and fail.
+        alarm = true,
         estimatedDurationMinutes = 45,
         recurrence = RecurrenceUnit.WEEKLY,
         recurrenceInterval = 1,
@@ -75,6 +80,7 @@ class TaskMappersTest {
         assertEquals(reminderAt, entity.reminderAt)
         assertEquals(deliveredAt, entity.reminderDeliveredAt)
         assertEquals(snoozedUntil, entity.snoozedUntil)
+        assertTrue(entity.alarm)
         assertEquals(45, entity.estimatedDurationMinutes)
         // Neither of these was checked here before, which is how a column can
         // be added to one side of the mapping and quietly dropped on the way
@@ -114,6 +120,7 @@ class TaskMappersTest {
         assertEquals(reminderAt, task.reminderAt)
         assertEquals(deliveredAt, task.reminderDeliveredAt)
         assertEquals(snoozedUntil, task.snoozedUntil)
+        assertTrue(task.alarm)
         assertEquals(45, task.estimatedDurationMinutes)
         assertEquals(Recurrence(RecurrenceUnit.WEEKLY), task.recurrence)
         assertEquals("task-0", task.spawnedFromId)
