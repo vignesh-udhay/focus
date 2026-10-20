@@ -342,34 +342,43 @@ item". Most tasks never have a checklist, and a heading over nothing on every
 one of them is a section to read past. The "Checklist" label arrives with the
 first item, and the placeholder becomes "Add item".
 
-**Plain rows, not a segmented group.** The Plan rows are a grouped list
-because each one is a setting that opens a sheet. Checklist items are the
-task's content, like the notes above them, so they take the identity region's
-treatment: no container, Material `Checkbox` unchanged, the whole line as the
-target with Material's ripple as the only press feedback. A container per item
-would make a shopping list read as a stack of cards.
+**A segmented group, like the Plan rows.** Each item is a `SegmentedListItem`
+on the Plan group's colour, and the add row is the group's last segment. An earlier version drew the items as plain lines, arguing they
+were content like the notes; on screen they read as stray text between the
+notes and the Plan group, and `expressive-design-system.md` puts a collection on
+a container. Two groups of one kind is also the calmer screen.
 
-**Items line up with the task.** Each checkbox sits in the title checkbox's
-column, and the item text starts where the title and notes start. A wrapped
-item keeps its checkbox and remove button on its first line, on the title's
-rule above, measured from the line height for the same reason. Rows are 48dp
-at ordinary font sizes and gain a 4dp gap only once a line is taller than the
-target, where they would otherwise touch.
+**The row is the list item's own anatomy.** Checkbox in the leading slot,
+the item's text as the headline, Material's segmented padding and height. The
+text is a `BasicTextField`, in the items and in the add row alike, so every
+line's text starts at the same edge; a Material field inside the segment would
+add an inset of its own.
 
-**The row ticks the item.** The whole line is the target, not only the box, so
-an item can be ticked one-handed in a shop. Ticked items stay in place, struck
+**Edited in place, the way Google Keep's lists work.** The checkbox ticks the
+item; tapping the text puts the cursor in it, and leaving the line or Done
+writes the change. A typo is fixed on the line it is on, with no edit mode and
+no sheet. Ticking is the checkbox rather than the whole row because the text is
+a field; the box keeps a 48dp target, and is named by the item for a screen
+reader.
+
+**Ticked items stay in place, struck
 through and on `onSurfaceVariant` like a completed task row, the colour moving
 on `stateColor` as the title's does (`expressive-motion.md` says why there is no
 spring and no row motion): the order is
 usually the order of the shop, and moving rows under the user's thumb loses
 their place and invites mis-taps.
 
-**Removing is an X with an undo.** The X sits at the trailing end of every row
-on `onSurfaceVariant`, not `error`. `expressive-design-system.md` keeps `error`
-for an action that destroys something, and it marks one such action per
-surface: Delete in the toolbar. An X on every item would make a shopping list a
-column of red warnings, and removal is undone from the snackbar, so the
-quieter role is the honest one. Removal raises the same single undo offer completing or
+**Removing is visible only on the line being edited.** While a line has the
+cursor, an X sits in its trailing slot; clearing the text and leaving the line
+removes the item too. Either raises the usual undo, "Item removed". The same
+removal is published to accessibility services as "Remove <item>" on every
+line, so it is reachable without opening one.
+
+Two designs came before this one. An X on every row stacked removal controls as
+heavy as the checkboxes beside them. Swipe-to-remove hid removal entirely, gave
+sighted users no visible way to do it, and a leftward swipe starting near the
+right edge is Android's back gesture. Neither is coming back without a reason
+this paragraph does not already answer. Removal raises the same single undo offer completing or
 deleting a task raises ("Item removed", Undo), and undo puts the item back where
 it was.
 
@@ -380,8 +389,10 @@ few. Done on an empty field closes the keyboard; it is how entry ends. Leaving
 the field adds whatever is in it, as the title and notes commit on blur.
 
 `TaskDetailsSemanticsTest` checks the region at 100% and 200%: each item is
-one checkbox named by its text, with its state; the remove button names its
-item; both clear the 48dp floor; Done adds; Share exists only with items.
+a checkbox named by its text, with its state and a 48dp touch target;
+removal is a named action, and the X appears only while editing; an edit
+commits on blur; clearing a line removes it; Done adds; Share exists only with
+items.
 
 The scroll area ends at the keyboard (`imePadding`). The app draws edge to edge,
 and without that the viewport ran on underneath the keyboard, where nothing

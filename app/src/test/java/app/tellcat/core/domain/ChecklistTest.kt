@@ -78,4 +78,19 @@ class ChecklistTest {
             listOf(ChecklistItem("Milk")).withItemAt(5, ChecklistItem("Bread"))
         )
     }
+
+    @Test
+    fun `editing an item changes its text and keeps its tick`() {
+        val ticked = listOf(ChecklistItem("Mlik", done = true), ChecklistItem("Eggs"))
+
+        assertEquals(
+            listOf(ChecklistItem("Milk", done = true), ChecklistItem("Eggs")),
+            ticked.withText(0, "Mlik", "Milk")
+        )
+    }
+
+    @Test
+    fun `an edit on an index that now holds another item changes nothing`() {
+        assertEquals(groceries, groceries.withText(0, "Eggs", "Oat milk"))
+    }
 }

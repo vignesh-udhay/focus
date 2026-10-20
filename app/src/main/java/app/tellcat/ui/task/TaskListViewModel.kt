@@ -10,6 +10,7 @@ import app.tellcat.core.domain.CapturedTask
 import app.tellcat.core.domain.checklistItem
 import app.tellcat.core.domain.withDone
 import app.tellcat.core.domain.withItemAt
+import app.tellcat.core.domain.withText
 import app.tellcat.core.domain.withoutItem
 import app.tellcat.core.domain.ChecklistItem
 import app.tellcat.core.domain.FocusSession
@@ -1142,6 +1143,27 @@ class TaskListViewModel(
      */
     fun setChecklistItemDone(id: String, index: Int, text: String, done: Boolean) {
         write { repository.changeChecklist(id) { checklist -> checklist.withDone(index, text, done) } }
+    }
+
+    /**
+     * Changes the item at [index] of [id]'s checklist from [text] to
+     * [newText], on the same terms as ticking it.
+     *
+     * Clearing an item's text removes it, with the same undo a removal offers:
+     * an item with nothing written on it is not an item, and an empty line
+     * left in a shopping list is noise the user then has to remove by hand.
+     */
+    fun editChecklistItem(id: String, index: Int, text: String, newText: String) {
+        val edited = checklistItem(newText)
+        if (edited == null) {
+            removeChecklistItem(id, index, text)
+            return
+        }
+        if (edited.text == text) return
+
+        write {
+            repository.changeChecklist(id) { checklist -> checklist.withText(index, text, edited.text) }
+        }
     }
 
     /**

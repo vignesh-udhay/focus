@@ -127,12 +127,14 @@ internal fun PlanRow(
 }
 
 /**
- * The Plan group's container colour.
+ * The container colour of Task Details' groups: the Plan rows, and the
+ * checklist above them.
  *
  * `surfaceContainerLow` rather than the `segmentedColors` default, which
- * `expressive-components.md` fixes for this group: the Plan rows sit on a plain
- * `surface` page with no tinted card above them any more, so they are the only
- * thing lifting off the ground.
+ * `expressive-components.md` fixes for this group: the rows sit on a plain
+ * `surface` page with no tinted card above them, so they are the only thing
+ * lifting off the ground. One value for both groups, so the screen has two
+ * groups of one kind.
  */
 @Composable
 internal fun planRowColors(): ListItemColors = ListItemDefaults.segmentedColors(

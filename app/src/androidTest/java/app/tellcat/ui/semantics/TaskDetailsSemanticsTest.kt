@@ -1,17 +1,22 @@
 package app.tellcat.ui.semantics
 
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.performCustomAccessibilityActionWithLabel
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
-import androidx.compose.ui.test.SemanticsNodeInteraction
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.test.performImeAction
 import app.tellcat.core.design.TellcatDimensions
 import app.tellcat.core.domain.ChecklistItem
 import app.tellcat.ui.task.PendingUndo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.semantics.Role
@@ -641,50 +646,38 @@ class TaskDetailsSemanticsTest {
 
     private val groceries = listOf(ChecklistItem(MILK), ChecklistItem(EGGS, done = true))
 
-    /** The row an item is drawn on: one control, a checkbox, named by the item. */
-    private fun itemRow(text: String) =
-        rule.onNode(hasText(text) and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Checkbox))
+    /** An item's checkbox, which a screen reader names by the item. */
+    private fun itemBox(text: String) =
+        rule.onNode(
+            hasContentDescription(text) and
+                SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Checkbox)
+        )
+
+    /** An item's text, which is a field. */
+    private fun itemField(text: String) = rule.onNode(hasText(text) and hasSetTextAction())
 
     /**
-     * Each item is one checkbox whose name is the item, with its state, and a
-     * target no smaller than the 48dp floor. The row merges the drawn box and
-     * the text, so a screen reader hears "Milk, not checked" once rather than
-     * a checkbox and then a word.
+     * Each item's checkbox is named by the item and carries its state, with a
+     * target no smaller than the 48dp floor, so a screen reader hears "Milk,
+     * checkbox, not checked".
      */
     private fun assertItemsAreNamedCheckboxes(fontScale: Float) {
         setScreen(fontScale, dao = withTask(checklist = groceries))
 
         rule.onNodeWithText(CHECKLIST).performScrollTo().assertIsDisplayed()
-        itemRow(MILK).performScrollTo().assertIsOff()
-            .assertHeightIsAtLeast(TellcatDimensions.TouchTargetMin)
-        itemRow(EGGS).performScrollTo().assertIsOn()
-            .assertHeightIsAtLeast(TellcatDimensions.TouchTargetMin)
-    }
-
-    @Test
-    fun checklistItems_areNamedCheckboxes_at100() = assertItemsAreNamedCheckboxes(FontScale100)
-
-    @Test
-    fun checklistItems_areNamedCheckboxes_at200() = assertItemsAreNamedCheckboxes(FontScale200)
-
-    /** The remove button says which item it removes, and clears the 48dp floor. */
-    private fun assertRemoveNamesItsItem(fontScale: Float) {
-        setScreen(fontScale, dao = withTask(checklist = groceries))
-
-        // Touch bounds, not layout bounds: the Expressive icon button draws at
-        // 40dp and extends its target to the 48dp floor around itself, which
-        // is the rule `expressive-design-system.md` states for targets.
-        rule.onNodeWithContentDescription(REMOVE_MILK).performScrollTo().assertIsDisplayed()
+        itemBox(MILK).performScrollTo().assertIsOff()
+            .assertTouchTargetIsAtLeast(TellcatDimensions.TouchTargetMin)
+        itemBox(EGGS).performScrollTo().assertIsOn()
             .assertTouchTargetIsAtLeast(TellcatDimensions.TouchTargetMin)
     }
 
-    @Test
-    fun removingAnItem_namesTheItem_at100() = assertRemoveNamesItsItem(FontScale100)
-
-    @Test
-    fun removingAnItem_namesTheItem_at200() = assertRemoveNamesItsItem(FontScale200)
-
-    /** The area that takes a tap, which is what the 48dp floor is about. */
+    /**
+     * The area that takes a tap, which is what the 48dp floor is about. A list
+     * item lowers the enforced size on its leading and trailing controls,
+     * because its own padding gives the touch target room to extend into: the
+     * checkbox draws at 24dp and takes taps across 48dp. Measuring layout
+     * bounds would fail a target that passes.
+     */
     private fun SemanticsNodeInteraction.assertTouchTargetIsAtLeast(min: Dp): SemanticsNodeInteraction {
         val node = fetchSemanticsNode()
         val bounds = node.touchBoundsInRoot
@@ -696,19 +689,84 @@ class TaskDetailsSemanticsTest {
     }
 
     @Test
-    fun tappingAnItemTicksIt() {
+    fun checklistItems_areNamedCheckboxes_at100() = assertItemsAreNamedCheckboxes(FontScale100)
+
+    @Test
+    fun checklistItems_areNamedCheckboxes_at200() = assertItemsAreNamedCheckboxes(FontScale200)
+
+    /**
+     * Removal is offered by name on every item, so it is reachable without
+     * opening the line, and no remove button is drawn until a line is edited.
+     */
+    private fun assertRemoveIsANamedAction(fontScale: Float) {
+        setScreen(fontScale, dao = withTask(checklist = groceries))
+
+        itemField(MILK).performScrollTo().assert(
+            SemanticsMatcher("offers $REMOVE_MILK") { node ->
+                node.config.getOrNull(SemanticsActions.CustomActions)
+                    ?.any { action -> action.label == REMOVE_MILK } == true
+            }
+        )
+        rule.onNodeWithContentDescription(REMOVE_MILK).assertDoesNotExist()
+    }
+
+    @Test
+    fun removingAnItem_isANamedAction_at100() = assertRemoveIsANamedAction(FontScale100)
+
+    @Test
+    fun removingAnItem_isANamedAction_at200() = assertRemoveIsANamedAction(FontScale200)
+
+    /** The X appears on the line being edited, and removes it with an undo. */
+    @Test
+    fun theRemoveButtonAppearsWhileEditing() {
         val viewModel = setScreen(dao = withTask(checklist = groceries))
 
-        itemRow(MILK).performScrollTo().performClick()
+        itemField(MILK).performScrollTo().performClick()
+        rule.waitUntilExactlyOneExists(hasContentDescription(REMOVE_MILK), TIMEOUT_MILLIS)
+        rule.onNodeWithContentDescription(REMOVE_MILK)
+            .assertTouchTargetIsAtLeast(TellcatDimensions.TouchTargetMin)
+            .performClick()
+
+        awaitTask(viewModel) { task -> task.checklist == listOf(ChecklistItem(EGGS, done = true)) }
+        assertTrue(viewModel.pendingUndo.value is PendingUndo.ChecklistRemoval)
+    }
+
+    @Test
+    fun editingAnItemCommitsOnBlur() {
+        val viewModel = setScreen(dao = withTask(checklist = groceries))
+
+        itemField(MILK).performScrollTo().performTextReplacement(OAT_MILK)
+        // Blur by tapping the title, which is what moves focus for a user.
+        rule.onNodeWithText(TITLE).performClick()
+
+        awaitTask(viewModel) { task -> task.checklist.first() == ChecklistItem(OAT_MILK) }
+    }
+
+    @Test
+    fun clearingAnItemRemovesIt() {
+        val viewModel = setScreen(dao = withTask(checklist = groceries))
+
+        itemField(MILK).performScrollTo().performTextReplacement("")
+        rule.onNodeWithText(TITLE).performClick()
+
+        awaitTask(viewModel) { task -> task.checklist == listOf(ChecklistItem(EGGS, done = true)) }
+        assertTrue(viewModel.pendingUndo.value is PendingUndo.ChecklistRemoval)
+    }
+
+    @Test
+    fun tappingTheCheckboxTicksTheItem() {
+        val viewModel = setScreen(dao = withTask(checklist = groceries))
+
+        itemBox(MILK).performScrollTo().performClick()
 
         awaitTask(viewModel) { task -> task.checklist.first().done }
     }
 
     @Test
-    fun removingAnItemOffersItBack() {
+    fun removingAnItemByNameOffersItBack() {
         val viewModel = setScreen(dao = withTask(checklist = groceries))
 
-        rule.onNodeWithContentDescription(REMOVE_MILK).performScrollTo().performClick()
+        itemField(MILK).performScrollTo().performCustomAccessibilityActionWithLabel(REMOVE_MILK)
 
         awaitTask(viewModel) { task -> task.checklist == listOf(ChecklistItem(EGGS, done = true)) }
         assertTrue(viewModel.pendingUndo.value is PendingUndo.ChecklistRemoval)
@@ -772,6 +830,7 @@ class TaskDetailsSemanticsTest {
         const val ADD_CHECKLIST_ITEM = "Add checklist item"
         const val SHARE_LIST = "Share list"
         const val MILK = "Milk"
+        const val OAT_MILK = "Oat milk"
         const val EGGS = "Eggs"
         const val REMOVE_MILK = "Remove Milk"
 

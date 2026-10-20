@@ -208,6 +208,9 @@ fun TaskDetailsScreen(
         onSetChecklistItemDone = { index, item, done ->
             viewModel.setChecklistItemDone(current.id, index, item.text, done)
         },
+        onEditChecklistItem = { index, item, newText ->
+            viewModel.editChecklistItem(current.id, index, item.text, newText)
+        },
         onRemoveChecklistItem = { index, item ->
             viewModel.removeChecklistItem(current.id, index, item.text)
         },
@@ -417,6 +420,7 @@ private fun TaskDetailsContent(
     onDelete: () -> Unit,
     onAddChecklistItem: (String) -> Unit,
     onSetChecklistItemDone: (Int, ChecklistItem, Boolean) -> Unit,
+    onEditChecklistItem: (Int, ChecklistItem, String) -> Unit,
     onRemoveChecklistItem: (Int, ChecklistItem) -> Unit,
     onShare: (() -> Unit)?,
     modifier: Modifier = Modifier
@@ -482,6 +486,7 @@ private fun TaskDetailsContent(
                     checklist = task.checklist,
                     onAdd = onAddChecklistItem,
                     onSetDone = onSetChecklistItemDone,
+                    onEdit = onEditChecklistItem,
                     onRemove = onRemoveChecklistItem
                 )
 

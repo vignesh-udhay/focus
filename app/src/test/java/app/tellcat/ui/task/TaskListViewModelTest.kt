@@ -3105,6 +3105,36 @@ class TaskListViewModelTest {
     }
 
     @Test
+    fun editingAnItemChangesOnlyItsText() {
+        store(
+            task(id = "a", scheduledDate = today)
+                .copy(checklist = listOf(ChecklistItem("Mlik", done = true), ChecklistItem("Eggs")))
+        )
+        val model = viewModel()
+        visible(model, 1)
+
+        model.editChecklistItem("a", 0, "Mlik", "  Milk ")
+
+        awaitChecklist("a", listOf(ChecklistItem("Milk", done = true), ChecklistItem("Eggs")))
+    }
+
+    @Test
+    fun clearingAnItemRemovesItAndOffersItBack() {
+        store(
+            task(id = "a", scheduledDate = today)
+                .copy(checklist = listOf(ChecklistItem("Milk"), ChecklistItem("Eggs")))
+        )
+        val model = viewModel()
+        visible(model, 1)
+
+        model.editChecklistItem("a", 0, "Milk", "   ")
+
+        awaitChecklist("a", listOf(ChecklistItem("Eggs")))
+        val offer = runBlocking { model.pendingUndo.first { it != null } }
+        assertEquals(PendingUndo.ChecklistRemoval("a", 0, ChecklistItem("Milk")), offer)
+    }
+
+    @Test
     fun removingAnItemRemovesOnlyIt() {
         store(
             task(id = "a", scheduledDate = today)

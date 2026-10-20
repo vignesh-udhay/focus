@@ -54,6 +54,14 @@ fun List<ChecklistItem>.withDone(index: Int, text: String, done: Boolean): List<
     if (getOrNull(index)?.text != text) this
     else mapIndexed { i, item -> if (i == index) item.copy(done = done) else item }
 
+/**
+ * This list with the item at [index] reading [newText], on the same terms as
+ * [withDone]. Its tick is kept: correcting "Mlik" does not un-buy the milk.
+ */
+fun List<ChecklistItem>.withText(index: Int, text: String, newText: String): List<ChecklistItem> =
+    if (getOrNull(index)?.text != text) this
+    else mapIndexed { i, item -> if (i == index) item.copy(text = newText) else item }
+
 /** This list without the item at [index], on the same terms as [withDone]. */
 fun List<ChecklistItem>.withoutItem(index: Int, text: String): List<ChecklistItem> =
     if (getOrNull(index)?.text != text) this

@@ -843,9 +843,9 @@ identity, checklist, plan, action.
 | App bar | back arrow, no title, no overflow |
 | Title | Headline Small, `onSurface`, borderless, four-line cap, heading |
 | Notes | Body Large, `onSurfaceVariant`, borderless, several lines |
-| Checklist item | Body Large, `onSurface`, `onSurfaceVariant` and struck through when ticked, Material `Checkbox`, no container, whole row toggles, 48dp |
-| Checklist remove | `IconButton`, `ic_close` on `onSurfaceVariant`, with Undo |
-| Checklist add field | borderless like the notes, `+` in the checkbox column, one-line placeholder |
+| Checklist item | `SegmentedListItem` on `surfaceContainerLow`, Checkbox leading, text editable in place (Body Large), `onSurfaceVariant` and struck through when ticked |
+| Checklist remove | `ic_close` in the trailing slot only while the line is edited, or clearing the line; a named accessibility action; with Undo |
+| Checklist add row | the group's last segment, `+` leading, `BasicTextField`, one-line placeholder |
 | Section label | the shared `SectionLabel`, reading "Checklist" once there are items, and "Plan" |
 | Plan row | 56dp, `surfaceContainerLow`, 16dp outer and 4dp inner, 2dp gap |
 | Start focus | full width, 56dp, the screen's only accent |

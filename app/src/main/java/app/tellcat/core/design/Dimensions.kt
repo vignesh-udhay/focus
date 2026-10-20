@@ -14,17 +14,6 @@ object TellcatDimensions {
     /** The smallest an interactive target may be, in either direction. */
     val TouchTargetMin = 48.dp
 
-    /**
-     * Material's own horizontal inset inside a `TextField`, from its container
-     * edge to the text.
-     *
-     * Named because text drawn outside a field has to line up with text inside
-     * one: Task Details' checklist items start where the add field's text
-     * starts, under the title and notes, and the component gives no way to read
-     * the value back. Material's number, not a Tellcat choice.
-     */
-    val TextFieldInset = 16.dp
-
     /** The shortest a task row may be, before its content makes it taller. */
     val TaskRowMinHeight = 56.dp
 
