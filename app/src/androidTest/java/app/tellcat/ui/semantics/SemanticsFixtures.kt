@@ -195,6 +195,13 @@ internal class FakeTaskDao(initial: List<Task> = emptyList()) : TaskDao {
         rows.value = rows.value.map { stored -> if (stored.id == task.id) task else stored }
     }
 
+    override suspend fun setChecklist(id: String, checklist: String?) {
+        rows.value = rows.value.map { stored ->
+            if (stored.id == id) stored.copy(checklist = TaskConverters.linesToChecklist(checklist))
+            else stored
+        }
+    }
+
     override suspend fun snoozeReminder(id: String, snoozedUntil: String) {
         rows.value = rows.value.map { stored ->
             if (stored.id == id) {

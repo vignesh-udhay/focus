@@ -7,6 +7,9 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.CreationExtras
 import app.tellcat.core.domain.CapturedTask
+import app.tellcat.core.domain.checklistItem
+import app.tellcat.core.domain.withDone
+import app.tellcat.core.domain.withoutItem
 import app.tellcat.core.domain.FocusSession
 import app.tellcat.core.domain.FocusSessionStore
 import app.tellcat.core.domain.PrimaryList
@@ -1112,6 +1115,28 @@ class TaskListViewModel(
     }
 
     /**
+     * Adds [text] to the end of [id]'s checklist, as typed. Blank text adds
+     * nothing; see `checklistItem`.
+     */
+    fun addChecklistItem(id: String, text: String) {
+        val item = checklistItem(text) ?: return
+        write { repository.changeChecklist(id) { checklist -> checklist + item } }
+    }
+
+    /**
+     * Ticks or unticks the item at [index] of [id]'s checklist. [text] is the
+     * item the user saw there; see `withDone` for why it is passed.
+     */
+    fun setChecklistItemDone(id: String, index: Int, text: String, done: Boolean) {
+        write { repository.changeChecklist(id) { checklist -> checklist.withDone(index, text, done) } }
+    }
+
+    /** Removes the item at [index] of [id]'s checklist, on the same terms. */
+    fun removeChecklistItem(id: String, index: Int, text: String) {
+        write { repository.changeChecklist(id) { checklist -> checklist.withoutItem(index, text) } }
+    }
+
+    /**
      * Applies an edit to the task [id] names.
      *
      * Only the seven fields a task carries about itself can change. The stored
@@ -1129,6 +1154,12 @@ class TaskListViewModel(
      * [reminderAt] has no default for the same reason, and a stronger one. A
      * note erased by an unrelated edit is an annoyance; a reminder erased that
      * way is the app quietly breaking the promise it exists to keep.
+     *
+     * The checklist is deliberately not one of them. It is carried through from
+     * the fresh read like `completedAt`, and changed only by the checklist
+     * operations, each of which applies one change to the stored list. Passing
+     * the list the screen last drew would let a quick second tick write back the
+     * list from before the first one landed.
      *
      * It is one write rather than a separate notes operation for the same
      * reason it reads the task fresh: two writes launched from one save would

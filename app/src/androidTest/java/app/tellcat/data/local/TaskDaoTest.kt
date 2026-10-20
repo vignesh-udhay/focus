@@ -4,7 +4,12 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import app.tellcat.core.domain.ChecklistItem
 import app.tellcat.core.domain.RecurrenceUnit
+import app.tellcat.core.domain.withDone
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -414,5 +419,41 @@ class TaskDaoTest {
         val ids = dao.observeTasks().first().map { it.id }
 
         assertEquals(listOf("a", "b", "c"), ids)
+    }
+
+    /**
+     * Many ticks on different items, launched at once, all land. Each is a
+     * read and a write, and without the transaction a later write put back
+     * the list from before an earlier one.
+     */
+    @Test
+    fun concurrentChecklistChangesAllLand() = runBlocking {
+        val items = (1..20).map { n -> ChecklistItem("Item $n") }
+        dao.insert(entity("a").copy(checklist = items))
+
+        items.indices.map { index ->
+            async(Dispatchers.IO) {
+                dao.changeChecklist("a") { checklist ->
+                    checklist.withDone(index, "Item ${index + 1}", done = true)
+                }
+            }
+        }.awaitAll()
+
+        assertEquals(items.map { it.copy(done = true) }, dao.findTask("a")!!.checklist)
+    }
+
+    @Test
+    fun aChecklistChangeOnADeletedTaskWritesNothing() = runBlocking {
+        dao.insert(entity("a", deletedAt = deletedAt).copy(checklist = listOf(ChecklistItem("Milk"))))
+
+        dao.changeChecklist("a") { emptyList() }
+
+        assertEquals(
+            listOf(ChecklistItem("Milk")),
+            database.query("SELECT checklist FROM tasks", null).use { cursor ->
+                cursor.moveToFirst()
+                TaskConverters.linesToChecklist(cursor.getString(0))
+            }
+        )
     }
 }

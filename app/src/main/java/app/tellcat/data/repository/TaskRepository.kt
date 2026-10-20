@@ -1,5 +1,6 @@
 package app.tellcat.data.repository
 
+import app.tellcat.core.domain.ChecklistItem
 import app.tellcat.core.domain.Task
 import app.tellcat.data.local.TaskConverters
 import app.tellcat.data.local.TaskDao
@@ -100,6 +101,15 @@ class TaskRepository(private val dao: TaskDao) {
             id = id,
             snoozedUntil = requireNotNull(TaskConverters.localDateTimeToText(until))
         )
+    }
+
+    /**
+     * Applies [change] to [id]'s checklist as one transaction. See
+     * `TaskDao.changeChecklist` for why this is not a read here and an
+     * [update] after it.
+     */
+    suspend fun changeChecklist(id: String, change: (List<ChecklistItem>) -> List<ChecklistItem>) {
+        dao.changeChecklist(id, change)
     }
 
     suspend fun restore(id: String) {

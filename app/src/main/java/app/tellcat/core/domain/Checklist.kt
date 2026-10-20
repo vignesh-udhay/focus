@@ -40,3 +40,21 @@ fun checklistItem(text: String): ChecklistItem? =
  * series repeats, so next week's copy keeps every item and owes all of them.
  */
 fun List<ChecklistItem>.reset(): List<ChecklistItem> = map { it.copy(done = false) }
+
+/**
+ * This list with the item at [index] marked [done], if it is still the item
+ * named [text]; otherwise this list unchanged.
+ *
+ * A tap names the row the user saw. By the time the write runs the stored list
+ * may have moved under it, an item removed above it for instance, and then the
+ * same index is a different item. Matching the text as well means a stale tap
+ * changes nothing rather than ticking something the user never touched.
+ */
+fun List<ChecklistItem>.withDone(index: Int, text: String, done: Boolean): List<ChecklistItem> =
+    if (getOrNull(index)?.text != text) this
+    else mapIndexed { i, item -> if (i == index) item.copy(done = done) else item }
+
+/** This list without the item at [index], on the same terms as [withDone]. */
+fun List<ChecklistItem>.withoutItem(index: Int, text: String): List<ChecklistItem> =
+    if (getOrNull(index)?.text != text) this
+    else filterIndexed { i, _ -> i != index }

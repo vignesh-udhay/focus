@@ -1,10 +1,12 @@
 package app.tellcat.data.repository
 
+import app.tellcat.core.domain.ChecklistItem
 import app.tellcat.core.domain.Task
 import app.tellcat.core.domain.Recurrence
 import app.tellcat.core.domain.RecurrenceUnit
 import app.tellcat.data.local.TaskDao
 import app.tellcat.data.local.TaskEntity
+import app.tellcat.data.local.toEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -33,6 +35,7 @@ private class FakeTaskDao : TaskDao {
     val softDeleted = mutableListOf<Pair<String, Long>>()
     val remindersDelivered = mutableListOf<Pair<String, Long>>()
     val remindersSnoozed = mutableListOf<Pair<String, String>>()
+    val checklistsSet = mutableListOf<Pair<String, String?>>()
     val restored = mutableListOf<String>()
     val deleted = mutableListOf<String>()
 
@@ -63,6 +66,10 @@ private class FakeTaskDao : TaskDao {
 
     override suspend fun snoozeReminder(id: String, snoozedUntil: String) {
         remindersSnoozed += id to snoozedUntil
+    }
+
+    override suspend fun setChecklist(id: String, checklist: String?) {
+        checklistsSet += id to checklist
     }
 
     override suspend fun restore(id: String) {
@@ -244,6 +251,24 @@ class TaskRepositoryTest {
         repository.markReminderDelivered(id = "a", deliveredAt = precise)
 
         assertEquals(listOf("a" to 1_767_255_300_987L), dao.remindersDelivered)
+    }
+
+    @Test
+    fun `changeChecklist writes the changed list the way the column stores it`() = runBlocking {
+        dao.emissions.value = listOf(
+            task("a").copy(checklist = listOf(ChecklistItem("Milk"))).toEntity()
+        )
+
+        repository.changeChecklist("a") { checklist -> checklist + ChecklistItem("Eggs", done = true) }
+
+        assertEquals(listOf("a" to "[ ] Milk\n[x] Eggs"), dao.checklistsSet)
+    }
+
+    @Test
+    fun `changeChecklist writes nothing for a task that is not there`() = runBlocking {
+        repository.changeChecklist("gone") { checklist -> checklist + ChecklistItem("Eggs") }
+
+        assertTrue(dao.checklistsSet.isEmpty())
     }
 
     @Test

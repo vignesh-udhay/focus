@@ -8,6 +8,7 @@ import app.tellcat.core.domain.FocusSessionStore
 import app.tellcat.core.domain.PrimaryList
 import app.tellcat.core.domain.splitTrailingCapture
 import app.tellcat.core.domain.StoredFocusSession
+import app.tellcat.core.domain.ChecklistItem
 import app.tellcat.core.domain.Recurrence
 import app.tellcat.core.domain.RecurrenceUnit
 import app.tellcat.data.local.toDomain
@@ -72,6 +73,8 @@ private class RefusingTaskDao(private val rows: List<TaskEntity>) : TaskDao {
 
     override suspend fun snoozeReminder(id: String, snoozedUntil: String) = refuse()
 
+    override suspend fun setChecklist(id: String, checklist: String?) = refuse()
+
     override suspend fun restore(id: String) = refuse()
 
     override suspend fun deleteById(id: String) = refuse()
@@ -121,6 +124,13 @@ private class FakeTaskDao : TaskDao {
     }
 
     /** Marks the row rather than removing it, as the real UPDATE does. */
+    override suspend fun setChecklist(id: String, checklist: String?) {
+        emissions.value = emissions.value.map { stored ->
+            if (stored.id == id) stored.copy(checklist = TaskConverters.linesToChecklist(checklist))
+            else stored
+        }
+    }
+
     override suspend fun snoozeReminder(id: String, snoozedUntil: String) {
         emissions.value = emissions.value.map { stored ->
             if (stored.id == id) {
@@ -1526,6 +1536,17 @@ class TaskListViewModelTest {
         dao.emissions.value.firstOrNull { it.id == id }?.toDomain()?.recurrence
 
     /** Waits for the edit to reach the DAO and reads it back as a domain task. */
+    /** Waits for [id]'s stored checklist to become [expected], and fails if it never does. */
+    private fun awaitChecklist(id: String, expected: List<ChecklistItem>) {
+        var last: List<ChecklistItem>? = null
+        repeat(200) {
+            last = dao.emissions.value.firstOrNull { it.id == id }?.toDomain()?.checklist
+            if (last == expected) return
+            Thread.sleep(10)
+        }
+        assertEquals(expected, last)
+    }
+
     private fun awaitEdited(id: String): Task = runBlocking {
         repeat(200) {
             if (dao.updated.isNotEmpty()) {
@@ -3000,6 +3021,80 @@ class TaskListViewModelTest {
         val edited = awaitEdited("a")
         assertEquals("Finish the landing page", edited.title)
         assertEquals("Ask Priya which logo to use", edited.notes)
+    }
+
+    // Checklist
+
+    @Test
+    fun addingAnItemPutsItAtTheEnd() {
+        store(task(id = "a", scheduledDate = today).copy(checklist = listOf(ChecklistItem("Milk"))))
+        val model = viewModel()
+        visible(model, 1)
+
+        model.addChecklistItem("a", "  Eggs ")
+
+        awaitChecklist("a", listOf(ChecklistItem("Milk"), ChecklistItem("Eggs")))
+    }
+
+    @Test
+    fun aBlankItemIsNotAdded() {
+        store(task(id = "a", scheduledDate = today))
+        val model = viewModel()
+        visible(model, 1)
+
+        // Writes run in order on one thread, so once the second has landed the
+        // first has had its chance.
+        model.addChecklistItem("a", "   ")
+        model.addChecklistItem("a", "Milk")
+
+        awaitChecklist("a", listOf(ChecklistItem("Milk")))
+    }
+
+    @Test
+    fun twoQuickTicksBothLand() {
+        // The screen still shows neither ticked when the second tap is made.
+        store(
+            task(id = "a", scheduledDate = today)
+                .copy(checklist = listOf(ChecklistItem("Milk"), ChecklistItem("Eggs")))
+        )
+        val model = viewModel()
+        visible(model, 1)
+
+        model.setChecklistItemDone("a", 0, "Milk", done = true)
+        model.setChecklistItemDone("a", 1, "Eggs", done = true)
+
+        awaitChecklist(
+            "a",
+            listOf(ChecklistItem("Milk", done = true), ChecklistItem("Eggs", done = true))
+        )
+    }
+
+    @Test
+    fun removingAnItemRemovesOnlyIt() {
+        store(
+            task(id = "a", scheduledDate = today)
+                .copy(checklist = listOf(ChecklistItem("Milk"), ChecklistItem("Eggs")))
+        )
+        val model = viewModel()
+        visible(model, 1)
+
+        model.removeChecklistItem("a", 0, "Milk")
+
+        awaitChecklist("a", listOf(ChecklistItem("Eggs")))
+    }
+
+    @Test
+    fun editingAnotherFieldDoesNotClearAChecklist() {
+        val groceries = listOf(ChecklistItem("Milk"), ChecklistItem("Eggs"))
+        store(task(id = "a", scheduledDate = today).copy(checklist = groceries))
+        val model = viewModel()
+        visible(model, 1)
+
+        // Through the helper, which carries the stored checklist as the screen
+        // does, so the only change is the date.
+        model.edit("a", scheduledDate = today.plusDays(1))
+
+        assertEquals(groceries, awaitEdited("a").checklist)
     }
 
     @Test

@@ -6,6 +6,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
+import app.tellcat.core.domain.ChecklistItem
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -144,6 +145,31 @@ interface TaskDao {
         "UPDATE tasks SET snoozedUntil = :snoozedUntil, reminderDeliveredAt = NULL WHERE id = :id"
     )
     suspend fun snoozeReminder(id: String, snoozedUntil: String)
+
+    /**
+     * Replaces [id]'s checklist and nothing else.
+     *
+     * @param checklist the column's encoding, from
+     * `TaskConverters.checklistToLines`, or null for no checklist.
+     */
+    @Query("UPDATE tasks SET checklist = :checklist WHERE id = :id")
+    suspend fun setChecklist(id: String, checklist: String?)
+
+    /**
+     * Applies [change] to [id]'s stored checklist, in one transaction.
+     *
+     * A tick is read, changed and written as a unit, and Room runs write
+     * transactions one at a time. Two quick ticks on different items were two
+     * separate reads of the same list otherwise, and the second write put back
+     * the item the first had just ticked.
+     *
+     * Nothing is written for a task with no live row.
+     */
+    @Transaction
+    suspend fun changeChecklist(id: String, change: (List<ChecklistItem>) -> List<ChecklistItem>) {
+        val stored = findTask(id) ?: return
+        setChecklist(id, TaskConverters.checklistToLines(change(stored.checklist.orEmpty())))
+    }
 
     /**
      * Undoes a soft delete, returning the task to [observeTasks].

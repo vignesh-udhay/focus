@@ -112,9 +112,16 @@ actually arrived, which is what Reminder health reads.
 
 Everything a task owns lives on its row, including small structured values: a
 recurrence rule's weekdays and a task's checklist are text columns written by
-`TaskConverters`. That keeps a task one row, read and written whole, so every
-view still derives from the one task list. A value that needed querying on its
-own, or that other tasks pointed at, would earn its own table instead.
+`TaskConverters`. That keeps a task one row, so every view still derives from
+the one task list. A value that needed querying on its own, or that other tasks
+pointed at, would earn its own table instead.
+
+Most edits read the task fresh and write it whole. A field changed in quick
+succession gets a targeted write instead, so two writes in flight cannot undo
+each other: a snooze sets its own columns, and a checklist change is a read and
+a write inside one transaction (`TaskDao.changeChecklist`), which Room runs one
+at a time. Task Details' general edit never carries the checklist for the same
+reason.
 
 Migrations are explicit in `TellcatMigrations`. There is no destructive
 fallback: a missing migration fails loudly rather than quietly emptying

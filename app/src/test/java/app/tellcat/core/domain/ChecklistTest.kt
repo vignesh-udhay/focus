@@ -29,4 +29,40 @@ class ChecklistTest {
 
         assertEquals(listOf(ChecklistItem("Milk"), ChecklistItem("Eggs")), list.reset())
     }
+
+    private val groceries = listOf(ChecklistItem("Milk"), ChecklistItem("Eggs"), ChecklistItem("Bread"))
+
+    @Test
+    fun `ticking the item the user saw ticks it`() {
+        assertEquals(
+            listOf(ChecklistItem("Milk"), ChecklistItem("Eggs", done = true), ChecklistItem("Bread")),
+            groceries.withDone(1, "Eggs", done = true)
+        )
+    }
+
+    @Test
+    fun `a tick on an index that now holds another item changes nothing`() {
+        // Milk was removed before the tap on Eggs, at index 1, was written.
+        val moved = groceries.drop(1)
+
+        assertEquals(moved, moved.withDone(1, "Eggs", done = true))
+    }
+
+    @Test
+    fun `a tick past the end changes nothing`() {
+        assertEquals(groceries, groceries.withDone(3, "Eggs", done = true))
+    }
+
+    @Test
+    fun `removing the item the user saw removes only it`() {
+        assertEquals(
+            listOf(ChecklistItem("Milk"), ChecklistItem("Bread")),
+            groceries.withoutItem(1, "Eggs")
+        )
+    }
+
+    @Test
+    fun `a removal on an index that now holds another item changes nothing`() {
+        assertEquals(groceries, groceries.withoutItem(0, "Eggs"))
+    }
 }

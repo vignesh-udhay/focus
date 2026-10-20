@@ -40,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.painterResource
@@ -54,6 +55,7 @@ import app.tellcat.R
 import app.tellcat.core.design.TellcatDimensions
 import app.tellcat.core.design.TellcatSpacing
 import app.tellcat.core.design.tellcatContentGutter
+import app.tellcat.core.domain.ChecklistItem
 import app.tellcat.core.domain.FocusSession
 import app.tellcat.core.domain.Recurrence
 import app.tellcat.core.domain.Task
@@ -155,6 +157,7 @@ fun TaskDetailsScreen(
 
     val current = task
 
+    val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     UndoSnackbarEffect(viewModel = viewModel, snackbarHostState = snackbarHostState)
 
@@ -200,6 +203,19 @@ fun TaskDetailsScreen(
         // `allTasks` is what pops it, through the effect above, so deletion has
         // one exit rather than two that could disagree.
         onDelete = { viewModel.deleteTask(current.id) },
+        onAddChecklistItem = { text -> viewModel.addChecklistItem(current.id, text) },
+        onSetChecklistItemDone = { index, item, done ->
+            viewModel.setChecklistItemDone(current.id, index, item.text, done)
+        },
+        onRemoveChecklistItem = { index, item ->
+            viewModel.removeChecklistItem(current.id, index, item.text)
+        },
+        // Only a task with items has a list to send. A title alone is not
+        // worth a share sheet, and offering one on every task would make this
+        // a general "share task" the product never asked for.
+        onShare = if (current.checklist.isEmpty()) null else {
+            { shareChecklist(context, current) }
+        },
         modifier = modifier
     )
 
@@ -398,6 +414,10 @@ private fun TaskDetailsContent(
     onStartFocus: () -> Unit,
     resumesSession: Boolean,
     onDelete: () -> Unit,
+    onAddChecklistItem: (String) -> Unit,
+    onSetChecklistItemDone: (Int, ChecklistItem, Boolean) -> Unit,
+    onRemoveChecklistItem: (Int, ChecklistItem) -> Unit,
+    onShare: (() -> Unit)?,
     modifier: Modifier = Modifier
 ) {
     var openSheet by rememberSaveable { mutableStateOf<PlanSheet?>(null) }
@@ -450,6 +470,14 @@ private fun TaskDetailsContent(
             ) {
                 IdentityRegion(task = task, onToggleComplete = onToggleComplete, onEdit = onEdit)
 
+                ChecklistRegion(
+                    taskId = task.id,
+                    checklist = task.checklist,
+                    onAdd = onAddChecklistItem,
+                    onSetDone = onSetChecklistItemDone,
+                    onRemove = onRemoveChecklistItem
+                )
+
                 PlanRegion(
                     task = task,
                     today = today,
@@ -461,6 +489,7 @@ private fun TaskDetailsContent(
                 onStartFocus = onStartFocus,
                 resumesSession = resumesSession,
                 onDelete = onDelete,
+                onShare = onShare,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = TellcatSpacing.md)
@@ -653,7 +682,7 @@ private fun NotesField(task: Task, onEdit: (Task) -> Unit, modifier: Modifier = 
  * except the cursor, which is what says the text can be typed into.
  */
 @Composable
-private fun borderlessFieldColors() = TextFieldDefaults.colors(
+internal fun borderlessFieldColors() = TextFieldDefaults.colors(
     focusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
     unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
     disabledContainerColor = androidx.compose.ui.graphics.Color.Transparent,
@@ -832,7 +861,7 @@ private fun PlanSheetHost(
  * The screen's two actions, floating over the content.
  *
  * `docs/decisions.md` D-067. **Two floating controls, not one.** The toolbar
- * holds Delete and nothing else; Start focus is the screen's floating action
+ * holds Delete, and Share when the task has a checklist; Start focus is the screen's floating action
  * button, a pill standing at the toolbar's trailing end. Material documents this
  * pairing: a FAB beside a floating toolbar, carrying the highest-priority action
  * in the view alongside the toolbar's set.
@@ -870,6 +899,12 @@ private fun PlanSheetHost(
  * lands nearest the reaching side, so the order inverts to keep the thumb off
  * Delete.
  *
+ * **Share sits between them, and only when there is a list to send.** It is
+ * neither the payoff nor destructive, so it takes no fill and no `error`, and
+ * an icon with a description is enough: the share glyph is Android's own and
+ * means one thing. It goes after Delete so the thumb reaches it before it
+ * reaches the one-way action.
+ *
  * **The word is Resume when the tap resumes, per D-068.** D-057 made
  * `beginFocus` resume a session already open on this task rather than restart
  * it, and the label was not part of that change, so the control promised a fresh
@@ -889,6 +924,7 @@ private fun TaskDetailsActions(
     onStartFocus: () -> Unit,
     resumesSession: Boolean,
     onDelete: () -> Unit,
+    onShare: (() -> Unit)?,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -911,6 +947,15 @@ private fun TaskDetailsActions(
                     painter = painterResource(R.drawable.ic_delete),
                     contentDescription = stringResource(R.string.task_delete)
                 )
+            }
+
+            onShare?.let { share ->
+                IconButton(onClick = share) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_share),
+                        contentDescription = stringResource(R.string.task_checklist_share)
+                    )
+                }
             }
         }
 
