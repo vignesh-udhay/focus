@@ -47,7 +47,7 @@ data class TaskEntity(
     @PrimaryKey val id: String,
     val title: String,
     val notes: String?,
-    // Version 13: the task's checklist, null when it has none.
+    // Version 12: the task's checklist, null when it has none.
     val checklist: List<ChecklistItem>?,
     val createdAt: Instant,
     val scheduledDate: LocalDate?,
@@ -56,9 +56,6 @@ data class TaskEntity(
     val reminderDeliveredAt: Instant?,
     // Version 11, D-078: a snooze, kept apart from the reminder it moves.
     val snoozedUntil: LocalDateTime?,
-    // Version 12, D-038: the reminder rings as an alarm. Defaulted on the
-    // column for the same reason as occurrenceNumber below.
-    @ColumnInfo(defaultValue = "0") val alarm: Boolean,
     val estimatedDurationMinutes: Int?,
     val recurrence: RecurrenceUnit?,
     val recurrenceInterval: Int?,

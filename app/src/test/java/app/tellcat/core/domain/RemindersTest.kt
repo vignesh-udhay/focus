@@ -436,36 +436,4 @@ class RemindersTest {
         assertTrue(isDueAt(ringsAt, kolkata, ringsAt.plusHours(2).atZone(kolkata).toInstant()))
     }
 
-    // D-038: an alarm is a reminder the user asked to ring loudly
-
-    @Test
-    fun `a task with an alarm and a reminder rings as an alarm`() {
-        assertTrue(task("a", reminderAt = now.plusHours(1)).copy(alarm = true).ringsAsAlarm)
-    }
-
-    @Test
-    fun `a reminder rings as a notification unless the user chose an alarm`() {
-        assertFalse(task("a", reminderAt = now.plusHours(1)).ringsAsAlarm)
-    }
-
-    @Test
-    fun `an alarm with no reminder has nothing to ring`() {
-        assertFalse(task("a").copy(alarm = true).ringsAsAlarm)
-    }
-
-    @Test
-    fun `a finished or deleted task does not ring as an alarm`() {
-        val alarm = task("a", reminderAt = now.plusHours(1)).copy(alarm = true)
-
-        assertFalse(alarm.copy(completedAt = createdAt).ringsAsAlarm)
-        assertFalse(alarm.copy(deletedAt = createdAt).ringsAsAlarm)
-    }
-
-    @Test
-    fun `a snoozed alarm is still an alarm`() {
-        val snoozed = task("a", reminderAt = now.minusHours(1))
-            .copy(alarm = true, snoozedUntil = now.plusMinutes(10))
-
-        assertTrue(snoozed.ringsAsAlarm)
-    }
 }

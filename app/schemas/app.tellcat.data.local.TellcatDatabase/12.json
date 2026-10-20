@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 12,
-    "identityHash": "69fd374fa48468a14ef2d54b4497b382",
+    "identityHash": "fa9f1f3ce722650607044f3fae275c92",
     "entities": [
       {
         "tableName": "tasks",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `notes` TEXT, `createdAt` INTEGER NOT NULL, `scheduledDate` INTEGER, `dueDate` INTEGER, `reminderAt` TEXT, `reminderDeliveredAt` INTEGER, `snoozedUntil` TEXT, `alarm` INTEGER NOT NULL DEFAULT 0, `estimatedDurationMinutes` INTEGER, `recurrence` TEXT, `recurrenceInterval` INTEGER, `recurrenceWeekdays` TEXT, `recurrenceEndDate` INTEGER, `recurrenceEndCount` INTEGER, `occurrenceNumber` INTEGER NOT NULL DEFAULT 1, `spawnedFromId` TEXT, `completedAt` INTEGER, `deletedAt` INTEGER, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `notes` TEXT, `checklist` TEXT, `createdAt` INTEGER NOT NULL, `scheduledDate` INTEGER, `dueDate` INTEGER, `reminderAt` TEXT, `reminderDeliveredAt` INTEGER, `snoozedUntil` TEXT, `estimatedDurationMinutes` INTEGER, `recurrence` TEXT, `recurrenceInterval` INTEGER, `recurrenceWeekdays` TEXT, `recurrenceEndDate` INTEGER, `recurrenceEndCount` INTEGER, `occurrenceNumber` INTEGER NOT NULL DEFAULT 1, `spawnedFromId` TEXT, `completedAt` INTEGER, `deletedAt` INTEGER, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -23,6 +23,11 @@
           {
             "fieldPath": "notes",
             "columnName": "notes",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "checklist",
+            "columnName": "checklist",
             "affinity": "TEXT"
           },
           {
@@ -55,13 +60,6 @@
             "fieldPath": "snoozedUntil",
             "columnName": "snoozedUntil",
             "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "alarm",
-            "columnName": "alarm",
-            "affinity": "INTEGER",
-            "notNull": true,
-            "defaultValue": "0"
           },
           {
             "fieldPath": "estimatedDurationMinutes",
@@ -198,7 +196,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '69fd374fa48468a14ef2d54b4497b382')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'fa9f1f3ce722650607044f3fae275c92')"
     ]
   }
 }

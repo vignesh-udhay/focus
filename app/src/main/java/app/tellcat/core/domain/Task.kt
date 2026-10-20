@@ -98,20 +98,6 @@ data class Task(
      * next occurrence.
      */
     val snoozedUntil: LocalDateTime? = null,
-    /**
-     * Whether this task's reminder rings as an alarm, over the lock screen,
-     * rather than as a notification.
-     *
-     * Per-task and off unless the user turned it on, `docs/decisions.md`
-     * D-038: a reminder is not automatically an alarm, and the app does not
-     * decide which tasks may take over the device. Meaningless without
-     * [reminderAt], which is why [ringsAsAlarm] is what delivery reads.
-     *
-     * Its invariant belongs to whoever writes [reminderAt]. Clearing the
-     * reminder must clear this too, or a reminder added later comes back as an
-     * alarm the user never chose for it.
-     */
-    val alarm: Boolean = false,
     val estimatedDurationMinutes: Int? = null,
     val recurrence: Recurrence? = null,
     val occurrenceNumber: Int = 1,
@@ -154,13 +140,4 @@ data class Task(
      */
     val ringsAt: LocalDateTime?
         get() = if (reminderAt == null) null else snoozedUntil ?: reminderAt
-
-    /**
-     * Whether the next announcement of this task should be an alarm.
-     *
-     * [alarm] alone is not enough: a flag left on a task with no reminder has
-     * nothing to ring, and a finished or deleted task has nothing to say.
-     */
-    val ringsAsAlarm: Boolean
-        get() = alarm && reminderAt != null && !isCompleted && !isDeleted
 }

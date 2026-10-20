@@ -34,12 +34,11 @@ data class TellcatBackup(
  * additions; an unknown format version is rejected because silently dropping a
  * future field would make a restore look successful when it was not.
  *
- * Version 2 adds a task's alarm, D-038. A field that changes how a reminder
- * arrives is exactly the kind an older app must not drop quietly, so it moved
- * the version rather than riding in as an ignored key. Version 1 files still
- * restore, with every alarm off, which is all a version 1 app could have meant.
- * The same version carries a task's checklist, since neither has shipped yet;
- * a file without one reads as a task without one.
+ * Version 2 adds a task's checklist. Restoring a version 2 file into an app
+ * that ignored the key would drop every item while the restore looked
+ * successful, which is exactly what the version check exists to refuse, so it
+ * moved the version rather than riding in as an ignored key. Version 1 files
+ * still restore, and a task in one has no checklist, which is what it had.
  */
 object TellcatBackupCodec {
     // The only marker read or written, D-082. Files from before the rename say
@@ -152,7 +151,6 @@ object TellcatBackupCodec {
         writer.name("reminderAt").nullableValue(task.reminderAt?.toString())
         writer.name("reminderDeliveredAt").nullableValue(task.reminderDeliveredAt?.toString())
         writer.name("snoozedUntil").nullableValue(task.snoozedUntil?.toString())
-        writer.name("alarm").value(task.alarm)
         writer.name("estimatedDurationMinutes").nullableValue(task.estimatedDurationMinutes)
         writer.name("recurrenceUnit").nullableValue(task.recurrence?.name)
         writer.name("recurrenceInterval").nullableValue(task.recurrenceInterval)
@@ -184,8 +182,6 @@ object TellcatBackupCodec {
         var reminderDeliveredAt: Instant? = null
         // Absent from backups written before D-078, which reads as no snooze.
         var snoozedUntil: LocalDateTime? = null
-        // Absent from version 1 files, which reads as no alarm.
-        var alarm = false
         var estimatedDurationMinutes: Int? = null
         var recurrence: RecurrenceUnit? = null
         var recurrenceInterval: Int? = null
@@ -212,7 +208,6 @@ object TellcatBackupCodec {
                     reader.nextNullableString()?.let(Instant::parse)
                 "snoozedUntil" -> snoozedUntil =
                     reader.nextNullableString()?.let(LocalDateTime::parse)
-                "alarm" -> alarm = reader.nextBoolean()
                 "estimatedDurationMinutes" -> estimatedDurationMinutes = reader.nextNullableInt()
                 "recurrenceUnit" -> recurrence = reader.nextNullableString()?.let(RecurrenceUnit::valueOf)
                 "recurrenceInterval" -> recurrenceInterval = reader.nextNullableInt()
@@ -240,7 +235,6 @@ object TellcatBackupCodec {
         }
         require(recurrenceInterval == null || recurrenceInterval > 0) { "Invalid repeat interval" }
         require(recurrenceEndCount == null || recurrenceEndCount > 0) { "Invalid repeat count" }
-        require(!alarm || reminderAt != null) { "Alarm without a reminder" }
 
         return TaskEntity(
             id = requireNotNull(id) { "Missing task id" },
@@ -253,7 +247,6 @@ object TellcatBackupCodec {
             reminderAt = reminderAt,
             reminderDeliveredAt = reminderDeliveredAt,
             snoozedUntil = snoozedUntil,
-            alarm = alarm,
             estimatedDurationMinutes = estimatedDurationMinutes,
             recurrence = recurrence,
             recurrenceInterval = recurrenceInterval,

@@ -100,11 +100,11 @@ class TellcatBackupCodecTest {
     }
 
     /**
-     * Version 1 files were written before a task could be an alarm, D-038.
-     * They still restore, and nothing in them comes back ringing as one.
+     * Version 1 files were written before a task could have a checklist.
+     * They still restore, each task without one.
      */
     @Test
-    fun aVersionOneBackupRestoresWithEveryAlarmOff() {
+    fun aVersionOneBackupRestoresWithoutChecklists() {
         val bytes = """
             {
               "format":"tellcat-backup",
@@ -118,7 +118,6 @@ class TellcatBackupCodecTest {
         val restored = TellcatBackupCodec.read(ByteArrayInputStream(bytes))
 
         assertEquals(1, restored.tasks.size)
-        assertFalse(restored.tasks.single().alarm)
         assertNull(restored.tasks.single().checklist)
     }
 
@@ -129,8 +128,7 @@ class TellcatBackupCodecTest {
             completeTask().copy(title = "   "),
             completeTask().copy(estimatedDurationMinutes = -5),
             completeTask().copy(recurrenceInterval = 0),
-            completeTask().copy(recurrenceEndDate = null, recurrenceEndCount = 0),
-            completeTask().copy(reminderAt = null, snoozedUntil = null)
+            completeTask().copy(recurrenceEndDate = null, recurrenceEndCount = 0)
         ).forEach { invalid ->
             val bytes = ByteArrayOutputStream().also { output ->
                 TellcatBackupCodec.write(
@@ -162,8 +160,6 @@ class TellcatBackupCodecTest {
         reminderDeliveredAt = Instant.parse("2026-09-09T04:00:03Z"),
         // A real value, so a codec that dropped the field fails. D-078.
         snoozedUntil = LocalDateTime.parse("2026-09-09T10:30:00"),
-        // On, for the same reason. D-038.
-        alarm = true,
         estimatedDurationMinutes = 45,
         recurrence = RecurrenceUnit.WEEKLY,
         recurrenceInterval = 2,

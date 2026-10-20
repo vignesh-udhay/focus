@@ -106,7 +106,7 @@ the platform.
 
 ## Persistence
 
-Room, two entities, at schema version 13. `TaskEntity` is the task;
+Room, two entities, at schema version 12. `TaskEntity` is the task;
 `ReminderDeliveryEntity` records when each reminder was due and when it
 actually arrived, which is what Reminder health reads.
 

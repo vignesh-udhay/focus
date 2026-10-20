@@ -281,17 +281,6 @@ class RecurrenceTest {
         assertEquals(listOf(ChecklistItem("Milk"), ChecklistItem("Eggs")), next.checklist)
     }
 
-    // D-038: the alarm is a property of the series, like its time
-
-    @Test
-    fun `the next occurrence of an alarm is an alarm`() {
-        val alarm = chore.copy(reminderAt = LocalDateTime.of(2026, 9, 2, 8, 0), alarm = true)
-
-        val next = alarm.nextRecurringInstance(date("2026-09-02"), "next", createdAt)!!
-
-        assertTrue(next.ringsAsAlarm)
-    }
-
     @Test
     fun `a next reminder that would already have gone lands on the occurrence's own day`() {
         // Moved in the list to the 4th without its reminder, which stays on the
