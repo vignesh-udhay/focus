@@ -178,7 +178,7 @@ private fun ChecklistRow(
             // the left of the text inside it.
             modifier = Modifier
                 .weight(1f)
-                .padding(start = TextFieldHorizontalInset, top = textTop, bottom = textTop)
+                .padding(start = TellcatDimensions.TextFieldInset, top = textTop, bottom = textTop)
         )
 
         IconButton(onClick = onRemove, modifier = Modifier.padding(top = controlTop)) {
@@ -190,9 +190,6 @@ private fun ChecklistRow(
         }
     }
 }
-
-/** Material's own horizontal inset on a `TextField`, which the item text matches. */
-private val TextFieldHorizontalInset = 16.dp
 
 /**
  * Where items are typed.

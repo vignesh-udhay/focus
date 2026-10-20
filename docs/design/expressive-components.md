@@ -25,7 +25,7 @@ new component because an existing one is nearly right; say what is missing.
 
 Two have since been required and have left that list rather than been smuggled
 past it. `ButtonGroup` holds the Duration sheet's five options, per D-026.
-`FloatingToolbar` holds Task Details' two actions, per D-037, which is also the
+`FloatingToolbar` holds Task Details' actions, per D-037, which is also the
 entry that noticed `ButtonGroup` was still listed here and said the line needed
 correcting either way. The exclusion was always "Tellcat has no use for them",
 not "they are unsound", so a use is what removes them.
@@ -835,17 +835,21 @@ invalid. None of it survives. `task-details.md` holds the current design.
 
 What follows is the visual treatment only.
 
-[CD] A full screen, not a sheet. Three regions on one scrolling column:
-identity, plan, action.
+[CD] A full screen, not a sheet. Four regions on one scrolling column:
+identity, checklist, plan, action.
 
 | Element | Treatment |
 | --- | --- |
 | App bar | back arrow, no title, no overflow |
 | Title | Headline Small, `onSurface`, borderless, four-line cap, heading |
 | Notes | Body Large, `onSurfaceVariant`, borderless, several lines |
-| Section label | the shared `SectionLabel`, reading "Plan" |
+| Checklist item | Body Large, `onSurface`, `onSurfaceVariant` and struck through when ticked, Material `Checkbox`, no container, whole row toggles, 48dp |
+| Checklist remove | `IconButton`, `ic_close` on `onSurfaceVariant`, with Undo |
+| Checklist add field | borderless like the notes, `+` in the checkbox column, one-line placeholder |
+| Section label | the shared `SectionLabel`, reading "Checklist" once there are items, and "Plan" |
 | Plan row | 56dp, `surfaceContainerLow`, 16dp outer and 4dp inner, 2dp gap |
 | Start focus | full width, 56dp, the screen's only accent |
+| Toolbar | Delete in `error`, then Share (outline glyph) when the task has items |
 
 [CD] **No card around the identity region**, and that is the fix rather than the
 omission. A tinted container read as a summary, which is exactly why the two

@@ -1,6 +1,15 @@
 package app.tellcat.ui.semantics
 
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.test.performImeAction
+import app.tellcat.core.design.TellcatDimensions
+import app.tellcat.core.domain.ChecklistItem
+import app.tellcat.ui.task.PendingUndo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
@@ -59,7 +68,8 @@ class TaskDetailsSemanticsTest {
         scheduledDate: java.time.LocalDate? = TestToday,
         estimatedDurationMinutes: Int? = 45,
         recurrence: Recurrence? = null,
-        notes: String? = null
+        notes: String? = null,
+        checklist: List<ChecklistItem> = emptyList()
     ) = FakeTaskDao(
         listOf(
             testTask(
@@ -69,7 +79,7 @@ class TaskDetailsSemanticsTest {
                 estimatedDurationMinutes = estimatedDurationMinutes,
                 recurrence = recurrence,
                 notes = notes
-            )
+            ).copy(checklist = checklist)
         )
     )
 
@@ -223,9 +233,9 @@ class TaskDetailsSemanticsTest {
         )
     }
 
-    // --- the three regions ---------------------------------------------------
+    // --- the four regions ----------------------------------------------------
 
-    private fun assertTheScreenShowsItsThreeRegions(fontScale: Float) {
+    private fun assertTheScreenShowsItsFourRegions(fontScale: Float) {
         setScreen(fontScale)
 
         // Identity: the task's own title is the heading, and there is no app
@@ -233,6 +243,10 @@ class TaskDetailsSemanticsTest {
         // app, is what D-018 removed.
         rule.onNodeWithText(TITLE).assertIsDisplayed()
         rule.onAllNodesWithText(HEADING).assertCountEquals(0)
+
+        // Checklist: on a task without one, the add field and no heading.
+        rule.onNodeWithText(ADD_CHECKLIST_ITEM).assertIsDisplayed()
+        rule.onAllNodesWithText(CHECKLIST).assertCountEquals(0)
 
         // Plan: the label and all five rows.
         rule.onNodeWithText(PLAN).assertIsDisplayed()
@@ -255,12 +269,12 @@ class TaskDetailsSemanticsTest {
     }
 
     @Test
-    fun theScreenShowsItsThreeRegions_at100() =
-        assertTheScreenShowsItsThreeRegions(FontScale100)
+    fun theScreenShowsItsFourRegions_at100() =
+        assertTheScreenShowsItsFourRegions(FontScale100)
 
     @Test
-    fun theScreenShowsItsThreeRegions_at200() =
-        assertTheScreenShowsItsThreeRegions(FontScale200)
+    fun theScreenShowsItsFourRegions_at200() =
+        assertTheScreenShowsItsFourRegions(FontScale200)
 
     /**
      * `docs/decisions.md` D-064. D-037 accepted losing this word and named the
@@ -622,6 +636,109 @@ class TaskDetailsSemanticsTest {
         assertTrue(viewModel.pendingUndo.value != null)
     }
 
+
+    // --- the checklist --------------------------------------------------------
+
+    private val groceries = listOf(ChecklistItem(MILK), ChecklistItem(EGGS, done = true))
+
+    /** The row an item is drawn on: one control, a checkbox, named by the item. */
+    private fun itemRow(text: String) =
+        rule.onNode(hasText(text) and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Checkbox))
+
+    /**
+     * Each item is one checkbox whose name is the item, with its state, and a
+     * target no smaller than the 48dp floor. The row merges the drawn box and
+     * the text, so a screen reader hears "Milk, not checked" once rather than
+     * a checkbox and then a word.
+     */
+    private fun assertItemsAreNamedCheckboxes(fontScale: Float) {
+        setScreen(fontScale, dao = withTask(checklist = groceries))
+
+        rule.onNodeWithText(CHECKLIST).performScrollTo().assertIsDisplayed()
+        itemRow(MILK).performScrollTo().assertIsOff()
+            .assertHeightIsAtLeast(TellcatDimensions.TouchTargetMin)
+        itemRow(EGGS).performScrollTo().assertIsOn()
+            .assertHeightIsAtLeast(TellcatDimensions.TouchTargetMin)
+    }
+
+    @Test
+    fun checklistItems_areNamedCheckboxes_at100() = assertItemsAreNamedCheckboxes(FontScale100)
+
+    @Test
+    fun checklistItems_areNamedCheckboxes_at200() = assertItemsAreNamedCheckboxes(FontScale200)
+
+    /** The remove button says which item it removes, and clears the 48dp floor. */
+    private fun assertRemoveNamesItsItem(fontScale: Float) {
+        setScreen(fontScale, dao = withTask(checklist = groceries))
+
+        // Touch bounds, not layout bounds: the Expressive icon button draws at
+        // 40dp and extends its target to the 48dp floor around itself, which
+        // is the rule `expressive-design-system.md` states for targets.
+        rule.onNodeWithContentDescription(REMOVE_MILK).performScrollTo().assertIsDisplayed()
+            .assertTouchTargetIsAtLeast(TellcatDimensions.TouchTargetMin)
+    }
+
+    @Test
+    fun removingAnItem_namesTheItem_at100() = assertRemoveNamesItsItem(FontScale100)
+
+    @Test
+    fun removingAnItem_namesTheItem_at200() = assertRemoveNamesItsItem(FontScale200)
+
+    /** The area that takes a tap, which is what the 48dp floor is about. */
+    private fun SemanticsNodeInteraction.assertTouchTargetIsAtLeast(min: Dp): SemanticsNodeInteraction {
+        val node = fetchSemanticsNode()
+        val bounds = node.touchBoundsInRoot
+        with(node.layoutInfo.density) {
+            assertTrue("touch width ${bounds.width.toDp()}", bounds.width.toDp() >= min)
+            assertTrue("touch height ${bounds.height.toDp()}", bounds.height.toDp() >= min)
+        }
+        return this
+    }
+
+    @Test
+    fun tappingAnItemTicksIt() {
+        val viewModel = setScreen(dao = withTask(checklist = groceries))
+
+        itemRow(MILK).performScrollTo().performClick()
+
+        awaitTask(viewModel) { task -> task.checklist.first().done }
+    }
+
+    @Test
+    fun removingAnItemOffersItBack() {
+        val viewModel = setScreen(dao = withTask(checklist = groceries))
+
+        rule.onNodeWithContentDescription(REMOVE_MILK).performScrollTo().performClick()
+
+        awaitTask(viewModel) { task -> task.checklist == listOf(ChecklistItem(EGGS, done = true)) }
+        assertTrue(viewModel.pendingUndo.value is PendingUndo.ChecklistRemoval)
+    }
+
+    /** Done adds what was typed, and the heading arrives with the first item. */
+    @Test
+    fun anItemTypedAndDoneIsAdded() {
+        val viewModel = setScreen()
+
+        rule.onNodeWithText(ADD_CHECKLIST_ITEM).performScrollTo().performTextReplacement(MILK)
+        rule.onNodeWithText(MILK).performImeAction()
+
+        awaitTask(viewModel) { task -> task.checklist == listOf(ChecklistItem(MILK)) }
+        rule.waitUntilExactlyOneExists(hasText(CHECKLIST), TIMEOUT_MILLIS)
+    }
+
+    /** Share is offered only when there is a list to send. */
+    @Test
+    fun shareAppearsOnlyWithAChecklist() {
+        setScreen()
+        rule.onNodeWithContentDescription(SHARE_LIST).assertDoesNotExist()
+    }
+
+    @Test
+    fun shareIsOfferedForATaskWithItems() {
+        setScreen(dao = withTask(checklist = groceries))
+        rule.onNodeWithContentDescription(SHARE_LIST).assertIsDisplayed()
+    }
+
     /**
      * Deleting the final live task empties `allTasks`. That empty result is not
      * the repository's initial placeholder once this task has already been on
@@ -651,6 +768,12 @@ class TaskDetailsSemanticsTest {
         const val BACK = "Back"
         const val DELETE = "Delete"
         const val PLAN = "Plan"
+        const val CHECKLIST = "Checklist"
+        const val ADD_CHECKLIST_ITEM = "Add checklist item"
+        const val SHARE_LIST = "Share list"
+        const val MILK = "Milk"
+        const val EGGS = "Eggs"
+        const val REMOVE_MILK = "Remove Milk"
 
         /** The notes placeholder, which is also how the field is tapped. */
         const val ADD_NOTES = "Add notes"

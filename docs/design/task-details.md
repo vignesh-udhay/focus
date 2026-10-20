@@ -365,7 +365,11 @@ usually the order of the shop, and moving rows under the user's thumb loses
 their place and invites mis-taps.
 
 **Removing is an X with an undo.** The X sits at the trailing end of every row
-on `onSurfaceVariant`. Removal raises the same single undo offer completing or
+on `onSurfaceVariant`, not `error`. `expressive-design-system.md` keeps `error`
+for an action that destroys something, and it marks one such action per
+surface: Delete in the toolbar. An X on every item would make a shopping list a
+column of red warnings, and removal is undone from the snackbar, so the
+quieter role is the honest one. Removal raises the same single undo offer completing or
 deleting a task raises ("Item removed", Undo), and undo puts the item back where
 it was.
 
@@ -374,6 +378,10 @@ the keyboard up. After each item the field is brought back into view, because
 every addition pushes it lower and it used to slide under the keyboard after a
 few. Done on an empty field closes the keyboard; it is how entry ends. Leaving
 the field adds whatever is in it, as the title and notes commit on blur.
+
+`TaskDetailsSemanticsTest` checks the region at 100% and 200%: each item is
+one checkbox named by its text, with its state; the remove button names its
+item; both clear the 48dp floor; Done adds; Share exists only with items.
 
 The scroll area ends at the keyboard (`imePadding`). The app draws edge to edge,
 and without that the viewport ran on underneath the keyboard, where nothing
