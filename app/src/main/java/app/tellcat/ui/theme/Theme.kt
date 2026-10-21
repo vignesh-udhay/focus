@@ -13,11 +13,11 @@ import app.tellcat.core.design.TellcatLightColorScheme
 /**
  * The Tellcat theme.
  *
- * Dynamic colour is the default, because a system-coloured task list feels
- * like part of the device, which `PRODUCT.md` asks for. Where the device
- * cannot supply a scheme, or where one is deliberately not wanted, the app
- * falls back to its own identity rather than to Material's baseline purple.
- * Both fallbacks come from one seed, so light and dark are the same product.
+ * The Tellcat scheme is the default since D-077, so the app has the same
+ * colour on every phone, in the store and in onboarding. Dynamic colour is one
+ * switch away for anyone who wants the wallpaper's colours instead. Light and
+ * dark come from one seed, generated in HCT since D-085, so they are the same
+ * product.
  *
  * Colour is the only thing this theme supplies. The type ramp, the corner
  * scale and the motion scheme are all left to `MaterialExpressiveTheme`,

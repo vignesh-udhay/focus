@@ -6,12 +6,11 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 
 /**
- * The Tellcat colour identity, for when the device does not supply one.
+ * The Tellcat colour identity.
  *
- * Dynamic colour is the default and is what most users see. These schemes are
- * the fallback: below API 31, wherever dynamic colour is switched off, and in
- * every preview. Without them the app falls back to the Material baseline
- * purple, which is nobody's brand.
+ * What a fresh install draws in since `docs/decisions.md` D-077, below API 31,
+ * and in every preview. Dynamic colour replaces it only when the user turns that
+ * on in Settings.
  *
  * Both schemes are generated from one seed, so light and dark are recognisably
  * the same product rather than two palettes that happen to share a layout.
@@ -26,17 +25,24 @@ import androidx.compose.ui.graphics.Color
 val TellcatSeed: Color = Color(0xFF4F5DFF)
 
 /**
- * The light fallback.
+ * The light scheme.
  *
- * Tones were derived from [TellcatSeed] by holding its hue and chroma and
- * varying CIE L*, the quantity Material calls tone, then clamping each result
- * into sRGB. The secondary, tertiary, neutral, neutral variant and error
- * palettes use Material's usual chroma relationships to that hue.
+ * **The primary and secondary palettes are generated in HCT**, Material's own
+ * colour space, at [TellcatSeed]'s hue of 282, with tone stepped as Material
+ * steps it. `docs/decisions.md` D-085. They used to be generated in CIELAB at a
+ * primary chroma of 48, and the two choices together cost the app its colour:
+ * CIELAB bends blues toward purple as their chroma falls, which carried the hue
+ * to 290, and 48 is Material's own stock chroma, so every role landed within
+ * ΔE 6 of Material's baseline purple scheme. The seed is an indigo; the app was
+ * drawing Material's default.
  *
- * The seed itself is unusually saturated, at a chroma near 94. The primary
- * palette is generated at 48 instead, which keeps the indigo recognisable
- * while dropping the neon: carried through at full chroma, the dark scheme's
- * primary container came out a vivid blue that read as loud rather than calm.
+ * Light primary is chroma 70, so the accent reads as the seed's indigo rather
+ * than a muted violet. The containers stay calm at 16 to 20, which is the
+ * restraint the old cap was buying, and the dark primary container is chroma
+ * 52, rich rather than neon. Every text pairing is at least 6.2:1.
+ *
+ * The tertiary, error and neutral palettes, and the three fixed roles below,
+ * are unchanged by D-085: overdue keeps its colour, and the cat keeps its coat.
  *
  * They are written out rather than generated at run time because generating
  * them needs `material-color-utilities`, which this project does not depend
@@ -58,15 +64,15 @@ val TellcatSeed: Color = Color(0xFF4F5DFF)
  * supplies its own, so these only apply to the fallback.
  */
 val TellcatLightColorScheme: ColorScheme = lightColorScheme(
-    primary = Color(0xFF5B54A3),
+    primary = Color(0xFF3D4BDC),
     onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFFE5DEFF),
-    onPrimaryContainer = Color(0xFF403D89),
-    inversePrimary = Color(0xFFCABEFF),
-    secondary = Color(0xFF605B75),
+    primaryContainer = Color(0xFFE0E0FF),
+    onPrimaryContainer = Color(0xFF313AA1),
+    inversePrimary = Color(0xFFBEC2FF),
+    secondary = Color(0xFF5C5D71),
     onSecondary = Color(0xFFFFFFFF),
-    secondaryContainer = Color(0xFFE5DFFD),
-    onSecondaryContainer = Color(0xFF1C192E),
+    secondaryContainer = Color(0xFFE1E0F9),
+    onSecondaryContainer = Color(0xFF191A2B),
     tertiary = Color(0xFF834F60),
     onTertiary = Color(0xFFFFFEFF),
     tertiaryContainer = Color(0xFFFFD7E3),
@@ -81,7 +87,7 @@ val TellcatLightColorScheme: ColorScheme = lightColorScheme(
     onSurface = Color(0xFF1C1B20),
     surfaceVariant = Color(0xFFE4E0F0),
     onSurfaceVariant = Color(0xFF484551),
-    surfaceTint = Color(0xFF5B54A3),
+    surfaceTint = Color(0xFF3D4BDC),
     inverseSurface = Color(0xFF313035),
     inverseOnSurface = Color(0xFFF1F0F7),
     outline = Color(0xFF787583),
@@ -101,15 +107,15 @@ val TellcatLightColorScheme: ColorScheme = lightColorScheme(
 
 /** The dark fallback, from the same seed and the same palettes. */
 val TellcatDarkColorScheme: ColorScheme = darkColorScheme(
-    primary = Color(0xFFCABEFF),
-    onPrimary = Color(0xFF25276F),
-    primaryContainer = Color(0xFF403D89),
-    onPrimaryContainer = Color(0xFFE5DEFF),
-    inversePrimary = Color(0xFF5B54A3),
-    secondary = Color(0xFFC9C3E0),
-    onSecondary = Color(0xFF312D45),
-    secondaryContainer = Color(0xFF48445C),
-    onSecondaryContainer = Color(0xFFE5DFFD),
+    primary = Color(0xFFBEC2FF),
+    onPrimary = Color(0xFF1E2678),
+    primaryContainer = Color(0xFF343C98),
+    onPrimaryContainer = Color(0xFFE0E0FF),
+    inversePrimary = Color(0xFF3D4BDC),
+    secondary = Color(0xFFC5C4DC),
+    onSecondary = Color(0xFF2E2F41),
+    secondaryContainer = Color(0xFF444558),
+    onSecondaryContainer = Color(0xFFE1E0F9),
     tertiary = Color(0xFFF2B7C8),
     onTertiary = Color(0xFF502132),
     tertiaryContainer = Color(0xFF693848),
@@ -124,7 +130,7 @@ val TellcatDarkColorScheme: ColorScheme = darkColorScheme(
     onSurface = Color(0xFFE3E1E9),
     surfaceVariant = Color(0xFF484551),
     onSurfaceVariant = Color(0xFFC8C5D3),
-    surfaceTint = Color(0xFFCABEFF),
+    surfaceTint = Color(0xFFBEC2FF),
     inverseSurface = Color(0xFFE3E1E9),
     inverseOnSurface = Color(0xFF313035),
     outline = Color(0xFF928F9D),

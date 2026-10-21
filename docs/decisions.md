@@ -5625,3 +5625,42 @@ tasks, on any screen. No count of tasks done, today or ever.
 **What would reverse this.** A count appearing that measures what the user did
 rather than what a row hides, or the checklist count being summed anywhere.
 
+---
+
+## D-085. The palette is generated in HCT, so the seed's indigo survives
+
+**Decision.** The Tellcat scheme's primary and secondary palettes are generated
+in HCT, Material's colour space, at the seed's hue. Light primary goes from
+`#5B54A3` to `#3D4BDC`, chroma 70. The containers stay calm at chroma 16 to 20;
+the dark primary container is chroma 52. The seed, `#4F5DFF`, is unchanged, and
+so are the tertiary, error and neutral palettes and the three fixed roles the
+cat is drawn in.
+
+**What changed the answer.** D-077 turned dynamic colour off so that colour
+could give Tellcat an identity. Measured against Material's baseline scheme in
+CIELAB, every role of the palette it shipped was within ΔE 6 of the baseline,
+most within 2.5: about as close as two colours can be and still be told apart.
+The app had its own colour, and it was Material's default.
+
+Two choices did it. The palette was generated in CIELAB, which bends blues
+toward purple as their chroma falls, so the seed's HCT hue of 282 arrived at 290;
+the baseline is 299. And the primary was capped at chroma 48, which is the
+baseline's own. The icon's indigo disc, at hue 286, was closer to the seed than
+anything in the app.
+
+**Why this is a correction and not a rebrand.** The seed, the hue family and
+D-077's reasoning all stand. The old palette's own comment said the cap "keeps
+the indigo recognisable"; it did not, and this is what that sentence meant to
+buy. The restraint it was protecting is kept where it matters, on the containers
+and surfaces that fill the screen. Only the accent, which appears on the actions
+and the ticks, is allowed the seed's colour.
+
+**What it costs.** Nothing measurable in contrast: white on the light primary is
+6.5:1, as before, and every other pairing is at least 6.2:1. On a populated
+Today the accent appears only on a ticked checkbox, so colour alone does not
+make that screen memorable; it fixes which colour is Tellcat's.
+
+**What would reverse this.** The indigo reading as loud on a real device, in
+either theme, which the answer to is lowering the light primary's chroma toward
+60, not returning to 48 or to CIELAB.
+

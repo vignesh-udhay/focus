@@ -235,15 +235,22 @@ back to an intentional Tellcat scheme rather than the Material baseline. Both
 the light and the dark fallback come from one seed so the two themes are
 recognisably the same product.
 
-[CD] The seed is `#4F5DFF`. Its own chroma is unusually high, near 94, and the
-primary palette is generated at 48 instead. Carried through at full chroma the
-dark scheme's primary container came out a vivid blue that read as loud rather
-than calm, which is the opposite of the first principle. The hue is the brand;
-the saturation is not.
+[CD] The seed is `#4F5DFF`, an indigo at HCT hue 282. D-085. The primary and
+secondary palettes are generated in HCT at that hue: light primary at chroma 70
+so the accent is recognisably the seed's, containers at 16 to 20 so the large
+surfaces stay calm, and the dark primary container at 52, rich rather than
+neon. The hue is the brand, and the accent is allowed to carry it.
 
-[IMPL] The current fallbacks are asymmetric: light uses
-`expressiveLightColorScheme()` and dark uses `darkColorScheme()`. That is a
-known conflict, recorded at the end of this document.
+[CD] **Generate in HCT, never in CIELAB, and measure against Material's
+baseline.** The palette was first built in CIELAB at a primary chroma of 48.
+CIELAB bends blues toward purple as chroma falls, so the hue drifted from 282 to
+290, and 48 is Material's own stock chroma; every role ended within ΔE 6 of the
+baseline purple scheme, most within 2.5. A fallback that measures as the
+baseline is not an identity, whatever seed it was made from.
+
+[IMPL] Both schemes are written out in `Color.kt` through `lightColorScheme()`
+and `darkColorScheme()` with every role named, so neither depends on a
+generator's defaults.
 
 ## Light and dark
 
@@ -288,18 +295,10 @@ wants to be legible at a glance: what am I working on, where am I, and why is
 this list empty. Applying it to task titles would make every row shout and none
 of them stand out.
 
-[IMPL] `Type.kt` customises nine roles: `bodyLarge` 16/24, `bodyMedium` 14/20,
-`bodySmall` 12/16, `displaySmall`, `headlineMedium`, `headlineSmall` and
-`titleLarge` at SemiBold, `titleMedium` and `labelLarge` at Medium. Keep all of
-it. The emphasized roles come from the Material defaults and do not need to be
-declared.
-
-`displaySmall` was there because `LargeFlexibleTopAppBar` drew its expanded
-title with it and Material's default weight for it is Regular, so without the
-override the largest text in the app would also have been the lightest. D-020
-replaced that bar with a compact one at `titleLarge`, so nothing in the app
-draws `displaySmall` any more. The override is harmless and can go whenever
-`Type.kt` is next touched.
+[IMPL] The type ramp is Material Expressive's, untouched. D-008 deleted
+`Type.kt` and its nine overrides: they put SemiBold on plain roles, which left
+each emphasized role a step *lighter* than its plain counterpart. The table above
+chooses roles; it does not restyle them.
 
 ## Wrapping and scale
 
@@ -348,22 +347,10 @@ expressive thing in it.
 that the question is narrower than it was: is this session running? Neither
 decorates anything, and `focus.md` records the reasoning.
 
-[CD] The Tellcat scale is softer than Material's at the small end and stops
-where Material's does at the top:
-
-    extraSmall           8dp
-    small               12dp
-    medium              16dp
-    large               24dp
-    largeIncreased      28dp
-    extraLarge          28dp
-    extraLargeIncreased 32dp
-    extraExtraLarge     48dp
-
-The scale must be monotonic. It currently is not: `large` is overridden to 24dp
-while `largeIncreased` is left at the Material default of 20dp, so a component
-reaching for the larger token gets a smaller radius. Recorded as a conflict
-below.
+[IMPL] The corner scale is Material's, untouched. D-008 deleted `Shape.kt`,
+whose softer scale shifted every step up by one and left `largeIncreased`
+smaller than `large`. Rounded rectangles for list and card chrome come from
+`MaterialTheme.shapes` and `ListItemDefaults.segmentedShapes`.
 
 [CD] Shape does not communicate hierarchy in Tellcat. It communicates
 component identity: a row is a row, a sheet is a sheet. Two components at
@@ -549,12 +536,13 @@ encodes Material's internals into our suite.
 
 | Token group | Holds | Status |
 | --- | --- | --- |
-| `TellcatSpacing` | the 4dp scale | exists, unchanged |
-| `TellcatShapes` | the eight corner sizes | exists, needs the monotonic fix |
-| `TellcatTypography` | the nine customised roles | exists |
-| Fallback colour scheme | light and dark, from one seed | to be built |
-| Motion tokens | the four semantic animation specs | to be built, see `expressive-motion.md` |
-| Dimension tokens | touch target, row height, FAB clearance, content width | to be built |
+| `TellcatSpacing` | the 4dp scale | exists |
+| `TellcatDimensions` | touch target, row height, FAB clearance, content width and the rest | exists |
+| `TellcatMotion` | the semantic animation specs | exists, see `expressive-motion.md` |
+| `TellcatHaptics` | the touch-feedback vocabulary | exists, see `expressive-motion.md` |
+| `TellcatLightColorScheme`, `TellcatDarkColorScheme` | the Tellcat scheme, generated in HCT from one seed | exists, D-085 |
+
+[IMPL] Type and shape have no Tellcat token: both are Material's, per D-008.
 
 [CD] Values that must never be scattered through composables: colours, corner
 radii, spacing, animation specs, and any dimension used by more than one
