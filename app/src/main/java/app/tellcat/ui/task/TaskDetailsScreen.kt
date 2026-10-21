@@ -4,26 +4,27 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.sizeIn
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalFloatingToolbar
+import androidx.compose.material3.rememberTooltipState
+import androidx.compose.material3.PlainTooltip
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.IconButton
@@ -46,10 +47,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import app.tellcat.core.design.TellcatHaptics
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -57,6 +56,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.tellcat.R
@@ -95,7 +95,7 @@ import java.time.LocalDateTime
  * that each write is one field, made by one deliberate choice, and reversible by
  * reopening the same row.
  *
- * Completion is the exception and is not a field. The checkbox goes through the
+ * Completion is the exception and is not a field. The toolbar's toggle goes through the
  * ordinary `toggleComplete` and raises the same single undo offer every list
  * raises.
  *
@@ -486,7 +486,7 @@ private fun TaskDetailsContent(
                     .padding(bottom = TellcatDimensions.FabClearance),
                 verticalArrangement = Arrangement.spacedBy(TellcatSpacing.md)
             ) {
-                IdentityRegion(task = task, onToggleComplete = onToggleComplete, onEdit = onEdit)
+                IdentityRegion(task = task, onEdit = onEdit)
 
                 ChecklistRegion(
                     taskId = task.id,
@@ -505,6 +505,8 @@ private fun TaskDetailsContent(
             }
 
             TaskDetailsActions(
+                task = task,
+                onToggleComplete = onToggleComplete,
                 onStartFocus = onStartFocus,
                 resumesSession = resumesSession,
                 onDelete = onDelete,
@@ -529,7 +531,8 @@ private fun TaskDetailsContent(
 }
 
 /**
- * The checkbox, the title and the notes.
+ * The title and the notes, flush with the Plan rows' text. Completion is in the
+ * toolbar since D-093, so nothing here looks like one more checklist item.
  *
  * **No card around them, and that is the fix rather than the omission.** A
  * tinted container read as a summary, which is exactly why the two most-edited
@@ -542,71 +545,13 @@ private fun TaskDetailsContent(
  * focus leaves it.
  */
 @Composable
-private fun IdentityRegion(task: Task, onToggleComplete: () -> Unit, onEdit: (Task) -> Unit) {
-    val haptics = LocalHapticFeedback.current
+private fun IdentityRegion(task: Task, onEdit: (Task) -> Unit) {
     Column(modifier = Modifier.padding(top = TellcatSpacing.xs)) {
-        // The same description a task row's checkbox carries, because it is the
-        // same act on the same task. A screen reader hearing two different
-        // phrasings would have to work out that they mean one thing.
-        val toggleDescription = stringResource(
-            if (task.isCompleted) R.string.task_row_mark_incomplete
-            else R.string.task_row_mark_complete,
-            task.title
-        )
-
-        // **The checkbox marks the title's first line, so the two centre on
-        // each other.** The glyph sits at the middle of its 48dp target; the
-        // title's first line is one `headlineSmall` line tall. Top-aligning the
-        // two lines up the boxes rather than the things inside them, and the
-        // title sat 8dp low against the mark that refers to it.
-        //
-        // Measured rather than nudged by a constant, because which of the two
-        // is taller changes with the font scale: at 100% the line is 32dp and
-        // the title needs pushing down, at 200% it is 64dp and the checkbox
-        // does. A hardcoded 8dp is right once and wrong after that.
-        val lineCentre = with(LocalDensity.current) {
-            MaterialTheme.typography.headlineSmall.lineHeight.toDp() / 2
-        }
-
-        // Where the title's first line actually sits: the field's own vertical
-        // inset, then half a line. The inset is Material's and stays, because
-        // this `TextField` overload takes no `contentPadding` to override it.
-        val titleCentre = TextFieldVerticalInset + lineCentre
-        val checkboxTop = (titleCentre - TellcatDimensions.TouchTargetMin / 2)
-            .coerceAtLeast(0.dp)
-
-        Row(verticalAlignment = Alignment.Top) {
-            Checkbox(
-                checked = task.isCompleted,
-                onCheckedChange = { completed ->
-                    TellcatHaptics.taskCompletion(haptics, completed)
-                    onToggleComplete()
-                },
-                modifier = Modifier
-                    .padding(top = checkboxTop)
-                    .sizeIn(
-                        minWidth = TellcatDimensions.TouchTargetMin,
-                        minHeight = TellcatDimensions.TouchTargetMin
-                    )
-                    .semantics { contentDescription = toggleDescription }
-            )
-
-            TitleField(task = task, onEdit = onEdit)
-        }
-
-        // Indented to the title rather than the screen edge: the notes belong
-        // to the task the title names, and starting them further left made the
-        // two read as separate blocks with the checkbox pointing at neither.
-        NotesField(
-            task = task,
-            onEdit = onEdit,
-            modifier = Modifier.padding(start = TellcatDimensions.TouchTargetMin)
-        )
+        TitleField(task = task, onEdit = onEdit)
+        NotesField(task = task, onEdit = onEdit)
     }
 }
 
-/** Material's own vertical inset on a `TextField` drawn without a label. */
-private val TextFieldVerticalInset = 16.dp
 
 /**
  * The title: the screen's heading and its primary input at once.
@@ -626,7 +571,16 @@ private fun TitleField(task: Task, onEdit: (Task) -> Unit) {
     TextField(
         value = draft,
         onValueChange = { draft = it },
-        textStyle = MaterialTheme.typography.headlineSmall,
+        // A completed task's title reads as a completed row's does, struck
+        // through on `onSurfaceVariant`, now that no checkbox above says so.
+        textStyle = if (task.isCompleted) {
+            MaterialTheme.typography.headlineSmall.copy(
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textDecoration = TextDecoration.LineThrough
+            )
+        } else {
+            MaterialTheme.typography.headlineSmall
+        },
         colors = borderlessFieldColors(),
         placeholder = {
             Text(
@@ -921,142 +875,103 @@ private fun PlanSheetHost(
 }
 
 /**
- * The screen's two actions, floating over the content.
+ * The screen's actions, in one floating toolbar. D-093.
  *
- * `docs/decisions.md` D-067. **Two floating controls, not one.** The toolbar
- * holds Delete, and Share when the task has a checklist; Start focus is the screen's floating action
- * button, a pill standing at the toolbar's trailing end. Material documents this
- * pairing: a FAB beside a floating toolbar, carrying the highest-priority action
- * in the view alongside the toolbar's set.
+ * Delete leads and Focus trails, D-037's order: in a horizontal group the thumb
+ * lands nearest the reaching side, so the one-way action sits furthest from it.
+ * Share comes only with a checklist. Complete is a toggle, and Focus leaves once
+ * the task is done, since there is nothing left to work on.
  *
- * **The hierarchy is structural now rather than styled.** D-037 ranked these two
- * by giving Start focus the attached FAB's extra diameter; D-064, once that slot
- * turned out not to hold a label, ranked them by a fill and a word standing
- * against a bare icon. Both were tuning. A floating action button and a toolbar
- * item are different kinds of control, so D-022's rule that a rare one-way action
- * must not carry the weight of the screen's payoff is now a consequence of the
- * layout instead of something the drawing has to keep defending.
- *
- * Material also warns against emphasising two controls at once with bold primary
- * colours, naming a button and a FAB together as the case to avoid. A filled
- * `primary` button inside the toolbar with a FAB beside it would have been
- * exactly that. Only one action is emphasised here, and it is the right one.
- *
- * **The pill is dimmer than the button it replaces, and that is the cost.**
- * Start focus was a filled `Button`, so `primary`. A floating action button's
- * container is `primaryContainer`. `expressive-components.md` records that
- * overriding that role was tried on `AddTaskFab` and reverted, and that the
- * button is therefore never the highest-contrast element on the page, which is
- * what Material intends. Taking the contrast back here would mean departing from
- * the specification on a second component after declining to on the first. What
- * D-064 was buying was the word, and the word is untouched.
- *
- * **Extended here, regular on Today, and the two agree.** `AddTaskFab` dropped
- * the extended form because "Add task" spent 80dp repeating what a plus already
- * said. That is D-064 inverted: a play triangle does not say Focus. It reads as
- * preview, as resume, as run.
- *
- * **Delete leads and Focus trails**, which is D-037's ordering unchanged. In a
- * vertical menu the thumb lands nearest the bottom, so `expressive-components.md`
- * orders the row menu constructive-before-destructive; in a horizontal group it
- * lands nearest the reaching side, so the order inverts to keep the thumb off
- * Delete.
- *
- * **Share sits between them, and only when there is a list to send.** It is
- * neither the payoff nor destructive, so it takes no fill and no `error`, and
- * an icon with a description is enough: the share glyph is Android's own and
- * means one thing. It goes after Delete so the thumb reaches it before it
- * reaches the one-way action.
- *
- * **The word is Resume when the tap resumes, per D-068.** D-057 made
- * `beginFocus` resume a session already open on this task rather than restart
- * it, and the label was not part of that change, so the control promised a fresh
- * clock and delivered a running one. It now branches on the same condition the
- * view model branches on. D-064 exists because this control did not say what it
- * did; a word naming the wrong act is no better than a glyph naming none.
- *
- * **Delete stays an icon, deliberately.** A trash can is not ambiguous the way a
- * play triangle is, and giving it a word would raise a rare one-way action to
- * the weight of the screen's payoff, which is what D-022 argued against and
- * D-037 kept. It keeps `error` as its second cue, and its content description is
- * its word for a screen reader.
+ * Focus is the one filled control, the screen's payoff, drawn with Tellcat's own
+ * focus symbol rather than a play triangle, which D-064 found read as preview or
+ * run. A tooltip names the two glyphs that are not universal.
  */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun TaskDetailsActions(
+    task: Task,
+    onToggleComplete: () -> Unit,
     onStartFocus: () -> Unit,
     resumesSession: Boolean,
     onDelete: () -> Unit,
     onShare: (() -> Unit)?,
     modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(TellcatSpacing.xs)
-    ) {
-        HorizontalFloatingToolbar(expanded = true) {
-            IconButton(
-                onClick = onDelete,
-                colors = IconButtonDefaults.iconButtonColors(
-                    // Its second cue, and it was `error` on D-022's menu item
-                    // too. Still the only one besides the glyph, because this
-                    // action keeps no word: see the note above on why that is
-                    // right here and was not for Start focus.
-                    contentColor = MaterialTheme.colorScheme.error
+    val haptics = LocalHapticFeedback.current
+    HorizontalFloatingToolbar(expanded = true, modifier = modifier) {
+        IconButton(
+            onClick = onDelete,
+            // `error` is its second cue; the content description is its word.
+            colors = IconButtonDefaults.iconButtonColors(
+                contentColor = MaterialTheme.colorScheme.error
+            )
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_delete),
+                contentDescription = stringResource(R.string.task_delete)
+            )
+        }
+
+        onShare?.let { share ->
+            IconButton(onClick = share) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_share),
+                    contentDescription = stringResource(R.string.task_checklist_share)
+                )
+            }
+        }
+
+        // The row checkbox's words, because it is the same act on the same task.
+        val completeLabel = stringResource(
+            if (task.isCompleted) R.string.task_row_mark_incomplete
+            else R.string.task_row_mark_complete,
+            task.title
+        )
+        ToolbarTooltip(completeLabel) {
+            IconToggleButton(
+                checked = task.isCompleted,
+                onCheckedChange = { completed ->
+                    TellcatHaptics.taskCompletion(haptics, completed)
+                    onToggleComplete()
+                },
+                // Checked takes the navigation bar's selected-marker fill, so a
+                // completed task's control reads as on rather than as tinted.
+                colors = IconButtonDefaults.iconToggleButtonColors(
+                    checkedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    checkedContentColor = MaterialTheme.colorScheme.onSecondaryContainer
                 )
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_delete),
-                    contentDescription = stringResource(R.string.task_delete)
+                    painter = painterResource(R.drawable.ic_check),
+                    contentDescription = completeLabel
                 )
             }
+        }
 
-            onShare?.let { share ->
-                IconButton(onClick = share) {
+        if (!task.isCompleted) {
+            val focusLabel = stringResource(
+                if (resumesSession) R.string.task_resume_focus else R.string.task_start_focus
+            )
+            ToolbarTooltip(focusLabel) {
+                FilledIconButton(onClick = onStartFocus) {
                     Icon(
-                        painter = painterResource(R.drawable.ic_share),
-                        contentDescription = stringResource(R.string.task_checklist_share)
+                        painter = painterResource(R.drawable.ic_focus),
+                        contentDescription = focusLabel
                     )
                 }
             }
         }
-
-        // Names no colour, for the reason `AddTaskFab` names none: the Material
-        // default is `primaryContainer` with `onPrimaryContainer`, and that is
-        // the documented role for every floating action button style.
-        //
-        // **The content slot rather than the `text`/`icon` overload, and this is
-        // not a style preference.** That overload wraps the label in
-        // `Modifier.clearAndSetSemantics {}`, which deletes the word from the
-        // accessibility tree and leaves the icon's own description as the only
-        // announcement. Built that way first, with the description null on the
-        // glyph because D-064 says the word names the action, this button
-        // announced nothing at all: drawn for sighted users and silent to a
-        // screen reader. The four `TaskDetailsSemanticsTest` failures that
-        // caught it were looking for the word and finding it only in the
-        // unmerged tree.
-        //
-        // The content slot composes the same row and clears nothing, so the
-        // label is what is drawn and what is spoken, which is what D-064 asked
-        // for. Do not "simplify" this back.
-        ExtendedFloatingActionButton(onClick = onStartFocus) {
-            Icon(
-                painter = painterResource(R.drawable.ic_play_arrow),
-                // The word beside it names the action, so the glyph is
-                // decoration and announcing it would say the same thing twice.
-                contentDescription = null
-            )
-            // Material's own icon-to-label gap inside an extended FAB is 12dp,
-            // and the token is internal, so this is the spacing scale's 12
-            // rather than a number written into a screen.
-            Spacer(Modifier.width(TellcatSpacing.sm))
-            Text(
-                stringResource(
-                    if (resumesSession) R.string.task_resume_focus
-                    else R.string.task_start_focus
-                )
-            )
-        }
     }
+}
+
+/** A long-press tooltip naming a toolbar glyph for anyone who has not met it. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ToolbarTooltip(label: String, content: @Composable () -> Unit) {
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
+        tooltip = { PlainTooltip { Text(label) } },
+        state = rememberTooltipState(),
+        content = content
+    )
 }

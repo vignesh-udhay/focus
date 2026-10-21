@@ -61,29 +61,18 @@ have, and the view model holds both, so the out-of-scope line was the wrong one.
 
 The screen reads as four, top to bottom: identity, checklist, plan, actions.
 
-**Identity.** A checkbox, the title, the notes. The title is the screen's
+**Identity.** The title and the notes. The title is the screen's
 heading and its primary input at once, at Headline Small on `onSurface`. The
 notes sit under it at Body Large on `onSurfaceVariant`.
 
 Both are editable in place, borderless, committing on blur.
 
-**The checkbox centres on the title's first line, not on the title's box.**
-Top-aligning the two lines up their containers rather than the things inside
-them: the glyph sits at the middle of its 48dp target, while the title's first
-line sits below the text field's own vertical inset. That put the mark 8dp off
-from the line it refers to.
-
-The offset is measured from the line height rather than set to a constant,
-because which of the two sits lower changes with the font scale. A fixed 8dp is
-right at 100% and wrong above it.
-
-**The notes indent to the title, not to the screen edge.** They belong to the
-task the title names, and starting them further left made the two read as
-separate blocks with the checkbox pointing at neither.
-
-The gap after the checkbox is 16dp because that is the text field's own start
-inset, which this `TextField` overload gives no way to override. The board
-states that number rather than a tidier one nobody can produce.
+**No checkbox beside the title.** D-093. Once a task could hold a checklist,
+the checkbox here looked like one more item while doing something far bigger,
+and it pushed the heading 64dp in from the edge the rest of the page uses. The
+title and notes now start where the Plan rows' text does, the text field's own
+16dp inset. Completion is in the toolbar, and a completed task's title is struck
+through on `onSurfaceVariant`, as a completed row's is.
 
 **There is no card around them, and that is the fix rather than the omission.**
 A tinted container read as a summary, which is exactly why the two most-edited
@@ -104,23 +93,19 @@ then a chip for each it has not, both in one order: Scheduled, Due date,
 Reminder, Duration, Repeat. A row shows its value and opens its sheet; a chip
 names its field and opens the same sheet. D-087.
 
-**Actions.** A floating toolbar, pinned bottom centre, holding Delete, Share
-when the task has a checklist, and Start focus. D-037. Start focus is the toolbar's attached FAB and one of two ways into
-Focus alongside the Focus now card, the row long-press having gone with D-023.
+**Actions.** One floating toolbar, pinned bottom centre: Delete, Share when the
+task has a checklist, Complete, and Focus. D-093. Complete is a toggle carrying
+the row checkbox's words. Focus is the one filled control, drawn with Tellcat's
+own focus symbol and named by a tooltip on a long press, and it leaves once the
+task is complete. It is one of two ways into Focus alongside the Focus now card;
 `focus.md` carries the entry rules.
 
-This replaces a full-width `Start focus` at the foot of the scroll and an
-app-bar overflow whose only item was Delete. A menu of one promises options it
-does not have, and the two actions belong together: both act on the one task the
-screen is about, which is what M3 means by a floating toolbar's contextual
-actions.
-
-The full-width button carried a play glyph because without it the button wore
-the treatment every commit in this app wears, on a screen D-018 left with
-nothing to commit, and it was pressed by people meaning to close the page. That
-trap is gone with the pill: a small play icon in a floating bar is not open to
-being read as Done. What replaces it is lower discoverability, which D-037
-records as the trade.
+The toolbar replaced an app-bar overflow whose only item was Delete, D-037: the
+actions all act on the one task the screen is about, which is what M3 means by a
+floating toolbar's contextual actions. Start focus has since been a toolbar
+icon, a worded button (D-064) and an extended FAB beside the toolbar (D-067).
+D-064 took it out of the toolbar because a play triangle read as preview or run;
+the focus symbol and the tooltip are D-093's answer to that.
 
 ---
 
@@ -415,14 +400,13 @@ commit has no equivalent, and D-018 records that as the price rather than
 pretending it is free. What stands in for it is that each write is one field,
 made by one deliberate choice, and reversible by reopening the same row.
 
-Completion is the exception and is not a field. The checkbox goes through the
-ordinary `toggleComplete` and raises the same single undo offer every list
-raises.
+Completion is the exception and is not a field. The toolbar's Complete goes
+through the ordinary `toggleComplete` and raises the same single undo offer
+every list raises.
 
 An earlier version of this document said completion was "deliberately absent"
-from this screen. The board has carried a checkbox in the hero throughout, and
-completing a task you are looking at is not a trap, so the absence was the
-thing that was wrong.
+from this screen. Completing a task you are looking at is not a trap, so the
+absence was the thing that was wrong; D-093 moved the control, not the act.
 
 ---
 
@@ -456,7 +440,8 @@ it moves it back, so neither animates. Both keep the fields' one order.
 # Scrolling
 
 The content column scrolls. Six fields at large font scales do not fit, and
-without scrolling `Start focus` sits off the bottom with no way to reach it.
+without scrolling the last Plan rows sit off the bottom with no way to reach
+them.
 
 ---
 
@@ -471,8 +456,8 @@ itself. D-022 argued each alternative down and never argued for the menu.
 
 **What D-022 settled and still holds.** Delete does not sit one tap from Back in
 the corner a thumb reaches for when leaving, and it does not carry the weight of
-the screen's payoff. In the toolbar it leads and Start focus trails as the
-attached FAB, so the thumb's natural landing is the constructive action. That is
+the screen's payoff. In the toolbar it leads and Focus trails, so the thumb's
+natural landing is the constructive action. That is
 the row menu's rule, "constructive before destructive", read for a horizontal
 bar instead of a vertical list.
 
@@ -482,9 +467,9 @@ true; the icon keeps `error` so colour is the second cue, and the word survives
 as the content description. The delete is soft and undoable, which is what makes
 that affordable.
 
-Three actions, three weights. Start focus is a FAB because it is the payoff.
-Completion is a checkbox because it is reversible state. Delete is a plain icon
-button because it is rare and terminal.
+Three weights in one toolbar. Focus is filled because it is the payoff.
+Complete is a toggle because it is reversible state. Delete is a plain icon in
+`error` because it is rare and terminal, and Share a plain icon beside it.
 
 **No confirmation.** Deletion is a soft delete raising the same single undo
 offer every list raises, and this screen already hosts the snackbar. It also

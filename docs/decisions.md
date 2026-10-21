@@ -2295,6 +2295,9 @@ of agreement, and nothing but a render will say so.
 
 ## D-037. Task Details puts its two actions in a floating toolbar
 
+**Amended by D-093.** The checkbox beside the title is gone; completion is a
+toggle in this toolbar, and Start focus is back in it as an icon.
+
 **Decision.** Start focus and Delete move into one `HorizontalFloatingToolbar`,
 pinned bottom centre. The full-width Start focus button at the foot of the
 scroll is removed, and so is the app-bar overflow that held Delete. The
@@ -4352,6 +4355,9 @@ because storage is broken.
 
 ## D-064. Start focus gets its word back, and Delete does not
 
+**Superseded by D-093.** Start focus is a toolbar icon again, with Tellcat's own
+focus symbol and a tooltip in place of the play triangle this entry objected to.
+
 **Decision.** The Task Details toolbar loses its attached FAB. Start focus
 becomes a filled `Button` carrying the play glyph and the words "Start focus",
 at the trailing end of the toolbar's own content row. Delete stays exactly as it
@@ -4530,6 +4536,8 @@ pass.
 ---
 
 ## D-067. Start focus leaves the toolbar and becomes the screen's floating action button
+
+**Superseded by D-093.** There is one floating control again, the toolbar.
 
 **Decision.** Task Details draws two floating controls rather than one. The
 `HorizontalFloatingToolbar` keeps Delete and nothing else. Start focus becomes an
@@ -5946,4 +5954,39 @@ wrong on Today.
 
 **What would reverse this.** It reading as a voice-assistant promise, which the
 app does not make: Tellcat has no voice capture.
+
+---
+
+## D-093. Task Details keeps every action in its toolbar, and the title loses its checkbox
+
+**Decision.** The checkbox beside Task Details' title is removed. The floating
+toolbar holds every action: Delete, Share when the task has a checklist,
+Complete, and Focus. Complete is an `IconToggleButton` with the row checkbox's
+words and state, filled `secondaryContainer` when on. Focus is the toolbar's one
+filled icon button, drawn with `ic_focus` and named by a tooltip on long press,
+and it is absent on a completed task. A completed task's title is struck
+through on `onSurfaceVariant`. The title and notes start where the Plan rows'
+text does.
+
+**What changed the answer.** Checklists, D-084. With items below it, the title's
+checkbox looked like one more item, the same size and style as "Milk", while
+completing the whole task. It also pushed the heading 64dp in, so the page had
+three left edges. The owner had mixed feelings about it, saw the two side by
+side on 2026-10-22, and asked for Focus to join the toolbar as an icon rather
+than stand beside it as a pill, and to leave a completed task alone.
+
+**D-064's objection, answered rather than ignored.** D-064 took Start focus out
+of the toolbar because a play triangle on a screen about one task "reads as
+preview, as resume, as run". The play triangle is gone. `ic_focus` is the
+symbol the Focus notification already carries, D-072, and the tooltip names it
+for anyone who has not met it; a screen reader hears "Start focus" or "Resume
+focus" as before, D-068.
+
+**Why Focus leaves a completed task.** A finished task has nothing left to work
+on, so a session on it would be a timer with no task. The toggle is the way back
+if the task was not done.
+
+**What would reverse this.** Testers not finding Focus, or asking what the
+symbol means. The answer then is a label beside the icon inside the toolbar, not
+the pill coming back beside it.
 

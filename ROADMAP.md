@@ -24,7 +24,9 @@ equal, snoozes carried. Export now suggests `Tellcat-backup-<date>.json`.
 pushed and not merged. On it so far: checklists inside a task, shared as text
 (D-084, schema 12); completion made visible, with the ticked row holding its place and the
 strikethrough drawn (D-086); and Task Details showing only the fields a task has,
-the rest as chips (D-087); and Later today ordered by when each reminder will
+the rest as chips (D-087), with every action in its toolbar: the title's
+checkbox became a Complete toggle there and Start focus an icon beside it,
+gone once a task is complete (D-093); and Later today ordered by when each reminder will
 ring, not by creation (D-088); and Today no longer opening a fresh install on a
 red "cannot show notifications" banner before the app has asked (D-090). That
 fix was made off `main` on `fix/first-launch-banner` and goes out with 1.1, not

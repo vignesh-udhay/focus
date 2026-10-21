@@ -852,7 +852,7 @@ identity, checklist, plan, action.
 | Element | Treatment |
 | --- | --- |
 | App bar | back arrow, no title, no overflow |
-| Title | Headline Small, `onSurface`, borderless, four-line cap, heading |
+| Title | Headline Small, `onSurface`, borderless, four-line cap, heading; struck through on `onSurfaceVariant` once the task is complete |
 | Notes | Body Large, `onSurfaceVariant`, borderless, several lines |
 | Checklist item | `SegmentedListItem` on `surfaceContainerLow`, Checkbox leading, text editable in place (Body Large), `onSurfaceVariant` and struck through when ticked |
 | Checklist remove | `ic_close` in the trailing slot only while the line is edited, or clearing the line; a named accessibility action; with Undo |
@@ -860,8 +860,9 @@ identity, checklist, plan, action.
 | Section label | the shared `SectionLabel`, reading "Checklist" once there are items, and "Plan" |
 | Plan row | a set field only; 56dp, `surfaceContainerLow`, 16dp outer and 4dp inner, 2dp gap |
 | Plan chip | an unset field; Material `AssistChip`, `ic_add` leading, the field's name, in a `FlowRow` under the rows, `xs` apart |
-| Start focus | full width, 56dp, the screen's only accent |
-| Toolbar | Delete in `error`, then Share (outline glyph) when the task has items |
+| Toolbar | Delete in `error`, Share when the task has items, Complete, then Focus; D-093 |
+| Complete | `IconToggleButton`, `ic_check`, filled `secondaryContainer` when on, the row checkbox's words for a screen reader |
+| Focus | the toolbar's one `FilledIconButton`, `ic_focus`, named by a tooltip on long press; absent once the task is complete |
 
 [CD] **No card around the identity region**, and that is the fix rather than the
 omission. A tinted container read as a summary, which is exactly why the two
@@ -1238,9 +1239,9 @@ what it shows and takes a back arrow.
 
 # Worded action buttons
 
-[IMPL] One height, `TellcatDimensions.ActionHeight`, 56dp, read by Start
-focus on Task Details, Focus's worded button, both date sheets' Choose a date,
-the date presets, and Done in the custom-duration state.
+[IMPL] One height, `TellcatDimensions.ActionHeight`, 56dp, read by Focus's
+worded button, both date sheets' Choose a date, the date presets, and Done in
+the custom-duration state.
 
 [CD] A floor rather than a fixed height. Pinned exactly, a label at 200% font
 scale is cut through the middle of its letters, so the button grows to hold its
@@ -1256,25 +1257,14 @@ for another screen. Neither was a decision anyone made.
 [CD] It also fixes a proportion. A date preset is 176dp wide; at 48dp tall that
 is 3.7:1 and reads as a bar, at 56dp it is 3.1:1 and reads as a button.
 
-[CD] **The sheet's commit is the same size as the screen's.** Done and Start
-focus are never on screen together, so there is no hierarchy to protect between
-them, and both are the full-width filled commit of the surface they sit on.
-Giving the same role the same treatment is what lets "full-width filled pill at
-the bottom" mean one thing. The cost is about 24dp of sheet height, which is
-less of the task visible behind it.
-
 [CD] **A glyph says the button is not a commit.** Text alone at the foot of a
 surface means "this commits what you are looking at and leaves": Done in the
 custom-duration state, Save repeat, Doesn't repeat. An icon beside the label
-means the button does something else: Choose a date opens a picker, Start focus
-enters a mode.
+means the button does something else: Choose a date opens a picker.
 
-[CD] Start focus was on the wrong side of that line and was pressed by people
-meaning to close the screen. D-018 sharpens the trap by removing Save, so a lone
-filled pill at the bottom of Task Details has no other reading available, and
-the back arrow is a small target in the far corner while the pill sits where the
-thumb rests. It carries the play glyph now, Focus's own, so the control that
-starts a session looks the same in both places.
+[CD] Start focus was once a full-width pill at the foot of Task Details, on the
+wrong side of that line, and was pressed by people meaning to close the screen.
+It is a toolbar icon now, D-093, at the trailing end where the thumb rests.
 
 [CD] **No Done button on Task Details, and the reason is worth keeping.** The
 screen commits as it goes, so a Done that only navigates would imply a commit

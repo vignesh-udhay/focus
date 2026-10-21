@@ -18,6 +18,8 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -260,18 +262,10 @@ class TaskDetailsSemanticsTest {
             rule.onNodeWithText(row).assertIsDisplayed()
         }
 
-        // Action. D-037 moved both actions into a floating toolbar and they no
-        // longer scroll: it is pinned, which is most of the point of it.
-        // Asserted at both scales for the same reason the old scrolled
-        // assertion existed, that a control reachable at 100% has not been
-        // pushed off screen at 200%.
-        //
-        // D-064 gave Start focus its word back, so it is drawn text now and not
-        // only a description. Delete keeps neither, deliberately: a trash can is
-        // not ambiguous the way a play triangle was, and a word would raise a
-        // rare one-way action to the weight of the screen's payoff.
-        rule.onNodeWithText(START_FOCUS).assertIsDisplayed()
+        // Actions: one pinned toolbar, D-093, reachable at 200% as at 100%.
         rule.onNodeWithContentDescription(DELETE).assertIsDisplayed()
+        rule.onNodeWithContentDescription(MARK_COMPLETE).assertIsDisplayed()
+        rule.onNodeWithContentDescription(START_FOCUS).assertIsDisplayed()
     }
 
     @Test
@@ -283,30 +277,23 @@ class TaskDetailsSemanticsTest {
         assertTheScreenShowsItsFourRegions(FontScale200)
 
     /**
-     * `docs/decisions.md` D-064. D-037 accepted losing this word and named the
-     * reversal condition: a play triangle on a screen about one task reads as
-     * preview, or resume, or run, and Focus is the payoff the whole page leads
-     * to. The FAB slot could not hold a label — the component pins its width and
-     * height to one square value — so the action moved into the toolbar's own
-     * row to get one.
+     * D-093: Focus is a toolbar icon, named once, by its description. The
+     * tooltip that names it to sighted users is not drawn until a long press.
      */
     @Test
-    fun startFocus_isWorded_andSaysItOnce() {
+    fun focus_isNamedOnce() {
         setScreen()
 
-        rule.onNodeWithText(START_FOCUS).assertIsDisplayed()
-
-        // The word is drawn, so the glyph beside it is decoration. Announcing
-        // both would read the action out twice.
-        rule.onNodeWithContentDescription(START_FOCUS).assertDoesNotExist()
+        rule.onAllNodesWithContentDescription(START_FOCUS).assertCountEquals(1)
+        rule.onAllNodesWithText(START_FOCUS).assertCountEquals(0)
     }
 
-    /** And it still starts a session from the labelled control. */
+    /** And it still starts a session. */
     @Test
     fun startFocus_stillStartsASession() {
         val viewModel = setScreen()
 
-        rule.onNodeWithText(START_FOCUS).performClick()
+        rule.onNodeWithContentDescription(START_FOCUS).performClick()
 
         rule.runOnIdle { assertNotNull(viewModel.focusSession.value) }
     }
@@ -327,9 +314,9 @@ class TaskDetailsSemanticsTest {
             viewModel.pauseFocusSession()
         }
 
-        rule.waitUntilExactlyOneExists(hasText(RESUME_FOCUS), TIMEOUT_MILLIS)
-        rule.onNodeWithText(RESUME_FOCUS).assertIsDisplayed()
-        rule.onNodeWithText(START_FOCUS).assertDoesNotExist()
+        rule.waitUntilExactlyOneExists(hasContentDescription(RESUME_FOCUS), TIMEOUT_MILLIS)
+        rule.onNodeWithContentDescription(RESUME_FOCUS).assertIsDisplayed()
+        rule.onNodeWithContentDescription(START_FOCUS).assertDoesNotExist()
     }
 
     /**
@@ -348,15 +335,15 @@ class TaskDetailsSemanticsTest {
         )
         val viewModel = setScreen(dao = dao)
 
-        rule.onNodeWithText(START_FOCUS).assertIsDisplayed()
+        rule.onNodeWithContentDescription(START_FOCUS).assertIsDisplayed()
 
         rule.runOnIdle {
             viewModel.beginFocus(OTHER_TASK_ID)
             viewModel.pauseFocusSession()
         }
 
-        rule.onNodeWithText(START_FOCUS).assertIsDisplayed()
-        rule.onNodeWithText(RESUME_FOCUS).assertDoesNotExist()
+        rule.onNodeWithContentDescription(START_FOCUS).assertIsDisplayed()
+        rule.onNodeWithContentDescription(RESUME_FOCUS).assertDoesNotExist()
     }
 
     /**
@@ -685,13 +672,50 @@ class TaskDetailsSemanticsTest {
      * ordinary `toggleComplete` and raises the same undo offer every list does.
      */
     @Test
-    fun theCheckboxCompletesThroughTheOrdinaryPath() {
+    fun completeCompletesThroughTheOrdinaryPath() {
         val viewModel = setScreen()
 
         rule.onNodeWithContentDescription(MARK_COMPLETE).performClick()
 
         awaitTask(viewModel) { task -> task.isCompleted }
         assertTrue(viewModel.pendingUndo.value != null)
+    }
+
+    /**
+     * D-093: Complete is a toggle a screen reader hears as one, in the row
+     * checkbox's words, and it takes the task back.
+     */
+    @Test
+    fun complete_isAToggleCarryingItsState() {
+        val viewModel = setScreen()
+
+        rule.onNodeWithContentDescription(MARK_COMPLETE)
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Checkbox))
+            .assertIsOff()
+            .performClick()
+        awaitTask(viewModel) { task -> task.isCompleted }
+
+        // By its action rather than a tap: the undo snackbar now sits over the
+        // toolbar, and its Undo is the other way back.
+        rule.waitUntilExactlyOneExists(hasContentDescription(MARK_INCOMPLETE), TIMEOUT_MILLIS)
+        rule.onNodeWithContentDescription(MARK_INCOMPLETE)
+            .assertIsOn()
+            .performSemanticsAction(SemanticsActions.OnClick)
+        awaitTask(viewModel) { task -> !task.isCompleted }
+    }
+
+    /** D-093: a completed task has nothing left to work on, so Focus leaves. */
+    @Test
+    fun aCompletedTask_offersNoFocus() {
+        val viewModel = setScreen()
+
+        rule.onNodeWithContentDescription(MARK_COMPLETE).performClick()
+        awaitTask(viewModel) { task -> task.isCompleted }
+
+        rule.waitUntil(TIMEOUT_MILLIS) {
+            rule.onAllNodesWithContentDescription(START_FOCUS).fetchSemanticsNodes().isEmpty()
+        }
+        rule.onNodeWithContentDescription(MARK_INCOMPLETE).assertIsDisplayed()
     }
 
 
@@ -938,6 +962,7 @@ class TaskDetailsSemanticsTest {
         const val WEDNESDAY = "Wednesday"
 
         const val MARK_COMPLETE = "Mark \"$TITLE\" complete"
+        const val MARK_INCOMPLETE = "Mark \"$TITLE\" not complete"
         const val TIMEOUT_MILLIS = 5_000L
     }
 }
