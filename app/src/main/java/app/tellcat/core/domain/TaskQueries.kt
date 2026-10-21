@@ -22,8 +22,15 @@ import java.time.LocalDate
  * The result is ordered so the list reads as a deliberate plan rather than a
  * database result: what has slipped, then today's untimed work, then today's
  * timed work, then what is already done. That is a timeline, read the way a
- * timeline reads. Within each group the caller's order is preserved, because
- * nothing here knows better than the order it was given.
+ * timeline reads.
+ *
+ * **Later today runs in the order it will ring**, by [Task.ringsAt], a snooze
+ * included. `docs/decisions.md` D-088. It is the one band with a time on every
+ * task, and it kept creation order like the others, so a reminder at 6 PM could
+ * sit above one at 4 PM and the timeline was wrong inside the band that is most
+ * literally one. Elsewhere, and between tasks ringing at the same minute, the
+ * caller's order is preserved, because nothing here knows better than the order
+ * it was given.
  *
  * **[settling] holds tasks just completed, which keep their place for a
  * moment.** `docs/decisions.md` D-086. A completed task in it is grouped as if it
@@ -42,8 +49,14 @@ fun todayTasks(
             val scheduled = task.scheduledDate
             !task.isDeleted && scheduled != null && !scheduled.isAfter(today)
         }
-        // sortedBy is stable, which is what preserves input order within a group.
-        .sortedBy { task -> todayGroup(task, today, settling) }
+        // Stable, which is what preserves input order within a group. The
+        // second key is null outside Later today, so it orders nothing there.
+        .sortedWith(
+            compareBy<Task> { task -> todayGroup(task, today, settling) }
+                .thenBy { task ->
+                    task.ringsAt.takeIf { todayGroup(task, today, settling) == LATER_TODAY }
+                }
+        )
 
 /** Scheduled before today, still outstanding, and needing a decision. */
 private const val OVERDUE = 0

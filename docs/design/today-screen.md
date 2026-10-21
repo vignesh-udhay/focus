@@ -424,9 +424,9 @@ When a task is completed:
 - the title takes the completed treatment defined in `task-row.md`
 - the row moves to the bottom of the list
 
-Today reads in three bands: outstanding tasks scheduled for today, then
-outstanding tasks that are overdue, then completed tasks. Within each band the
-order the query was handed is preserved. This ordering lives in
+Today reads in the four bands under Sections below. Later today runs in the
+order its reminders will ring, a snooze included, D-088; every other band keeps
+the order the query was handed, which is creation order. This ordering lives in
 `TaskQueries.todayTasks`, not in SQL and not in the screen.
 
 Completion is checked before scheduling, so a completed task sinks to the

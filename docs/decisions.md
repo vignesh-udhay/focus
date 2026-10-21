@@ -5763,3 +5763,34 @@ sheet.
 repeat from Task Details, or setting one and not recognising the field moved.
 The answer then is likely the label, not five rows again.
 
+---
+
+## D-088. Later today runs in the order it will ring
+
+**Decision.** Inside Today's Later today band, tasks are ordered by when their
+reminder will next ring, a snooze included (`Task.ringsAt`). Tasks ringing at the
+same minute keep creation order. Every other band is unchanged and keeps
+creation order.
+
+**What changed the answer.** Seen on the emulator: a 6:00 PM reminder sat above a
+4:00 PM one, because `todayTasks` sorted only by band and kept the order the
+database handed it, which is creation order. D-012 calls the bands a timeline and
+the KDoc said so too, so the order inside the one band where every task has a
+time contradicted the reason the bands exist. "Nothing here knows better than the
+order it was given" was true of the other bands and not of this one: here the
+query knows exactly when each task will speak.
+
+**Why ringsAt and not reminderAt.** The row shows when the task will ring, and a
+snoozed reminder will ring at the snooze. Ordering by the time the user first set
+would put a row reading 5:00 PM above one reading 4:00 PM, which is the same bug.
+
+**Why only this band.** Overdue tasks have a past day and No reminder set has no
+time, so neither has a better order than creation without a new rule. Ordering
+Overdue oldest first is a separate question, not answered here.
+
+**What it touches.** Nothing but the order. The launcher widget reads the same
+sections, so it orders Later today the same way. The Focus now card is chosen by
+D-048's paused-session rule and does not read the band's order. The settling
+hold, D-086, is unaffected: a just-completed task keeps its reminder time and so
+its place.
+

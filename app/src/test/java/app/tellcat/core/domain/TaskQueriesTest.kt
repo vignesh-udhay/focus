@@ -772,4 +772,53 @@ class TaskQueriesTest {
 
         assertEquals(todayBandOf(open, today), todayBandOf(open, today, settling = setOf("a")))
     }
+
+    // D-088: Later today runs in the order it will ring
+
+    @Test
+    fun `later today is ordered by reminder time, not by creation`() {
+        val evening = task("a", scheduledDate = today, reminderAt = todayAt(18, 0))
+        val afternoon = task("b", scheduledDate = today, reminderAt = todayAt(16, 0))
+        val morning = task("c", scheduledDate = today, reminderAt = todayAt(9, 30))
+
+        assertEquals(listOf("c", "b", "a"), ids(todayTasks(listOf(evening, afternoon, morning), today)))
+    }
+
+    @Test
+    fun `a snoozed reminder takes its place by when it will ring`() {
+        val snoozed = task("a", scheduledDate = today, reminderAt = todayAt(9, 0))
+            .copy(snoozedUntil = todayAt(17, 0))
+        val afternoon = task("b", scheduledDate = today, reminderAt = todayAt(16, 0))
+
+        assertEquals(listOf("b", "a"), ids(todayTasks(listOf(snoozed, afternoon), today)))
+    }
+
+    @Test
+    fun `reminders at the same minute keep the order they were given`() {
+        val first = task("a", scheduledDate = today, reminderAt = todayAt(16, 0))
+        val second = task("b", scheduledDate = today, reminderAt = todayAt(16, 0))
+
+        assertEquals(listOf("a", "b"), ids(todayTasks(listOf(first, second), today)))
+    }
+
+    @Test
+    fun `the other bands keep the order they were given`() {
+        val overdueLate = task("a", scheduledDate = today.minusDays(1), reminderAt = yesterdayAt(18, 0))
+        val overdueEarly = task("b", scheduledDate = today.minusDays(1), reminderAt = yesterdayAt(9, 0))
+        val untimed = task("c", scheduledDate = today)
+        val done = task("d", scheduledDate = today, reminderAt = todayAt(8, 0), completedAt = timestamp)
+
+        assertEquals(
+            listOf("a", "b", "c", "d"),
+            ids(todayTasks(listOf(overdueLate, overdueEarly, untimed, done), today))
+        )
+    }
+
+    @Test
+    fun `a settling task keeps its reminder time's place in Later today`() {
+        val done = task("a", scheduledDate = today, reminderAt = todayAt(18, 0), completedAt = timestamp)
+        val afternoon = task("b", scheduledDate = today, reminderAt = todayAt(16, 0))
+
+        assertEquals(listOf("b", "a"), ids(todayTasks(listOf(done, afternoon), today, settling = setOf("a"))))
+    }
 }
