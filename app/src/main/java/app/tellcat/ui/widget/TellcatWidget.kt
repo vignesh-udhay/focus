@@ -262,7 +262,7 @@ private fun WidgetHeader(context: Context) {
             Box(
                 modifier = GlanceModifier
                     .size(32.dp)
-                    .background(GlanceTheme.colors.surface)
+                    .background(GlanceTheme.colors.primary)
                     .cornerRadius(16.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -270,7 +270,7 @@ private fun WidgetHeader(context: Context) {
                     provider = ImageProvider(R.drawable.ic_add),
                     contentDescription = context.getString(R.string.widget_add_task),
                     modifier = GlanceModifier.size(20.dp),
-                    colorFilter = ColorFilter.tint(GlanceTheme.colors.onSurface)
+                    colorFilter = ColorFilter.tint(GlanceTheme.colors.onPrimary)
                 )
             }
         }

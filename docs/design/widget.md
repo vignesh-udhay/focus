@@ -26,8 +26,15 @@ Everything drawn sits on `Primary Container` rather than the `Surface` the app's
 lists use. That is deliberate, and it is the one place the widget is allowed to
 look unlike the app: a widget has to be identifiable at a glance over an
 arbitrary wallpaper, and `PRODUCT.md` principle 5 asks for platform conventions
-rather than a transplanted screen. The add button uses `Surface` inset on that
-container, and since D-049 removed the lead card it is the only thing that does.
+rather than a transplanted screen.
+
+The add button is `Primary` with an `On Primary` glyph, the colour of the app's
+own filled buttons in both themes, so it reads as the widget's one action. It
+used `Surface` until 1.1: white in light, and in dark a near-black hole in the
+indigo. Measured against `Primary Container`, the circle went from 1.2:1 to 5.0:1
+in light and from 2.0:1 to 5.5:1 in dark, over the 3:1 a control needs. The two
+roles are a tone pair, 40 against 90 in light and 80 against 30 in dark, so the
+gap holds under any wallpaper palette, warm included.
 
 ---
 
