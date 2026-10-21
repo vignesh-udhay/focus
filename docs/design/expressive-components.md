@@ -835,6 +835,16 @@ and not everyone sees it, so the supporting line carries the same fact in text.
 A rewrite the user cannot see is one they cannot correct. See
 `date-parsing.md`.
 
+## Add to Tellcat
+
+D-097. The sheet another app's share opens, in its own see-through window over
+that app. Quick Add's shape so it reads as the same act: `titleLarge` heading,
+the title in the filled field with "Saved to Inbox" as its supporting line, the
+notes and "With N checklist items" in `bodyMedium` on `onSurfaceVariant`, and
+Add task. The keyboard stays down, because the title is already written and the
+likely next tap is Add task. A toast confirms, since no Tellcat screen is left
+for a snackbar to sit on.
+
 ## Task Details
 
 **Superseded by D-018.** This section described a two-page bottom sheet holding

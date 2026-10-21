@@ -1,8 +1,10 @@
 package app.tellcat.ui.task
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import app.tellcat.core.domain.Task
+import app.tellcat.ui.share.ShareActivity
 
 /**
  * [task] as text someone else can read, for sending through Android's share
@@ -42,7 +44,12 @@ internal fun shareTask(context: Context, task: Task) {
         .putExtra(Intent.EXTRA_SUBJECT, task.title)
         .putExtra(Intent.EXTRA_TEXT, taskShareText(task))
 
-    context.startActivity(Intent.createChooser(send, null))
+    // Tellcat's own "Add to Tellcat" left out: it would only copy the task.
+    val chooser = Intent.createChooser(send, null).putExtra(
+        Intent.EXTRA_EXCLUDE_COMPONENTS,
+        arrayOf(ComponentName(context, ShareActivity::class.java))
+    )
+    context.startActivity(chooser)
 }
 
 private const val OpenMark = "☐"

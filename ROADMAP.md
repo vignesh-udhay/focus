@@ -29,7 +29,9 @@ checkbox became a Complete toggle there and Start focus an icon beside it,
 gone once a task is complete (D-093), drawn as the cat watching one thing
 (D-095); completing there offers no undo, since the toggle is one, and
 snackbars sit above the toolbar (D-094); any task can be shared, notes
-included, with an email subject (D-096); and Later today ordered by when each reminder will
+included, with an email subject (D-096), and received: "Add to Tellcat" in
+other apps' share sheets adds a shared task to Inbox over the app it came from
+(D-097); and Later today ordered by when each reminder will
 ring, not by creation (D-088); and Today no longer opening a fresh install on a
 red "cannot show notifications" banner before the app has asked (D-090). That
 fix was made off `main` on `fix/first-launch-banner` and goes out with 1.1, not
@@ -3514,9 +3516,6 @@ In rough evidence order, and only once real users ask:
   D-003)
 - Tablet and foldable layouts
 - Wear OS tile
-- Receiving a share into Tellcat: "Tellcat" in other apps' share sheets, so a
-  task sent from another phone, or a message or a page, lands as a task with
-  its checklist. Capture, not sync; it needs its own decision first, D-096.
 
 Let the app's own reviews set this order rather than this document.
 

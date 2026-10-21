@@ -475,6 +475,15 @@
       one on screen. The sheet itself names the day, not the list.
     -->
     <string name="quick_add_saved_to_upcoming">Saved to Upcoming</string>
+    <!-- Receiving a share, D-097. -->
+    <string name="share_target_label">Add to Tellcat</string>
+    <string name="share_sheet_title">Add to Tellcat</string>
+    <plurals name="share_checklist_count">
+        <item quantity="one">With %1$d checklist item</item>
+        <item quantity="other">With %1$d checklist items</item>
+    </plurals>
+    <string name="share_added">Added to Inbox</string>
+    <string name="share_failed">Couldn\'t add the task</string>
     <string name="quick_add_view">View</string>
     <string name="quick_add_reminder">Reminder %1$s at %2$s</string>
     <string name="quick_add_reminder_dismiss">Remove reminder</string>

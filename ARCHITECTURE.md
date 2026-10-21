@@ -170,6 +170,12 @@ Focus is a sheet rather than a destination, which matches `PRODUCT.md`
 treating it as a mode rather than a place. `TellcatNavHost` opens
 `FocusSheet` over whatever list the user was on.
 
+Shared text enters through `ui/share/ShareActivity`, a second, see-through
+activity with its own task, so "Add to Tellcat" sits over the app shared from
+and returns to it. It parses with `sharedTask` in `core/domain` and writes
+through `taskRepository` directly: one insert, no reminder, nothing for a view
+model to hold. D-097.
+
 Launcher-widget intents enter through the single-top `MainActivity` and become
 one-shot `WidgetLaunchCommand`s. Navigation owns routing to Today, Quick Add,
 Task Details, or a persisted paused Focus session; the widget never constructs

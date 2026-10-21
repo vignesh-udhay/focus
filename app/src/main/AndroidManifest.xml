@@ -59,6 +59,27 @@
             </intent-filter>
         </activity>
 
+        <!-- "Add to Tellcat" in other apps' share sheets, over the app shared
+             from. D-097. Left out of Recents: it is a moment inside that app.
+             No task affinity, so a sender that starts it as a new task does not
+             bring Tellcat's own window up behind it. -->
+        <activity
+            android:name=".ui.share.ShareActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:label="@string/share_target_label"
+            android:theme="@style/Theme.Tellcat.Translucent"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+
         <!-- Not exported: only AlarmManager delivers to it, on our own
              PendingIntent. -->
         <receiver

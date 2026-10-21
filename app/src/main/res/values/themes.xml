@@ -2,4 +2,12 @@
 <resources>
 
     <style name="Theme.Tellcat" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- The share sheet's window: nothing of its own, so the app shared from
+         stays visible behind the sheet's scrim. D-097. -->
+    <style name="Theme.Tellcat.Translucent">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
 </resources>

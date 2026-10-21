@@ -6071,3 +6071,42 @@ travels by them, so on those phones the gesture already works. A Tellcat NFC
 exchange of our own was considered and declined: Android only, less reliable
 than the system's, and with no iPhone equivalent for D-089.
 
+---
+
+## D-097. Tellcat receives shares: "Add to Tellcat" in every share sheet
+
+**Decision.** Tellcat registers for shared text. "Add to Tellcat" appears in
+other apps' share sheets and opens one sheet over the app shared from: the
+title in a field the user can correct, the notes and a count of checklist items
+underneath, "Saved to Inbox", and Add task. Adding saves to Inbox and returns to
+that app, with a toast saying so. `sharedTask` in `core/domain` reads the text:
+the subject is the title when there is one, otherwise the first line; lines
+marked ☐, ☑, `[ ]` or `[x]` are the checklist; the rest is notes. What one
+Tellcat shares, another reads back whole, which `TaskShareTextTest` checks.
+
+**What changed the answer.** D-096 placed this after 1.0, "only once real users
+ask". The owner asked for it on 2026-10-22, wanting two phones with Tellcat to
+pass a task between them, and Quick Share now carries text between phones, by a
+tap on Android 17. Without a receiving side the task arrived as plain text.
+
+**Why it is inside the product.** It is capture, `PRODUCT.md` principle 3, from
+wherever the text already is: a message, a page, a list another Tellcat sent. It
+is not collaboration or sync. The task is a copy, and nothing keeps the two in
+step, D-006.
+
+**Why no date and no reminder from the text.** Quick Add reads a trailing day
+and time because the user is typing a capture. Shared text was written for
+someone else, and a "friday" at the end of a forwarded message is not an
+instruction. The task lands undated in Inbox, which exists for exactly that.
+
+**Why a sheet over the other app, and why a toast.** The user is in the middle
+of something else; taking them into Tellcat to add one task breaks that. The
+sheet's window is see-through and has its own task, so it sits over the sender
+and returns to it. A snackbar needs a Tellcat screen to sit on, and there is
+none once the sheet closes. Tellcat's own share leaves "Add to Tellcat" out of
+its sheet, since it would only copy the task.
+
+**What would reverse this.** Shared text routinely parsed wrong, which would
+show as titles that are whole paragraphs or checklists split into notes. The
+answer then is to tighten `sharedTask`, not to drop the target.
+

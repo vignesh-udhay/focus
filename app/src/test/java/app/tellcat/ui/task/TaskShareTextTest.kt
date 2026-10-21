@@ -1,7 +1,9 @@
 package app.tellcat.ui.task
 
 import app.tellcat.core.domain.ChecklistItem
+import app.tellcat.core.domain.SharedTask
 import app.tellcat.core.domain.Task
+import app.tellcat.core.domain.sharedTask
 import java.time.Instant
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -52,6 +54,23 @@ class TaskShareTextTest {
         val task = Task(id = "a", title = "Groceries", createdAt = createdAt, notes = "   ", checklist = groceries)
 
         assertEquals("Groceries\n☐ Milk\n☑︎ Eggs", taskShareText(task))
+    }
+
+    /** D-097: what one Tellcat sends, another reads back as the same task. */
+    @Test
+    fun `a shared task comes back whole`() {
+        val task = Task(
+            id = "a",
+            title = "Groceries",
+            createdAt = createdAt,
+            notes = "From the shop\non Elm Street.",
+            checklist = groceries
+        )
+
+        assertEquals(
+            SharedTask(task.title, task.notes, task.checklist),
+            sharedTask(taskShareText(task), subject = task.title)
+        )
     }
 
     /** ☑ has a colour emoji form; the selector keeps it the same style as ☐. */
