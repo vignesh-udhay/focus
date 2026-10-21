@@ -235,18 +235,19 @@ back to an intentional Tellcat scheme rather than the Material baseline. Both
 the light and the dark fallback come from one seed so the two themes are
 recognisably the same product.
 
-[CD] The seed is `#4F5DFF`, an indigo at HCT hue 282. D-085. The primary and
-secondary palettes are generated in HCT at that hue: light primary at chroma 70
-so the accent is recognisably the seed's, containers at 16 to 20 so the large
-surfaces stay calm, and the dark primary container at 52, rich rather than
-neon. The hue is the brand, and the accent is allowed to carry it.
+[CD] The seed is `#4F5DFF`. Its own chroma is unusually high, near 94, and the
+primary palette is generated at 48 instead. Carried through at full chroma the
+dark scheme's primary container came out a vivid blue that read as loud rather
+than calm, which is the opposite of the first principle. The hue is the brand;
+the saturation is not.
 
-[CD] **Generate in HCT, never in CIELAB, and measure against Material's
-baseline.** The palette was first built in CIELAB at a primary chroma of 48.
-CIELAB bends blues toward purple as chroma falls, so the hue drifted from 282 to
-290, and 48 is Material's own stock chroma; every role ended within ΔE 6 of the
-baseline purple scheme, most within 2.5. A fallback that measures as the
-baseline is not an identity, whatever seed it was made from.
+[CD] **These are the 1.0 colours, and they stay.** D-091. D-085 measured them
+within ΔE 6 of Material's baseline purple, because they were generated in CIELAB,
+which bends blues toward purple, and regenerated them in HCT for a bluer indigo.
+The owner compared the two side by side and kept these: the launcher icon, the
+cat and the store listing already carry them, and a second indigo in the
+interface would have split the brand in two. If the palette is ever changed
+again, the icon, the cat and the interface change together.
 
 [IMPL] Both schemes are written out in `Color.kt` through `lightColorScheme()`
 and `darkColorScheme()` with every role named, so neither depends on a
@@ -540,7 +541,7 @@ encodes Material's internals into our suite.
 | `TellcatDimensions` | touch target, row height, FAB clearance, content width and the rest | exists |
 | `TellcatMotion` | the semantic animation specs | exists, see `expressive-motion.md` |
 | `TellcatHaptics` | the touch-feedback vocabulary | exists, see `expressive-motion.md` |
-| `TellcatLightColorScheme`, `TellcatDarkColorScheme` | the Tellcat scheme, generated in HCT from one seed | exists, D-085 |
+| `TellcatLightColorScheme`, `TellcatDarkColorScheme` | the Tellcat scheme, from one seed | exists, D-091 |
 
 [IMPL] Type and shape have no Tellcat token: both are Material's, per D-008.
 

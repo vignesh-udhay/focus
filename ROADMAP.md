@@ -22,12 +22,12 @@ equal, snoozes carried. Export now suggests `Tellcat-backup-<date>.json`.
 
 **1.1 is being built on `feature/checklist` while the closed test runs**, not
 pushed and not merged. On it so far: checklists inside a task, shared as text
-(D-084, schema 12); the palette regenerated in HCT so the indigo seed survives
-(D-085); completion made visible, with the ticked row holding its place and the
+(D-084, schema 12); completion made visible, with the ticked row holding its place and the
 strikethrough drawn (D-086); and Task Details showing only the fields a task has,
 the rest as chips (D-087); and Later today ordered by when each reminder will
 ring, not by creation (D-088). Before it merges: a full instrumented run, and
-new store screenshots, since the palette and Task Details both changed.
+new store screenshots of Task Details, which changed. D-085 regenerated the
+palette and D-091 withdrew it, so the colours are still 1.0's.
 
 **A reminder set for the current minute rang a day late, and no longer does.**
 On the owner's phone, a 2:38 reminder set during 2:38 rang at 2:38 the next

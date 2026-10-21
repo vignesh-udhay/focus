@@ -5668,6 +5668,8 @@ make that screen memorable; it fixes which colour is Tellcat's.
 either theme, which the answer to is lowering the light primary's chroma toward
 60, not returning to 48 or to CIELAB.
 
+**Reversed by D-091.** The owner kept the 1.0 colours.
+
 ---
 
 ## D-086. A completed row holds its place for a moment, and its line is drawn
@@ -5859,4 +5861,29 @@ standard `PRODUCT.md` sets, in which case the question becomes whether Tellcat
 belongs on iOS at all, not which framework to use. Or the shared core proving
 harder to keep in step than two copies, which would show as iOS-only workarounds
 leaking into `core/domain`.
+
+---
+
+## D-091. The 1.0 colours stay, and D-085's palette is withdrawn
+
+**Decision.** The Tellcat scheme goes back to the colours 1.0 shipped with:
+light primary `#5B54A3`, containers and the cat's fixed roles as they were.
+D-085's HCT palette is withdrawn from the 1.1 branch before it reached anyone.
+
+**What changed the answer.** The owner saw the two side by side, on the launcher
+icon, the cat and the interface, and preferred the shipped colours. The
+comparison also showed what D-085 had left undone: it moved the interface's
+accent to a bluer indigo and left the icon and the cat on the old one, so 1.1
+would have carried two indigos.
+
+**What D-085 found still stands.** The 1.0 palette sits close to Material's
+baseline purple, because it was generated in CIELAB, which bends blues toward
+purple. That is now a known property of the brand, chosen, rather than an
+accident. The identity rests on the cat, the icon and the motion, not on the
+accent colour.
+
+**What would reverse this.** The identity question coming back with evidence,
+such as testers or reviews calling the app generic. The rule for any later
+change is that the icon, the cat and the interface move together, in HCT, or not
+at all.
 
