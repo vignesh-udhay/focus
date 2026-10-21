@@ -18,7 +18,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.semantics.Role
@@ -668,17 +668,17 @@ class TaskDetailsSemanticsTest {
     }
 
     /**
-     * Completion is the exception and is not a field: it goes through the
-     * ordinary `toggleComplete` and raises the same undo offer every list does.
+     * Completion goes through the ordinary `toggleComplete`, and offers no undo
+     * here: the toggle stays under the thumb and is its own undo. D-094.
      */
     @Test
-    fun completeCompletesThroughTheOrdinaryPath() {
+    fun complete_completesWithoutAnUndoOffer() {
         val viewModel = setScreen()
 
         rule.onNodeWithContentDescription(MARK_COMPLETE).performClick()
 
         awaitTask(viewModel) { task -> task.isCompleted }
-        assertTrue(viewModel.pendingUndo.value != null)
+        rule.runOnIdle { assertEquals(null, viewModel.pendingUndo.value) }
     }
 
     /**
@@ -695,12 +695,8 @@ class TaskDetailsSemanticsTest {
             .performClick()
         awaitTask(viewModel) { task -> task.isCompleted }
 
-        // By its action rather than a tap: the undo snackbar now sits over the
-        // toolbar, and its Undo is the other way back.
         rule.waitUntilExactlyOneExists(hasContentDescription(MARK_INCOMPLETE), TIMEOUT_MILLIS)
-        rule.onNodeWithContentDescription(MARK_INCOMPLETE)
-            .assertIsOn()
-            .performSemanticsAction(SemanticsActions.OnClick)
+        rule.onNodeWithContentDescription(MARK_INCOMPLETE).assertIsOn().performClick()
         awaitTask(viewModel) { task -> !task.isCompleted }
     }
 
@@ -849,6 +845,22 @@ class TaskDetailsSemanticsTest {
         assertTrue(viewModel.pendingUndo.value is PendingUndo.ChecklistRemoval)
     }
 
+    /**
+     * D-094. A snackbar sits above the toolbar, never over it: the toolbar is
+     * Scaffold's FAB, and Scaffold lifts the snackbar clear of its FAB.
+     */
+    @Test
+    fun aSnackbar_sitsAboveTheToolbar() {
+        setScreen(dao = withTask(checklist = groceries))
+
+        itemField(MILK).performScrollTo().performCustomAccessibilityActionWithLabel(REMOVE_MILK)
+        rule.waitUntilExactlyOneExists(hasText(ITEM_REMOVED), TIMEOUT_MILLIS)
+
+        val snackbarBottom = rule.onNodeWithText(ITEM_REMOVED).getUnclippedBoundsInRoot().bottom
+        val toolbarTop = rule.onNodeWithContentDescription(DELETE).getUnclippedBoundsInRoot().top
+        assertTrue("snackbar ends at $snackbarBottom, toolbar starts at $toolbarTop", snackbarBottom <= toolbarTop)
+    }
+
     /** Done adds what was typed, and the heading arrives with the first item. */
     @Test
     fun anItemTypedAndDoneIsAdded() {
@@ -963,6 +975,7 @@ class TaskDetailsSemanticsTest {
 
         const val MARK_COMPLETE = "Mark \"$TITLE\" complete"
         const val MARK_INCOMPLETE = "Mark \"$TITLE\" not complete"
+        const val ITEM_REMOVED = "Item removed"
         const val TIMEOUT_MILLIS = 5_000L
     }
 }

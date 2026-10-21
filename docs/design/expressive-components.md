@@ -1064,6 +1064,11 @@ which is named here.
 
 [CD] Material default appearance and motion. Undo is the only action.
 
+[CD] **Not where the control that acted stays on screen and reverses it.** Task
+Details' Complete toggle is its own undo, so completing there raises no offer,
+D-094. And a snackbar never covers a floating control: on Task Details the
+toolbar takes Scaffold's FAB slot so the snackbar sits above it.
+
 [CD] It exposes a polite live region, so the offer is announced when it arrives
 instead of waiting to be found. Undo is time limited, and an offer nobody hears
 is not an offer. Polite rather than assertive: completing a task is the user's

@@ -401,8 +401,12 @@ pretending it is free. What stands in for it is that each write is one field,
 made by one deliberate choice, and reversible by reopening the same row.
 
 Completion is the exception and is not a field. The toolbar's Complete goes
-through the ordinary `toggleComplete` and raises the same single undo offer
-every list raises.
+through the ordinary `toggleComplete`, and offers no undo here: the toggle stays
+under the thumb and reverses it in one tap, spawned repeat included. D-094.
+
+**Snackbars sit above the toolbar.** The toolbar is Scaffold's floating action
+button, centred, so Scaffold lifts every snackbar clear of it. Floating in the
+content, it was covered for four seconds by each one. D-094.
 
 An earlier version of this document said completion was "deliberately absent"
 from this screen. Completing a task you are looking at is not a trap, so the

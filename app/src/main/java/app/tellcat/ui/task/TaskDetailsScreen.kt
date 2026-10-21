@@ -17,6 +17,7 @@ import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FabPosition
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.material3.PlainTooltip
@@ -95,9 +96,9 @@ import java.time.LocalDateTime
  * that each write is one field, made by one deliberate choice, and reversible by
  * reopening the same row.
  *
- * Completion is the exception and is not a field. The toolbar's toggle goes through the
- * ordinary `toggleComplete` and raises the same single undo offer every list
- * raises.
+ * Completion is the exception and is not a field. The toolbar's toggle goes
+ * through the ordinary `toggleComplete`, with no undo offer: the toggle stays
+ * under the thumb and is its own undo, D-094.
  *
  * It is a room: a back arrow, no navigation bar, and back returns to the list it
  * was opened from. `navigation.md` holds that rule.
@@ -174,7 +175,7 @@ fun TaskDetailsScreen(
         today = today,
         snackbarHostState = snackbarHostState,
         onBack = onBack,
-        onToggleComplete = { viewModel.toggleComplete(current.id) },
+        onToggleComplete = { viewModel.toggleComplete(current.id, offerUndo = false) },
         // One write per change, and every one of them carries the whole task.
         // `editTask` takes notes and reminderAt as required parameters with no
         // default precisely so a caller changing one field cannot silently
@@ -440,6 +441,19 @@ private fun TaskDetailsContent(
         modifier = modifier.semantics { paneTitle = paneTitleText },
         containerColor = MaterialTheme.colorScheme.surface,
         snackbarHost = { UndoSnackbarHost(snackbarHostState) },
+        // The toolbar takes the FAB slot so Scaffold lifts every snackbar above
+        // it. Floating in the content, it was covered by them, D-094.
+        floatingActionButton = {
+            TaskDetailsActions(
+                task = task,
+                onToggleComplete = onToggleComplete,
+                onStartFocus = onStartFocus,
+                resumesSession = resumesSession,
+                onDelete = onDelete,
+                onShare = onShare
+            )
+        },
+        floatingActionButtonPosition = FabPosition.Center,
         topBar = {
             // A back arrow and nothing else. **No title**: the task's own title
             // is directly beneath it, and two stacked headings with the upper
@@ -466,54 +480,39 @@ private fun TaskDetailsContent(
             )
         }
     ) { innerPadding ->
-        // **A Box, so the toolbar floats over the content rather than ending
-        // it.** The column below scrolls; the toolbar does not move with it.
-        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    // The scroll area ends at the keyboard. The app draws edge
-                    // to edge, so without this the viewport ran on underneath
-                    // it and a field low on the page could be typed into
-                    // unseen; nothing scrolls a field into a part of the
-                    // viewport the keyboard covers.
-                    .imePadding()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = TellcatSpacing.md + gutter)
-                    // Clearance beneath the last Plan row, on the same terms the
-                    // lists reserve it under their FAB: a floating control that
-                    // covers the thing it acts on is worse than one that scrolls.
-                    .padding(bottom = TellcatDimensions.FabClearance),
-                verticalArrangement = Arrangement.spacedBy(TellcatSpacing.md)
-            ) {
-                IdentityRegion(task = task, onEdit = onEdit)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                // The scroll area ends at the keyboard. The app draws edge
+                // to edge, so without this the viewport ran on underneath
+                // it and a field low on the page could be typed into
+                // unseen; nothing scrolls a field into a part of the
+                // viewport the keyboard covers.
+                .imePadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = TellcatSpacing.md + gutter)
+                // Clearance beneath the last Plan row, on the same terms the
+                // lists reserve it under their FAB: a floating control that
+                // covers the thing it acts on is worse than one that scrolls.
+                .padding(bottom = TellcatDimensions.FabClearance),
+            verticalArrangement = Arrangement.spacedBy(TellcatSpacing.md)
+        ) {
+            IdentityRegion(task = task, onEdit = onEdit)
 
-                ChecklistRegion(
-                    taskId = task.id,
-                    checklist = task.checklist,
-                    onAdd = onAddChecklistItem,
-                    onSetDone = onSetChecklistItemDone,
-                    onEdit = onEditChecklistItem,
-                    onRemove = onRemoveChecklistItem
-                )
+            ChecklistRegion(
+                taskId = task.id,
+                checklist = task.checklist,
+                onAdd = onAddChecklistItem,
+                onSetDone = onSetChecklistItemDone,
+                onEdit = onEditChecklistItem,
+                onRemove = onRemoveChecklistItem
+            )
 
-                PlanRegion(
-                    task = task,
-                    today = today,
-                    onOpenSheet = { sheet -> openSheet = sheet }
-                )
-            }
-
-            TaskDetailsActions(
+            PlanRegion(
                 task = task,
-                onToggleComplete = onToggleComplete,
-                onStartFocus = onStartFocus,
-                resumesSession = resumesSession,
-                onDelete = onDelete,
-                onShare = onShare,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = TellcatSpacing.md)
+                today = today,
+                onOpenSheet = { sheet -> openSheet = sheet }
             )
         }
     }

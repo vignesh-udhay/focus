@@ -1116,7 +1116,11 @@ class TaskListViewModel(
      * standing for that same task rather than leaving a snackbar that no longer
      * describes the task's state.
      */
-    fun toggleComplete(id: String) {
+    /**
+     * [offerUndo] is false where the control that completed the task stays on
+     * screen and reverses it in one tap, Task Details' toggle, D-094.
+     */
+    fun toggleComplete(id: String, offerUndo: Boolean = true) {
         // Before the write, so the row never leaves and comes back: the list
         // holds it the moment the user ticks, and the write lands underneath.
         val shown = storedTasks.value.tasks.firstOrNull { task -> task.id == id }
@@ -1142,8 +1146,8 @@ class TaskListViewModel(
                 return@write
             }
 
-            _pendingUndo.value =
-                PendingUndo.Completion(task.id, spawnedTaskId = completion.complete(id))
+            val spawnedTaskId = completion.complete(id)
+            if (offerUndo) _pendingUndo.value = PendingUndo.Completion(task.id, spawnedTaskId)
             releaseSettlingLater()
         }
     }

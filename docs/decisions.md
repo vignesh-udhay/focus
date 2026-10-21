@@ -5990,3 +5990,28 @@ if the task was not done.
 symbol means. The answer then is a label beside the icon inside the toolbar, not
 the pill coming back beside it.
 
+---
+
+## D-094. Completing on Task Details offers no undo, and its snackbars sit above the toolbar
+
+**Decision.** Completing a task from Task Details' toolbar raises no undo
+snackbar. Every other snackbar on the screen, such as "Item removed", sits above
+the toolbar rather than over it, because the toolbar now takes Scaffold's
+floating action button slot, centred.
+
+**What changed the answer.** The owner, on 2026-10-22: "Why does it sit above the
+toolbar for 4s. That's bad ux." After D-093 put Complete in the toolbar, tapping
+it laid "Task completed · Undo" over the toolbar for four seconds, covering the
+control just pressed and the other three. The toolbar floated inside the content,
+where Scaffold could not see it; Scaffold only clears its own FAB slot.
+
+**Why no undo here, when every list offers one.** On a list the row leaves, so
+the snackbar is the only way back. On Task Details the task stays on screen and
+the toggle that completed it is under the thumb; tapping it again reopens the
+task and removes a spawned repeat with it, `TaskCompletion.reopen`. The offer
+was a second, timed copy of a control already there.
+
+**What would reverse this.** A user completing on Task Details by mistake and
+not finding the way back, which would point at the toggle's checked state not
+reading as on.
+
