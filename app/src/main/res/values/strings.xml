@@ -290,8 +290,8 @@
     <string name="task_duration">Duration</string>
     <string name="task_repeat">Repeat</string>
 
-    <!-- Row values. An unset value reads like any other; see task-details.md. -->
-    <string name="task_value_none">None</string>
+    <!-- A Plan chip's state: its field has no value yet. D-087. -->
+    <string name="task_plan_not_set">Not set</string>
 
     <!-- The date sheets. Both are the same shape; D-018 fixes the presets. -->
     <string name="task_date_none">No date</string>
@@ -318,7 +318,6 @@
       The Repeat editor, built under D-027. Three panes in one bottom sheet:
       the rule, the Every substate, and the Ends substate.
     -->
-    <string name="task_repeat_never">Doesn\'t repeat</string>
     <!--
       The period names are TaskListRow's, reused rather than duplicated: a row
       and this sheet naming the same recurrence differently is a drift with

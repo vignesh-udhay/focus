@@ -35,18 +35,10 @@ import app.tellcat.core.design.TellcatSpacing
  * sheet of presets.
  *
  * **The value states what is set rather than naming the sheet it opens.** A row
- * reading only "Scheduled" would hide its own contents, and the point of the row
- * over a text field is that "Due date  None" says what can be set where an empty
- * field does not.
+ * reading only "Scheduled" would hide its own contents.
  *
- * **An unset value is not styled differently.** `None` and `Doesn't repeat`
- * render exactly like `Today` and `45m`. `task-details.md` answers this in full
- * because the question comes up every time someone reads the screen: those are
- * values the user chose or accepted, not gaps, and dimming them would make the
- * screen read as a form with blanks to fill. There is also no token for it. The
- * next step down from `onSurfaceVariant` is `outline`, which on this row's
- * container is about 3.8:1 and fails AA at 14sp, so unset values would become
- * the hardest thing on the screen to read.
+ * **Only a set field has a row.** D-087. An unset one is a chip under the group,
+ * so this row always has a value to show, and never reads `None`.
  *
  * **This wraps `SegmentedListItem`, like every other row family in the app.** It
  * briefly did not, and carried private `16.dp`, `4.dp` and `2.dp` constants of

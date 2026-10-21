@@ -99,8 +99,10 @@ one field and it is shown once.
 **Checklist.** The items under the notes, then a field to add one. Covered in
 its own section below.
 
-**Plan.** A section label, then five grouped rows: Scheduled, Due date,
-Reminder, Duration, Repeat. Each shows its current value and opens a sheet.
+**Plan.** A section label, then a grouped row for each field the task has set,
+then a chip for each it has not, both in one order: Scheduled, Due date,
+Reminder, Duration, Repeat. A row shows its value and opens its sheet; a chip
+names its field and opens the same sheet. D-087.
 
 **Actions.** A floating toolbar, pinned bottom centre, holding Delete, Share
 when the task has a checklist, and Start focus. D-037. Start focus is the toolbar's attached FAB and one of two ways into
@@ -424,20 +426,30 @@ thing that was wrong.
 
 ---
 
-# Unset values are not styled differently
+# An unset field is a chip, not a row
 
-`None` and `Doesn't repeat` render exactly like `Today` and `45m`.
+D-087, superseding the part of D-018 that gave every field a row.
 
-The question comes up every time someone reads this screen, so the answer
-belongs here. Those are values the user chose or accepted, not gaps. Dimming
-them would make the screen read as a form with blanks to fill, which principle 3
-contradicts by saying a task needs only a title, and which principle 4 calls
-task administration rather than execution.
+A task with only a title used to show five rows, four reading `None` and one
+`Doesn't repeat`. This section argued those were values, not gaps, and that
+dimming them would make the screen a form with blanks to fill. The argument
+against dimming still holds, and so does the reason there is no token for it:
+the next step down from `onSurfaceVariant` is `outline`, about 3.8:1 on
+`surfaceContainerLow`, which fails AA for 14sp text.
 
-There is also no token for it. The next step down from `onSurfaceVariant` is
-`outline`, which on the row's `surfaceContainerLow` is about 3.8:1 and fails AA
-for 14sp text. Unset values would become the hardest thing on the screen to
-read.
+What it missed is that five rows of `None` were already that form. Most tasks
+set one or two fields, so most of this screen was rows saying nothing was there,
+at the same weight as the rows saying what was. Principle 3 says a task needs
+only a title, and the screen should look like it.
+
+So a set field is a row, and an unset one is an `AssistChip` beneath the rows:
+a plus and the field's own name, the name its row will carry. Nothing is dimmed;
+a chip is simply smaller than a row. The chip still says what can be set, which
+was D-018's case for the row over an empty text field, and it opens the same
+sheet. To a screen reader it reads "Not set" as its state.
+
+Setting a field moves it from chip to row under the closing sheet, and clearing
+it moves it back, so neither animates. Both keep the fields' one order.
 
 ---
 
@@ -606,8 +618,8 @@ group, not only this one.
 
 **And the row stays compact, which is a deliberate divergence.** The board draws
 it reading "Every week on Mon, Wed and Fri"; the code writes "Mon, Wed and Fri".
-The value sits beside a label and a chevron, next to siblings reading "Today",
-"None" and "45m", and the long phrase makes that row taller than the four above
+The value sits beside a label and a chevron, next to siblings reading "Today"
+and "45m", and the long phrase makes that row taller than the four above
 it in a longer language or at 200%. It also puts a verb back that `PlanRow`'s own
 rule keeps out. `RecurrenceStyle` names the three amounts: Compact for the rows,
 Sentence for the notification, Full for the subtitle.

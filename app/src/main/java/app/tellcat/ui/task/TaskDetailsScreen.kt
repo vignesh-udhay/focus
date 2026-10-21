@@ -3,17 +3,21 @@ package app.tellcat.ui.task
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -52,6 +56,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.tellcat.R
@@ -709,26 +714,93 @@ internal fun borderlessFieldColors() = TextFieldDefaults.colors(
     disabledIndicatorColor = androidx.compose.ui.graphics.Color.Transparent
 )
 
-/** The five rows, and the label above them. */
+/**
+ * What the task has planned, and what it could.
+ *
+ * **Only the fields that are set are rows.** `docs/decisions.md` D-087. The
+ * rest are chips beneath them, one per field, each opening the same sheet its
+ * row would. A task with only a title used to show five rows, four reading
+ * `None`, which is the form with blanks to fill that D-018 itself warned
+ * against, and it gave a plan the same weight whether the task had one or not.
+ * A field moves from chip to row when it is set and back when it is cleared,
+ * under the closing sheet, so nothing here animates.
+ *
+ * Both keep the five fields' one order, so a field is always found in the same
+ * place relative to the others.
+ */
 @Composable
 private fun PlanRegion(task: Task, today: LocalDate, onOpenSheet: (PlanSheet) -> Unit) {
-    val rows = PlanSheet.entries
+    val rows = PlanSheet.entries.mapNotNull { row ->
+        row.value(task, today)?.let { value -> row to value }
+    }
+    val unset = PlanSheet.entries.filter { row -> rows.none { (set, _) -> set == row } }
 
     Column {
         SectionLabel(text = stringResource(R.string.task_plan))
 
-        PlanRowGroup {
-            rows.forEachIndexed { index, row ->
-                PlanRow(
-                    label = stringResource(row.labelRes),
-                    value = row.value(task, today),
-                    shapes = ListItemDefaults.segmentedShapes(
-                        index = index,
-                        count = rows.size
-                    ),
-                    onClick = { onOpenSheet(row) }
-                )
+        if (rows.isNotEmpty()) {
+            PlanRowGroup {
+                rows.forEachIndexed { index, (row, value) ->
+                    PlanRow(
+                        label = stringResource(row.labelRes),
+                        value = value,
+                        shapes = ListItemDefaults.segmentedShapes(
+                            index = index,
+                            count = rows.size
+                        ),
+                        onClick = { onOpenSheet(row) }
+                    )
+                }
             }
+        }
+
+        if (unset.isNotEmpty()) {
+            PlanAddChips(
+                fields = unset,
+                onOpenSheet = onOpenSheet,
+                // A chip's 48dp touch target already leaves 8dp above its
+                // outline, so under the rows this tops it up to `sm`.
+                modifier = if (rows.isEmpty()) Modifier else Modifier.padding(top = TellcatSpacing.xxs)
+            )
+        }
+    }
+}
+
+/**
+ * One chip per unset field, wrapping onto as many lines as the width and the
+ * font scale need.
+ *
+ * `AssistChip`, because Material's assist chip is the one for an action on the
+ * thing the screen is about, and adding a reminder to this task is that. The
+ * label is the field's own name, the one its row carries once it is set, and
+ * the plus says it is not set yet. A screen reader hears that as well: the chip
+ * reads "Not set" as its state, where a row reads the value it holds.
+ */
+@Composable
+private fun PlanAddChips(
+    fields: List<PlanSheet>,
+    onOpenSheet: (PlanSheet) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val notSet = stringResource(R.string.task_plan_not_set)
+
+    FlowRow(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(TellcatSpacing.xs)
+    ) {
+        fields.forEach { field ->
+            AssistChip(
+                onClick = { onOpenSheet(field) },
+                label = { Text(stringResource(field.labelRes)) },
+                leadingIcon = {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_add),
+                        contentDescription = null,
+                        modifier = Modifier.size(AssistChipDefaults.IconSize)
+                    )
+                },
+                modifier = Modifier.semantics { stateDescription = notSet }
+            )
         }
     }
 }
@@ -757,34 +829,26 @@ internal enum class PlanSheet {
         }
 
     /**
-     * What the row shows.
-     *
-     * Every unset value reads `None`, except Repeat, whose absence has a name of
-     * its own. Neither is styled differently from a set one; `task-details.md`
-     * carries that argument in full.
+     * What the row shows, or null when the field is not set and is offered as a
+     * chip instead. D-087.
      */
     @Composable
-    fun value(task: Task, today: LocalDate): String = when (this) {
+    fun value(task: Task, today: LocalDate): String? = when (this) {
         SCHEDULED -> task.scheduledDate?.let { date -> scheduledDateLabel(date, today) }
-            ?: stringResource(R.string.task_value_none)
 
         DUE -> task.dueDate?.let { date -> scheduledDateLabel(date, today) }
-            ?: stringResource(R.string.task_value_none)
 
         REMINDER -> task.reminderAt?.let { at -> reminderValue(at, today) }
-            ?: stringResource(R.string.task_value_none)
 
         // Through `durationLabel`, so this reads 45m, 1h, 1h 30m like every
         // other duration in the app. Never "45 min".
         DURATION -> task.estimatedDurationMinutes?.let { minutes -> durationLabel(minutes).text }
-            ?: stringResource(R.string.task_value_none)
 
         // The rule written out, which since D-027 can be "Every 2 weeks" or
         // "Mon, Wed, Fri" and not only one of four adjectives. When it stops is
         // deliberately absent; board frame 18 leaves it out and the sheet is
         // where a horizon belongs.
         REPEAT -> task.recurrence?.let { rule -> recurrenceSummary(rule, today) }
-            ?: stringResource(R.string.task_repeat_never)
     }
 }
 

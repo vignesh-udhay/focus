@@ -253,7 +253,8 @@ class TaskDetailsSemanticsTest {
         rule.onNodeWithText(ADD_CHECKLIST_ITEM).assertIsDisplayed()
         rule.onAllNodesWithText(CHECKLIST).assertCountEquals(0)
 
-        // Plan: the label and all five rows.
+        // Plan: the label and all five fields, as a row when set and a chip
+        // when not. D-087.
         rule.onNodeWithText(PLAN).assertIsDisplayed()
         listOf(SCHEDULED, DUE_DATE, REMINDER, DURATION, REPEAT).forEach { row ->
             rule.onNodeWithText(row).assertIsDisplayed()
@@ -382,7 +383,7 @@ class TaskDetailsSemanticsTest {
         assertEquals(1, backs)
     }
 
-    /** Rows show what is set, and an unset value reads like any other. */
+    /** Rows show what is set. */
     @Test
     fun rowsShowTheirValues() {
         setScreen(dao = withTask(scheduledDate = TestToday, estimatedDurationMinutes = 45))
@@ -390,8 +391,59 @@ class TaskDetailsSemanticsTest {
         rule.onNodeWithText(TODAY).assertIsDisplayed()
         // 45m through `durationLabel`, never "45 min".
         rule.onNodeWithText(DURATION_45).assertIsDisplayed()
-        rule.onNodeWithText(NO_REPEAT).assertIsDisplayed()
     }
+
+    /**
+     * **An unset field is a chip, not a row reading None.** D-087. Each says it
+     * is not set, to a screen reader as well as by its plus, and the words
+     * `None` and `Doesn't repeat` are nowhere on the screen.
+     */
+    @Test
+    fun unsetFields_areChipsSayingSo_at100() = assertUnsetFieldsAreChips(FontScale100)
+
+    @Test
+    fun unsetFields_areChipsSayingSo_at200() = assertUnsetFieldsAreChips(FontScale200)
+
+    private fun assertUnsetFieldsAreChips(fontScale: Float) {
+        setScreen(fontScale, dao = withTask(scheduledDate = TestToday, estimatedDurationMinutes = null))
+
+        listOf(DUE_DATE, REMINDER, DURATION, REPEAT).forEach { field ->
+            rule.onNode(hasText(field) and notSet)
+                .performScrollTo()
+                .assertIsDisplayed()
+                .assertTouchTargetIsAtLeast(TellcatDimensions.TouchTargetMin)
+        }
+        rule.onAllNodes(hasText(SCHEDULED) and notSet).assertCountEquals(0)
+        rule.onAllNodesWithText(NONE).assertCountEquals(0)
+        rule.onAllNodesWithText(NO_REPEAT).assertCountEquals(0)
+    }
+
+    /** Setting a field from its chip turns the chip into a row holding it. */
+    @Test
+    fun aChipBecomesARowOnceItsFieldIsSet() {
+        setScreen(dao = withTask(estimatedDurationMinutes = null))
+
+        rule.onNode(hasText(DURATION) and notSet).performClick()
+        rule.waitUntilExactlyOneExists(hasText(DURATION_30), TIMEOUT_MILLIS)
+        rule.onNodeWithText(DURATION_30).performClick()
+
+        rule.waitUntilExactlyOneExists(hasText(DURATION) and hasText(DURATION_30), TIMEOUT_MILLIS)
+        rule.onAllNodes(hasText(DURATION) and notSet).assertCountEquals(0)
+    }
+
+    /** And clearing it turns the row back into a chip. */
+    @Test
+    fun aRowBecomesAChipOnceItsFieldIsCleared() {
+        setScreen(dao = withTask(scheduledDate = TestToday))
+
+        rule.onNodeWithText(SCHEDULED).performClick()
+        rule.waitUntilExactlyOneExists(hasText(NO_DATE), TIMEOUT_MILLIS)
+        rule.onNodeWithText(NO_DATE).performClick()
+
+        rule.waitUntilExactlyOneExists(hasText(SCHEDULED) and notSet, TIMEOUT_MILLIS)
+    }
+
+    private val notSet = SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, NOT_SET)
 
     // --- committing, which is the whole of D-018 -----------------------------
 
@@ -554,11 +606,12 @@ class TaskDetailsSemanticsTest {
     }
 
     /**
-     * The clear action, told apart from the Plan row behind the sheet.
+     * The clear action, matched by its role as well as its words.
      *
-     * Once the rule is gone the row reads "Repeat  Doesn't repeat", so text
-     * alone matches either. The button carries `Role.Button` and the row does
-     * not, which is the only thing that separates them.
+     * The Plan row used to read "Repeat  Doesn't repeat" once the rule was gone,
+     * so text alone matched either. D-087 made an unset Repeat a chip reading
+     * only "Repeat", and the role stays so that a row which ever says those
+     * words again cannot pass for the button.
      */
     private val clearRepeatAction =
         hasText(NO_REPEAT) and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button)
@@ -861,6 +914,8 @@ class TaskDetailsSemanticsTest {
         const val THIS_WEEKEND = "This weekend"
         const val END_OF_WEEK = "End of week"
         const val NO_REPEAT = "Doesn't repeat"
+        const val NONE = "None"
+        const val NOT_SET = "Not set"
         const val WEEKLY = "Weekly"
 
         /** Durations read through `durationLabel`. Never "45 min". */

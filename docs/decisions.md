@@ -1092,6 +1092,10 @@ available also fails AA at 14sp.
 touch. The draft is the thing being given up, so that is where the failure will
 show.
 
+**Superseded in part by D-087.** An unset field is no longer a row reading
+`None`; it is a chip under the rows. The paragraph on unset values above is kept
+as the reasoning D-087 answers.
+
 ---
 
 ## D-019. The Repeat editor is designed now and built in Phase 4
@@ -5713,4 +5717,49 @@ notification or the widget does not settle: nothing in the app is on screen.
 **What would reverse this.** Users reading the held row as the tick not having
 worked, which would show as double taps reopening tasks. The answer then is a
 shorter hold, not none.
+
+---
+
+## D-087. Task Details shows the fields a task has, and offers the rest as chips
+
+**Decision.** The Plan region shows a row only for a field the task has set.
+Each unset field is an assist chip beneath the rows, a plus and the field's
+name, opening the same sheet the row would. Setting a field turns its chip into
+a row, and clearing it turns the row back into a chip.
+
+**What this supersedes.** D-018's five permanent rows, and its paragraph "Unset
+values are not styled differently", in `task-details.md` and
+`expressive-components.md`. The rest of D-018 stands: picking rather than typing,
+a sheet per field, every choice written as it is made.
+
+**What changed the answer.** Looking at the screen against the rest of the app
+rather than on its own. A task with only a title, which principle 3 says is a
+whole task, opened onto five rows of which four read `None` and one
+`Doesn't repeat`. D-018 said dimming those would make the screen read as a form
+with blanks to fill; the five rows already did, at full weight. A plan the task
+had and a plan it lacked looked the same, so the screen could not say at a
+glance what this task was set to do.
+
+**Why chips, and not a dimmer row or an "Add" row.** A dimmer value has no
+token: the next step below `onSurfaceVariant` fails AA at 14sp, which D-018
+measured and which still holds. A single "Add a date, reminder…" row hides the
+fields behind one more tap, and a reminder is the feature this app exists for;
+it must stay one tap away and named. A chip keeps every field visible and one
+tap away, and is smaller than a row without being fainter. Material's assist
+chip is the component for an action on the thing the screen is about.
+
+**What D-018's own reason still asks for.** It preferred a row reading
+`Due date  None` to an empty text field because the row says what can be set.
+The chip says that too, by name. Its state reads "Not set" to a screen reader,
+where a row reads its value.
+
+**What it costs.** The fields no longer sit in fixed places: Reminder is the
+third row on one task and a chip on another. The order of the five is kept in
+both forms so a field is always found in the same place relative to the others.
+And the change from chip to row does not animate; it happens under the closing
+sheet.
+
+**What would reverse this.** Testers not finding how to set a reminder or a
+repeat from Task Details, or setting one and not recognising the field moved.
+The answer then is likely the label, not five rows again.
 

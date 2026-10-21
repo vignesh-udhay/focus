@@ -850,7 +850,8 @@ identity, checklist, plan, action.
 | Checklist remove | `ic_close` in the trailing slot only while the line is edited, or clearing the line; a named accessibility action; with Undo |
 | Checklist add row | the group's last segment, `+` leading, `BasicTextField`, one-line placeholder |
 | Section label | the shared `SectionLabel`, reading "Checklist" once there are items, and "Plan" |
-| Plan row | 56dp, `surfaceContainerLow`, 16dp outer and 4dp inner, 2dp gap |
+| Plan row | a set field only; 56dp, `surfaceContainerLow`, 16dp outer and 4dp inner, 2dp gap |
+| Plan chip | an unset field; Material `AssistChip`, `ic_add` leading, the field's name, in a `FlowRow` under the rows, `xs` apart |
 | Start focus | full width, 56dp, the screen's only accent |
 | Toolbar | Delete in `error`, then Share (outline glyph) when the task has items |
 
@@ -866,14 +867,14 @@ focus leaves it.
 
 [CD] The rows are the row family's Plan variant, which the section above
 specifies and binds to the shared radius and gap variables. Each shows its value
-rather than naming the sheet it opens: `Due date  None` says what can be set,
-and an empty field does not.
+rather than naming the sheet it opens.
 
-[CD] **Unset values are not styled differently.** `None` and `Doesn't repeat`
-render exactly like `Today` and `45m`. `task-details.md` carries the argument in
-full, including the reason there is no token for it: the next step down from
-`onSurfaceVariant` is `outline`, which on `surfaceContainerLow` is about 3.8:1
-and fails AA at 14sp.
+[CD] **An unset field is a chip, not a row reading `None`.** D-087. The chip is
+Material's assist chip, unmodified: the action of adding something to the task
+the screen is about. It is not dimmed, because there is no token for that (the
+next step down from `onSurfaceVariant` is `outline`, about 3.8:1 on
+`surfaceContainerLow`, failing AA at 14sp); it is smaller than a row, and that
+is the whole difference. `task-details.md` has the argument.
 
 [CD] Durations read through `DurationLabel`: `45m`, `1h`, `1h 30m`. Never
 "45 min", which nothing else in the app says.
