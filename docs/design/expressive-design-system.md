@@ -8,6 +8,7 @@ rather than choosing.
     expressive-design-system.md   this file: principles and tokens
     expressive-components.md      how each component looks and behaves
     expressive-motion.md          what moves, how, and why
+    ../brand.md                   what is Tellcat on every platform
 
 Every rule is tagged:
 

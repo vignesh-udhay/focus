@@ -5924,3 +5924,26 @@ such as testers or reviews calling the app generic. The rule for any later
 change is that the icon, the cat and the interface move together, in HCT, or not
 at all.
 
+---
+
+## D-092. The tagline is "Just tell it."
+
+**Decision.** Tellcat's tagline is "Just tell it." It sits beside the core
+promise, "If you write it down here, you will be told", as the user's half of
+the same sentence: you tell it, and it tells you. It is for the brand's own
+surfaces, such as a promo film's end card. The app's screens and the store's
+short description are unchanged; putting it on the listing, the landing page or
+the feature graphic is a separate change.
+
+**What changed the answer.** It was explored with "Tell it. Forget it." for a
+promo storyboard and never adopted. Writing `docs/brand.md` listed it as not
+decided, and the owner chose it on 2026-10-21.
+
+**Why not in the app.** Inside the app the promise already says what the app
+does, and the rule for empty screens is that they state a fact and never
+instruct. A tagline is an instruction by design, which is right on a poster and
+wrong on Today.
+
+**What would reverse this.** It reading as a voice-assistant promise, which the
+app does not make: Tellcat has no voice capture.
+

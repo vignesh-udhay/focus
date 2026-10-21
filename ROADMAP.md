@@ -31,7 +31,9 @@ fix was made off `main` on `fix/first-launch-banner` and goes out with 1.1, not
 as a 1.0.1. The widget picker's preview is a fresh capture of the real widget,
 light and dark, since the old one still showed the "No time set" band. Its add
 button takes the accent, `Primary`, where `Surface` drew a near-black hole in
-dark. Onboarding's "Get started" now clears the navigation bar: with
+dark. `docs/brand.md` writes down what stays the same on Android and iPhone:
+the name, the promise and the tagline, "Just tell it." (D-092), the cat, the
+colours and the voice. Onboarding's "Get started" now clears the navigation bar: with
 three-button navigation it sat half under Back, Home and Recents, on 1.0 too.
 Its bell icon is outlined like the rest, its cat is the launcher face at twice
 the size, and its column is centred rather than hung from the top. Before it

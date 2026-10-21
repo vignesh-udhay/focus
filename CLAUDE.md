@@ -76,6 +76,8 @@ Before implementing a feature:
 
 Tellcat is a native Android application. An iPhone app is decided but not
 started, D-089; it will be native to iOS, not a port of these screens.
+`docs/brand.md` says what stays the same on both: the name, the promise, the
+cat, the colours and the voice.
 
 Use the existing Material 3 theme and Tellcat design system.
 
