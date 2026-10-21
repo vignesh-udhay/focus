@@ -139,7 +139,7 @@ private fun OnboardingPoint(point: OnboardingPoint) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = stringResource(point.titleRes),
-                style = MaterialTheme.typography.titleMediumEmphasized,
+                style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(

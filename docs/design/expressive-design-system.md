@@ -271,18 +271,26 @@ ones and fifteen `*Emphasized` counterparts, which render the same size role at
 a heavier optical weight. `titleMediumEmphasized`, `headlineMediumEmphasized`
 and the rest are available through `MaterialTheme.typography`.
 
-[CD] Emphasized type is used in three places and nowhere else:
+[CD] **Emphasis marks the one line a screen exists to say, and a screen has at
+most one.** The app bar names where you are; the emphasized line says what is
+true there or what the screen is about. Every use in the app is one of these:
 
 | Where | Role |
 | --- | --- |
 | Focus task title | `headlineMediumEmphasized` |
-| Screen titles in the app bar | `titleLargeEmphasized` |
+| The paused card's task title on Today, and its status overline | `titleLargeEmphasized`, `labelSmallEmphasized` |
 | Empty-state headlines | `titleMediumEmphasized` |
+| Onboarding's welcome | `headlineMediumEmphasized` |
+| Reminder health's verdict, such as "Reminders are arriving on time" | `headlineSmallEmphasized` |
+| Backup's "Your data stays on this device" | `headlineMediumEmphasized` |
+| The permission screen's "Allow precise reminders" | `headlineLargeEmphasized` |
 
 [CD] Everything else uses the standard scale:
 
 | Where | Role |
 | --- | --- |
+| App bar titles | `titleLarge`, `TellcatTopAppBar`'s default |
+| Onboarding's three point titles | `titleMedium` |
 | Task title | `bodyLarge` |
 | Task metadata | `bodySmall` |
 | Section labels | `labelLarge` |
@@ -291,10 +299,18 @@ and the rest are available through `MaterialTheme.typography`.
 | Buttons | Material default |
 
 **Why so little emphasis.** Emphasis only reads as emphasis if most things are
-not emphasised. The three chosen places are the three moments the app most
-wants to be legible at a glance: what am I working on, where am I, and why is
-this list empty. Applying it to task titles would make every row shout and none
-of them stand out.
+not emphasised. One line per screen is what keeps it a signal: the line a user
+should be able to read at a glance, which is never the bar's name for the
+screen. Applying it to task titles would make every row shout and none of them
+stand out.
+
+[CD] **This table used to say three places, and the code had nine.** It named
+the Focus title, empty-state headlines and app bar titles, and the app bar had
+always used plain `titleLarge`. The six screens built after it each emphasized
+their lead line, which was the rule above, unwritten. Onboarding had also
+emphasized its three point titles, four bold headings on one screen; they are
+plain now. If a new screen wants a second emphasized line, the table is what has
+to change first.
 
 [IMPL] The type ramp is Material Expressive's, untouched. D-008 deleted
 `Type.kt` and its nine overrides: they put SemiBold on plain roles, which left

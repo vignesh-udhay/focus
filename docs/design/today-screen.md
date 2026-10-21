@@ -255,14 +255,14 @@ From most to least prominent:
 2. task title, `bodyLarge`, supplied by `TaskRow`
 3. task metadata, `bodySmall`, supplied by `TaskRow`
 
-The empty state sits outside that hierarchy and uses `titleMedium` with a
+The empty state sits outside that hierarchy and uses `titleMediumEmphasized` with a
 `bodyMedium` supporting line, above them the cat sitting with its eyes half
 shut, which says the day is clear and still open. D-074 moved the sleeping cat
 to Inbox. `expressive-components.md` owns the variant, its colour
 roles, and why the headline did not follow the board up to Title Large.
 
-Every style comes from `TellcatTypography`. Do not define new text styles
-for this screen.
+Every style comes from `MaterialTheme.typography`, untouched since D-008. Do
+not define new text styles for this screen.
 
 ---
 
