@@ -17,10 +17,15 @@ class OnboardingSemanticsTest {
     val rule = createComposeRule()
 
     @Test
-    fun contentAndAction_areReadable_at200Percent() {
+    fun contentAndAction_areReadable_at100Percent() = assertContentAndActionAreReadable(FontScale100)
+
+    @Test
+    fun contentAndAction_areReadable_at200Percent() = assertContentAndActionAreReadable(FontScale200)
+
+    private fun assertContentAndActionAreReadable(fontScale: Float) {
         var started = false
 
-        rule.setTellcatContent(FontScale200) {
+        rule.setTellcatContent(fontScale) {
             OnboardingScreen(onGetStarted = { started = true })
         }
 

@@ -551,6 +551,14 @@ drawn. It should get one. What it must not get is a pose that congratulates,
 because `logbook.md` says its empty state "does not congratulate, and it does
 not treat an empty Logbook as a problem or an achievement".
 
+[CD] **Onboarding draws the head, not a pose.** It is the launcher icon's face,
+the mark the user is about to put on their home screen, so it takes the icon's
+geometry rather than the 0.26 scale the poses share. Its frame is cropped to the
+face and drawn at twice the launcher's size, about 104dp wide; the full 108dp
+canvas drew it 52dp wide inside its own padding, a badge above a column that
+then hung from the top of an otherwise empty screen. The column is centred now,
+as Focus's is.
+
 [CD] **The mascot is decorative to a screen reader.** It draws the fact the
 headline states, and the headline is the heading TalkBack lands on, so
 describing the drawing as well would put that fact in the path twice.

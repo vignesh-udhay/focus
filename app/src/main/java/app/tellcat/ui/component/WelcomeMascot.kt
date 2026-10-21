@@ -36,9 +36,11 @@ import androidx.compose.ui.unit.dp
  * punched through the face rather than marks drawn on it. No tone takes [mid]:
  * the face is flat, with no fold to shade.
  *
- * The frame is the launcher's own 108dp canvas and the group that centres the
- * artwork inside it, carried over unchanged so the head sits where it always
- * sat and at the size it always was.
+ * The group that places the artwork is the launcher's own, so the face is the
+ * icon's exactly. The frame around it is not: the launcher's 108 canvas is
+ * mostly safe-zone padding, which drew the face 52dp wide and read as a gap on
+ * the welcome screen, so the frame is cropped to the face and drawn at twice
+ * the size.
  *
  * Purely decorative to a screen reader. The welcome headline beneath it carries
  * the heading semantics and says what the screen is.
@@ -46,24 +48,29 @@ import androidx.compose.ui.unit.dp
 @Composable
 internal fun WelcomeMascot(modifier: Modifier = Modifier) {
     MascotImage(
-        width = MascotSize,
-        height = MascotSize,
+        width = FrameWidth * FrameScale,
+        height = FrameHeight * FrameScale,
         modifier = modifier,
         build = ::catHead
     )
 }
 
-/** The launcher canvas, square, as `ic_launcher_foreground.xml` draws it. */
-private const val MascotSize = 108f
+/** The face and a little air, in the launcher canvas's units. */
+private const val FrameLeft = 26f
+private const val FrameTop = 28f
+private const val FrameWidth = 56f
+private const val FrameHeight = 52f
+private const val FrameScale = 2f
 
 private fun catHead(light: Color, mid: Color, dark: Color): ImageVector =
     ImageVector.Builder(
         name = "WelcomeCatHead",
-        defaultWidth = MascotSize.dp,
-        defaultHeight = MascotSize.dp,
-        viewportWidth = MascotSize,
-        viewportHeight = MascotSize
+        defaultWidth = (FrameWidth * FrameScale).dp,
+        defaultHeight = (FrameHeight * FrameScale).dp,
+        viewportWidth = FrameWidth,
+        viewportHeight = FrameHeight
     )
+        .addGroup(name = "frame", translationX = -FrameLeft, translationY = -FrameTop)
         .addGroup(
             name = "artwork",
             scaleX = ArtworkScale,
@@ -75,6 +82,7 @@ private fun catHead(light: Color, mid: Color, dark: Color): ImageVector =
         .addPath(pathData = addPathNodes(EyeLeft), fill = SolidColor(dark))
         .addPath(pathData = addPathNodes(EyeRight), fill = SolidColor(dark))
         .addPath(pathData = addPathNodes(Nose), fill = SolidColor(dark))
+        .clearGroup()
         .clearGroup()
         .build()
 

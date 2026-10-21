@@ -84,7 +84,9 @@ fun OnboardingScreen(
                 top = innerPadding.calculateTopPadding() + TellcatSpacing.xl,
                 bottom = innerPadding.calculateBottomPadding() + TellcatSpacing.lg
             ),
-            verticalArrangement = Arrangement.spacedBy(TellcatSpacing.lg)
+            // Centred, as Focus is: one column on a screen that does nothing
+            // else, so hanging it from the top only leaves the bottom empty.
+            verticalArrangement = Arrangement.spacedBy(TellcatSpacing.lg, Alignment.CenterVertically)
         ) {
             item {
                 Column(
@@ -94,7 +96,7 @@ fun OnboardingScreen(
                     // The head, drawn against the colour roles rather than the
                     // launcher asset's fixed hex. `WelcomeMascot.kt` has why.
                     WelcomeMascot()
-                    Spacer(Modifier.height(TellcatSpacing.md))
+                    Spacer(Modifier.height(TellcatSpacing.lg))
                     Text(
                         text = stringResource(R.string.onboarding_title),
                         style = MaterialTheme.typography.headlineMediumEmphasized,
