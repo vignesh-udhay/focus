@@ -213,7 +213,8 @@ the price of learning, which principle 1 forbids. The warning is pre-emptive; it
 just has to be accurate about its own certainty.
 
 **The same line decides what leaves this screen.** Since D-040 Today carries a
-banner, and it draws for `ActionNeeded` and `Missed` only. `WorthChecking` stays
+banner, and it draws for `ActionNeeded` and `Missed` only, `ActionNeeded` once a
+reminder is waiting on the permission, D-090. `WorthChecking` stays
 here. The difference is who asked: a user who opens Reminder health wants the
 caution and can weigh it, and a user who opens Today did not ask anything. A
 permanent, unclearable notice on the default screen of four vendors' phones is

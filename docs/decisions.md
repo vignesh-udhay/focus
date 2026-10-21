@@ -2611,6 +2611,10 @@ detection rather than the banner. If `backgroundWorkState` ever learns to return
 `Blocked` from something measured rather than inferred, `ActionNeeded` gains a
 third cause and the banner gains it too, with no change here.
 
+**Amended by D-090.** `ActionNeeded` draws only once a reminder is waiting on the
+permission. The paragraph above about the empty state assumed a user who "has
+just declined"; on a fresh install the app has not yet asked.
+
 ## D-041. The widget asks for the size it has, and may be dragged to any size
 
 **Decision.** `SizeMode.Exact` replaces `SizeMode.Responsive`, so `LocalSize`
@@ -5861,6 +5865,39 @@ standard `PRODUCT.md` sets, in which case the question becomes whether Tellcat
 belongs on iOS at all, not which framework to use. Or the shared core proving
 harder to keep in step than two copies, which would show as iOS-only workarounds
 leaking into `core/domain`.
+
+---
+
+## D-090. Today does not report a refusal before anything was asked
+
+**Decision.** Today's reminder health banner draws `ActionNeeded` only while at
+least one outstanding task has a reminder. `Missed` is unchanged, and so is the
+Reminder health screen, which still reports a missing permission to anyone who
+opens it.
+
+**What changed the answer.** Seen on a fresh install on the emulator. Onboarding
+ends on "Tellcat reminds you even when the app is closed", and the first screen
+after it opened with a red "Action needed: Tellcat cannot show notifications"
+above the empty state. The app asks for notifications, and for precise alarms,
+at the first reminder, by design; until then nothing has been refused. D-040's
+reasoning for the empty-state banner was about a user who "has just declined",
+and on Android 13 and later a new user has not been asked at all. Every tester's
+first screen said the product's central promise was broken.
+
+**Why this condition.** It is the moment the permission starts to matter, and it
+is something the app knows rather than guesses, which is D-040's rule. It still
+covers the case the empty-state banner was for: a backup restored onto a phone
+that refuses notifications brings its reminders with it, so the banner is there.
+A reminder set through Quick Add or Task Details meets the permission gate first,
+so the user is asked before the banner can ever say they refused.
+
+**Why not ask at onboarding instead.** That would move the question away from
+the moment it can be answered in context, which is the reason the first reminder
+asks it. The banner was the part that was wrong, not the timing of the ask.
+
+**What would reverse this.** A user with reminders who never sees the banner
+while notifications are off, which would mean the reminder test is reading the
+wrong tasks. The condition then needs fixing, not removing.
 
 ---
 

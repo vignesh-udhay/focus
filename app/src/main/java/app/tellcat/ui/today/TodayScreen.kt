@@ -40,6 +40,7 @@ import app.tellcat.core.design.TellcatMotion
 import app.tellcat.core.design.TellcatSpacing
 import app.tellcat.core.design.tellcatContentGutter
 import app.tellcat.core.domain.ReminderHealthState
+import app.tellcat.core.domain.onToday
 import app.tellcat.core.domain.Task
 import app.tellcat.core.domain.TodayBand
 import app.tellcat.core.domain.TodaySection
@@ -101,6 +102,7 @@ fun TodayScreen(
 ) {
     val tasks by viewModel.todayTasks.collectAsStateWithLifecycle()
     val settling by viewModel.settling.collectAsStateWithLifecycle()
+    val allTasks by viewModel.allTasks.collectAsStateWithLifecycle()
     val today by viewModel.today.collectAsStateWithLifecycle()
     val pausedTask by viewModel.pausedFocusTask.collectAsStateWithLifecycle()
     val focusSession by viewModel.focusSession.collectAsStateWithLifecycle()
@@ -178,7 +180,7 @@ fun TodayScreen(
         snackbarHostState = snackbarHostState,
         bottomBar = bottomBar,
         overflow = overflow,
-        reminderHealth = reminderHealth,
+        reminderHealth = reminderHealth?.onToday(allTasks),
         onOpenReminderHealth = onOpenReminderHealth,
         onDismissReminderHealth = onDismissReminderHealth
     )
