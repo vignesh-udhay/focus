@@ -873,17 +873,17 @@ class TaskDetailsSemanticsTest {
         rule.waitUntilExactlyOneExists(hasText(CHECKLIST), TIMEOUT_MILLIS)
     }
 
-    /** Share is offered only when there is a list to send. */
+    /** D-096: every task can be sent, with or without a checklist. */
     @Test
-    fun shareAppearsOnlyWithAChecklist() {
+    fun shareIsOfferedForATaskWithoutItems() {
         setScreen()
-        rule.onNodeWithContentDescription(SHARE_LIST).assertDoesNotExist()
+        rule.onNodeWithContentDescription(SHARE_TASK).assertIsDisplayed()
     }
 
     @Test
     fun shareIsOfferedForATaskWithItems() {
         setScreen(dao = withTask(checklist = groceries))
-        rule.onNodeWithContentDescription(SHARE_LIST).assertIsDisplayed()
+        rule.onNodeWithContentDescription(SHARE_TASK).assertIsDisplayed()
     }
 
     /**
@@ -917,7 +917,7 @@ class TaskDetailsSemanticsTest {
         const val PLAN = "Plan"
         const val CHECKLIST = "Checklist"
         const val ADD_CHECKLIST_ITEM = "Add checklist item"
-        const val SHARE_LIST = "Share list"
+        const val SHARE_TASK = "Share task"
         const val MILK = "Milk"
         const val OAT_MILK = "Oat milk"
         const val EGGS = "Eggs"

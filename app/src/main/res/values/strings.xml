@@ -271,7 +271,7 @@
     <string name="task_checklist_item_removed">Item removed</string>
     <!-- Content description for the button that removes one checklist item. %1$s is the item. -->
     <string name="task_checklist_remove">Remove %1$s</string>
-    <string name="task_checklist_share">Share list</string>
+    <string name="task_share">Share task</string>
     <!-- Announced as one action, so a row reads as label, value and a control. -->
     <string name="task_plan_row_action">%1$s, %2$s</string>
     <string name="task_start_focus">Start focus</string>

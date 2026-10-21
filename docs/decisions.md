@@ -5963,8 +5963,8 @@ app does not make: Tellcat has no voice capture.
 ## D-093. Task Details keeps every action in its toolbar, and the title loses its checkbox
 
 **Decision.** The checkbox beside Task Details' title is removed. The floating
-toolbar holds every action: Delete, Share when the task has a checklist,
-Complete, and Focus. Complete is an `IconToggleButton` with the row checkbox's
+toolbar holds every action: Delete, Share when the task has a checklist (every
+task since D-096), Complete, and Focus. Complete is an `IconToggleButton` with the row checkbox's
 words and state, filled `secondaryContainer` when on. Focus is the toolbar's one
 filled icon button, drawn with `ic_focus` and named by a tooltip on long press,
 and it is absent on a completed task. A completed task's title is struck
@@ -6043,4 +6043,31 @@ a re-export of the mark should regenerate this one too.
 
 **What would reverse this.** Testers reading it as the app's icon rather than as
 Focus. The answer then is a word beside it, which D-093 already names.
+
+---
+
+## D-096. Any task can be shared, its notes travel with it, and the text reads the same everywhere
+
+**Decision.** Share is on every task, not only one with a checklist. The text is
+the title, the notes, a blank line, then the checklist; the title is also passed
+as the email subject. The done mark is ☑ with the text-style selector, U+FE0E.
+
+**What changed the answer.** The owner asked whether the shared text was right
+for every app, on 2026-10-22. Three gaps: Gmail opened with an empty subject; a
+task's notes never travelled, so "Policy number is on the fridge" stayed behind;
+and ☑ has a colour emoji form that ☐ lacks, so an app that swaps in emoji could
+draw a ticked item unlike an open one. The code had kept Share to tasks with
+items on the ground that a title alone was not worth a share sheet, and the
+owner wanted any task sendable.
+
+**What it is not.** A link, a sync or an import. The copy is text, and nothing
+keeps two phones in step, D-006. Receiving a shared task into Tellcat is a
+separate question, for after 1.1.
+
+**Phones held together.** Quick Share added a tap-to-share mode in Android 17,
+Pixel 6 and later first, and Quick Share now reaches iPhones over AirDrop on some
+Pixels. No app can start either itself, but what Tellcat puts in the share sheet
+travels by them, so on those phones the gesture already works. A Tellcat NFC
+exchange of our own was considered and declined: Android only, less reliable
+than the system's, and with no iPhone equivalent for D-089.
 

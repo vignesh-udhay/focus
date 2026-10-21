@@ -93,8 +93,8 @@ then a chip for each it has not, both in one order: Scheduled, Due date,
 Reminder, Duration, Repeat. A row shows its value and opens its sheet; a chip
 names its field and opens the same sheet. D-087.
 
-**Actions.** One floating toolbar, pinned bottom centre: Delete, Share when the
-task has a checklist, Complete, and Focus. D-093. Complete is a toggle carrying
+**Actions.** One floating toolbar, pinned bottom centre: Delete, Share,
+Complete, and Focus. D-093. Share sends any task as text, D-096. Complete is a toggle carrying
 the row checkbox's words. Focus is the one filled control, drawn with Tellcat's
 own focus symbol and named by a tooltip on a long press, and it leaves once the
 task is complete. It is one of two ways into Focus alongside the Focus now card;
@@ -324,6 +324,11 @@ A shopping list lives here as a task with items: "Groceries", with Milk and
 Eggs under it, and a reminder for Saturday morning. A copy can be sent through
 Android's share sheet; nothing keeps two phones in step (D-006).
 
+**What is sent.** The title, the notes, a blank line, then one line per item
+marked ☐ or ☑, done items included. The title is also the email subject. ☑
+carries the text-style selector, because it has a colour emoji form and ☐ does
+not. Every task can be sent, not only one with a checklist. D-096.
+
 **Empty, it is one line.** A task with no items shows only "+ Add checklist
 item". Most tasks never have a checklist, and a heading over nothing on every
 one of them is a section to read past. The "Checklist" label arrives with the
@@ -378,8 +383,8 @@ the field adds whatever is in it, as the title and notes commit on blur.
 `TaskDetailsSemanticsTest` checks the region at 100% and 200%: each item is
 a checkbox named by its text, with its state and a 48dp touch target;
 removal is a named action, and the X appears only while editing; an edit
-commits on blur; clearing a line removes it; Done adds; Share exists only with
-items.
+commits on blur; clearing a line removes it; Done adds; Share is offered on
+every task.
 
 The scroll area ends at the keyboard (`imePadding`). The app draws edge to edge,
 and without that the viewport ran on underneath the keyboard, where nothing

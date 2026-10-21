@@ -222,12 +222,7 @@ fun TaskDetailsScreen(
         onRemoveChecklistItem = { index, item ->
             viewModel.removeChecklistItem(current.id, index, item.text)
         },
-        // Only a task with items has a list to send. A title alone is not
-        // worth a share sheet, and offering one on every task would make this
-        // a general "share task" the product never asked for.
-        onShare = if (current.checklist.isEmpty()) null else {
-            { shareChecklist(context, current) }
-        },
+        onShare = { shareTask(context, current) },
         modifier = modifier
     )
 
@@ -430,7 +425,7 @@ private fun TaskDetailsContent(
     onSetChecklistItemDone: (Int, ChecklistItem, Boolean) -> Unit,
     onEditChecklistItem: (Int, ChecklistItem, String) -> Unit,
     onRemoveChecklistItem: (Int, ChecklistItem) -> Unit,
-    onShare: (() -> Unit)?,
+    onShare: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var openSheet by rememberSaveable { mutableStateOf<PlanSheet?>(null) }
@@ -878,7 +873,7 @@ private fun PlanSheetHost(
  *
  * Delete leads and Focus trails, D-037's order: in a horizontal group the thumb
  * lands nearest the reaching side, so the one-way action sits furthest from it.
- * Share comes only with a checklist. Complete is a toggle, and Focus leaves once
+ * Share sends the task as text, D-096. Complete is a toggle, and Focus leaves once
  * the task is done, since there is nothing left to work on.
  *
  * Focus is the one filled control, the screen's payoff, drawn with Tellcat's own
@@ -893,7 +888,7 @@ private fun TaskDetailsActions(
     onStartFocus: () -> Unit,
     resumesSession: Boolean,
     onDelete: () -> Unit,
-    onShare: (() -> Unit)?,
+    onShare: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val haptics = LocalHapticFeedback.current
@@ -911,13 +906,11 @@ private fun TaskDetailsActions(
             )
         }
 
-        onShare?.let { share ->
-            IconButton(onClick = share) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_share),
-                    contentDescription = stringResource(R.string.task_checklist_share)
-                )
-            }
+        IconButton(onClick = onShare) {
+            Icon(
+                painter = painterResource(R.drawable.ic_share),
+                contentDescription = stringResource(R.string.task_share)
+            )
         }
 
         // The row checkbox's words, because it is the same act on the same task.

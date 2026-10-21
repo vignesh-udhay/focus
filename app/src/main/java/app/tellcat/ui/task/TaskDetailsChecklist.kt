@@ -1,7 +1,5 @@
 package app.tellcat.ui.task
 
-import android.content.Context
-import android.content.Intent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -366,23 +364,4 @@ private fun AddChecklistItemRow(
             }
         )
     }
-}
-
-/**
- * Opens Android's share sheet with [task] as text: Quick Share to a phone
- * nearby, a chat app, email, whatever the user has.
- *
- * The share sheet rather than a picker of Tellcat's own, because Android
- * already knows every way this phone can send text, and Quick Share is the
- * phone-to-phone path people mean when they think of AirDrop.
- */
-internal fun shareChecklist(context: Context, task: Task) {
-    val send = Intent(Intent.ACTION_SEND)
-        .setType("text/plain")
-        // No EXTRA_TITLE: the share sheet draws it as a heading above the text,
-        // and the text already opens with the title, so the preview said it
-        // twice.
-        .putExtra(Intent.EXTRA_TEXT, checklistShareText(task))
-
-    context.startActivity(Intent.createChooser(send, null))
 }

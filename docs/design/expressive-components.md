@@ -860,7 +860,7 @@ identity, checklist, plan, action.
 | Section label | the shared `SectionLabel`, reading "Checklist" once there are items, and "Plan" |
 | Plan row | a set field only; 56dp, `surfaceContainerLow`, 16dp outer and 4dp inner, 2dp gap |
 | Plan chip | an unset field; Material `AssistChip`, `ic_add` leading, the field's name, in a `FlowRow` under the rows, `xs` apart |
-| Toolbar | Delete in `error`, Share when the task has items, Complete, then Focus; D-093 |
+| Toolbar | Delete in `error`, Share, Complete, then Focus; D-093, D-096 |
 | Complete | `IconToggleButton`, `ic_check`, filled `secondaryContainer` when on, the row checkbox's words for a screen reader |
 | Focus | the toolbar's one `FilledIconButton`, `ic_focus`, named by a tooltip on long press; absent once the task is complete |
 
