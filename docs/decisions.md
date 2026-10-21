@@ -4975,6 +4975,9 @@ its firing is measurable rather than a matter of opinion.
 
 ## D-072. A reminder arrives under the Tellcat mark, not a stock bell
 
+**Amended by D-095.** `ic_focus` was Material's `center_focus_weak`, not our own
+symbol as this entry says. It is ours now.
+
 **Decision.** The three reminder notifications take the Tellcat cat as their
 small icon, drawn as a 24dp monochrome silhouette in
 `ic_notification_cat.xml`. `ic_notifications`, Material's bell, stays where it
@@ -6014,4 +6017,30 @@ was a second, timed copy of a control already there.
 **What would reverse this.** A user completing on Task Details by mistake and
 not finding the way back, which would point at the toggle's checked state not
 reading as on.
+
+---
+
+## D-095. Focus has its own symbol: the cat, watching one thing
+
+**Decision.** `ic_focus` is redrawn as the Tellcat head in outline, at the 2dp
+weight of the icons beside it, with one dot where its attention is. It is
+generated from the launcher's head path, scaled to 19.5dp wide in the 24dp
+grid, so it is the mark rather than a drawing of it. It serves the Task Details
+Focus button and the Focus notification's small icon, where its strokes survive
+the alpha mask.
+
+**What changed the answer.** The owner, on 2026-10-22: "Focus icon is generic.
+Create a custom icon." It was Material's `center_focus_weak`, a camera's focus
+frame, which D-072 had described as our own. Three candidates were drawn and
+shown in the toolbar, large and in the status bar. A ring with cat ears read as
+an alarm clock at 24dp, which in a reminders app means something else. The head
+with its dash eyes read as sleep, close to Snooze. The head with one dot says
+attention on one thing, and the owner took the recommendation.
+
+**What it costs.** One more long vector path, which lint flags as it does the
+other two copies of the head. And the head now has a fourth use, in outline, so
+a re-export of the mark should regenerate this one too.
+
+**What would reverse this.** Testers reading it as the app's icon rather than as
+Focus. The answer then is a word beside it, which D-093 already names.
 

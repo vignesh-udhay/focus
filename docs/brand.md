@@ -82,6 +82,11 @@ colour all three follow the wallpaper together.
 `WelcomeMascotTest` and `NotificationIconTest` fail the build if one is redrawn
 without the others. A re-export of the mark updates all three.
 
+**Focus has the cat's own symbol.** `ic_focus` is the same head as a 2dp
+outline with one dot where its attention is, generated from the launcher's
+path. It is the Focus button on Task Details and the Focus notification's
+status-bar icon. D-095.
+
 **It is decoration to a screen reader.** The words beside it say what it shows.
 
 ---
@@ -135,7 +140,7 @@ the user's feelings alone.
 | --- | --- |
 | The name, the promise and the store copy | Components, navigation, gestures, back behaviour |
 | The cat: its poses, what each means, how it is drawn | How the cat's tones map onto the system's colour roles |
-| The icon artwork | Icon formats: adaptive and themed on Android, iOS's own sizes and dark and tinted variants |
+| The icon artwork, and the Focus symbol drawn from it | Icon formats: adaptive and themed on Android, iOS's own sizes and dark and tinted variants |
 | The brand colours, and the rule that they move together | Typeface and type scale: Material's on Android, the system font on iPhone |
 | The voice and the words | Motion physics and haptics |
 | Completion as the one lively moment, and nothing celebrating | Notifications: the cat silhouette on Android; iPhone shows the app icon itself |

@@ -1391,7 +1391,8 @@ are Material's rather than a `when` on the index. Do not hand-roll them back.
 [IMPL] Hand-written 24dp vector drawables, one per navigation destination.
 
 [CD] Material Symbols outline style, 24dp, tinted from the colour scheme and
-never given a hardcoded fill.
+never given a hardcoded fill. One exception is ours by design: Focus's symbol is
+the Tellcat head as an outline with one dot, at the same 2dp weight. D-095.
 
 [CD] A navigation icon is decorative when its label sits beside it: the label
 names the destination and a content description would only repeat it. An icon
