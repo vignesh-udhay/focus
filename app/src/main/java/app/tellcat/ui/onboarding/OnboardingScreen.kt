@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -58,8 +59,11 @@ fun OnboardingScreen(
         bottomBar = {
             Button(
                 onClick = onGetStarted,
+                // The bottom bar slot is not inset for us. Without this the
+                // button sits under three-button navigation.
                 modifier = Modifier
                     .fillMaxWidth()
+                    .navigationBarsPadding()
                     .padding(
                         start = horizontalPadding,
                         end = horizontalPadding,
