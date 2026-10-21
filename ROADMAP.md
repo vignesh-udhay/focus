@@ -3514,6 +3514,9 @@ In rough evidence order, and only once real users ask:
   D-003)
 - Tablet and foldable layouts
 - Wear OS tile
+- Receiving a share into Tellcat: "Tellcat" in other apps' share sheets, so a
+  task sent from another phone, or a message or a page, lands as a task with
+  its checklist. Capture, not sync; it needs its own decision first, D-096.
 
 Let the app's own reviews set this order rather than this document.
 
