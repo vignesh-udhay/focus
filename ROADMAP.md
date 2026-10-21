@@ -25,7 +25,10 @@ pushed and not merged. On it so far: checklists inside a task, shared as text
 (D-084, schema 12); completion made visible, with the ticked row holding its place and the
 strikethrough drawn (D-086); and Task Details showing only the fields a task has,
 the rest as chips (D-087); and Later today ordered by when each reminder will
-ring, not by creation (D-088). Before it merges: a full instrumented run, and
+ring, not by creation (D-088); and Today no longer opening a fresh install on a
+red "cannot show notifications" banner before the app has asked (D-090). That
+fix was made off `main` on `fix/first-launch-banner` and goes out with 1.1, not
+as a 1.0.1. Before it merges: a full instrumented run, and
 new store screenshots of Task Details, which changed. D-085 regenerated the
 palette and D-091 withdrew it, so the colours are still 1.0's.
 
