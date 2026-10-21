@@ -174,6 +174,16 @@ enum class CheckState {
     Blocked
 }
 
+/**
+ * What Today's banner may show, D-090: a refused permission is news only once a
+ * reminder is waiting on it. The app asks at the first reminder, so on a fresh
+ * install nothing has been refused yet.
+ */
+fun ReminderHealthState.onToday(tasks: List<Task>): ReminderHealthState? =
+    if (this is ReminderHealthState.ActionNeeded && tasks.none(Task::waitsOnAReminder)) null else this
+
+private fun Task.waitsOnAReminder(): Boolean = !isDeleted && !isCompleted && reminderAt != null
+
 /** What the health screen says, and which of its five frames it draws. */
 sealed interface ReminderHealthState {
 

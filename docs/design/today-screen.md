@@ -347,7 +347,7 @@ on, and tapping it opens Reminder health.
 
 **Two states draw it, three do not.**
 
-    ActionNeeded   a permission the app was refused        drawn
+    ActionNeeded   a permission the app was refused        drawn, once a reminder waits on it
     Missed         a reminder that actually went wrong     drawn
     WorthChecking  a restriction inferred from the vendor  not drawn
     Checking       nothing has been read yet               not drawn
@@ -359,6 +359,13 @@ banner on it would appear on every OnePlus, OPPO, Realme, Xiaomi, Redmi, POCO,
 Samsung, Huawei and Honor from first launch and stay there, on a phone where
 nothing may be wrong and where no action the user takes can clear it. That
 warning belongs on the health screen, which the user opened to ask.
+
+**`ActionNeeded` waits for a reminder.** D-090. The app asks for both
+permissions at the first reminder, so on a fresh install neither has been
+refused, only not yet asked. The banner draws `ActionNeeded` only while at least
+one outstanding task has a reminder; before that it would greet a new user with
+"cannot show notifications" straight after onboarding promised the opposite.
+Reminder health itself still says it, to anyone who opens it.
 
 **What it draws.** The state's label, one sentence naming the cause, and one
 trailing action. Both strings come from the health screen's own

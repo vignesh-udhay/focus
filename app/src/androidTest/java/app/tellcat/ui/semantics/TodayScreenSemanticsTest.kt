@@ -644,20 +644,49 @@ class TodayScreenSemanticsTest {
     /**
      * It survives the empty screen, which is the case D-040 says matters most.
      *
-     * The empty state replaces the collection rather than sitting inside it, so
-     * a banner written only into the list would be missing from the one screen
-     * a user with no tasks and no notification permission actually sees.
+     * The empty state replaces the collection rather than sitting inside it.
+     * Since D-090 the banner needs a reminder waiting somewhere, so this one is
+     * tomorrow's: an empty Today on a phone that refuses notifications, as after
+     * a backup is restored.
      */
     private fun assertTheBannerSurvivesTheEmptyScreen(fontScale: Float) {
         setToday(
             fontScale,
-            FakeTaskDao(),
+            withAReminderTomorrow(),
             ReminderHealthState.ActionNeeded(HealthCheck.Notifications)
         )
 
         rule.onNodeWithText(EMPTY_HEADLINE).assertIsDisplayed()
         rule.onNodeWithText(BANNER_NO_NOTIFICATIONS).assertIsDisplayed()
     }
+
+    /**
+     * D-090: a fresh install has been asked nothing, so nothing was refused.
+     * The permission is asked at the first reminder, and until one exists
+     * Today does not open on "cannot show notifications".
+     */
+    @Test
+    fun reminderBanner_waitsForAReminder() {
+        setToday(
+            FontScale100,
+            FakeTaskDao(),
+            ReminderHealthState.ActionNeeded(HealthCheck.Notifications)
+        )
+
+        rule.onNodeWithText(EMPTY_HEADLINE).assertIsDisplayed()
+        rule.onNodeWithText(BANNER_NO_NOTIFICATIONS).assertDoesNotExist()
+    }
+
+    private fun withAReminderTomorrow() = FakeTaskDao(
+        listOf(
+            testTask(
+                id = "1",
+                title = TITLE,
+                scheduledDate = TestToday.plusDays(1),
+                reminderAt = TestToday.plusDays(1).atTime(9, 0)
+            )
+        )
+    )
 
     @Test
     fun reminderBanner_survivesTheEmptyScreen_at100() =

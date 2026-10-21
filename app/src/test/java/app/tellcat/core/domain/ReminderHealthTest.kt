@@ -497,4 +497,47 @@ class ReminderHealthTest {
     fun `no concern is carried when nothing is concerning`() {
         assertNull(health(deliveries = listOf(delivery())).latestConcern)
     }
+
+    // D-090: Today does not report a refusal before anything was asked
+
+    private val refused = ReminderHealthState.ActionNeeded(HealthCheck.Notifications)
+
+    private fun reminderTask(id: String, completed: Boolean = false) = Task(
+        id = id,
+        title = "Task $id",
+        createdAt = Instant.EPOCH,
+        reminderAt = java.time.LocalDateTime.of(2026, 10, 21, 18, 0),
+        completedAt = if (completed) Instant.EPOCH else null
+    )
+
+    @Test
+    fun `a refused permission is not shown on Today before any reminder exists`() {
+        assertEquals(null, refused.onToday(emptyList()))
+        assertEquals(null, refused.onToday(listOf(Task(id = "a", title = "No reminder", createdAt = Instant.EPOCH))))
+    }
+
+    @Test
+    fun `a refused permission is shown once a reminder is waiting on it`() {
+        assertEquals(refused, refused.onToday(listOf(reminderTask("a"))))
+    }
+
+    @Test
+    fun `a completed task's reminder is not waiting on anything`() {
+        assertEquals(null, refused.onToday(listOf(reminderTask("a", completed = true))))
+    }
+
+    @Test
+    fun `exact alarms follow the same rule`() {
+        val exact = ReminderHealthState.ActionNeeded(HealthCheck.ExactAlarms)
+
+        assertEquals(null, exact.onToday(emptyList()))
+        assertEquals(exact, exact.onToday(listOf(reminderTask("a"))))
+    }
+
+    @Test
+    fun `a missed reminder is shown whatever the tasks`() {
+        val missed = ReminderHealthState.Missed(delivery(lateBy = Duration.ofMinutes(20)))
+
+        assertEquals(missed, missed.onToday(emptyList()))
+    }
 }
