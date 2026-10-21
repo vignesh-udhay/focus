@@ -240,6 +240,15 @@ render on a device rather than an argument.
 invite the planning mindset the app is built to avoid, and the widget is called
 Today.
 
+# The picker preview
+
+`tellcat_widget_preview.png` is what the launcher's widget picker shows before
+the widget exists, in `drawable-nodpi` for light and `drawable-night-nodpi` for
+dark. It is a capture of the real widget at its default 4x3, with one task in
+each band, not a drawing. Retake it whenever a band label, the row anatomy or
+the palette changes: until 1.1 it still said "No time set", a band renamed
+long before.
+
 ---
 
 # The content column
