@@ -20,6 +20,16 @@ registered at Cloudflare, auto-renewing. A WIPO brand search found no
 from 2026-10-10 restored into Tellcat on the emulator: 5 tasks, every field
 equal, snoozes carried. Export now suggests `Tellcat-backup-<date>.json`.
 
+**1.1 is being built on `feature/checklist` while the closed test runs**, not
+pushed and not merged. On it so far: checklists inside a task, shared as text
+(D-084, schema 12); the palette regenerated in HCT so the indigo seed survives
+(D-085); completion made visible, with the ticked row holding its place and the
+strikethrough drawn (D-086); and Task Details showing only the fields a task has,
+the rest as chips (D-087). Before it merges: a full instrumented run, and new
+store screenshots, since the palette and Task Details both changed. Open and
+undecided: "Later today" orders by creation rather than reminder time, so 6:00
+PM can sit above 4:00 PM.
+
 **A reminder set for the current minute rang a day late, and no longer does.**
 On the owner's phone, a 2:38 reminder set during 2:38 rang at 2:38 the next
 day. `nextReminderOccurrence` compared the chosen minute against now to the
