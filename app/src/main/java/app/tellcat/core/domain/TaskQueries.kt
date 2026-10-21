@@ -24,15 +24,26 @@ import java.time.LocalDate
  * timed work, then what is already done. That is a timeline, read the way a
  * timeline reads. Within each group the caller's order is preserved, because
  * nothing here knows better than the order it was given.
+ *
+ * **[settling] holds tasks just completed, which keep their place for a
+ * moment.** `docs/decisions.md` D-086. A completed task in it is grouped as if it
+ * were still outstanding, so the row stays where the user ticked it long enough
+ * for the tick to be seen, and only then moves to Completed. It is still a
+ * completed task, and draws as one. Every list query takes the same set, so a
+ * task settles the same way wherever it was completed.
  */
-fun todayTasks(tasks: List<Task>, today: LocalDate): List<Task> =
+fun todayTasks(
+    tasks: List<Task>,
+    today: LocalDate,
+    settling: Set<String> = emptySet()
+): List<Task> =
     tasks
         .filter { task ->
             val scheduled = task.scheduledDate
             !task.isDeleted && scheduled != null && !scheduled.isAfter(today)
         }
         // sortedBy is stable, which is what preserves input order within a group.
-        .sortedBy { task -> todayGroup(task, today) }
+        .sortedBy { task -> todayGroup(task, today, settling) }
 
 /** Scheduled before today, still outstanding, and needing a decision. */
 private const val OVERDUE = 0
@@ -72,8 +83,8 @@ private const val COMPLETED = 3
  * Completion is checked first, so a completed task sinks to the bottom whether
  * it was scheduled for today or is overdue.
  */
-private fun todayGroup(task: Task, today: LocalDate): Int = when {
-    task.isCompleted -> COMPLETED
+private fun todayGroup(task: Task, today: LocalDate, settling: Set<String>): Int = when {
+    task.isCompleted && task.id !in settling -> COMPLETED
     task.scheduledDate != today -> OVERDUE
     task.reminderAt == null -> NO_REMINDER
     else -> LATER_TODAY
@@ -130,11 +141,12 @@ data class TodaySection(val band: TodayBand, val tasks: List<Task>)
  */
 fun todaySections(
     tasks: List<Task>,
-    today: LocalDate
+    today: LocalDate,
+    settling: Set<String> = emptySet()
 ): List<TodaySection> =
-    todayTasks(tasks, today)
+    todayTasks(tasks, today, settling)
         .fold(mutableListOf<Pair<TodayBand, MutableList<Task>>>()) { sections, task ->
-            val band = todayBandOf(task, today)
+            val band = todayBandOf(task, today, settling)
             val current = sections.lastOrNull()
 
             if (current != null && current.first == band) {
@@ -148,7 +160,11 @@ fun todaySections(
         .map { (band, tasks) -> TodaySection(band, tasks) }
 
 /** Which band [task] falls into, by the same rule [todayTasks] sorts on. */
-fun todayBandOf(task: Task, today: LocalDate): TodayBand = when (todayGroup(task, today)) {
+fun todayBandOf(
+    task: Task,
+    today: LocalDate,
+    settling: Set<String> = emptySet()
+): TodayBand = when (todayGroup(task, today, settling)) {
     OVERDUE -> TodayBand.OVERDUE
     NO_REMINDER -> TodayBand.NO_REMINDER
     LATER_TODAY -> TodayBand.LATER_TODAY
@@ -164,11 +180,18 @@ fun todayBandOf(task: Task, today: LocalDate): TodayBand = when (todayGroup(task
  * Ordered nearest first, because the only question this view answers is what is
  * coming next. Tasks sharing a date keep the order they were given.
  */
-fun upcomingTasks(tasks: List<Task>, today: LocalDate): List<Task> =
+fun upcomingTasks(
+    tasks: List<Task>,
+    today: LocalDate,
+    settling: Set<String> = emptySet()
+): List<Task> =
     tasks
         .filter { task ->
             val scheduled = task.scheduledDate
-            !task.isDeleted && !task.isCompleted && scheduled != null && scheduled.isAfter(today)
+            !task.isDeleted &&
+                (!task.isCompleted || task.id in settling) &&
+                scheduled != null &&
+                scheduled.isAfter(today)
         }
         // Every task here has a scheduled date; the filter saw to that.
         .sortedBy { task -> task.scheduledDate }
@@ -186,8 +209,12 @@ data class UpcomingSection(val date: LocalDate, val tasks: List<Task>)
  * The same shape as [todaySections], and for the same reason: the ordering is
  * owned here, and a screen that re-derived it would be free to disagree.
  */
-fun upcomingSections(tasks: List<Task>, today: LocalDate): List<UpcomingSection> =
-    upcomingTasks(tasks, today)
+fun upcomingSections(
+    tasks: List<Task>,
+    today: LocalDate,
+    settling: Set<String> = emptySet()
+): List<UpcomingSection> =
+    upcomingTasks(tasks, today, settling)
         .fold(mutableListOf<Pair<LocalDate, MutableList<Task>>>()) { sections, task ->
             // Every task here has a scheduled date; upcomingTasks saw to that.
             val date = task.scheduledDate!!
@@ -215,11 +242,11 @@ fun upcomingSections(tasks: List<Task>, today: LocalDate): List<UpcomingSection>
  * Newest first, because capture comes in bursts and what was just written down
  * is what the user is still thinking about.
  */
-fun inboxTasks(tasks: List<Task>): List<Task> =
+fun inboxTasks(tasks: List<Task>, settling: Set<String> = emptySet()): List<Task> =
     tasks
         .filter { task ->
             !task.isDeleted &&
-                !task.isCompleted &&
+                (!task.isCompleted || task.id in settling) &&
                 task.scheduledDate == null
         }
         .sortedByDescending { task -> task.createdAt }

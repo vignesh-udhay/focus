@@ -68,6 +68,7 @@ fun UpcomingScreen(
     overflow: @Composable RowScope.() -> Unit = {}
 ) {
     val tasks by viewModel.upcomingTasks.collectAsStateWithLifecycle()
+    val settling by viewModel.settling.collectAsStateWithLifecycle()
     val today by viewModel.today.collectAsStateWithLifecycle()
     val readFailed by viewModel.readFailed.collectAsStateWithLifecycle()
     val tasksLoaded by viewModel.tasksLoaded.collectAsStateWithLifecycle()
@@ -77,6 +78,7 @@ fun UpcomingScreen(
     UndoSnackbarEffect(viewModel = viewModel, snackbarHostState = snackbarHostState)
 
     UpcomingContent(
+        settling = settling,
         tasks = tasks,
         today = today,
         readFailed = readFailed,
@@ -105,6 +107,7 @@ fun UpcomingScreen(
 private fun UpcomingContent(
     tasks: List<Task>,
     today: LocalDate,
+    settling: Set<String> = emptySet(),
     onToggleComplete: (String) -> Unit,
     onOpenTask: (String) -> Unit,
     readFailed: Boolean = false,
@@ -126,7 +129,8 @@ private fun UpcomingContent(
 
     // The days upcomingTasks already ordered the list into. Read here rather
     // than re-derived, so the ordering stays owned by TaskQueries.
-    val sections = upcomingSections(tasks, today)
+    // A ticked row keeps its day for a moment, D-086.
+    val sections = upcomingSections(tasks, today, settling)
 
     val gutter = tellcatContentGutter()
 

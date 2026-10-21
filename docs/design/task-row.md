@@ -338,11 +338,12 @@ could carry the actions instead.
 
 When a task is completed:
 
-1. The completion control changes state.
-2. The title transitions to the completed visual state.
-3. The row may animate toward its final position/state.
-4. The task should eventually leave the active task list according to the
-   current screen's behavior.
+1. The completion control changes state, with the completion spring.
+2. The strikethrough draws across the title, and the title dims.
+3. The row holds its place while the user is still ticking, D-086, then
+   travels to its final position.
+4. The task leaves the active list according to the screen: on Today into the
+   Completed section, on Inbox and Upcoming off the list.
 
 The transition should feel satisfying but restrained.
 

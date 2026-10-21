@@ -13,6 +13,8 @@ import app.tellcat.core.domain.Recurrence
 import app.tellcat.core.domain.RecurrenceUnit
 import app.tellcat.data.local.toDomain
 import app.tellcat.core.domain.Task
+import app.tellcat.core.domain.todaySections
+import app.tellcat.core.domain.TodayBand
 import app.tellcat.core.domain.upcomingTasks
 import app.tellcat.core.time.CurrentDay
 import app.tellcat.data.local.TaskDao
@@ -309,6 +311,63 @@ class TaskListViewModelTest {
     /** The state starts empty, so wait for the derived emission. */
     private fun visible(model: TaskListViewModel, size: Int): List<Task> = runBlocking {
         model.todayTasks.first { it.size == size }
+    }
+
+    // D-086: a ticked row keeps its place until the ticking stops
+
+    /** Polls [condition] for up to two seconds. */
+    private fun eventually(what: String, condition: () -> Boolean) {
+        repeat(200) {
+            if (condition()) return
+            Thread.sleep(10)
+        }
+        throw AssertionError(what)
+    }
+
+    private fun bandOf(model: TaskListViewModel, id: String): TodayBand? =
+        todaySections(model.todayTasks.value, today, model.settling.value)
+            .firstOrNull { section -> section.tasks.any { it.id == id } }?.band
+
+    @Test
+    fun aCompletedTaskKeepsItsBandWhileItSettles() {
+        store(task(id = "a", scheduledDate = today), task(id = "b", scheduledDate = today))
+        val model = viewModel()
+        visible(model, 2)
+
+        model.toggleComplete("a")
+        awaitUpdate()
+        eventually("the completion never reached the list") {
+            model.todayTasks.value.any { it.id == "a" && it.isCompleted }
+        }
+
+        assertEquals(setOf("a"), model.settling.value)
+        assertEquals(TodayBand.NO_REMINDER, bandOf(model, "a"))
+    }
+
+    @Test
+    fun aSettledTaskMovesToCompletedAfterThePause() {
+        store(task(id = "a", scheduledDate = today))
+        val model = viewModel()
+        visible(model, 1)
+
+        model.toggleComplete("a")
+
+        eventually("the task never settled into Completed") {
+            model.settling.value.isEmpty() && bandOf(model, "a") == TodayBand.COMPLETED
+        }
+    }
+
+    @Test
+    fun reopeningASettlingTaskReleasesIt() {
+        store(task(id = "a", scheduledDate = today))
+        val model = viewModel()
+        visible(model, 1)
+
+        model.toggleComplete("a")
+        eventually("never completed") { model.todayTasks.value.single().isCompleted }
+        model.toggleComplete("a")
+
+        eventually("reopening left it settling") { model.settling.value.isEmpty() }
     }
 
     /** Waits for the toggle coroutine to reach the DAO. */

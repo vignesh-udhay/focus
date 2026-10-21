@@ -21,6 +21,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import kotlinx.coroutines.launch
+import androidx.compose.ui.text.style.ResolvedTextDirection
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalHapticFeedback
 import app.tellcat.core.design.TellcatHaptics
@@ -33,7 +39,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.PreviewLightDark
@@ -103,6 +108,7 @@ fun TaskRow(
     trailingContent: (@Composable () -> Unit)? = null,
     isOverdue: Boolean = false
 ) {
+    val titleTextSize = MaterialTheme.typography.bodyLarge.fontSize
     val titleColor by animateColorAsState(
         targetValue = if (isCompleted) {
             MaterialTheme.colorScheme.onSurfaceVariant
@@ -117,23 +123,39 @@ fun TaskRow(
     )
 
     // The one expressive moment in the app. Completing a task presses the
-    // control in and lets it spring back; the fast spatial spec overshoots,
-    // and that overshoot is the whole gesture. Nothing else here moves.
+    // control in and lets it spring back, and the strikethrough draws across the
+    // title as it does. D-086. Nothing else here moves.
+    //
+    // The two start together and run on different specs. The checkbox takes
+    // `completion`, whose overshoot is the feel. The line takes `reveal`: on
+    // the fast spring it crossed the title inside one frame and read as simply
+    // appearing, measured on the emulator, and a line has to be seen travelling
+    // to be a line being drawn.
     val haptics = LocalHapticFeedback.current
     val completionScale = remember { Animatable(1f) }
+    // How much of the title the strikethrough has crossed, 0 to 1. Drawn rather
+    // than set as a text decoration, so it can travel.
+    val strike = remember { Animatable(if (isCompleted) 1f else 0f) }
     val completionSpec = TellcatMotion.completion<Float>()
+    val strikeSpec = TellcatMotion.reveal<Float>()
     var isFirstComposition by remember { mutableStateOf(true) }
+    var titleLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
 
     LaunchedEffect(isCompleted) {
         if (isFirstComposition) {
             // A row scrolling into view, or a task that was already done, has
-            // nothing to celebrate.
+            // nothing to celebrate: its line is simply there.
             isFirstComposition = false
             return@LaunchedEffect
         }
         if (isCompleted) {
             completionScale.snapTo(CompletionPressScale)
-            completionScale.animateTo(1f, completionSpec)
+            launch { completionScale.animateTo(1f, completionSpec) }
+            strike.snapTo(0f)
+            strike.animateTo(1f, strikeSpec)
+        } else {
+            // Reopening is a reversal, not a moment.
+            strike.snapTo(0f)
         }
     }
 
@@ -231,16 +253,29 @@ fun TaskRow(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
                 color = titleColor,
-                // Strikethrough as well as colour, so completion survives a
-                // greyscale screen and colour blindness alike.
-                textDecoration = if (isCompleted) TextDecoration.LineThrough else null,
                 // Two lines, then stop. A long title must not be able to push
                 // the rest of the list around.
                 maxLines = TitleMaxLines,
                 overflow = TextOverflow.Ellipsis,
+                onTextLayout = { layout -> titleLayout = layout },
                 modifier = Modifier
                     .weight(1f)
                     .alignByBaseline()
+                    // Strikethrough as well as colour, so completion survives a
+                    // greyscale screen and colour blindness alike. Drawn over
+                    // the text in the title's own colour, crossing it from where
+                    // the line starts reading.
+                    .drawWithContent {
+                        drawContent()
+                        titleLayout?.let { layout ->
+                            drawStrikethrough(
+                                layout = layout,
+                                progress = strike.value.coerceIn(0f, 1f),
+                                color = titleColor,
+                                textSize = titleTextSize.toPx()
+                            )
+                        }
+                    }
             )
 
             trailingContent?.let { trailing ->
@@ -344,3 +379,46 @@ private fun TaskRowPreview(
         }
     }
 }
+
+/**
+ * A strikethrough across [layout], the first [progress] of its length, line by
+ * line from where each line starts reading.
+ *
+ * Placed and weighted as Skia places a strikethrough for a font that specifies
+ * none, which is what `TextDecoration.LineThrough` drew here before: its centre
+ * [StrikeOffset] of the text size above the baseline, its thickness
+ * [StrikeThickness] of it. A drawn line that looked different from the decoration
+ * it replaces would be a second style of completed task.
+ */
+private fun DrawScope.drawStrikethrough(
+    layout: TextLayoutResult,
+    progress: Float,
+    color: Color,
+    textSize: Float
+) {
+    if (progress <= 0f) return
+    val lines = 0 until layout.lineCount
+    var remaining = lines.sumOf { line ->
+        (layout.getLineRight(line) - layout.getLineLeft(line)).toDouble()
+    }.toFloat() * progress
+
+    for (line in lines) {
+        if (remaining <= 0f) return
+        val left = layout.getLineLeft(line)
+        val right = layout.getLineRight(line)
+        val length = minOf(remaining, right - left)
+        val y = layout.getLineBaseline(line) - textSize * StrikeOffset
+        val rightToLeft =
+            layout.getParagraphDirection(layout.getLineStart(line)) == ResolvedTextDirection.Rtl
+        val start = if (rightToLeft) right else left
+        val end = if (rightToLeft) right - length else left + length
+        drawLine(color, Offset(start, y), Offset(end, y), strokeWidth = textSize * StrikeThickness)
+        remaining -= length
+    }
+}
+
+/** Skia's default strikethrough position, as a fraction of the text size above the baseline. */
+private const val StrikeOffset = 6f / 21f
+
+/** Skia's default strikethrough thickness, as a fraction of the text size. */
+private const val StrikeThickness = 1f / 18f

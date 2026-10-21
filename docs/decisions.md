@@ -5664,3 +5664,53 @@ make that screen memorable; it fixes which colour is Tellcat's.
 either theme, which the answer to is lowering the light primary's chroma toward
 60, not returning to 48 or to CIELAB.
 
+---
+
+## D-086. A completed row holds its place for a moment, and its line is drawn
+
+**Decision.** Completing a task from a list writes at once, as it always has,
+but the row keeps its place until 800ms after the write and only then moves:
+on Today to the Completed section, on Inbox and Upcoming off the list. Every
+completion restarts the countdown, and all the rows waiting leave together. The
+strikethrough is drawn across the title as the checkbox springs, rather than
+switched on.
+
+**What changed the answer.** `expressive-design-system.md` makes completion "the
+single strongest expressive interaction", and recorded on the emulator it was not
+visible at all on Today. Ticking a task moved it into the collapsed Completed
+section the moment the write landed; the row faded out within about 250ms, and in
+every frame of the recording its checkbox was still drawn empty. The spring the
+design system describes was playing on a row already leaving the screen. Inbox
+and Upcoming drop a completed task the same way.
+
+**Why the write is not the thing that waits.** Delaying the write until an
+animation finished would put a completion on screen that storage did not yet
+hold, and a process death in that window would lose it. In a product whose worst
+failure is a reminder that does not fire, a recurring task whose next occurrence
+was never created is not a trade worth an animation. The data is written first;
+only the row's position waits.
+
+**Why the countdown starts at the write, not the tap.** Measured, not assumed:
+on the emulator under a screen recorder, the write sometimes took most of the
+hold, so a countdown from the tap released the row before it had once been drawn
+ticked. From the write, the ticked row is on screen for the whole hold however
+slow the storage is.
+
+**Why one shared countdown.** A row leaving while the user reaches for the next
+one slides that one under their thumb. Restarting the countdown on every tick
+means a list ticked down quickly stays still until the ticking stops.
+
+**Why the line is drawn on `reveal`.** On the completion spring it crossed the
+title within one frame and read as appearing. A line has to be seen moving to be
+drawn. It starts with the checkbox, so the two are one gesture.
+
+**Where it lives.** The settling set is presentation state in
+`TaskListViewModel`; the list queries take it as a parameter, so which band a
+task sits in is still decided in `TaskQueries.kt` and tested there. The widget
+and every other caller pass nothing and are unchanged. Completing from a
+notification or the widget does not settle: nothing in the app is on screen.
+
+**What would reverse this.** Users reading the held row as the tick not having
+worked, which would show as double taps reopening tasks. The answer then is a
+shorter hold, not none.
+

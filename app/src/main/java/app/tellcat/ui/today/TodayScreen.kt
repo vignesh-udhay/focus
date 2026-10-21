@@ -100,6 +100,7 @@ fun TodayScreen(
     onOpenList: (PrimaryList) -> Unit = {}
 ) {
     val tasks by viewModel.todayTasks.collectAsStateWithLifecycle()
+    val settling by viewModel.settling.collectAsStateWithLifecycle()
     val today by viewModel.today.collectAsStateWithLifecycle()
     val pausedTask by viewModel.pausedFocusTask.collectAsStateWithLifecycle()
     val focusSession by viewModel.focusSession.collectAsStateWithLifecycle()
@@ -133,6 +134,7 @@ fun TodayScreen(
     )
 
     TodayContent(
+        settling = settling,
         tasks = tasks,
         today = today,
         pausedTask = pausedTask,
@@ -225,6 +227,7 @@ fun TodayScreen(
 private fun TodayContent(
     tasks: List<Task>,
     today: LocalDate,
+    settling: Set<String> = emptySet(),
     pausedTask: Task?,
     pausedRemainingMinutes: Long? = null,
     onToggleComplete: (String) -> Unit,
@@ -258,7 +261,9 @@ private fun TodayContent(
     //
     // Nothing is held back. D-048 leaves the paused session's task in its band,
     // so every task Today shows is in exactly one of them.
-    val sections = todaySections(tasks, today)
+    // Settling tasks keep their band for a moment after they are ticked, D-086,
+    // so the tick is seen before the row moves to Completed.
+    val sections = todaySections(tasks, today, settling)
 
     // Collapsed by default, per D-012, and screen state rather than app state:
     // whether the user opened Completed on Today says nothing about anything

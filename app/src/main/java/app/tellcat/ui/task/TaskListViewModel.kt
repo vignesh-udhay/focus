@@ -31,7 +31,10 @@ import app.tellcat.core.domain.todayTasks as queryTodayTasks
 import app.tellcat.core.domain.upcomingTasks as queryUpcomingTasks
 import app.tellcat.data.repository.TaskRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -350,9 +353,47 @@ class TaskListViewModel(
         readAttempt.value += 1
     }
 
+    /**
+     * Tasks just completed from a list, which keep their place until the user
+     * pauses. `docs/decisions.md` D-086.
+     *
+     * Completing a task used to move its row the instant the write landed, and
+     * on Today that is into a collapsed section, so the row faded before its
+     * checkbox was seen to tick. The write still happens at once; only the row's
+     * departure waits. Every completion restarts one shared release, so ticking
+     * down a list never slides the next row under the user's thumb mid-reach:
+     * the finished rows leave together once the ticking stops.
+     *
+     * **The release is timed from the write, not from the tap.** The row can
+     * only draw as ticked once the write has landed, and on a slow emulator under
+     * a screen recorder that took most of the hold, so the row sometimes left
+     * without ever being seen ticked. Timed from the write, the ticked row is on
+     * screen for the whole hold however slow storage is. A write that fails
+     * leaves its id here harmlessly: the set only changes how a *completed* task
+     * is placed, and the next release clears it.
+     */
+    private val _settling = MutableStateFlow<Set<String>>(emptySet())
+    val settling: StateFlow<Set<String>> = _settling.asStateFlow()
+    private var settleRelease: Job? = null
+
+    /** Holds [id] in place, and holds back any release already counting down. */
+    private fun settle(id: String) {
+        _settling.update { ids -> ids + id }
+        settleRelease?.cancel()
+    }
+
+    /** Lets every settling row go once [COMPLETION_SETTLE_MILLIS] pass with no new tick. */
+    private fun releaseSettlingLater() {
+        settleRelease?.cancel()
+        settleRelease = viewModelScope.launch {
+            delay(COMPLETION_SETTLE_MILLIS)
+            _settling.value = emptySet()
+        }
+    }
+
     val todayTasks: StateFlow<List<Task>> =
-        combine(storedTasks, currentDay.today) { read, day ->
-            queryTodayTasks(read.tasks, day)
+        combine(storedTasks, currentDay.today, _settling) { read, day, settling ->
+            queryTodayTasks(read.tasks, day, settling)
         }
             .stateIn(
                 scope = viewModelScope,
@@ -388,8 +429,8 @@ class TaskListViewModel(
      * either, and a task that stops being upcoming simply stops being emitted.
      */
     val upcomingTasks: StateFlow<List<Task>> =
-        combine(storedTasks, currentDay.today) { read, day ->
-            queryUpcomingTasks(read.tasks, day)
+        combine(storedTasks, currentDay.today, _settling) { read, day, settling ->
+            queryUpcomingTasks(read.tasks, day, settling)
         }
             .stateIn(
                 scope = viewModelScope,
@@ -402,8 +443,7 @@ class TaskListViewModel(
      * stored stream. The query owns the filtering and the ordering.
      */
     val inboxTasks: StateFlow<List<Task>> =
-        storedTasks
-            .map { read -> queryInboxTasks(read.tasks) }
+        combine(storedTasks, _settling) { read, settling -> queryInboxTasks(read.tasks, settling) }
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
@@ -1077,6 +1117,15 @@ class TaskListViewModel(
      * describes the task's state.
      */
     fun toggleComplete(id: String) {
+        // Before the write, so the row never leaves and comes back: the list
+        // holds it the moment the user ticks, and the write lands underneath.
+        val shown = storedTasks.value.tasks.firstOrNull { task -> task.id == id }
+        if (shown != null && !shown.isCompleted) {
+            settle(id)
+        } else {
+            _settling.update { ids -> ids - id }
+        }
+
         write {
             val task = repository.findTask(id) ?: return@write
 
@@ -1095,6 +1144,7 @@ class TaskListViewModel(
 
             _pendingUndo.value =
                 PendingUndo.Completion(task.id, spawnedTaskId = completion.complete(id))
+            releaseSettlingLater()
         }
     }
 
@@ -1438,5 +1488,16 @@ class TaskListViewModel(
         const val FocusSessionPausedAtKey = "focus.session.pausedAt"
         const val FocusSessionExtraKey = "focus.session.extraMinutes"
         const val STOP_TIMEOUT_MILLIS = 5_000L
+
+        /**
+         * How long a just-completed row keeps its place after the last tick.
+         *
+         * Long enough for the checkbox's spring and the strikethrough drawing
+         * across the title to finish and be read, which together take about
+         * half of it, and short enough that the list has tidied itself before
+         * the user looks for the next thing. Not a wait: nothing is blocked
+         * while it runs, and the completion was written at the start of it.
+         */
+        const val COMPLETION_SETTLE_MILLIS = 800L
     }
 }

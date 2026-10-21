@@ -87,6 +87,12 @@ collect the flow they need.
 When adding a view: add a pure function to `TaskQueries.kt` and a `StateFlow`
 that calls it. Do not add a DAO query. Do not filter in a composable.
 
+Presentation state that changes where a task appears goes in as a parameter,
+never as a filter in a screen. The one case so far is the settling set, D-086:
+tasks just completed that keep their place for a moment. The view model owns it,
+the queries take it, and the band a task sits in is still decided and tested in
+`TaskQueries.kt`.
+
 ## Seams: how Android is kept out of testable code
 
 Three interfaces exist purely so that decisions stay testable without a device:

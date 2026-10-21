@@ -733,4 +733,43 @@ class TaskQueriesTest {
         }
     }
 
+
+    // D-086: a task just completed keeps its place while it settles
+
+    @Test
+    fun `a settling completed task keeps its band on Today`() {
+        val done = task("a", scheduledDate = today, reminderAt = todayAt(18, 0), completedAt = timestamp)
+
+        assertEquals(TodayBand.COMPLETED, todayBandOf(done, today))
+        assertEquals(TodayBand.LATER_TODAY, todayBandOf(done, today, settling = setOf("a")))
+    }
+
+    @Test
+    fun `a settling completed task stays in its place in the sections`() {
+        val first = task("a", scheduledDate = today, completedAt = timestamp)
+        val second = task("b", scheduledDate = today)
+
+        val sections = todaySections(listOf(first, second), today, settling = setOf("a"))
+
+        assertEquals(listOf(TodayBand.NO_REMINDER), sections.map { it.band })
+        assertEquals(listOf("a", "b"), ids(sections.single().tasks))
+    }
+
+    @Test
+    fun `a settling completed task stays in Inbox and Upcoming until it settles`() {
+        val inbox = task("a", completedAt = timestamp)
+        val upcoming = task("b", scheduledDate = tomorrow, completedAt = timestamp)
+
+        assertEquals(emptyList<String>(), ids(inboxTasks(listOf(inbox))))
+        assertEquals(listOf("a"), ids(inboxTasks(listOf(inbox), settling = setOf("a"))))
+        assertEquals(emptyList<String>(), ids(upcomingTasks(listOf(upcoming), today)))
+        assertEquals(listOf("b"), ids(upcomingTasks(listOf(upcoming), today, settling = setOf("b"))))
+    }
+
+    @Test
+    fun `an outstanding task is unaffected by the settling set`() {
+        val open = task("a", scheduledDate = today)
+
+        assertEquals(todayBandOf(open, today), todayBandOf(open, today, settling = setOf("a")))
+    }
 }

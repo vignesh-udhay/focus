@@ -222,8 +222,11 @@ is noise, not delight.
 
 ## Motion
 
-[CD] Title colour and strikethrough use `stateColor`. The checkbox uses
-`completion`. Rows entering, leaving and moving use `listChange`. No other
+[CD] Title colour uses `stateColor`. The checkbox uses `completion`, and the
+strikethrough draws across the title on `reveal` as it does, D-086. The
+strikethrough is drawn rather than set as a text decoration so that it can
+travel; it sits where Skia puts a default strikethrough, at the same weight, so a
+completed row looks as it always did once the line has arrived. Rows entering, leaving and moving use `listChange`. No other
 animation.
 
 ## Accessibility
