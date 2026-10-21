@@ -344,6 +344,18 @@ Avoid:
 - unexplained magic numbers
 - dead code
 
+## Comments
+
+A comment says why, in a sentence or two, and points at the decision when there
+is one: "Ordered by ring time, D-088." The argument, the history and the
+alternatives that were tried belong in `docs/decisions.md` or the design docs,
+where they are written once. A long comment repeats the decision log and then
+drifts from it.
+
+Many existing comments run much longer. Leave them alone unless the file is
+already open for other work; then shorten the ones you touch. Do not open a file
+only to cut its comments.
+
 ---
 
 # Testing

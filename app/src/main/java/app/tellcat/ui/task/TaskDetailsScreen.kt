@@ -715,18 +715,8 @@ internal fun borderlessFieldColors() = TextFieldDefaults.colors(
 )
 
 /**
- * What the task has planned, and what it could.
- *
- * **Only the fields that are set are rows.** `docs/decisions.md` D-087. The
- * rest are chips beneath them, one per field, each opening the same sheet its
- * row would. A task with only a title used to show five rows, four reading
- * `None`, which is the form with blanks to fill that D-018 itself warned
- * against, and it gave a plan the same weight whether the task had one or not.
- * A field moves from chip to row when it is set and back when it is cleared,
- * under the closing sheet, so nothing here animates.
- *
- * Both keep the five fields' one order, so a field is always found in the same
- * place relative to the others.
+ * A row for each field the task has set and a chip for each it has not, both in
+ * the fields' one order. D-087.
  */
 @Composable
 private fun PlanRegion(task: Task, today: LocalDate, onOpenSheet: (PlanSheet) -> Unit) {
@@ -766,16 +756,7 @@ private fun PlanRegion(task: Task, today: LocalDate, onOpenSheet: (PlanSheet) ->
     }
 }
 
-/**
- * One chip per unset field, wrapping onto as many lines as the width and the
- * font scale need.
- *
- * `AssistChip`, because Material's assist chip is the one for an action on the
- * thing the screen is about, and adding a reminder to this task is that. The
- * label is the field's own name, the one its row carries once it is set, and
- * the plus says it is not set yet. A screen reader hears that as well: the chip
- * reads "Not set" as its state, where a row reads the value it holds.
- */
+/** One assist chip per unset field, named as its row will be, read as "Not set". */
 @Composable
 private fun PlanAddChips(
     fields: List<PlanSheet>,

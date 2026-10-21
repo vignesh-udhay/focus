@@ -24,13 +24,8 @@ import java.time.LocalDate
  * timed work, then what is already done. That is a timeline, read the way a
  * timeline reads.
  *
- * **Later today runs in the order it will ring**, by [Task.ringsAt], a snooze
- * included. `docs/decisions.md` D-088. It is the one band with a time on every
- * task, and it kept creation order like the others, so a reminder at 6 PM could
- * sit above one at 4 PM and the timeline was wrong inside the band that is most
- * literally one. Elsewhere, and between tasks ringing at the same minute, the
- * caller's order is preserved, because nothing here knows better than the order
- * it was given.
+ * Later today runs in the order it will ring, snoozes included, D-088.
+ * Elsewhere, and between equal times, the caller's order is preserved.
  *
  * **[settling] holds tasks just completed, which keep their place for a
  * moment.** `docs/decisions.md` D-086. A completed task in it is grouped as if it
