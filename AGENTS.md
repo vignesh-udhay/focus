@@ -20,7 +20,11 @@ Do not invent product behavior, features, navigation, or UI patterns.
 
 # Technology
 
-This is a native Android application.
+This is a native Android application. An iPhone app is decided, D-089: a
+Kotlin Multiplatform core shared with this one, and screens in SwiftUI. Nothing
+for it is built until the roadmap's current phase reaches it, and that includes
+"preparing" shared code ahead of time. `core/domain` already has no Android
+imports; keep it that way, because it is the code iOS will share.
 
 Use:
 
@@ -125,7 +129,8 @@ Follow Android conventions for:
 - accessibility
 - adaptive layouts
 
-Do not copy iOS interaction patterns.
+Do not copy iOS interaction patterns. The iPhone app follows Apple's
+conventions the same way, D-089; neither platform borrows the other's.
 
 Do not recreate an iOS-style navigation hierarchy simply because another
 product uses it.

@@ -3500,6 +3500,11 @@ In rough evidence order, and only once real users ask:
 
 Let the app's own reviews set this order rather than this document.
 
+Separately from that list, the iPhone app, D-089. Its first step is not code: it
+is a design for how reminders are delivered on iOS, written and argued before
+anything is built, because iOS gives no exact alarms and keeps only 64 pending
+notifications per app.
+
 ---
 
 ## Totals

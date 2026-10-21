@@ -5794,3 +5794,69 @@ D-048's paused-session rule and does not read the band's order. The settling
 hold, D-086, is unaffected: a just-completed task keeps its reminder time and so
 its place.
 
+---
+
+## D-089. Tellcat ships on iPhone, native there as on Android, over one shared core
+
+**Decision.** Tellcat will be released on iOS. The product rule becomes "native
+on each platform": one product and one shared core, with on each platform the
+screens and conventions that platform's users expect. The build path is Kotlin
+Multiplatform for the core and SwiftUI for the iPhone screens. Nothing is built
+until the roadmap's current phase reaches it, and the first piece of that work is
+a written design for reminder delivery on iOS, not code.
+
+**What this supersedes.** `PRODUCT.md`'s opening, "built specifically for
+Android", and its principle 5, "Android-native is a product requirement". Every
+Android convention that principle lists still holds on Android, and so does the
+rule against iOS patterns there. What changes is that the rule now runs both
+ways: on iPhone, Apple's conventions, and no Android patterns.
+
+**What changed the answer.** The owner decided on 2026-10-20 to release on iOS,
+with the goal of feeling native there. The founding documents were written for
+an Android-only product and say so in several places, so a future session asked
+to start iOS work would read them as forbidding it.
+
+**Why not Compose Multiplatform.** It would reuse most of today's UI code, and it
+is the fastest path. But it draws its own controls rather than Apple's, so
+scrolling, text editing, sheets and pickers would feel like Android on an iPhone.
+That fails the one requirement the owner set.
+
+**Why not a separate Swift app.** It would feel the most native, and it would put
+the rules that decide when a reminder rings in two codebases, in two languages:
+snooze arithmetic, recurrence, the rollover of a time already passed, Quick Add's
+date parser, Today's bands. Every fix would have to land twice, and the day they
+disagree a reminder misses on one platform, which is the most severe bug this
+product has.
+
+**Why Kotlin Multiplatform with SwiftUI.** The iPhone gets Apple's own list,
+sheets, pickers, swipe actions and a WidgetKit widget, and the rules underneath
+are the same code Android runs and the same JVM tests prove. The app is already
+shaped for it: `core/domain` is fifteen files, about three thousand lines, with
+no Android imports, and Room now runs on iOS as well.
+
+**What it costs, written down now so it is not discovered later.**
+
+- `core/domain` uses `java.time`, which iOS does not have. It moves to
+  `kotlinx-datetime`. Mechanical, but it touches every reminder calculation, so
+  it is done with the JVM suite green at every step.
+- Every screen is built twice, in Compose and in SwiftUI. That is the price of
+  native on both, whichever path is chosen.
+- **Reminder delivery on iOS is a different system, and this is the real risk.**
+  There are no exact alarms. The system keeps only the 64 soonest pending local
+  notifications per app. And the app is not woken when a notification is
+  delivered in the background, so it cannot record arrival the way Reminder
+  health, D-042 and after, does on Android. The likely shape is scheduling the soonest reminders and
+  topping up whenever the app runs, and AlarmKit, new in iOS 26, may change the
+  answer; both need research, not assumption. No iOS screen is built before this
+  has its own decision entry.
+
+**What does not change now.** The Android app, its build, and the current phase.
+Shared code is not "prepared" ahead of time either; `core/domain` staying free of
+Android imports, which it already is, is the only standing rule.
+
+**What would reverse this.** Finding that iOS cannot deliver reminders to the
+standard `PRODUCT.md` sets, in which case the question becomes whether Tellcat
+belongs on iOS at all, not which framework to use. Or the shared core proving
+harder to keep in step than two copies, which would show as iOS-only workarounds
+leaking into `core/domain`.
+

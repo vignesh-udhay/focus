@@ -2,11 +2,12 @@
 
 ## Product
 
-Tellcat is a calm, highly polished personal task manager built specifically
-for Android.
+Tellcat is a calm, highly polished personal task manager, built for Android
+first and for iPhone after it, and native on each. D-089.
 
-It should feel native to Android rather than like an iOS productivity app
-ported to Android.
+On Android it should feel native to Android rather than like an iOS
+productivity app ported to Android. On iPhone the same holds the other way
+round.
 
 ## What the app is for
 
@@ -76,9 +77,11 @@ Next -> Focus -> Done
 
 The application should encourage execution rather than task administration.
 
-## 5. Android-native is a product requirement
+## 5. Native on each platform is a product requirement
 
-The application should embrace Android conventions for:
+D-089. One product, one shared core, and on each platform the screens that
+platform's users expect. On Android, the application should embrace Android
+conventions for:
 
 - navigation
 - back behavior
@@ -93,7 +96,8 @@ The application should embrace Android conventions for:
 - adaptive layouts
 - accessibility
 
-Do not reproduce iOS interaction patterns on Android.
+Do not reproduce iOS interaction patterns on Android. On iPhone, follow Apple's
+conventions for the same list, and do not reproduce Android patterns there.
 
 ## 6. Reduce cognitive load
 
@@ -296,8 +300,8 @@ A feature is not complete merely because it compiles.
 It should:
 
 - behave correctly
-- feel native to Android
-- follow Material 3
+- feel native to its platform
+- follow Material 3 on Android
 - support light and dark themes
 - respect accessibility
 - work across relevant screen sizes

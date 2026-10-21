@@ -74,7 +74,8 @@ Before implementing a feature:
 
 ## Design
 
-Tellcat is a native Android application.
+Tellcat is a native Android application. An iPhone app is decided but not
+started, D-089; it will be native to iOS, not a port of these screens.
 
 Use the existing Material 3 theme and Tellcat design system.
 
