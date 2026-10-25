@@ -43,9 +43,11 @@ the name, the promise and the tagline, "Just tell it." (D-092), the cat, the
 colours and the voice. Onboarding's "Get started" now clears the navigation bar: with
 three-button navigation it sat half under Back, Home and Recents, on 1.0 too.
 Its bell icon is outlined like the rest, its cat is the launcher face at twice
-the size, and its column is centred rather than hung from the top. Before it
-merges: a full instrumented run, and
-new store screenshots of Task Details, which changed. D-085 regenerated the
+the size, and its column is centred rather than hung from the top. The full
+instrumented suite passed on 2026-10-25, 338 of 338 on the emulator. A Task
+Details store shot was taken, Groceries with its checklist in light and dark at
+1080 x 1920, and the owner chose to leave the store set of eight as it is. The
+merge waits for the owner's word. D-085 regenerated the
 palette and D-091 withdrew it, so the colours are still 1.0's.
 
 **Seven competitor apps were walked on the emulator, 2026-10-24 and 25**,
