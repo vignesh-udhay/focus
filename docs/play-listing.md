@@ -181,8 +181,11 @@ the first run, and at least one dark shot in the set.
    the Done and Snooze actions. The core promise, visible.
 3. **Quick Add** mid-type, with "call mum tomorrow 6pm" marked, so the parsing
    is shown rather than described.
-4. **Reminder health**, in the Ready state with the three checks passing. The
-   thing no competitor screenshot has.
+4. **Reminder health**, in the Ready state with the three checks passing, and
+   showing that a real reminder was seen to arrive. The checks alone are not
+   unusual: To Do Reminder with Alarm has a panel with the same name
+   (`docs/research/competitors.md`). The arrival evidence is what no
+   competitor walked has.
 5. **Upcoming**, showing the days ahead.
 6. **The widget** on a home screen. In the Tellcat colours like every other
    shot, since dynamic color is off by default (D-077). *Not shot yet: placing

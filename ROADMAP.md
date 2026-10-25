@@ -48,6 +48,16 @@ merges: a full instrumented run, and
 new store screenshots of Task Details, which changed. D-085 regenerated the
 palette and D-091 withdrew it, so the colours are still 1.0's.
 
+**Seven competitor apps were walked on the emulator, 2026-10-24 and 25**,
+written up in `docs/research/competitors.md` with screenshots. Two of them,
+To-Do List and Todoist, silently missed a reminder set a few minutes ahead;
+Tellcat's D-030 is the answer to exactly that. Reminder health is not unique:
+To Do Reminder with Alarm has a panel with the same name, so the listing's
+screenshot note now leads with arrival evidence instead. Nothing was built
+from it. The ideas at the end of that file each need a decision first.
+Tasks.org is unwalked until its terms are accepted, and Microsoft To Do was
+skipped.
+
 **A reminder set for the current minute rang a day late, and no longer does.**
 On the owner's phone, a 2:38 reminder set during 2:38 rang at 2:38 the next
 day. `nextReminderOccurrence` compared the chosen minute against now to the
