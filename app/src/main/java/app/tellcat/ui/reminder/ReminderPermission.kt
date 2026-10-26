@@ -10,17 +10,14 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -31,14 +28,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import app.tellcat.R
 import app.tellcat.core.design.TellcatSpacing
@@ -65,8 +59,7 @@ import app.tellcat.core.notification.canPostNotifications
  * The two are handled in order and only one has a screen. Notifications get
  * Android's own dialog, which explains itself and needs nothing from us. Exact
  * alarms get the screen, because Android shows no dialog for that one at all:
- * it is a settings page the user has to be walked to, which is exactly what
- * `reminder/Precise Permission — Clean Slate` draws.
+ * it is a settings page the user has to be walked to.
  *
  * @param canScheduleExact read as a function rather than a value, because the
  * answer changes while this is on screen: the user leaves for settings, grants
@@ -159,19 +152,25 @@ fun ReminderPermissionGate(
 }
 
 /**
- * The screen, as `reminder/Precise Permission — Clean Slate` lays it out.
+ * The screen: a headline card, a paragraph, and two actions. D-107.
  *
- * An icon, the ask, the reasons, and two actions: the settings page, and a way
- * to decline. The note under them says what the button will do, and it says it
+ * Drawn the way Reminder health opens, with the same card: extra-large corners,
+ * an eyebrow, the ask in `headlineSmallEmphasized` and one sentence. Neutral
+ * rather than error, because nothing has failed yet; this is the app asking
+ * before a reminder depends on it. It used to open on an 88dp icon tile, a
+ * `headlineLargeEmphasized` title and a card of three bullet points, which
+ * looked like it belonged to another app beside Settings and Reminder health.
+ *
+ * No top bar. "Not now" and Back both close it, and a back arrow would be a
+ * third way to say the same thing.
+ *
+ * The note under the actions says what the button will do, and it says it
  * because the honest answer is unusual. Every other permission in Android
  * arrives as a popup; this one does not, and a user who taps expecting a
  * yes/no dialog and lands in Settings has been surprised by their own app.
  *
- * The reasons are a card rather than prose because they are the part anyone
- * actually reads, and three short lines get read where a paragraph does not.
- *
  * The content scrolls and the actions do not. At the largest system font scale
- * the reasons alone are taller than the screen, and a rationale whose button
+ * the explanation alone is taller than the screen, and a rationale whose button
  * has fallen off the bottom cannot be agreed to.
  */
 @Composable
@@ -181,77 +180,52 @@ private fun ReminderPermissionScreen(onOpenSettings: () -> Unit, onNotNow: () ->
             modifier = Modifier
                 .fillMaxSize()
                 .safeDrawingPadding()
-                .padding(horizontal = TellcatSpacing.lg)
+                .padding(horizontal = TellcatSpacing.md)
                 .padding(bottom = TellcatSpacing.lg)
         ) {
             Column(
                 modifier = Modifier
                     .weight(1f)
                     .verticalScroll(rememberScrollState())
-                    .padding(top = TellcatSpacing.xl),
+                    .padding(top = TellcatSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(TellcatSpacing.md)
             ) {
                 Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    shape = MaterialTheme.shapes.large,
-                    modifier = Modifier.size(IconWrapSize)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            // A clock, as the frame draws it. The screen is
-                            // about when a reminder arrives, not whether it is
-                            // allowed to make a sound, and a bell here would
-                            // point at the other permission.
-                            painter = painterResource(R.drawable.ic_schedule),
-                            // The heading below says what this is about.
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.size(IconSize)
-                        )
-                    }
-                }
-
-                Text(
-                    text = stringResource(R.string.reminder_permission_title),
-                    style = MaterialTheme.typography.headlineLargeEmphasized,
-                    modifier = Modifier.semantics { heading() }
-                )
-
-                Text(
-                    text = stringResource(R.string.reminder_permission_body),
-                    style = MaterialTheme.typography.bodyLarge
-                )
-
-                Surface(
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    shape = MaterialTheme.shapes.large,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    shape = MaterialTheme.shapes.extraLarge,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
                         modifier = Modifier.padding(TellcatSpacing.md),
                         verticalArrangement = Arrangement.spacedBy(TellcatSpacing.xs)
                     ) {
+                        // Android's own name for the setting, so the user knows
+                        // what to look for on the page the button opens.
                         Text(
-                            text = stringResource(R.string.reminder_permission_why),
-                            style = MaterialTheme.typography.titleMedium,
+                            text = stringResource(R.string.reminder_permission_eyebrow),
+                            style = MaterialTheme.typography.labelMedium
+                        )
+
+                        Text(
+                            text = stringResource(R.string.reminder_permission_title),
+                            style = MaterialTheme.typography.headlineSmallEmphasized,
                             modifier = Modifier.semantics { heading() }
                         )
 
-                        listOf(
-                            R.string.reminder_permission_reason_closed,
-                            R.string.reminder_permission_reason_idle,
-                            R.string.reminder_permission_reason_forget
-                        ).forEach { reason ->
-                            Text(
-                                text = stringResource(
-                                    R.string.reminder_permission_bullet,
-                                    stringResource(reason)
-                                ),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
+                        Text(
+                            text = stringResource(R.string.reminder_permission_body),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
                     }
                 }
+
+                // What it buys, as one paragraph rather than a list. D-107.
+                Text(
+                    text = stringResource(R.string.reminder_permission_why),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = TellcatSpacing.xs)
+                )
             }
 
             Button(
@@ -274,7 +248,11 @@ private fun ReminderPermissionScreen(onOpenSettings: () -> Unit, onNotNow: () ->
                 text = stringResource(R.string.reminder_permission_note),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = TellcatSpacing.xs)
+                modifier = Modifier.padding(
+                    top = TellcatSpacing.xs,
+                    start = TellcatSpacing.xs,
+                    end = TellcatSpacing.xs
+                )
             )
         }
     }
@@ -297,7 +275,3 @@ private fun Context.exactAlarmSettingsIntent(): Intent =
     } else {
         Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
     }
-
-private val IconWrapSize = 88.dp
-
-private val IconSize = 36.dp

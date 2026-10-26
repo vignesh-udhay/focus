@@ -6593,3 +6593,26 @@ test under a warning too, and on the owner's OnePlus it vanished entirely.
 **What would reverse this.** Users opening settings for a check that is fine and
 changing something they should not. Then rows that are `Ok` would stop being
 tappable.
+
+## D-107. The exact-alarm ask opens with Reminder health's headline card
+
+**Decision.** The "Allow precise reminders" screen opens on a headline card
+drawn like Reminder health's: extra-large corners, an eyebrow naming Android's
+setting ("Alarms & reminders"), the title in `headlineSmallEmphasized`, one
+sentence, on the neutral `surfaceContainerHigh`. Below it, what the permission
+buys as one paragraph. "Open Android settings", "Not now" and the footnote are
+unchanged. There is no top bar: "Not now" and Back already close it.
+
+**What changed the answer.** On 2026-10-26 the owner found the screen looked
+off beside Settings, Reminder health and Backup & restore, and did not want
+bullet points. It opened on an 88dp icon tile and a `headlineLargeEmphasized`
+title, then a "Why this matters" card of three bullets, drawn from the Clean
+Slate board's frame. Nothing else in the app looks like that.
+
+**Why neutral, not error.** Reminder health colours what it knows (D-021): red
+for a refusal it has seen. Here nothing has failed yet; the app is asking
+before a reminder depends on it.
+
+**What would reverse this.** People declining more often once the reasons are a
+paragraph, which would show as more reminders set without the grant. Then the
+reasons get shorter, not bullets again.
