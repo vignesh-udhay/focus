@@ -298,7 +298,8 @@ one more way to express one decision.
 [IMPL] On a task row, `RoundCheck` (D-105): Material's checkbox drawn as a
 circle, with Material's size, colour roles, state layer, target and semantics,
 and a tick scaled to the circle. Everywhere else, including checklist items,
-Material `Checkbox`, unchanged.
+Material `Checkbox`, unchanged, except that a checklist item's is drawn at a
+16dp box (scaled, so its target and semantics are Material's).
 
 [CD] A task's state change is the strongest expressive moment in the app and
 uses the `completion` token. This is the only component with that privilege.

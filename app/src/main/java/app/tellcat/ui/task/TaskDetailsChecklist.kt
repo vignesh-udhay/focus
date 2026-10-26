@@ -31,6 +31,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -205,7 +206,13 @@ private fun ChecklistRow(
                     TellcatHaptics.checklistTick(haptics, done)
                     onSetDone(done)
                 },
-                modifier = Modifier.semantics { contentDescription = item.text }
+                // Drawn at a 16dp box rather than Material's 18dp, so an item
+                // inside a task reads lighter than the task's own 22dp round
+                // check. Scaled, not resized: the 48dp target and the
+                // semantics are Material's, untouched. D-105.
+                modifier = Modifier
+                    .scale(ChecklistCheckScale)
+                    .semantics { contentDescription = item.text }
             )
         },
         trailingContent = if (editing) {
@@ -365,3 +372,6 @@ private fun AddChecklistItemRow(
         )
     }
 }
+
+/** A checklist item's checkbox: Material's 18dp box drawn at 16dp. D-105. */
+private const val ChecklistCheckScale = 16f / 18f
