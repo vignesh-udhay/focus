@@ -68,6 +68,12 @@ ringing through Home, Back and the shade, ignored taps and answered to a hold,
 came up full screen over the lock screen with the screen off, snoozed ten
 minutes from the lock screen and rang again, and Stop left the normal reminder.
 One bug was found and fixed: dark status bar icons on the dark alarm screen.
+A second was found the same day with "Alarms & reminders" off: the alarm is
+then inexact, Android refused to start the ringing service, and the reminder
+arrived as a normal one while the editor had promised full screen. Now the
+editor and Reminder health say it arrives as a normal reminder and may be
+late, which is what the phone then did (80 seconds late). The service became
+`systemExempted` and rang full screen on the phone with the grant back on.
 
 **Two reminder bugs found by the competitor study are fixed, on 1.0 too until
 this ships.** A repeating reminder nobody answered never rang again, because
