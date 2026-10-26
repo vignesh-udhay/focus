@@ -5735,6 +5735,10 @@ notification or the widget does not settle: nothing in the app is on screen.
 worked, which would show as double taps reopening tasks. The answer then is a
 shorter hold, not none.
 
+**Superseded in part by D-104.** The hold is 300ms, and the line runs on
+`completion` with the check. The reasoning above for holding at all, timing from
+the write and sharing one countdown still stands.
+
 ---
 
 ## D-087. Task Details shows the fields a task has, and offers the rest as chips
@@ -6493,3 +6497,29 @@ for now, which is no worse.
 
 **What would reverse this.** An Android version that broadcasts the revoke, or
 one that removes inexact alarms too, which would need a different survivor.
+
+## D-104. Completing a task is quick
+
+**Decision.** The completed row's hold drops from 800ms to 300ms after the
+write, and the strikethrough runs on `completion`, the check's own spring,
+instead of `reveal`. The tick and the line land together, and the row is on its
+way to Completed about half a second after the tap instead of over a second.
+
+**What changed the answer.** The owner, using it on their phone on 2026-10-26:
+the check appeared, then the line drew, then a second later the task moved, and
+it did not feel nice. D-086 named this case: a hold that reads as the app being
+slow is answered by a shorter hold, not none. With no hold, the row leaves before
+the tick is seen, which is the failure D-086 fixed.
+
+**What stays from D-086.** The write lands at once, the countdown starts at the
+write, and one shared countdown means a list ticked down quickly does not move
+under the thumb.
+
+**Why the line can share the spring now.** D-086 moved it to `reveal` because on
+the fast spring it seemed to appear rather than travel, measured on an emulator
+under a screen recorder. The owner wanted speed over that distinction. If the
+line now reads as simply appearing, that is accepted.
+
+**What would reverse this.** Ticks that are not seen to land before the row
+moves, which would show as double taps reopening tasks. The answer then is a
+hold between the two, not a return to 800ms.

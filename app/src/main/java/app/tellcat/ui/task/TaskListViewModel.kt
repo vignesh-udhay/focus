@@ -1521,12 +1521,12 @@ class TaskListViewModel(
         /**
          * How long a just-completed row keeps its place after the last tick.
          *
-         * Long enough for the checkbox's spring and the strikethrough drawing
-         * across the title to finish and be read, which together take about
-         * half of it, and short enough that the list has tidied itself before
-         * the user looks for the next thing. Not a wait: nothing is blocked
-         * while it runs, and the completion was written at the start of it.
+         * Long enough to see the tick and the line land, which run together on
+         * the fast spring, and short enough that the row is on its way before
+         * the moment feels like waiting. D-104 cut it from 800ms, which read as
+         * slow on the owner's phone. Not a wait: nothing is blocked while it
+         * runs, and the completion was written at the start of it.
          */
-        const val COMPLETION_SETTLE_MILLIS = 800L
+        const val COMPLETION_SETTLE_MILLIS = 300L
     }
 }

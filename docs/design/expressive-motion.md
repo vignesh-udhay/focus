@@ -100,7 +100,7 @@ licence to invent a fifth.
 | Interaction | Token | Emphasis |
 | --- | --- | --- |
 | Completing a task | `completion` | **Strongest in the app** |
-| The strikethrough drawing across a completed title | `reveal` | Part of completion |
+| The strikethrough drawing across a completed title | `completion` (D-104) | Part of completion |
 | A just-completed row holding its place, then leaving | a hold, then `listChange` | Part of completion |
 | Task title colour | `stateColor` | Restrained |
 | A checklist item's text colour when ticked | `stateColor` | Restrained |
@@ -135,26 +135,28 @@ starts to, completion has stopped being special and the rule has been broken.
 
 [CD] **It has three parts, and D-086 is why it has more than one.** The checkbox
 presses in and springs back on `completion`. The strikethrough draws across the
-title, from where the line starts reading, on `reveal`. And the row keeps its
-place until the user stops ticking, then leaves on `listChange`.
+title, from where the line starts reading, on the same `completion` spring
+(D-104). And the row keeps its place until the user stops ticking, then leaves
+on `listChange`.
 
 The hold is what makes the other two visible. Recorded on the emulator before
 it, a task ticked on Today faded into the collapsed Completed section within
 about 250ms, and its checkbox was never once drawn ticked: the one expressive
 moment in the app was not on screen where most completions happen. The write
-still lands at once. The row's departure waits `COMPLETION_SETTLE_MILLIS`, 800ms,
-timed from the write rather than the tap, and every new tick restarts it, so a
-list ticked down quickly never moves under the thumb mid-reach.
+still lands at once. The row's departure waits `COMPLETION_SETTLE_MILLIS`, 300ms
+since D-104 (800ms before), timed from the write rather than the tap, and every
+new tick restarts it, so a list ticked down quickly never moves under the thumb
+mid-reach.
 
-The line runs on `reveal` rather than `completion` because on the fast spring it
-crossed the title inside one frame and read as simply appearing. A line has to be
-seen travelling to be drawn. The two start together, so they read as one gesture.
+The line ran on `reveal` until D-104. On the owner's phone the slower line and
+the 800ms hold together made completing feel sluggish, so the line now shares
+the check's `completion` spring and the two land as one quick gesture.
 
 ## Colour and strikethrough
 
 [CD] Title colour on `stateColor`, an effects spec, because it changes no
 bounds. The strikethrough is not a colour change any more: it is a line that
-travels, drawn over the title on `reveal`, see Completion above. A row that is
+travels, drawn over the title on `completion`, see Completion above. A row that is
 already complete when it appears, scrolled into view or on the Logbook, starts
 with the line fully drawn; there is nothing to celebrate.
 

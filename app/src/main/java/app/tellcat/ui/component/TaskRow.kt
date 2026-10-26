@@ -138,18 +138,15 @@ fun TaskRow(
     // control in and lets it spring back, and the strikethrough draws across the
     // title as it does. D-086. Nothing else here moves.
     //
-    // The two start together and run on different specs. The checkbox takes
-    // `completion`, whose overshoot is the feel. The line takes `reveal`: on
-    // the fast spring it crossed the title inside one frame and read as simply
-    // appearing, measured on the emulator, and a line has to be seen travelling
-    // to be a line being drawn.
+    // The two start together on the same `completion` spring, so they land as
+    // one quick gesture. D-104 moved the line off `reveal`, whose slower spring,
+    // with the hold after it, made completing feel sluggish on the owner's phone.
     val haptics = LocalHapticFeedback.current
     val completionScale = remember { Animatable(1f) }
     // How much of the title the strikethrough has crossed, 0 to 1. Drawn rather
     // than set as a text decoration, so it can travel.
     val strike = remember { Animatable(if (isCompleted) 1f else 0f) }
     val completionSpec = TellcatMotion.completion<Float>()
-    val strikeSpec = TellcatMotion.reveal<Float>()
     var isFirstComposition by remember { mutableStateOf(true) }
     var titleLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
 
@@ -164,7 +161,7 @@ fun TaskRow(
             completionScale.snapTo(CompletionPressScale)
             launch { completionScale.animateTo(1f, completionSpec) }
             strike.snapTo(0f)
-            strike.animateTo(1f, strikeSpec)
+            strike.animateTo(1f, completionSpec)
         } else {
             // Reopening is a reversal, not a moment.
             strike.snapTo(0f)
