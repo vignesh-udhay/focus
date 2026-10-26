@@ -36,6 +36,7 @@ import app.tellcat.core.notification.ReminderAlarms
 import app.tellcat.core.notification.AndroidReminderHealthChecks
 import app.tellcat.core.notification.ReminderHealthChecks
 import app.tellcat.core.notification.ReminderScheduler
+import app.tellcat.core.notification.ensureReminderChannel
 import app.tellcat.core.notification.withdrawSettledReminders
 import app.tellcat.core.time.SystemCurrentDay
 import app.tellcat.data.repository.ReminderDeliveryRepository
@@ -268,6 +269,12 @@ class TellcatApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+
+        // The vibrating reminder channel, and the move into it from 1.0's, at
+        // the first start after the update rather than at the first reminder,
+        // so Reminder health reads the channel reminders will use. D-100.
+        // Channels are not credential storage, so this is safe before unlock.
+        ensureReminderChannel()
 
         // **Nothing in credential-encrypted storage until the user unlocks.**
         // D-079. The reminder receivers are direct-boot aware, so this process

@@ -6215,3 +6215,46 @@ shade follow it, which is how the rest of the reminder code already works.
 alarm to cancel: it has fired already. The test reminder and Focus are outside
 the reminder group and are never withdrawn by this.
 
+## D-100. Reminders vibrate
+
+**Decision.** Reminders post to a new channel, `tellcat.reminder.vibrating`,
+with vibration on. 1.0's channel, `tellcat.reminder`, never asked to vibrate,
+so with the ringer on a reminder was a sound and nothing more. Android fixes a
+channel's vibration once the channel exists, so turning it on meant a new one.
+
+**The move, once, at the first start after the update.** The new channel is
+created from the old one, carrying what the user chose for it:
+
+- **Importance**, so a channel they set to None stays silenced and one they
+  made quieter stays quieter.
+- **Sound** and how it plays, lock-screen visibility, the icon badge and
+  lights.
+- **Vibration is on regardless.** The old channel only vibrated if the user
+  turned it on, so "off" there is the default, not a choice, and the app cannot
+  tell the two apart. A custom pattern the user set is kept. Anyone who wants
+  it off turns it off once more.
+
+Then the old channel is deleted, but only once nothing from it is on screen,
+because deleting a channel takes its notifications with it and a reminder
+posted before the update would vanish unanswered. Until then the move retries
+on every start and every reminder.
+
+**Reminder health and the test reminder** read the channel through the same
+helper the receiver uses, `reminderChannelInUse`: the new channel, or the old
+one in the moment before the move. A channel set to None still reads as
+blocked, D-078. The test reminder posts to the new channel like a real one.
+
+**What changed the answer.** The competitor study on 2026-10-26 found the
+channel silent apart from the sound. TickTick, Todoist and Todoery vibrate. A
+reminder that is heard and not felt is missed in a pocket or a loud room, which
+is the failure this product ranks above a crash.
+
+**What it costs.** Users who set the old channel's sound or importance by hand
+see their choice carried; anyone who disliked vibration finds it on once.
+`ReminderChannelTest` moves channels with ids of its own: Android brings a
+deleted channel back with its old settings when the id is created again, so a
+test must never delete the real ones.
+
+**What would reverse this.** Testers finding the vibration intrusive, which
+would be answered by the system setting, not by switching it off for everyone.
+

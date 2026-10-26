@@ -457,14 +457,29 @@ private fun Context.deliverWhileLocked(
  * delivery marked the reminder told, so it was never offered again, and the
  * health check called it fine. A channel not yet created counts as allowed,
  * because it is about to be created at high importance.
+ *
+ * The channel read is the current one, or the first one while the move to the
+ * current one has not happened yet, D-100, so a first channel set to None is
+ * not reported as fine in the moment before it is carried across.
  */
 internal fun Context.canPostReminders(): Boolean {
     if (!canPostNotifications()) return false
     if (!NotificationManagerCompat.from(this).areNotificationsEnabled()) return false
 
-    val channel = getSystemService<NotificationManager>()?.getNotificationChannel(ReminderChannelId)
+    val channel = getSystemService<NotificationManager>()?.reminderChannelInUse()
     return channel == null || channel.importance != NotificationManager.IMPORTANCE_NONE
 }
+
+/**
+ * The reminder channel reminders are posted to: the current one, or the first
+ * while the move has not happened. D-100. The ids are parameters only so a test
+ * can use its own; Android brings a deleted channel back with its old settings
+ * when its id is created again, so a test must never delete the real ones.
+ */
+internal fun NotificationManager.reminderChannelInUse(
+    currentId: String = ReminderChannelId,
+    firstId: String = FirstReminderChannelId
+): NotificationChannel? = getNotificationChannel(currentId) ?: getNotificationChannel(firstId)
 
 /**
  * The reminder channel, separate from the focus one.
@@ -477,21 +492,94 @@ internal fun Context.canPostReminders(): Boolean {
  * Separate so the two can be turned down independently. Someone who finds the
  * focus estimate noisy can silence it in system settings without also
  * silencing the reminders, and a single channel would make that one switch.
+ *
+ * **It vibrates, D-100.** The first channel, [FirstReminderChannelId], never
+ * asked to, so with the ringer on a reminder was a sound and nothing more,
+ * easy to miss in a pocket or a loud room. Android fixes a channel's vibration
+ * once it exists, so turning it on needed a new channel: this one. The first is
+ * carried across once, keeping what the user chose for it, and then deleted.
  */
 internal fun Context.ensureReminderChannel() {
-    val manager = getSystemService<NotificationManager>() ?: return
-
-    val channel = NotificationChannel(
-        ReminderChannelId,
-        getString(R.string.reminder_channel_name),
-        NotificationManager.IMPORTANCE_HIGH
-    ).apply {
+    getSystemService<NotificationManager>()?.ensureReminderChannel(
+        name = getString(R.string.reminder_channel_name),
         description = getString(R.string.reminder_channel_description)
-    }
-
-    manager.createNotificationChannel(channel)
+    )
 }
 
-internal const val ReminderChannelId = "tellcat.reminder"
+/**
+ * Creates the current reminder channel, moving the first one into it once.
+ * See [Context.ensureReminderChannel]; the ids are parameters for the reason
+ * [reminderChannelInUse] gives.
+ */
+internal fun NotificationManager.ensureReminderChannel(
+    name: String,
+    description: String,
+    currentId: String = ReminderChannelId,
+    firstId: String = FirstReminderChannelId
+) {
+    val current = getNotificationChannel(currentId)
+    val first = getNotificationChannel(firstId)
+
+    // Created once, from the first channel when there is one. Afterwards only
+    // the name and description are refreshed, at the importance it already
+    // has, so a language change reaches them and nothing the user set moves.
+    createNotificationChannel(
+        reminderChannel(
+            id = currentId,
+            name = name,
+            description = description,
+            carriedFrom = if (current == null) first else null,
+            importance = current?.importance
+        )
+    )
+
+    // Deleted only once nothing is on screen from it. Deleting a channel takes
+    // its notifications with it, and a reminder posted before the move and not
+    // yet dealt with would go with them.
+    if (first != null && activeNotifications.none { it.notification.channelId == firstId }) {
+        deleteNotificationChannel(firstId)
+    }
+}
+
+/**
+ * The reminder channel as it should be created. D-100.
+ *
+ * [carriedFrom] is the first channel when this is the move: its importance,
+ * which keeps one set to None silenced, its sound and how it plays, whether it
+ * shows on the lock screen and badges the icon, and its lights. Vibration is
+ * on whatever the first channel says. The first never vibrated unless the user
+ * turned it on, so off there is the default rather than a choice, and the app
+ * cannot tell the two apart. A user who wants it off turns it off once more.
+ * A custom pattern they set is kept.
+ */
+internal fun reminderChannel(
+    id: String,
+    name: String,
+    description: String,
+    carriedFrom: NotificationChannel?,
+    importance: Int?
+): NotificationChannel = NotificationChannel(
+    id,
+    name,
+    importance ?: carriedFrom?.importance ?: NotificationManager.IMPORTANCE_HIGH
+).apply {
+    this.description = description
+    enableVibration(true)
+
+    carriedFrom?.let { first ->
+        setSound(first.sound, first.audioAttributes)
+        first.vibrationPattern?.let { pattern -> vibrationPattern = pattern }
+        lockscreenVisibility = first.lockscreenVisibility
+        setShowBadge(first.canShowBadge())
+        enableLights(first.shouldShowLights())
+        lightColor = first.lightColor
+    }
+}
+
+/** The reminder channel. Vibrating, D-100. */
+internal const val ReminderChannelId = "tellcat.reminder.vibrating"
+
+/** The reminder channel 1.0 created, without vibration. Moved and deleted, D-100. */
+internal const val FirstReminderChannelId = "tellcat.reminder"
 
 internal const val LogTag = "TellcatReminder"
