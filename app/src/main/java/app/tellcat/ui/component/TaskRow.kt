@@ -114,10 +114,10 @@ fun TaskRow(
     metadataSpoken: String? = null,
     trailingContent: (@Composable () -> Unit)? = null,
     isOverdue: Boolean = false,
-    // The metadata segment an alarm glyph follows: the reminder time, on a
+    // The metadata segment an alarm glyph leads: the reminder time, on a
     // reminder that rings like an alarm. D-102. Drawn only; [metadataSpoken]
     // says it in words.
-    alarmAfterSegment: Int? = null
+    alarmSegment: Int? = null
 ) {
     val titleTextSize = MaterialTheme.typography.bodyLarge.fontSize
     val titleColor by animateColorAsState(
@@ -169,7 +169,7 @@ fun TaskRow(
 
     val metadataText = metadataAnnotatedString(
         metadata = metadata,
-        alarmAfterSegment = alarmAfterSegment,
+        alarmSegment = alarmSegment,
         isOverdue = isOverdue,
         // `tertiary`, not `error`. Material scopes error to error states, and
         // makes it a static red that never follows the wallpaper; an overdue
@@ -324,7 +324,7 @@ private const val CompletionPressScale = 0.8f
 @Composable
 private fun metadataAnnotatedString(
     metadata: List<String>,
-    alarmAfterSegment: Int?,
+    alarmSegment: Int?,
     isOverdue: Boolean,
     overdueColor: Color
 ): AnnotatedString? {
@@ -334,15 +334,18 @@ private fun metadataAnnotatedString(
         metadata.forEachIndexed { index, segment ->
             if (index > 0) append(MetadataSeparator)
 
+            // In front of the time, as a label on it: "alarm at 6:26 PM". After
+            // it, the glyph sat against the separator and could belong to
+            // either side. D-102.
+            if (index == alarmSegment) {
+                appendInlineContent(AlarmGlyphId, AlarmGlyphAlternate)
+                append(" ")
+            }
+
             if (index == 0 && isOverdue) {
                 withStyle(SpanStyle(color = overdueColor)) { append(segment) }
             } else {
                 append(segment)
-            }
-
-            if (index == alarmAfterSegment) {
-                append(" ")
-                appendInlineContent(AlarmGlyphId, AlarmGlyphAlternate)
             }
         }
     }

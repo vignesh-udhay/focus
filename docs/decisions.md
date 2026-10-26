@@ -6429,7 +6429,7 @@ time or complete a task twice.
 - **Reminder health gains "Alarm-style reminders"**, listed only while at least
   one task rings like an alarm: Action needed when the Alarms channel is off or
   exact alarms are refused, Worth checking when full screen is not allowed.
-- **Rows** show an alarm glyph after the reminder time, and TalkBack reads
+- **Rows** show an alarm glyph in front of the reminder time, and TalkBack reads
   ", rings like an alarm".
 - **Stored, backed up and carried.** Schema 13 adds `ringsLikeAlarm`, false for
   every existing row. The backup gains the field; an older file without it

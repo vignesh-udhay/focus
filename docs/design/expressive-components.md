@@ -875,8 +875,8 @@ notes, and two full-width pill controls: Snooze 10 min in `primary` and Stop in
 for the 800ms it takes, so a half-asleep tap does nothing; TalkBack's double tap
 answers at once. Nothing on it completes the task (R-020). Back does nothing.
 
-**Rows** draw the `ic_alarm` glyph, the text's size and colour, after the
-reminder time, and read ", rings like an alarm".
+**Rows** draw the `ic_alarm` glyph, the text's size and colour, in front of
+the reminder time, and read ", rings like an alarm".
 
 ## Add to Tellcat
 
