@@ -61,7 +61,13 @@ it. The owner asked for its tests to be written and not run, so none of it has
 run yet, on a device or the JVM; the main and test sources compile. Before it
 ships: the owner runs the tests, and files two Play Console declarations,
 full-screen intent (answered as not an alarm or calling app) and the
-`mediaPlayback` foreground service.
+`mediaPlayback` foreground service. Checked by hand on the owner's OnePlus 8T
+(Android 14) on 2026-10-26, as "Tellcat dev" (`app.tellcat.debug`, which
+installs beside the Play copy): it rang on the minute on the alarm stream, kept
+ringing through Home, Back and the shade, ignored taps and answered to a hold,
+came up full screen over the lock screen with the screen off, snoozed ten
+minutes from the lock screen and rang again, and Stop left the normal reminder.
+One bug was found and fixed: dark status bar icons on the dark alarm screen.
 
 **Two reminder bugs found by the competitor study are fixed, on 1.0 too until
 this ships.** A repeating reminder nobody answered never rang again, because
