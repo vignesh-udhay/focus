@@ -295,10 +295,13 @@ one more way to express one decision.
 
 # Checkbox
 
-[IMPL] Material `Checkbox`, unchanged.
+[IMPL] On a task row, `RoundCheck` (D-105): Material's checkbox drawn as a
+circle, with Material's size, colour roles, state layer, target and semantics,
+and a tick scaled to the circle. Everywhere else, including checklist items,
+Material `Checkbox`, unchanged.
 
-[CD] Its state change is the strongest expressive moment in the app and uses
-the `completion` token. This is the only component with that privilege.
+[CD] A task's state change is the strongest expressive moment in the app and
+uses the `completion` token. This is the only component with that privilege.
 
 ---
 
@@ -1462,7 +1465,7 @@ treatment, unmodified.
 | Component | Default | Pressed | Selected | Disabled | Error | Completed |
 | --- | --- | --- | --- | --- | --- | --- |
 | Task row | `surfaceContainer` | Material ripple | n/a | n/a | n/a | strikethrough + `onSurfaceVariant` |
-| Checkbox | Material | Material | Material checked | Material | n/a | checked, with `completion` motion |
+| Checkbox | Material roles, round on a task row (D-105) | Material | Material checked | Material | n/a | checked, with `completion` motion |
 | Navigation item | Material | Material | Material + filled icon | n/a | n/a | n/a |
 | Button | Material | Material | n/a | Material | n/a | n/a |
 | Text field | Material | Material | Material focused | Material | Material + supporting text | n/a |

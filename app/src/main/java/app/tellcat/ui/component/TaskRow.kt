@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ListItemColors
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.ListItemShapes
@@ -205,7 +204,9 @@ fun TaskRow(
         onLongClickLabel = onLongClickLabel,
         colors = colors,
         leadingContent = {
-            Checkbox(
+            // Round, not Material's square box. D-105. Same size, colours,
+            // target and semantics; checklist items keep the square one.
+            RoundCheck(
                 checked = isCompleted,
                 onCheckedChange = { completed ->
                     TellcatHaptics.taskCompletion(haptics, completed)

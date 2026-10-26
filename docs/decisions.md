@@ -6526,3 +6526,32 @@ line now reads as simply appearing, that is accepted.
 **What would reverse this.** Ticks that are not seen to land before the row
 moves, which would show as double taps reopening tasks. The answer then is a
 hold between the two, not a return to 800ms.
+
+## D-105. A task's check is round
+
+**Decision.** A task row completes with a round check, `RoundCheck`, instead of
+Material's square `Checkbox`. It is Material's checkbox in every way but shape:
+the 18dp box, 2dp outline, `CheckboxDefaults.colors()` roles, 40dp state layer,
+48dp target, `Role.Checkbox` and toggleable state, so TalkBack reads it as it
+read the square one. The tick is Material's check mark scaled to 72% about the
+centre, with round ends, so it sits inside the circle. Checklist items in Task
+Details keep the square `Checkbox`.
+
+**What changed the answer.** `task-row.md` said not to create a custom checkbox
+unless Material's could not do the job. The owner saw a round check on their
+phone on 2026-10-26, in a trial that also made the lists flat. They turned the
+flat lists down and asked for the round check, with a smaller tick, on the
+segmented rows. Material's `Checkbox` has no round shape, so a custom one is the
+only way to have it.
+
+**Why checklist items stay square.** A checklist item is a line inside a task,
+not a task. Two shapes keep the two from reading as the same kind of thing, the
+convention Things and Todoist use.
+
+**What it costs.** A component of Tellcat's own where Material's used to do. It
+takes Material's measurements and colour roles rather than its own, so a
+Material update to the checkbox's colours still reaches it, but a change to its
+drawing or animation does not.
+
+**What would reverse this.** The round check being taken for a radio button,
+which would show as people expecting one task per list to be ticked.
