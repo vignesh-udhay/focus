@@ -16,7 +16,7 @@ import app.tellcat.R
 import app.tellcat.core.domain.AlarmMode
 import app.tellcat.core.domain.Task
 import app.tellcat.core.domain.alarmMode
-import app.tellcat.ui.alarm.AlarmActivity
+import app.tellcat.AlarmActivity
 import java.time.LocalDateTime
 
 /**

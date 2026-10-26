@@ -131,7 +131,7 @@
              full-screen intent and the alarm's notification open it. Its own
              task, out of Recents: it is a moment, not a place in the app. -->
         <activity
-            android:name=".ui.alarm.AlarmActivity"
+            android:name=".AlarmActivity"
             android:directBootAware="true"
             android:excludeFromRecents="true"
             android:exported="false"

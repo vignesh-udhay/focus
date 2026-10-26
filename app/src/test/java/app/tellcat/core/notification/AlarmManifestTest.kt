@@ -46,7 +46,7 @@ class AlarmManifestTest {
 
     @Test
     fun `the alarm screen shows over the lock screen and turns the screen on`() {
-        val activity = declaration(".ui.alarm.AlarmActivity")
+        val activity = declaration("\".AlarmActivity\"")
 
         assertTrue("AlarmActivity is not declared.", activity.isNotEmpty())
         assertTrue("""android:showWhenLocked="true"""" in activity)

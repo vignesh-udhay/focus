@@ -52,6 +52,17 @@ Details store shot was taken, Groceries with its checklist in light and dark at
 1080 x 1920, and the owner chose to leave the store set of eight as it is. The
 merge waits for the owner's word.
 
+**"Ring like an alarm" is built on `feature/alarm`, cut from `main` at
+`38f3c29`, not merged and not pushed, D-102.** Each reminder can ring on the
+alarm stream until answered: full screen when the phone is locked and the
+permission is given, otherwise a heads-up on a new Alarms channel, with Stop
+and Snooze 10 min and never Done. Schema 13 stores it and the backup carries
+it. The owner asked for its tests to be written and not run, so none of it has
+run yet, on a device or the JVM; the main and test sources compile. Before it
+ships: the owner runs the tests, and files two Play Console declarations,
+full-screen intent (answered as not an alarm or calling app) and the
+`mediaPlayback` foreground service.
+
 **Two reminder bugs found by the competitor study are fixed, on 1.0 too until
 this ships.** A repeating reminder nobody answered never rang again, because
 only completing made the next occurrence; now the ring makes it, the missed one
@@ -3536,7 +3547,8 @@ Estimate: 3 to 4 weeks.
 
 In rough evidence order, and only once real users ask:
 
-- The full-screen alarm, per-task opt-in, held here by D-038 rather than cut.
+- The full-screen alarm, per-task opt-in, held here by D-038 rather than cut. Being built on
+  `feature/alarm` since 2026-10-26, D-102.
   It has the strongest prior evidence of anything on this list, 202 reviews
   asking for an alarm rather than a notification, and it is still below the
   line for 1.0 because it is a schema change and a lock-screen surface threaded

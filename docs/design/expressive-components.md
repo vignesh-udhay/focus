@@ -843,6 +843,37 @@ and not everyone sees it, so the supporting line carries the same fact in text.
 A rewrite the user cannot see is one they cannot correct. See
 `date-parsing.md`.
 
+## Ring like an alarm
+
+D-102. Three surfaces, all in 1.0's colours (D-091), none of the redesign's
+palette, fonts or cat poses.
+
+**The switch, in the reminder sheet.** "Ring like an alarm" under Day and Time,
+off by default, the whole row the switch (role Switch). Under it, while on, one
+line saying how this reminder will actually ring on this phone, read again each
+time the sheet returns to the front: full screen, a banner until answered, or a
+normal reminder when the Alarms channel is off. An outlined "Allow full screen"
+or "Open alarm settings" follows the two lines that need one. Saved with the
+reminder by Save, like the day and the time. Task Details' Reminder row then
+reads "Today, 5:30 PM · Rings like an alarm".
+
+**The priming sheet (R-013).** Opened by turning the switch on without the
+full-screen grant. A picture of the alarm screen, which is the real
+`AlarmScreen` laid out at phone size and scaled down
+(`TellcatDimensions.AlarmPreview*`), one sentence, a filled "Allow full screen"
+that opens the exact settings toggle, and an outlined "Not now". The switch
+stays on either way.
+
+**The alarm screen.** Always dark. "Tellcat alarm", the reminder's own time in
+`displayLarge` (never the clock's), its day, the title in `headlineMedium`, the
+notes, and two full-width pill controls: Snooze 10 min in `primary` and Stop in
+`secondaryContainer`. Both are press-and-hold, with a fill across the control
+for the 800ms it takes, so a half-asleep tap does nothing; TalkBack's double tap
+answers at once. Nothing on it completes the task (R-020). Back does nothing.
+
+**Rows** draw the `ic_alarm` glyph, the text's size and colour, after the
+reminder time, and read ", rings like an alarm".
+
 ## Add to Tellcat
 
 D-097. The sheet another app's share opens, in its own see-through window over

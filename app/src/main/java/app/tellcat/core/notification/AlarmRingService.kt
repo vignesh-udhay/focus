@@ -47,7 +47,7 @@ import java.time.LocalDateTime
  * fail was something that should not have stopped it: Home, Back, a tap
  * outside, the power button, the shade opening. None of those reaches a
  * service. Its notification carries Stop and Snooze and, where Android allows,
- * the full screen; [AlarmActivity][app.tellcat.ui.alarm.AlarmActivity] is the
+ * the full screen; [AlarmActivity][app.tellcat.AlarmActivity] is the
  * same two answers drawn large.
  *
  * **One alarm at a time.** A second one arriving while the first rings leaves

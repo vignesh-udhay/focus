@@ -1,4 +1,4 @@
-package app.tellcat.ui.alarm
+package app.tellcat
 
 import android.app.KeyguardManager
 import android.content.Context
@@ -16,11 +16,16 @@ import androidx.core.content.getSystemService
 import androidx.core.os.UserManagerCompat
 import app.tellcat.core.notification.AlarmRingService
 import app.tellcat.core.notification.RingingAlarm
+import app.tellcat.ui.alarm.AlarmScreen
 import app.tellcat.ui.theme.TellcatTheme
 import java.time.LocalDate
 
 /**
  * The alarm, full screen, over the lock screen. `docs/decisions.md` D-102.
+ *
+ * Beside [MainActivity] rather than in `ui/alarm`, for the reason that one is:
+ * the notification in `core/notification` opens it, and nothing in `core`
+ * imports `ui`. What it draws, [AlarmScreen], is in `ui/alarm`.
  *
  * Shown by the full-screen intent when the phone is locked or the screen is
  * off; Android shows the notification as a heads-up instead while the phone is

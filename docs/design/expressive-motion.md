@@ -114,6 +114,7 @@ licence to invent a fifth.
 | The focused task changing on Focus | `stateColor` | Restrained |
 | Entering or leaving the Focus session | `focusSession` | Deliberate |
 | The Focus cat, settling or getting up | `mascotSettle` | Restrained |
+| Holding Stop or Snooze on the alarm screen | a linear fill over the 800ms hold, snapping back if released early (D-102) | Functional: it measures time |
 | Pressing a row or button | Material ripple and state layer | Material default |
 | Sheets opening and closing | Material default | Material default |
 | The undo snackbar | Material default | Material default |
