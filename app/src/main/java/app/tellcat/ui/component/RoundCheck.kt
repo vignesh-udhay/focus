@@ -28,7 +28,7 @@ import app.tellcat.core.design.TellcatMotion
 /**
  * The round completion check on a task row. `docs/decisions.md` D-105.
  *
- * Material's checkbox in a circle: the same 18dp box, 2dp outline, colour roles
+ * Material's checkbox in a circle, 22dp across: the 2dp outline, colour roles
  * from [CheckboxDefaults.colors], 40dp state layer and 48dp target, and the
  * same semantics, `Role.Checkbox` with a toggleable state, so TalkBack reads it
  * exactly as it read the square one. Only the shape and the tick differ. The
@@ -93,8 +93,8 @@ internal fun RoundCheck(
             val radius = size.minDimension / 2
 
             drawCircle(color = boxColor, radius = radius)
-            // Inset by half the stroke so the ring sits inside the 18dp box,
-            // as Material's outline does.
+            // Inset by half the stroke so the ring sits inside the box, as
+            // Material's outline does.
             drawCircle(color = borderColor, radius = radius - stroke / 2, style = Stroke(stroke))
 
             if (drawn > 0f) {
@@ -126,8 +126,12 @@ private val TickLeft = 0.284f to 0.5f
 private val TickVertex = 0.428f to 0.644f
 private val TickRight = 0.716f to 0.356f
 
-/** Material's checkbox box, `CheckboxTokens.ContainerSize`. */
-private val BoxSize = 18.dp
+/**
+ * Across the circle. Material's box is 18dp, and a circle that size read small
+ * beside the title on the owner's phone, since it has less area than the
+ * square, so it is a little bigger. D-105.
+ */
+private val BoxSize = 22.dp
 
 /** Material's checkbox outline and check mark width. */
 private val StrokeWidth = 2.dp

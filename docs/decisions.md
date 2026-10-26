@@ -6531,7 +6531,9 @@ hold between the two, not a return to 800ms.
 
 **Decision.** A task row completes with a round check, `RoundCheck`, instead of
 Material's square `Checkbox`. It is Material's checkbox in every way but shape:
-the 18dp box, 2dp outline, `CheckboxDefaults.colors()` roles, 40dp state layer,
+a 22dp circle where Material's box is 18dp, because a circle that size read
+small on the owner's phone, and otherwise the 2dp outline,
+`CheckboxDefaults.colors()` roles, 40dp state layer,
 48dp target, `Role.Checkbox` and toggleable state, so TalkBack reads it as it
 read the square one. The tick is Material's check mark scaled to 72% about the
 centre, with round ends, so it sits inside the circle. Checklist items in Task
