@@ -24,6 +24,14 @@ enum class AlarmMode {
     Banner,
 
     /**
+     * As a normal reminder, possibly late, because "Alarms & reminders" is off.
+     * Without it the reminder's alarm is inexact, and Android starts the
+     * ringing service from the background only for an exact one, so it could
+     * not ring as an alarm even when it arrives.
+     */
+    NoExactAlarms,
+
+    /**
      * As a normal reminder. The Alarms channel is switched off, and a
      * foreground service whose notification is hidden would ring with nothing
      * on screen to stop it.
@@ -34,12 +42,24 @@ enum class AlarmMode {
 /**
  * Which [AlarmMode] applies. The editor says it in one line before the user
  * relies on it, and the receiver rings by the same answer.
+ *
+ * The exact-alarm grant first: without it nothing else matters, and it is the
+ * state a fresh install on Android 14 starts in.
  */
-fun alarmMode(alarmChannelOn: Boolean, fullScreenAllowed: Boolean): AlarmMode = when {
+fun alarmMode(
+    alarmChannelOn: Boolean,
+    fullScreenAllowed: Boolean,
+    exactAlarmsAllowed: Boolean
+): AlarmMode = when {
+    !exactAlarmsAllowed -> AlarmMode.NoExactAlarms
     !alarmChannelOn -> AlarmMode.PlainReminder
     fullScreenAllowed -> AlarmMode.FullScreen
     else -> AlarmMode.Banner
 }
+
+/** Whether a reminder in this mode rings as an alarm at all. */
+val AlarmMode.ringsAsAlarm: Boolean
+    get() = this == AlarmMode.FullScreen || this == AlarmMode.Banner
 
 /**
  * How long an alarm rings unanswered before it stops and leaves the normal

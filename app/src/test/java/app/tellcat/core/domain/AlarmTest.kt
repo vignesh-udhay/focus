@@ -32,19 +32,56 @@ class AlarmTest {
 
     @Test
     fun `full screen where allowed`() {
-        assertEquals(AlarmMode.FullScreen, alarmMode(alarmChannelOn = true, fullScreenAllowed = true))
+        assertEquals(
+            AlarmMode.FullScreen,
+            alarmMode(alarmChannelOn = true, fullScreenAllowed = true, exactAlarmsAllowed = true)
+        )
     }
 
     @Test
     fun `a banner that rings until answered without the full-screen grant`() {
-        assertEquals(AlarmMode.Banner, alarmMode(alarmChannelOn = true, fullScreenAllowed = false))
+        assertEquals(
+            AlarmMode.Banner,
+            alarmMode(alarmChannelOn = true, fullScreenAllowed = false, exactAlarmsAllowed = true)
+        )
     }
 
     /** A hidden foreground notification would ring with nothing to stop it. */
     @Test
     fun `a plain reminder when the Alarms channel is off, whatever else is allowed`() {
-        assertEquals(AlarmMode.PlainReminder, alarmMode(alarmChannelOn = false, fullScreenAllowed = true))
-        assertEquals(AlarmMode.PlainReminder, alarmMode(alarmChannelOn = false, fullScreenAllowed = false))
+        assertEquals(
+            AlarmMode.PlainReminder,
+            alarmMode(alarmChannelOn = false, fullScreenAllowed = true, exactAlarmsAllowed = true)
+        )
+        assertEquals(
+            AlarmMode.PlainReminder,
+            alarmMode(alarmChannelOn = false, fullScreenAllowed = false, exactAlarmsAllowed = true)
+        )
+    }
+
+    /**
+     * Without "Alarms & reminders" the alarm is inexact, and Android starts the
+     * ringing service from the background for an exact alarm only. Nothing
+     * else allowed can make up for it.
+     */
+    @Test
+    fun `a normal reminder without the exact-alarm grant, whatever else is allowed`() {
+        listOf(true, false).forEach { channel ->
+            listOf(true, false).forEach { fullScreen ->
+                assertEquals(
+                    AlarmMode.NoExactAlarms,
+                    alarmMode(alarmChannelOn = channel, fullScreenAllowed = fullScreen, exactAlarmsAllowed = false)
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `only full screen and the banner ring as an alarm`() {
+        assertTrue(AlarmMode.FullScreen.ringsAsAlarm)
+        assertTrue(AlarmMode.Banner.ringsAsAlarm)
+        assertFalse(AlarmMode.NoExactAlarms.ringsAsAlarm)
+        assertFalse(AlarmMode.PlainReminder.ringsAsAlarm)
     }
 
     @Test

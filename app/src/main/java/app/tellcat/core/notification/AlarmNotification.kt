@@ -16,6 +16,7 @@ import app.tellcat.R
 import app.tellcat.core.domain.AlarmMode
 import app.tellcat.core.domain.Task
 import app.tellcat.core.domain.alarmMode
+import app.tellcat.core.domain.ringsAsAlarm
 import app.tellcat.AlarmActivity
 import java.time.LocalDateTime
 
@@ -48,20 +49,39 @@ internal fun Task.asRingingAlarm(): RingingAlarm? {
 /**
  * Rings [task] as an alarm, and says whether it did.
  *
- * False when it is not an alarm, when the Alarms channel is off, or when
- * Android refuses to start the service; the caller then posts the normal
- * reminder, so an alarm that cannot ring still arrives.
+ * False when it is not an alarm, when "Alarms & reminders" or the Alarms
+ * channel is off, or when Android refuses to start the service; the caller
+ * then posts the normal reminder, so an alarm that cannot ring still arrives.
+ *
+ * **Not attempted without the exact-alarm grant.** D-102. The reminder's alarm
+ * is then inexact, and Android lets an app start a foreground service from the
+ * background for an exact alarm only, so the start would throw
+ * `ForegroundServiceStartNotAllowedException`. The catch in
+ * [AlarmRingService.start] would still save the reminder, but deciding here
+ * makes the receiver do exactly what the editor's line promised.
  */
 internal fun Context.ringAsAlarm(task: Task): Boolean {
     val alarm = task.asRingingAlarm() ?: return false
     ensureAlarmChannel()
-    if (currentAlarmMode() == AlarmMode.PlainReminder) return false
+    if (!currentAlarmMode().ringsAsAlarm) return false
     return AlarmRingService.start(this, alarm)
 }
 
 /** How an alarm-style reminder rings on this device right now. D-102. */
 internal fun Context.currentAlarmMode(): AlarmMode =
-    alarmMode(alarmChannelOn = alarmChannelOn(), fullScreenAllowed = canUseFullScreen())
+    alarmMode(
+        alarmChannelOn = alarmChannelOn(),
+        fullScreenAllowed = canUseFullScreen(),
+        exactAlarmsAllowed = canScheduleExactAlarms()
+    )
+
+/** Whether "Alarms & reminders" is on for Tellcat. Granted at install below Android 12. */
+internal fun Context.canScheduleExactAlarms(): Boolean =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        getSystemService<android.app.AlarmManager>()?.canScheduleExactAlarms() ?: false
+    } else {
+        true
+    }
 
 /**
  * Whether the Alarms channel can show anything.

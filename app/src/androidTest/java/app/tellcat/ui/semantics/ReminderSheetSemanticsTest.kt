@@ -304,7 +304,8 @@ class ReminderSheetSemanticsTest {
         val ALARM_PROMISES = listOf(
             "Rings full screen until you stop or snooze it, even on Silent.",
             "Rings as a banner until you answer. Full screen needs permission.",
-            "Alarms are off for Tellcat, so this arrives as a normal reminder."
+            "Alarms are off for Tellcat, so this arrives as a normal reminder.",
+            "Alarms & reminders is off for Tellcat, so this arrives as a normal reminder, and may be late."
         )
         const val PRIMING_TITLE = "Ring full screen"
         const val PRIMING_ALLOW = "Allow full screen"

@@ -123,6 +123,13 @@ internal fun ReminderAlarmSwitch(
                     Text(stringResource(R.string.task_reminder_alarm_allow))
                 }
 
+                AlarmMode.NoExactAlarms -> OutlinedButton(
+                    onClick = { context.openExactAlarmSettings() },
+                    modifier = Modifier.padding(top = TellcatSpacing.xs)
+                ) {
+                    Text(stringResource(R.string.task_reminder_alarm_exact_allow))
+                }
+
                 AlarmMode.PlainReminder -> OutlinedButton(
                     onClick = { context.openAlarmChannelSettings() },
                     modifier = Modifier.padding(top = TellcatSpacing.xs)
@@ -148,6 +155,7 @@ private val AlarmMode.promise: Int
     get() = when (this) {
         AlarmMode.FullScreen -> R.string.task_reminder_alarm_full_screen
         AlarmMode.Banner -> R.string.task_reminder_alarm_banner
+        AlarmMode.NoExactAlarms -> R.string.task_reminder_alarm_no_exact
         AlarmMode.PlainReminder -> R.string.task_reminder_alarm_off
     }
 
@@ -281,6 +289,18 @@ internal fun Context.openFullScreenSettings() {
         Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
     }
     startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+}
+
+/**
+ * "Alarms & reminders" for Tellcat. Only Android 12 and later can refuse it,
+ * so below that the mode that offers this button never comes up.
+ */
+private fun Context.openExactAlarmSettings() {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
+    startActivity(
+        Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:$packageName"))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    )
 }
 
 /** The Alarms channel's own settings page. */

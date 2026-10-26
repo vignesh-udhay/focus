@@ -473,6 +473,8 @@
     <string name="task_reminder_alarm_full_screen">Rings full screen until you stop or snooze it, even on Silent.</string>
     <string name="task_reminder_alarm_banner">Rings as a banner until you answer. Full screen needs permission.</string>
     <string name="task_reminder_alarm_off">Alarms are off for Tellcat, so this arrives as a normal reminder.</string>
+    <string name="task_reminder_alarm_no_exact">Alarms &amp; reminders is off for Tellcat, so this arrives as a normal reminder, and may be late.</string>
+    <string name="task_reminder_alarm_exact_allow">Allow Alarms &amp; reminders</string>
     <string name="task_reminder_alarm_allow">Allow full screen</string>
     <string name="task_reminder_alarm_channel_open">Open alarm settings</string>
     <!-- The reminder row on Task Details, with the alarm switched on. -->

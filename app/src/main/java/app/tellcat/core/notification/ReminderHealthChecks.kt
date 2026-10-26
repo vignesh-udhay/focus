@@ -75,7 +75,7 @@ class AndroidReminderHealthChecks(
 
     // D-102: by the same answer the editor's line and the receiver use.
     override fun alarmStyle(): CheckState = when (context.currentAlarmMode()) {
-        AlarmMode.PlainReminder -> CheckState.Blocked
+        AlarmMode.PlainReminder, AlarmMode.NoExactAlarms -> CheckState.Blocked
         AlarmMode.Banner -> CheckState.Warning
         AlarmMode.FullScreen -> CheckState.Ok
     }

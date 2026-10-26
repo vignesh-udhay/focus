@@ -170,10 +170,11 @@ enum class HealthCheck {
     /**
      * Whether a reminder that rings like an alarm can ring as one. D-102.
      *
-     * Blocked when the Alarms channel is off, because then it arrives as a
-     * normal reminder; a caution without the full-screen grant, because then it
-     * rings as a banner. Exact alarms have their own row, which comes first, so
-     * a refusal there is not reported twice.
+     * Blocked when the Alarms channel or the exact-alarm grant is off, because
+     * then it arrives as a normal reminder; a caution without the full-screen
+     * grant, because then it rings as a banner. Without the exact grant this row
+     * says only how alarms will arrive. The exact-alarm row comes first, so the
+     * headline and the button go to the refusal that matters most.
      */
     AlarmStyle
 }
