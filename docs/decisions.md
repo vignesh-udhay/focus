@@ -6530,7 +6530,8 @@ hold between the two, not a return to 800ms.
 ## D-105. A task's check is round
 
 **Decision.** A task row completes with a round check, `RoundCheck`, instead of
-Material's square `Checkbox`. It is Material's checkbox in every way but shape:
+Material's square `Checkbox`. It is Material's checkbox in every way but shape
+and size:
 a 22dp circle where Material's box is 18dp, because a circle that size read
 small on the owner's phone, and otherwise the 2dp outline,
 `CheckboxDefaults.colors()` roles, 40dp state layer,
