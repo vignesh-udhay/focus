@@ -282,7 +282,12 @@ class ReminderReceiver : BroadcastReceiver() {
                 }
 
                 context.ensureReminderChannel()
-                if (!context.postReminder(task)) {
+                // **An alarm rings; anything else, or an alarm that cannot,
+                // arrives as the reminder it always was.** D-102. Ringing
+                // counts as announcing: the service's notification is on
+                // screen and the task is told.
+                val announced = context.ringAsAlarm(task) || context.postReminder(task)
+                if (!announced) {
                     Log.w(LogTag, "Cannot post. Reminder permission changed for $taskId.")
                     record(DeliveryOutcome.Suppressed)
                     return@launch
@@ -430,9 +435,12 @@ private fun Context.deliverWhileLocked(
         id = reminder.taskId,
         title = reminder.title,
         createdAt = Instant.EPOCH,
-        reminderAt = reminder.ringsAt
+        reminderAt = reminder.ringsAt,
+        // From the copy, so an alarm due before the first unlock still rings
+        // as one. D-102.
+        ringsLikeAlarm = reminder.ringsLikeAlarm
     )
-    if (!postReminder(task, requireUnlockForActions = true)) return
+    if (!ringAsAlarm(task) && !postReminder(task, requireUnlockForActions = true)) return
 
     store.recordLockedDelivery(
         LockedDelivery(

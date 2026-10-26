@@ -584,6 +584,20 @@
     </plurals>
     <string name="reminder_channel_name">Reminders</string>
     <string name="reminder_channel_description">Tasks you asked to be reminded about, at the time you chose.</string>
+
+    <!--
+      Ring like an alarm, D-102. The channel names what it holds; the
+      notification and the full screen offer Stop and Snooze 10 min, never Done
+      (R-020). The time in the notification is the reminder's, not the clock's.
+    -->
+    <string name="alarm_channel_name">Alarms</string>
+    <string name="alarm_channel_description">Reminders you set to ring like an alarm. They ring until you answer.</string>
+    <string name="alarm_notification_text">%1$s · Rings until you answer</string>
+    <string name="alarm_label">Tellcat alarm</string>
+    <string name="alarm_snooze">Snooze 10 min</string>
+    <string name="alarm_stop">Stop</string>
+    <!-- Under each answer on the full screen: a tap does nothing. -->
+    <string name="alarm_hold_hint">Press and hold</string>
     <string name="reminder_action_done">Done</string>
     <string name="reminder_action_snooze">Snooze</string>
     <string name="reminder_snooze_until">Snooze until</string>

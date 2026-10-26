@@ -36,6 +36,8 @@ import app.tellcat.core.notification.ReminderAlarms
 import app.tellcat.core.notification.AndroidReminderHealthChecks
 import app.tellcat.core.notification.ReminderHealthChecks
 import app.tellcat.core.notification.ReminderScheduler
+import app.tellcat.core.notification.AlarmRingService
+import app.tellcat.core.notification.ensureAlarmChannel
 import app.tellcat.core.notification.ensureReminderChannel
 import app.tellcat.core.notification.withdrawSettledReminders
 import app.tellcat.core.time.SystemCurrentDay
@@ -182,6 +184,10 @@ class TellcatApplication : Application() {
             // The shade follows storage as the alarms do: a reminder for a task
             // deleted, completed or gone is no longer something to act on.
             withdrawSettledReminders(current)
+
+            // And so does a ringing alarm: completed, deleted, snoozed from the
+            // notification or moved, it stops. R-002, D-102.
+            AlarmRingService.silenceIfSettled(current)
         }
     }
 
@@ -275,6 +281,8 @@ class TellcatApplication : Application() {
         // so Reminder health reads the channel reminders will use. D-100.
         // Channels are not credential storage, so this is safe before unlock.
         ensureReminderChannel()
+        // The Alarms channel too, so Reminder health can read it. D-102.
+        ensureAlarmChannel()
 
         // **Nothing in credential-encrypted storage until the user unlocks.**
         // D-079. The reminder receivers are direct-boot aware, so this process

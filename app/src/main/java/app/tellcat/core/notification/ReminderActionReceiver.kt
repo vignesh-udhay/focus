@@ -6,6 +6,7 @@ import android.content.Intent
 import app.tellcat.TellcatApplication
 import app.tellcat.core.domain.SnoozeOption
 import app.tellcat.core.domain.TaskCompletion
+import app.tellcat.core.domain.isCurrentAction
 import app.tellcat.core.domain.snoozedUntil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -38,6 +39,16 @@ class ReminderActionReceiver : BroadcastReceiver() {
 
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
+                // **A stale tap does nothing.** R-002, D-102. The task was
+                // snoozed, moved, completed or deleted since this notification
+                // was posted, so what it offers no longer describes the task.
+                // Taken off screen instead, since it is out of date.
+                val postedFor = intent.getStringExtra(EXTRA_POSTED_FOR)?.let(LocalDateTime::parse)
+                if (!isCurrentAction(application.taskRepository.findTask(taskId), postedFor)) {
+                    context.cancelReminder(taskId)
+                    return@launch
+                }
+
                 when (intent.action) {
                     ACTION_DONE -> {
                         TaskCompletion(application.taskRepository, application.currentDay)
@@ -90,5 +101,8 @@ class ReminderActionReceiver : BroadcastReceiver() {
 
         const val EXTRA_TASK_ID = "tellcat.extra.taskId"
         const val EXTRA_SNOOZE_OPTION = "tellcat.extra.snoozeOption"
+
+        /** The moment the notification was posted for. R-002, D-102. */
+        const val EXTRA_POSTED_FOR = "tellcat.extra.postedFor"
     }
 }

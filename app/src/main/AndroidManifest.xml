@@ -18,6 +18,23 @@
          app cannot know a reminder was ever set. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!-- "Ring like an alarm", D-102. Full screen over the lock screen: granted
+         at install below Android 14; from 14 Play pre-grants it only to alarm
+         and calling apps, so Tellcat asks the user, and rings as a heads-up
+         until it is given. -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+
+    <!-- The alarm rings from a foreground service, because nothing the user
+         does to the screen (Home, Back, the shade, the power button) may stop
+         it. mediaPlayback: it plays a sound the user asked for, and unlike
+         systemExempted it needs no exact-alarm grant. D-102. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+
+    <!-- The alarm always vibrates, and keeps the CPU awake while it plays. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
     <!-- The manufacturer battery and autostart screens the reminder health
          screen routes to. From Android 11 a package this app has not named is
          invisible to it, so without these the deep link silently degrades to
@@ -99,6 +116,30 @@
         <receiver
             android:name=".core.notification.ReminderActionReceiver"
             android:exported="false" />
+
+        <!-- Rings an alarm-style reminder until it is answered. D-102. Started
+             by ReminderReceiver, and answered by its own notification and the
+             alarm screen. Direct-boot aware, so an alarm due before the first
+             unlock after a restart still rings. -->
+        <service
+            android:name=".core.notification.AlarmRingService"
+            android:directBootAware="true"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
+        <!-- The alarm, full screen over the lock screen. D-102. Only the
+             full-screen intent and the alarm's notification open it. Its own
+             task, out of Recents: it is a moment, not a place in the app. -->
+        <activity
+            android:name=".ui.alarm.AlarmActivity"
+            android:directBootAware="true"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:showWhenLocked="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Tellcat"
+            android:turnScreenOn="true" />
 
         <!-- Not exported: only AlarmManager delivers to it, on our own
              PendingIntent. -->
