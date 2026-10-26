@@ -6294,3 +6294,133 @@ reminders under "Buy 6 eggs" would teach users to ignore the line.
 line, which would argue for a one-tap "6 am / 6 pm" choice on the sheet. That
 is a second control, and a decision of its own.
 
+## D-102. A reminder can ring like an alarm
+
+**Decision.** Each reminder gets a "Ring like an alarm" switch in its editor,
+off by default. When it is on, the reminder rings on the alarm stream until it
+is answered: full screen when the phone is locked or the screen is off and
+Android allows full-screen alerts, otherwise a heads-up on a separate Alarms
+channel. The alarm answers with Stop and Snooze 10 min, never Done (R-020). It
+reverses D-038's deferral, which named its own trigger: 1.0 shipped and the
+reminder pipeline has been observed working. Per task, as D-038 required, so the
+alarm-grade path is a choice the user made rather than a claim that every task
+reminder is an alarm. Designed in the redesign as R-002, R-013, R-014, R-020 and
+IA F2b and F5, adapted here to 1.0's design system and colours (D-091).
+
+**Step 0, the platform rules, checked on 2026-10-26.**
+
+- **`USE_FULL_SCREEN_INTENT`.** Play's "Permissions and APIs that Access
+  Sensitive Information" policy pre-grants it on Android 14 and later only when
+  the app's core functionality is setting an alarm or receiving phone or video
+  calls, and asks for a declaration in Play Console. Tellcat's core function is
+  task reminders; an alarm is one way a reminder can ring. Claiming the
+  pre-grant would be the contested declaration D-038 warned about, now on an app
+  with testers to lose. So Tellcat declares the permission, answers the Play
+  Console declaration honestly (not an alarm or calling app), and asks the user
+  through `ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT`. Below Android 14 the
+  permission is granted at install.
+- **`USE_EXACT_ALARM`.** The same policy limits it to apps whose core
+  functionality is an alarm or timer, or a calendar that shows event
+  notifications, and other apps are pointed at `SCHEDULE_EXACT_ALARM`. Tellcat is
+  neither, so D-078 stands: Tellcat keeps `SCHEDULE_EXACT_ALARM` and its
+  explainer. Google Tasks and Todoist declaring `USE_EXACT_ALARM` (competitor
+  study, item 7) is their risk, not evidence of the policy. Nothing about exact
+  alarms changes here.
+
+**What the competitor study found, and the rule each finding became.** Six
+apps ring; between them they failed every way an alarm can
+(`research/competitors/ANALYSIS.md`, item 3):
+
+1. **The alarm stream, whatever the ringer, and always vibrate.** To Do Reminder
+   was silent on Silent and Tasks.org played on the notification stream. Tellcat
+   plays with `USAGE_ALARM` and vibrates with alarm attributes.
+2. **Back, Home, a tap outside, the shade and the power button do not stop it.**
+   To Do Reminder ended on Home with no trace, Tasks.org went quiet when the
+   shade opened and Todoist on one Back. So the sound is not the notification's:
+   Android clears an insistent notification's sound when the shade is opened,
+   which is Tasks.org's failure. A foreground service, `AlarmRingService`, plays
+   and vibrates, and its notification carries Stop and Snooze. The full screen
+   ignores Back.
+3. **Stop and Snooze only, and not by accident.** Todoist's biggest button was
+   Complete and To Do Reminder's Dismiss completed. On the full screen both are
+   press-and-hold controls, so a half-asleep tap does nothing.
+4. **The task's time, not the clock.** Todoist showed 7:10 for a 7:08 task. The
+   alarm shows the time the reminder was set for.
+5. **Other reminders are never touched.** Todoist's dismiss wiped unrelated
+   reminders from the shade, twice. The alarm only ever removes its own
+   notification.
+6. **On the minute.** To Do Reminder was up to 59 seconds late. The alarm uses
+   the existing exact path, which fires on the minute (D-009, D-078).
+7. **After Stop a normal notification remains.** To Do Reminder left nothing.
+   Stop re-posts the reminder quietly with Done and Snooze, and the task stays
+   as reminded.
+
+**One state, two paths (R-002).** Storage is the only state, as everywhere in
+the reminder code. Snooze from the alarm or the notification writes the same
+`snoozedUntil`; Done completes the task; every reconciliation then stops an
+alarm whose task is completed, deleted, or no longer due at the moment it is
+ringing for (snoozed or moved). So Done from the notification stops a ringing
+alarm, a snooze from either path moves both, and deleting or completing the
+task while it rings stops it, through D-099's pass. Every action carries the
+moment its notification was for, and one that no longer matches the task is
+ignored and its stale notification removed, so an old tap cannot snooze a new
+time or complete a task twice.
+
+**Choices this entry makes.**
+
+- **How long it rings unanswered: ten minutes**, then it stops and leaves the
+  normal notification, as Stop does. Ten is Android's own Clock default for
+  "Silence after", long enough to wake someone and short enough that a phone
+  left at home does not ring for an hour.
+- **Not `setAlarmClock`.** Alarm-style reminders use the same exact path as any
+  reminder. `setAlarmClock` puts the reminder in the lock screen's "Next alarm"
+  slot, where it can hide the user's wake-up alarm, and the exact path already
+  fires on the minute and lets the service start from the background. D-042's
+  OnePlus exception, which uses `setAlarmClock` for every reminder on OnePlus
+  because OxygenOS demotes the exact call, is left as measured; that is a
+  disagreement with the brief, which said ordinary reminders must never use it.
+- **The foreground service is `mediaPlayback`.** Android's `systemExempted`
+  type is allowed only while the exact-alarm grant is held, and an alarm should
+  still ring on a phone that refused it. `mediaPlayback` has no runtime
+  prerequisite and describes what the service does: plays a sound the user asked
+  for. Play asks for a declaration for it too. If Android refuses to start the
+  service, which an inexact alarm can cause, the reminder arrives as a normal
+  one rather than not at all.
+- **The Alarms channel makes no sound of its own.** The service owns the sound
+  and the vibration; a channel sound would play twice. If the user switches the
+  Alarms channel off, alarm-style reminders arrive as normal reminders: a
+  foreground service whose notification is hidden would ring with nothing on
+  screen to stop it.
+- **Before the first unlock after a restart** an alarm-style reminder still
+  rings as an alarm, from the copy D-079 keeps. Stop works; Snooze asks for the
+  unlock first, because it has to write to the database.
+- **Asking for full screen (R-013).** Turning the switch on without the
+  permission shows a sheet with a picture of the alarm screen and "Allow full
+  screen", which opens the exact settings toggle. The switch stays on either
+  way; without the grant the editor's line says it will ring as a banner until
+  answered.
+- **The editor says how it will ring**, in one line under the switch, before
+  the user relies on it: full screen, as a banner, or as a normal reminder when
+  the Alarms channel is off.
+- **Reminder health gains "Alarm-style reminders"**, listed only while at least
+  one task rings like an alarm: Action needed when the Alarms channel is off or
+  exact alarms are refused, Worth checking when full screen is not allowed.
+- **Rows** show an alarm glyph after the reminder time, and TalkBack reads
+  ", rings like an alarm".
+- **Stored, backed up and carried.** Schema 13 adds `ringsLikeAlarm`, false for
+  every existing row. The backup gains the field; an older file without it
+  reads as false, and an older app skips it, so the format version stays 1.
+  The next occurrence of a repeating task copies it (D-098), and the locked copy
+  (D-079) carries it, so a restart re-arms alarm-style reminders as alarms.
+
+**What it costs.** Two Play Console declarations, both the owner's to file:
+`USE_FULL_SCREEN_INTENT` (answered as not an alarm or calling app) and the
+`mediaPlayback` foreground service. A second delivery path through the one
+subsystem that cannot break, which D-038 named as the risk; it is opt-in per
+task and falls back to the normal reminder at every point where it cannot ring.
+
+**What would reverse this.** Play refusing either declaration, in which case
+the switch goes and the reminder rings normally. Or testers turning it on and
+being woken by tasks they meant as quiet, which would argue for a stronger
+warning on the switch, not for removing it.
+
