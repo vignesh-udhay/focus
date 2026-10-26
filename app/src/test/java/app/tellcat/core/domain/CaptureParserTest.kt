@@ -1,6 +1,7 @@
 package app.tellcat.core.domain
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -716,5 +717,61 @@ class CaptureParserTest {
     @Test
     fun `an offset within a year is still read`() {
         assertTrue(capture("Renew passport in 8000 hours").hasReminder)
+    }
+
+    // D-101: the hour Quick Add says it will not read
+
+    @Test
+    fun `an hour after at with no am or pm is a bare hour`() {
+        assertTrue(endsInBareHour("Call mom at six"))
+        assertTrue(endsInBareHour("Call mom at 6"))
+        assertTrue(endsInBareHour("Call mom at 12"))
+        assertTrue(endsInBareHour("Call mom at one."))
+    }
+
+    @Test
+    fun `a single-digit hour with minutes is a bare hour, as D-070 refuses it`() {
+        assertTrue(endsInBareHour("Call mom at 6:00"))
+        assertTrue(endsInBareHour("Call mom at 6.30"))
+    }
+
+    @Test
+    fun `an hour with a meridiem, or a 24-hour time, is not`() {
+        assertFalse(endsInBareHour("Call mom at six pm"))
+        assertFalse(endsInBareHour("Call mom at 6pm"))
+        assertFalse(endsInBareHour("Call mom at 18:00"))
+        assertFalse(endsInBareHour("Call mom at 10:30"))
+    }
+
+    @Test
+    fun `a number without at is a quantity, not an hour`() {
+        assertFalse(endsInBareHour("Buy 6"))
+        assertFalse(endsInBareHour("Buy eggs six"))
+    }
+
+    @Test
+    fun `words and numbers that are not hours are not bare hours`() {
+        assertFalse(endsInBareHour("Look at a"))
+        assertFalse(endsInBareHour("Arrive at 13"))
+        assertFalse(endsInBareHour("Meet at 0"))
+        assertFalse(endsInBareHour("Meet at noon"))
+        assertFalse(endsInBareHour("Meet at the station"))
+        assertFalse(endsInBareHour("Call mom at six then"))
+    }
+
+    @Test
+    fun `the title left after the day is asked, so at six tomorrow is caught`() {
+        val result = capture("Call mom at six tomorrow")
+
+        assertTrue(!result.hasReminder)
+        assertTrue(endsInBareHour(result.title))
+    }
+
+    @Test
+    fun `a bare hour typed with the day before it is still the whole title`() {
+        val result = capture("Call mom tomorrow at six")
+
+        assertTrue(!result.hasReminder)
+        assertTrue(endsInBareHour(result.title))
     }
 }

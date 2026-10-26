@@ -6258,3 +6258,39 @@ test must never delete the real ones.
 **What would reverse this.** Testers finding the vibration intrusive, which
 would be answered by the system setting, not by switching it off for everyone.
 
+## D-101. Quick Add says when an hour has no am or pm
+
+**Decision.** D-070's refusal stays: "call mom at six" sets no reminder,
+because nothing in it says which six. What changes is that the sheet now says
+so before saving. Under D-053's line ("Saved to Today") a second line reads
+"No reminder set. Add am or pm to the time." It appears when the title Quick
+Add would save ends in "at" and an hour from one to twelve, as digits or a word,
+or a single-digit hour with minutes ("at 6:00", which a speech recognizer
+writes for "six"), and only when no reminder was read. `endsInBareHour` in
+`CaptureParser.kt` decides.
+
+**What this changes in D-053.** D-053's line says where the capture lands and
+nothing else. It still does; this line sits beneath it rather than replacing
+it, because the destination is still true. D-053's rule that nothing shows
+before there is a title holds for both.
+
+**Why.** The competitor study typed "call mom at six" on 2026-10-26 and the
+task saved to Today with no reminder and no word about it. The user meant a
+reminder and finds out at seven, which is the silent miss this product ranks
+above a crash. Guessing six in the evening was rejected in D-070 on measured
+evidence: a dictated "six" stored a 6am reminder for a 6pm intention. Telling
+the user costs one line and guesses nothing.
+
+**How it reads.** `docs/brand.md`: a failure says what did not happen. So the
+fact first, "No reminder set", then the fix. Supporting style, not the error
+colour, which is kept for destroying actions; nothing about the task is wrong.
+A polite live region, so TalkBack announces it as it appears.
+
+**Why only after "at".** A bare number is far more often a quantity than a
+time, which is D-070's reason for refusing "Call mum 7". A line about
+reminders under "Buy 6 eggs" would teach users to ignore the line.
+
+**What would reverse this.** Testers still saving bare hours after seeing the
+line, which would argue for a one-tap "6 am / 6 pm" choice on the sheet. That
+is a second control, and a decision of its own.
+

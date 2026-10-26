@@ -34,6 +34,8 @@ import androidx.compose.ui.semantics.text
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -54,6 +56,7 @@ import app.tellcat.ui.component.TellcatFieldShape
 import app.tellcat.core.design.TellcatSpacing
 import app.tellcat.core.domain.CapturedTask
 import app.tellcat.core.domain.splitTrailingCapture
+import app.tellcat.core.domain.endsInBareHour
 import app.tellcat.ui.component.scheduledDateLabel
 import app.tellcat.ui.component.rememberTimeFormat
 import java.time.LocalDate
@@ -250,7 +253,11 @@ fun QuickAddSheet(
                             parsed = parsed,
                             today = today,
                             now = now,
-                            fallbackDate = fallbackDate
+                            fallbackDate = fallbackDate,
+                            // D-101: "at six" is refused, D-070, and used to
+                            // save without a word. Never alongside a reminder,
+                            // so this cannot contradict the chip.
+                            noMeridiem = !parsed.hasReminder && endsInBareHour(parsed.title)
                         )
                     }
                 },
@@ -320,7 +327,8 @@ private fun QuickAddSupportingText(
     parsed: CapturedTask,
     today: LocalDate,
     now: LocalDateTime,
-    fallbackDate: LocalDate?
+    fallbackDate: LocalDate?,
+    noMeridiem: Boolean
 ) {
     // The day the save will use, worked out the way the save works it out. A
     // reminder schedules the task for the day it rings, D-075, so "call mom
@@ -329,27 +337,45 @@ private fun QuickAddSupportingText(
     // the reason the chip reads it: D-030 can move the day.
     val day = if (parsed.isPlain) null else parsed.scheduledDate(fallbackDate, today, now)
 
-    Text(
-        text = when {
-            // The reminder is named by the chip, so the line stays about the day.
-            //
-            // The date and not the list, even though a future day means the task
-            // appears in Upcoming. This is the value the user typed and wants
-            // confirmed, and the list follows from the date rather than the
-            // other way round. D-053.
-            day != null -> stringResource(
-                R.string.quick_add_scheduled_for,
-                scheduledDateLabel(day, today)
-            )
+    // Stacked: the supporting slot does not lay out more than one child.
+    Column {
+        Text(
+            text = when {
+                // The reminder is named by the chip, so the line stays about the day.
+                //
+                // The date and not the list, even though a future day means the task
+                // appears in Upcoming. This is the value the user typed and wants
+                // confirmed, and the list follows from the date rather than the
+                // other way round. D-053.
+                day != null -> stringResource(
+                    R.string.quick_add_scheduled_for,
+                    scheduledDateLabel(day, today)
+                )
 
-            // Nothing typed about when, so the destination is the surprising
-            // part and this is the only branch that names one. Which it is
-            // depends on the host: Today dates an undated capture, Inbox leaves
-            // it undated.
-            fallbackDate != null -> stringResource(R.string.quick_add_saved_to_today)
-            else -> stringResource(R.string.quick_add_saved_to_inbox)
+                // Nothing typed about when, so the destination is the surprising
+                // part and this is the only branch that names one. Which it is
+                // depends on the host: Today dates an undated capture, Inbox leaves
+                // it undated.
+                fallbackDate != null -> stringResource(R.string.quick_add_saved_to_today)
+                else -> stringResource(R.string.quick_add_saved_to_inbox)
+            }
+        )
+
+        // **What did not happen, and how to make it.** D-101. An hour with no am or
+        // pm is refused rather than guessed, D-070, and the destination line alone
+        // read as if the time had been taken. Below it rather than instead of it,
+        // because where the task goes is still true.
+        //
+        // A polite live region, so TalkBack says it when it appears rather than
+        // only when the user goes looking. Not the error colour, which the design
+        // system keeps for destroying actions: nothing is wrong with the task.
+        if (noMeridiem) {
+            Text(
+                text = stringResource(R.string.quick_add_no_meridiem),
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+            )
         }
-    )
+    }
 }
 
 /**

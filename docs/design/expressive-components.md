@@ -820,6 +820,14 @@ over an empty field, asserting a destination for a task that did not exist. It
 is tied to the same test the Add button uses, so the line appears exactly when
 there is something for it to describe.
 
+**A time it will not read gets a second line.** D-101. "Call mom at six" has an
+hour with no am or pm, which `date-parsing.md` and D-070 refuse rather than
+guess, and the sheet used to say only "Saved to Today", as if the time had been
+taken. Under the destination it now says "No reminder set. Add am or pm to the
+time." in the same supporting style, never the error colour, and as a polite
+live region so TalkBack says it when it appears. Only after "at" and only when
+no reminder was read, so it never sits under the Reminder chip.
+
 [CD] The placeholder is an example of exactly that, and it is there to teach
 it. Nothing else on the sheet says a date can be typed, so without one the
 field looks like a plain text box and the feature is found by accident or never.

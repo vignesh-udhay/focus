@@ -3,6 +3,7 @@ package app.tellcat.ui.semantics
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
@@ -333,6 +334,50 @@ class QuickAddSemanticsTest {
         rule.onAllNodesWithText(SCHEDULED_FOR_TOMORROW).assertCountEquals(0)
     }
 
+    // D-101: an hour Quick Add will not read, said before saving
+
+    private fun assertABareHourSaysNoReminderIsSet(fontScale: Float) {
+        setSheet(fontScale)
+
+        field().performTextInput("Call mom at six")
+
+        // Under the destination, not instead of it, and announced as it appears.
+        rule.waitUntilExactlyOneExists(hasText(NO_MERIDIEM), TIMEOUT_MILLIS)
+        rule.onNodeWithText(NO_MERIDIEM)
+            .assertIsDisplayed()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
+        rule.onNodeWithText(SAVED_TO_TODAY).assertIsDisplayed()
+        rule.onAllNodes(hasClickLabel(REMINDER_DISMISS)).assertCountEquals(0)
+    }
+
+    @Test
+    fun aBareHour_saysNoReminderIsSet_at100() = assertABareHourSaysNoReminderIsSet(FontScale100)
+
+    @Test
+    fun aBareHour_saysNoReminderIsSet_at200() = assertABareHourSaysNoReminderIsSet(FontScale200)
+
+    @Test
+    fun addingTheMeridiem_takesTheLineAwayAndSetsTheReminder() {
+        setSheet(FontScale100)
+        field().performTextInput("Call mom at six")
+        rule.waitUntilExactlyOneExists(hasText(NO_MERIDIEM), TIMEOUT_MILLIS)
+
+        field().performTextInput(" pm")
+
+        rule.waitUntilExactlyOneExists(hasClickLabel(REMINDER_DISMISS), TIMEOUT_MILLIS)
+        rule.onAllNodesWithText(NO_MERIDIEM).assertCountEquals(0)
+    }
+
+    @Test
+    fun aNumberThatIsNotAnHour_saysNothingAboutReminders() {
+        setSheet(FontScale100)
+
+        field().performTextInput("Buy 6 eggs")
+
+        rule.waitUntilExactlyOneExists(hasText(SAVED_TO_TODAY), TIMEOUT_MILLIS)
+        rule.onAllNodesWithText(NO_MERIDIEM).assertCountEquals(0)
+    }
+
     private companion object {
         const val SHEET_NAME = "New task"
         const val SAVE = "Add task"
@@ -341,6 +386,7 @@ class QuickAddSemanticsTest {
         const val TIMED_TITLE = "Buy milk tomorrow at 3pm"
         const val SCHEDULED_FOR_TOMORROW = "Scheduled for Tomorrow"
         const val SAVED_TO_TODAY = "Saved to Today"
+        const val NO_MERIDIEM = "No reminder set. Add am or pm to the time."
 
         /**
          * The chip is found by its dismiss action rather than by its label.

@@ -350,6 +350,42 @@ fun parseTimeOfDay(text: String): LocalTime? {
 }
 
 /**
+ * Whether [title] ends in an hour with nothing to say which half of the day:
+ * "at six", "at 6", "at 6:30". D-101.
+ *
+ * Exactly the times [parseTimeOfDay] refuses on purpose, D-070, so nothing here
+ * sets a reminder. It only lets Quick Add say before saving that none will be
+ * set, because "call mom at six" saving quietly with no reminder is the miss the
+ * user discovers at seven.
+ *
+ * Only after "at". A bare number is far more often a quantity than a time, the
+ * reason D-070 refuses it, and a line about reminders under "Buy 6 eggs" would
+ * be noise. A two-digit hour with minutes is a 24-hour time that reads, and an
+ * hour past twelve is not a time at all.
+ *
+ * Asked of the title Quick Add would save, so a day after the hour is already
+ * off: "at six tomorrow" ends in "at six".
+ */
+fun endsInBareHour(title: String): Boolean {
+    val cleaned = title.trim().lowercase(Locale.ROOT)
+        .removeSuffix(".").removeSuffix("!").removeSuffix("?")
+    val match = BareHour.find(cleaned) ?: return false
+    val hour = match.groupValues[1]
+    val minutes = match.groupValues[2]
+
+    // "at a" and "at an" are not hours, whatever the number table says.
+    if (hour == "a" || hour == "an") return false
+    val value = hour.toLongOrNull() ?: spokenNumber(hour) ?: return false
+    if (value !in 1..12) return false
+
+    // With minutes, only a single-digit hour: "10:30" reads as a 24-hour time.
+    return minutes.isEmpty() || hour.length == 1
+}
+
+/** "at" and an hour, as digits or a word, with optional minutes, at the end. */
+private val BareHour = Regex("""(?:^|\s)at (\d{1,2}|[a-z]+)(?:[:.](\d{2}))?$""")
+
+/**
  * The times people say without digits, D-069.
  *
  * Noon and midnight are not decisions. The other two are: "tonight" is eight in

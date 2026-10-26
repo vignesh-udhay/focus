@@ -471,6 +471,12 @@
     <string name="quick_add_saved_to_today">Saved to Today</string>
     <string name="quick_add_saved_to_inbox">Saved to Inbox</string>
     <!--
+      D-101. Under the destination line when the title ends in an hour with no am
+      or pm, which D-070 refuses rather than guesses. It says what did not happen,
+      then how to make it happen, as `docs/brand.md` asks of a failure.
+    -->
+    <string name="quick_add_no_meridiem">No reminder set. Add am or pm to the time.</string>
+    <!--
       D-075. Only ever a snackbar, after a capture lands on a list other than the
       one on screen. The sheet itself names the day, not the list.
     -->
