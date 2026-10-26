@@ -258,7 +258,9 @@ same transaction.
 
 **A reminder that rings like an alarm (D-102)** takes the same exact alarm and
 the same `ReminderReceiver`, which then starts `AlarmRingService` instead of
-posting. The service is a `mediaPlayback` foreground service: it plays on the
+posting, but only while the exact-alarm grant is held, because Android lets an
+inexact alarm start no foreground service. The service is a `systemExempted`
+foreground service, the type Android allows an app holding that grant: it plays on the
 alarm stream and vibrates until Stop, Snooze or ten minutes, and its
 notification, on the separate Alarms channel, carries those two answers and the
 full-screen intent to `AlarmActivity`. The activity sits beside `MainActivity`

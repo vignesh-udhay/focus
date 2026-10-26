@@ -61,7 +61,7 @@ it. The owner asked for its tests to be written and not run, so none of it has
 run yet, on a device or the JVM; the main and test sources compile. Before it
 ships: the owner runs the tests, and files two Play Console declarations,
 full-screen intent (answered as not an alarm or calling app) and the
-`mediaPlayback` foreground service. Checked by hand on the owner's OnePlus 8T
+`systemExempted` foreground service. Checked by hand on the owner's OnePlus 8T
 (Android 14) on 2026-10-26, as "Tellcat dev" (`app.tellcat.debug`, which
 installs beside the Play copy): it rang on the minute on the alarm stream, kept
 ringing through Home, Back and the shade, ignored taps and answered to a hold,

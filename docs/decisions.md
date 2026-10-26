@@ -6379,12 +6379,32 @@ time or complete a task twice.
   OnePlus exception, which uses `setAlarmClock` for every reminder on OnePlus
   because OxygenOS demotes the exact call, is left as measured; that is a
   disagreement with the brief, which said ordinary reminders must never use it.
-- **The foreground service is `mediaPlayback`.** Android's `systemExempted`
-  type is allowed only while the exact-alarm grant is held, and an alarm should
-  still ring on a phone that refused it. `mediaPlayback` has no runtime
-  prerequisite and describes what the service does: plays a sound the user asked
-  for. Play asks for a declaration for it too. If Android refuses to start the
-  service, which an inexact alarm can cause, the reminder arrives as a normal
+- **Without "Alarms & reminders" it arrives as a normal reminder, possibly
+  late.** Found on 2026-10-26 by tracing a phone that refused the grant. The
+  reminder's alarm is then inexact (`setAndAllowWhileIdle`), and from Android
+  12 an app may start a foreground service from the background for an exact
+  alarm, not an inexact one, so starting the ringing service throws
+  `ForegroundServiceStartNotAllowedException`. The first build caught that and
+  posted the normal reminder, so nothing was lost, but the editor's line and
+  the health row still promised full screen. Now the exact grant is the first
+  thing `alarmMode` asks. Without it the receiver does not try to ring, the
+  editor says the reminder "arrives as a normal reminder, and may be late" and
+  offers "Allow Alarms & reminders", and the health row is Action needed,
+  under the exact-alarm row that already leads. An alarm that might ring at
+  the wrong minute is worse than a reminder that says it may be late.
+- **The foreground service is `systemExempted`** from Android 14, the first
+  version with foreground-service types to check; below it the service starts
+  with no type. Changed on 2026-10-26 from `mediaPlayback`. Android allows
+  `systemExempted` to "Apps holding `SCHEDULE_EXACT_ALARM` or
+  `USE_EXACT_ALARM` permission" (Android's foreground service types page), and
+  the rule above makes that grant a condition of ringing, so it always holds
+  when the service starts. Play's Device and Network Abuse policy exempts
+  `systemExempted` and `shortService` from its foreground-service criteria.
+  `mediaPlayback` was chosen first because it had no prerequisite, and lost its
+  reason once ringing needed the grant. Its Play declaration also asks that
+  playback be started by the user, which an alarm is not. `specialUse` would be
+  a free-text case judged by a reviewer, for a use Android already names. If
+  Android still refuses to start the service, the reminder arrives as a normal
   one rather than not at all.
 - **The Alarms channel makes no sound of its own.** The service owns the sound
   and the vibration; a channel sound would play twice. If the user switches the
@@ -6401,7 +6421,7 @@ time or complete a task twice.
   answered.
 - **The editor says how it will ring**, in one line under the switch, before
   the user relies on it: full screen, as a banner, or as a normal reminder when
-  the Alarms channel is off.
+  the Alarms channel or the exact-alarm grant is off.
 - **Reminder health gains "Alarm-style reminders"**, listed only while at least
   one task rings like an alarm: Action needed when the Alarms channel is off or
   exact alarms are refused, Worth checking when full screen is not allowed.
@@ -6415,7 +6435,7 @@ time or complete a task twice.
 
 **What it costs.** Two Play Console declarations, both the owner's to file:
 `USE_FULL_SCREEN_INTENT` (answered as not an alarm or calling app) and the
-`mediaPlayback` foreground service. A second delivery path through the one
+`systemExempted` foreground service. A second delivery path through the one
 subsystem that cannot break, which D-038 named as the risk; it is opt-in per
 task and falls back to the normal reminder at every point where it cannot ring.
 
