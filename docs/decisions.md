@@ -6570,8 +6570,8 @@ settings: notification settings, Alarms & reminders, the manufacturer's sleep
 screen or App info, and for alarm-style reminders whatever their mode says is
 missing (the exact grant, full screen, or the Alarms channel). Each row ends in
 a chevron, as the Plan rows do, and carries a click label naming where it goes.
-The button below the rows is only "Test reminder in 30 seconds", and only once
-nothing is failing.
+The button below the rows is only "Test reminder in 30 seconds", hidden while a
+check is refused (`Blocked`) and shown under a `Warning`.
 
 **What changed the answer.** `reminder-health.md` had the rows report and not
 navigate, with one primary action opening the first failing check, so the
@@ -6584,8 +6584,11 @@ owner tapped the rows themselves and nothing happened.
 problem (D-021), and its row is the red one, so the screen still says what to
 do first. It just no longer makes the user do things in its order.
 
-**Why the test waits until nothing is failing.** A test while a permission is
-refused would only show the refusal again.
+**Why the test hides only for a refusal.** A test while a permission is refused
+would only show the refusal again. A `Warning` is different: it is the
+manufacturer guess D-021 describes, on for good on a OnePlus or a Samsung, and
+a test is the one way to find out whether it bites. The first build hid the
+test under a warning too, and on the owner's OnePlus it vanished entirely.
 
 **What would reverse this.** Users opening settings for a check that is fine and
 changing something they should not. Then rows that are `Ok` would stop being

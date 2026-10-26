@@ -421,17 +421,19 @@ private fun StatusGlyph(state: CheckState, onContainer: Color) {
 }
 
 /**
- * The test, once nothing is failing. D-106.
+ * The test, unless something is refused. D-106.
  *
  * It used to open the settings for whatever was wrong, most severe first, and
  * become the test once all was well. Each row opens its own settings now, so
- * the button only tests: a test while something is refused would only show
- * the refusal again.
+ * the button only tests. Hidden while a check is `Blocked`, because a test
+ * then would only show the refusal again. Shown under a `Warning`, which is a
+ * guess from the manufacturer that is on for good on a OnePlus or a Samsung,
+ * and which the test is the one way to settle.
  */
 @Composable
 private fun PrimaryAction(health: ReminderHealth?, onTest: () -> Unit) {
     val checks = health ?: return
-    if (checks.firstFailing != null) return
+    if (checks.firstBlocked != null) return
 
     Button(
         onClick = onTest,

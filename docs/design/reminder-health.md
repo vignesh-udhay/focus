@@ -113,7 +113,7 @@ A room: back arrow, no navigation bar, reached from the app-bar overflow.
     Room header
     Headline card          the state, its eyebrow, and one sentence
     Three check rows       one segmented group, 2dp gap
-    Primary action         Test reminder, only once nothing is failing
+    Primary action         Test reminder, unless a check is refused
     Last checked           Ready only
 
 The check rows are a segmented group like every other list in the app, First,
