@@ -47,6 +47,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.tellcat.R
+import app.tellcat.ui.task.openAlarmChannelSettings
+import app.tellcat.ui.task.openFullScreenSettings
 import app.tellcat.core.design.TellcatSpacing
 import app.tellcat.core.domain.CheckState
 import app.tellcat.core.domain.ConcernWindow
@@ -423,6 +425,15 @@ private fun PrimaryAction(health: ReminderHealth?, onTest: () -> Unit) {
                 context.openBackgroundWorkSettings(checks.restriction)
             }
 
+        // D-102. Off sends to the Alarms channel; the caution, to the
+        // full-screen toggle, which is the one thing missing.
+        HealthCheck.AlarmStyle ->
+            if (checks.alarmStyle == CheckState.Blocked) {
+                stringResource(R.string.task_reminder_alarm_channel_open) to { context.openAlarmChannelSettings() }
+            } else {
+                stringResource(R.string.task_reminder_alarm_allow) to { context.openFullScreenSettings() }
+            }
+
         null -> stringResource(R.string.reminder_health_test) to onTest
     }
 
@@ -497,6 +508,8 @@ private fun stateTitle(state: ReminderHealthState): String = when (state) {
         // The frame's own sentence, now said only when it is the true cause.
         HealthCheck.BackgroundWork ->
             stringResource(R.string.reminder_restriction_action_title, displayManufacturer())
+
+        HealthCheck.AlarmStyle -> stringResource(R.string.reminder_health_alarm_off_title)
     }
 
     // The same sentence `ActionNeeded` says for the same cause. What differs
@@ -511,6 +524,8 @@ private fun stateTitle(state: ReminderHealthState): String = when (state) {
 
         HealthCheck.BackgroundWork ->
             stringResource(R.string.reminder_restriction_action_title, displayManufacturer())
+
+        HealthCheck.AlarmStyle -> stringResource(R.string.reminder_health_alarm_banner_title)
     }
 
     is ReminderHealthState.Missed ->
@@ -546,6 +561,8 @@ private fun stateBody(state: ReminderHealthState, restriction: DeviceRestriction
                 R.string.reminder_restriction_action_body,
                 stringResource(restriction?.label ?: R.string.reminder_health_check_background)
             )
+
+            HealthCheck.AlarmStyle -> stringResource(R.string.reminder_health_alarm_off_body)
         }
 
         // The honest sentence: the feature can delay reminders, and the app
@@ -562,6 +579,8 @@ private fun stateBody(state: ReminderHealthState, restriction: DeviceRestriction
                 R.string.reminder_restriction_action_body,
                 stringResource(restriction?.label ?: R.string.reminder_health_check_background)
             )
+
+            HealthCheck.AlarmStyle -> stringResource(R.string.reminder_health_alarm_banner_body)
         }
 
         is ReminderHealthState.Missed -> describe(state.delivery)
@@ -596,9 +615,17 @@ private fun HealthCheck.label(restriction: DeviceRestriction?): Int = when (this
     // The manufacturer's own word where there is one, because that is the word
     // the user is looking for in their settings app.
     HealthCheck.BackgroundWork -> restriction?.label ?: R.string.reminder_health_check_background
+    HealthCheck.AlarmStyle -> R.string.reminder_health_check_alarm
 }
 
 private fun HealthCheck.detail(state: CheckState, restriction: DeviceRestriction?): Int = when {
+    // How they will ring, in the editor's words. D-102.
+    this == HealthCheck.AlarmStyle -> when (state) {
+        CheckState.Ok -> R.string.reminder_health_alarm_full_screen
+        CheckState.Warning -> R.string.reminder_health_alarm_banner
+        CheckState.Blocked -> R.string.reminder_health_alarm_plain
+    }
+
     this == HealthCheck.BackgroundWork && state != CheckState.Ok ->
         R.string.reminder_restriction_may_block
 

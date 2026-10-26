@@ -485,6 +485,16 @@
     <string name="alarm_priming_not_now">Not now</string>
     <string name="alarm_priming_picture">The alarm screen, with the reminder time, the task, Snooze 10 min and Stop</string>
     <string name="alarm_priming_sample_title">Take the pills</string>
+
+    <!-- Reminder health's alarm row, listed while a reminder rings like an alarm. R-014, D-102. -->
+    <string name="reminder_health_check_alarm">Alarm-style reminders</string>
+    <string name="reminder_health_alarm_full_screen">Ring full screen until answered</string>
+    <string name="reminder_health_alarm_banner">Ring as a banner until answered</string>
+    <string name="reminder_health_alarm_plain">Arrive as normal reminders</string>
+    <string name="reminder_health_alarm_off_title">Alarm-style reminders are turned off</string>
+    <string name="reminder_health_alarm_off_body">The Alarms channel is off for Tellcat, so they arrive as normal reminders.</string>
+    <string name="reminder_health_alarm_banner_title">Alarms ring as a banner, not full screen</string>
+    <string name="reminder_health_alarm_banner_body">They still ring until you answer. Full screen needs permission.</string>
     <string name="quick_add_title_label">New task</string>
     <string name="quick_add_save">Add task</string>
     <string name="quick_add_placeholder">Try \"Call the plumber tomorrow\"</string>

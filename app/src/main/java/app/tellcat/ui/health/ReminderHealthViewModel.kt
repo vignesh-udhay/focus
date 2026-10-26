@@ -5,6 +5,12 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import app.tellcat.core.domain.ReminderHealth
+import app.tellcat.core.domain.Task
+import app.tellcat.core.domain.hasAlarmStyleReminders
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import app.tellcat.core.domain.ReminderHealthState
 import app.tellcat.core.domain.reminderHealth
 import app.tellcat.core.notification.ReminderHealthChecks
@@ -33,7 +39,11 @@ class ReminderHealthViewModel(
     private val deliveries: ReminderDeliveryRepository,
     private val checks: ReminderHealthChecks,
     private val acknowledgements: ReminderHealthAcknowledgements,
-    private val now: () -> Instant = Instant::now
+    private val now: () -> Instant = Instant::now,
+    // Whether any outstanding reminder rings like an alarm, which is when the
+    // alarm row is listed. D-102, R-014. None by default, so a screen built
+    // without tasks lists the three rows it always did.
+    private val alarmStyleReminders: Flow<Boolean> = flowOf(false)
 ) : ViewModel() {
 
     private val checkedAt = MutableStateFlow<Instant?>(null)
@@ -46,11 +56,11 @@ class ReminderHealthViewModel(
      * saying "healthy" before asking would be a guess presented as an answer.
      */
     val state: StateFlow<ReminderHealthState> =
-        combine(deliveries.observeDeliveries(), checkedAt) { recorded, at ->
+        combine(deliveries.observeDeliveries(), checkedAt, alarmStyleReminders) { recorded, at, alarms ->
             if (at == null) {
                 ReminderHealthState.Checking
             } else {
-                health(recorded, at).state
+                health(recorded, at, alarms).state
             }
         }.stateIn(
             scope = viewModelScope,
@@ -60,8 +70,8 @@ class ReminderHealthViewModel(
 
     /** The three rows, which are drawn under every state. */
     val health: StateFlow<ReminderHealth?> =
-        combine(deliveries.observeDeliveries(), checkedAt) { recorded, at ->
-            at?.let { health(recorded, it) }
+        combine(deliveries.observeDeliveries(), checkedAt, alarmStyleReminders) { recorded, at, alarms ->
+            at?.let { health(recorded, it, alarms) }
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
@@ -98,24 +108,35 @@ class ReminderHealthViewModel(
         acknowledgements.dismiss(missed.delivery.id)
     }
 
-    private fun health(recorded: List<app.tellcat.core.domain.ReminderDelivery>, at: Instant) =
+    private fun health(
+        recorded: List<app.tellcat.core.domain.ReminderDelivery>,
+        at: Instant,
+        hasAlarms: Boolean
+    ) =
         reminderHealth(
             notifications = checks.notifications(),
             exactAlarms = checks.exactAlarms(),
             restriction = checks.restriction(),
             deliveries = recorded,
-            now = at
+            now = at,
+            alarmStyle = if (hasAlarms) checks.alarmStyle() else null
         )
 
     class Factory(
         private val deliveries: ReminderDeliveryRepository,
         private val checks: ReminderHealthChecks,
-        private val acknowledgements: ReminderHealthAcknowledgements
+        private val acknowledgements: ReminderHealthAcknowledgements,
+        private val tasks: Flow<List<Task>>
     ) : ViewModelProvider.Factory {
 
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T =
-            ReminderHealthViewModel(deliveries, checks, acknowledgements) as T
+            ReminderHealthViewModel(
+                deliveries = deliveries,
+                checks = checks,
+                acknowledgements = acknowledgements,
+                alarmStyleReminders = tasks.map(::hasAlarmStyleReminders).distinctUntilChanged()
+            ) as T
     }
 
     private companion object {

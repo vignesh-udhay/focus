@@ -91,7 +91,8 @@ fun TellcatNavHost(
         factory = ReminderHealthViewModel.Factory(
             deliveries = application.reminderDeliveryRepository,
             checks = application.reminderHealthChecks,
-            acknowledgements = application.reminderHealthAcknowledgements
+            acknowledgements = application.reminderHealthAcknowledgements,
+            tasks = application.taskRepository.observeTasks()
         )
     )
 
