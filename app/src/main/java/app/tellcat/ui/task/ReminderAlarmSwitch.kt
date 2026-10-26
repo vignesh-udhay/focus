@@ -24,6 +24,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -245,7 +246,9 @@ private fun AlarmPrimingSheet(onAllow: () -> Unit, onDismiss: () -> Unit) {
             ) {
                 Text(stringResource(R.string.alarm_priming_allow))
             }
-            OutlinedButton(
+            // A text button, as every lesser action beneath a filled one is in
+            // the app's sheets: Clear, Doesn't repeat, End session.
+            TextButton(
                 onClick = onDismiss,
                 modifier = Modifier
                     .fillMaxWidth()

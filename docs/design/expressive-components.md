@@ -866,7 +866,7 @@ reads "Today, 5:30 PM · Alarm".
 full-screen grant. A picture of the alarm screen, which is the real
 `AlarmScreen` laid out at phone size and scaled down
 (`TellcatDimensions.AlarmPreview*`), one sentence, a filled "Allow full screen"
-that opens the exact settings toggle, and an outlined "Not now". The switch
+that opens the exact settings toggle, and a text "Not now". The switch
 stays on either way.
 
 **The alarm screen.** Always dark. "Tellcat alarm", the reminder's own time in

@@ -18,11 +18,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -213,7 +213,8 @@ private fun ReminderPermissionSheet(onOpenSettings: () -> Unit, onNotNow: () -> 
                 Text(stringResource(R.string.reminder_permission_open_settings))
             }
 
-            OutlinedButton(
+            // A text button, as in the full-screen ask and every other sheet.
+            TextButton(
                 onClick = onNotNow,
                 modifier = Modifier
                     .fillMaxWidth()

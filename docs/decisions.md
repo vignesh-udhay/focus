@@ -6599,7 +6599,7 @@ tappable.
 **Decision.** "Allow precise reminders" is a bottom sheet over the reminder
 just saved, laid out like the full-screen alarm's ask (R-013): the title, one
 line ("So reminders arrive on the minute, even when Tellcat is closed."),
-"Open Android settings" filled, "Not now" outlined, and a one-line footnote
+"Open Android settings" filled, "Not now" a text button, and a one-line footnote
 saying Android has no popup for this one. Swipe, scrim and Back answer Not now.
 
 **What changed the answer.** On 2026-10-26 the owner found the screen looked
