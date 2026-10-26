@@ -36,7 +36,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
@@ -106,7 +114,11 @@ fun TaskRow(
     // is drawn. Null reads the line as it is.
     metadataSpoken: String? = null,
     trailingContent: (@Composable () -> Unit)? = null,
-    isOverdue: Boolean = false
+    isOverdue: Boolean = false,
+    // The metadata segment an alarm glyph follows: the reminder time, on a
+    // reminder that rings like an alarm. D-102. Drawn only; [metadataSpoken]
+    // says it in words.
+    alarmAfterSegment: Int? = null
 ) {
     val titleTextSize = MaterialTheme.typography.bodyLarge.fontSize
     val titleColor by animateColorAsState(
@@ -161,6 +173,7 @@ fun TaskRow(
 
     val metadataText = metadataAnnotatedString(
         metadata = metadata,
+        alarmAfterSegment = alarmAfterSegment,
         isOverdue = isOverdue,
         // `tertiary`, not `error`. Material scopes error to error states, and
         // makes it a static red that never follows the wallpaper; an overdue
@@ -222,6 +235,7 @@ fun TaskRow(
                 Text(
                     text = metadataText,
                     style = MaterialTheme.typography.bodySmall,
+                    inlineContent = AlarmGlyphContent,
                     modifier = if (metadataSpoken.isNullOrEmpty()) {
                         Modifier
                     } else {
@@ -312,6 +326,7 @@ private const val CompletionPressScale = 0.8f
 @Composable
 private fun metadataAnnotatedString(
     metadata: List<String>,
+    alarmAfterSegment: Int?,
     isOverdue: Boolean,
     overdueColor: Color
 ): AnnotatedString? {
@@ -326,9 +341,35 @@ private fun metadataAnnotatedString(
             } else {
                 append(segment)
             }
+
+            if (index == alarmAfterSegment) {
+                append(" ")
+                appendInlineContent(AlarmGlyphId, AlarmGlyphAlternate)
+            }
         }
     }
 }
+
+private const val AlarmGlyphId = "alarm"
+
+/** What the glyph stands for in plain text, which nothing reads aloud: the row's spoken line does. */
+private const val AlarmGlyphAlternate = "[alarm]"
+
+/**
+ * The alarm glyph, the size of the text it sits in and in its colour, so it
+ * reads as part of the line rather than as a control. D-102.
+ */
+private val AlarmGlyphContent = mapOf(
+    AlarmGlyphId to InlineTextContent(
+        Placeholder(width = 1.em, height = 1.em, placeholderVerticalAlign = PlaceholderVerticalAlign.TextCenter)
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_alarm),
+            contentDescription = null,
+            tint = LocalContentColor.current
+        )
+    }
+)
 
 private const val MetadataSeparator = " · "
 

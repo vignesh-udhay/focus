@@ -1,5 +1,7 @@
 package app.tellcat.ui.semantics
 
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
@@ -363,6 +365,30 @@ class TaskRowSemanticsTest {
         title = TITLE,
         scheduledDate = TestToday
     )
+
+    // --- D-102: a reminder that rings like an alarm says so -----------------
+
+    private fun assertAnAlarmReminderSaysItRingsLikeAnAlarm(fontScale: Float) {
+        setRow(
+            fontScale,
+            outstanding().copy(reminderAt = TestToday.plusDays(1).atTime(7, 0), ringsLikeAlarm = true)
+        )
+
+        rule.onNode(hasContentDescription("rings like an alarm", substring = true)).assertExists()
+    }
+
+    @Test
+    fun anAlarmReminder_saysItRingsLikeAnAlarm_at100() = assertAnAlarmReminderSaysItRingsLikeAnAlarm(FontScale100)
+
+    @Test
+    fun anAlarmReminder_saysItRingsLikeAnAlarm_at200() = assertAnAlarmReminderSaysItRingsLikeAnAlarm(FontScale200)
+
+    @Test
+    fun aPlainReminder_saysNothingAboutAnAlarm() {
+        setRow(FontScale100, outstanding().copy(reminderAt = TestToday.plusDays(1).atTime(7, 0)))
+
+        rule.onAllNodes(hasContentDescription("rings like an alarm", substring = true)).assertCountEquals(0)
+    }
 
     private fun completed(): Task = outstanding().copy(
         completedAt = Instant.parse("2026-09-02T10:00:00Z")

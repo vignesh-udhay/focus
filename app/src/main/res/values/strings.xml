@@ -73,6 +73,8 @@
     <!-- The reminder segment as TalkBack reads it, so it is not mistaken for the
          scheduled day beside it: "Reminder Tomorrow, 5:00 PM". -->
     <string name="task_row_reminder_spoken">Reminder %1$s</string>
+    <!-- Read after the reminder on a row whose reminder rings like an alarm. D-102. -->
+    <string name="task_row_rings_like_alarm">rings like an alarm</string>
     <!-- A row's count of its task's unticked checklist items, D-084. -->
     <plurals name="task_row_checklist_left">
         <item quantity="one">%d left</item>
@@ -460,6 +462,29 @@
     <string name="task_reminder_time">Time</string>
     <string name="task_reminder_save">Save reminder</string>
     <string name="task_reminder_day_back">Back to the reminder</string>
+
+    <!--
+      Ring like an alarm, D-102. The switch, then one line saying how this
+      reminder will actually ring on this phone, before anyone relies on it.
+      Facts about the app, as docs/brand.md asks: what happens, then what would
+      change it.
+    -->
+    <string name="task_reminder_alarm">Ring like an alarm</string>
+    <string name="task_reminder_alarm_full_screen">Rings full screen until you stop or snooze it, even on Silent.</string>
+    <string name="task_reminder_alarm_banner">Rings as a banner until you answer. Full screen needs permission.</string>
+    <string name="task_reminder_alarm_off">Alarms are off for Tellcat, so this arrives as a normal reminder.</string>
+    <string name="task_reminder_alarm_allow">Allow full screen</string>
+    <string name="task_reminder_alarm_channel_open">Open alarm settings</string>
+    <!-- The reminder row on Task Details, with the alarm switched on. -->
+    <string name="task_reminder_when_alarm">%1$s · Rings like an alarm</string>
+
+    <!-- Asking for full screen, R-013. -->
+    <string name="alarm_priming_title">Ring full screen</string>
+    <string name="alarm_priming_body">When the phone is locked, the alarm fills the screen and rings until you stop or snooze it. Android asks you to allow full screen for Tellcat.</string>
+    <string name="alarm_priming_allow">Allow full screen</string>
+    <string name="alarm_priming_not_now">Not now</string>
+    <string name="alarm_priming_picture">The alarm screen, with the reminder time, the task, Snooze 10 min and Stop</string>
+    <string name="alarm_priming_sample_title">Take the pills</string>
     <string name="quick_add_title_label">New task</string>
     <string name="quick_add_save">Add task</string>
     <string name="quick_add_placeholder">Try \"Call the plumber tomorrow\"</string>

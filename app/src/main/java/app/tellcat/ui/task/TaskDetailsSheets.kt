@@ -726,7 +726,10 @@ internal fun ReminderSheet(
     reminderAt: LocalDateTime?,
     defaultDay: LocalDate,
     today: LocalDate,
-    onSet: (LocalDateTime) -> Unit,
+    // The moment, and whether it rings like an alarm. D-102: the switch is
+    // part of the reminder and saved with it, for the reason this sheet has a
+    // Save at all.
+    onSet: (LocalDateTime, Boolean) -> Unit,
     onClear: () -> Unit,
     onDismiss: () -> Unit,
     // Defaulted rather than threaded from the screen, because every caller
@@ -734,8 +737,12 @@ internal fun ReminderSheet(
     // all for the reason `Reminders.kt` and `TaskQueries.kt` take one: the
     // behaviour worth proving here is what this does at six in the evening, and
     // a sheet that reads a clock it owns can only be tested by waiting.
-    now: LocalDateTime = LocalDateTime.now()
+    now: LocalDateTime = LocalDateTime.now(),
+    // Whether the reminder rings like an alarm now. Off for a new one. D-102.
+    ringsLikeAlarm: Boolean = false
 ) {
+    var ringsAsAlarm by rememberSaveable { mutableStateOf(ringsLikeAlarm) }
+
     // Held as primitives so `rememberSaveable` needs no saver of its own, and
     // because the pair is the whole draft: a chosen day, or [NoDayChosen] while
     // the time is still deciding it, and the time itself.
@@ -828,6 +835,11 @@ internal fun ReminderSheet(
                         )
                     }
 
+                    ReminderAlarmSwitch(
+                        ringsLikeAlarm = ringsAsAlarm,
+                        onRingsLikeAlarmChange = { on -> ringsAsAlarm = on }
+                    )
+
                     // Says why Save is dead. Reached only when the user picked
                     // the day themselves; a day this sheet worked out has
                     // already been moved forward.
@@ -840,7 +852,7 @@ internal fun ReminderSheet(
                     }
 
                     Button(
-                        onClick = { onSet(at) },
+                        onClick = { onSet(at, ringsAsAlarm) },
                         enabled = !hasPassed,
                         modifier = Modifier
                             .fillMaxWidth()
