@@ -20,10 +20,12 @@ registered at Cloudflare, auto-renewing. A WIPO brand search found no
 from 2026-10-10 restored into Tellcat on the emulator: 5 tasks, every field
 equal, snoozes carried. Export now suggests `Tellcat-backup-<date>.json`.
 
-**1.1 is on `main`, versionCode 2, for the owner to upload to the closed
-test.** Released on 2026-10-26 after the full
-instrumented suite passed on `9e11a2b`, 362 of 362. `main` was fast-forwarded
-to `feature/checklist`; nothing is pushed yet, which is the owner's step too.
+**1.1, versionCode 2, is in Google's review for the Alpha closed test**, sent
+on 2026-10-26 as release "2 (1.1)" at full rollout, with managed publishing
+off, so it reaches testers once approved. Built after the full instrumented
+suite passed on `9e11a2b`, 362 of 362; `main` was fast-forwarded to
+`feature/checklist` and pushed. Play accepted the upload key. Its one warning:
+no debug symbols for the native code.
 What 1.1 carries, as it was built on `feature/checklist`: checklists inside a task, shared as text
 (D-084, schema 12); completion made visible, with the ticked row holding its place and the
 strikethrough drawn (D-086); and Task Details showing only the fields a task has,
