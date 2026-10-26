@@ -49,7 +49,9 @@ class LockedReminderStore(context: Context) {
                 ScheduledReminder(
                     taskId = item.getString(KeyTaskId),
                     title = item.getString(KeyTitle),
-                    ringsAt = LocalDateTime.parse(item.getString(KeyRingsAt))
+                    ringsAt = LocalDateTime.parse(item.getString(KeyRingsAt)),
+                    // Absent from copies written before D-102: a plain reminder.
+                    ringsLikeAlarm = item.optBoolean(KeyRingsLikeAlarm, false)
                 )
             }
         }.orEmpty()
@@ -113,6 +115,7 @@ class LockedReminderStore(context: Context) {
                     .put(KeyTaskId, reminder.taskId)
                     .put(KeyTitle, reminder.title)
                     .put(KeyRingsAt, reminder.ringsAt.toString())
+                    .put(KeyRingsLikeAlarm, reminder.ringsLikeAlarm)
             )
         }
     }.toString()
@@ -126,6 +129,7 @@ class LockedReminderStore(context: Context) {
         const val KeyTaskId = "taskId"
         const val KeyTitle = "title"
         const val KeyRingsAt = "ringsAt"
+        const val KeyRingsLikeAlarm = "ringsLikeAlarm"
         const val KeyScheduledWall = "scheduledWall"
         const val KeyScheduledElapsed = "scheduledElapsed"
         const val KeyArrivedWall = "arrivedWall"

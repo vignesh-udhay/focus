@@ -37,6 +37,31 @@ class LockedReminderStoreTest {
             .edit().clear().commit()
     }
 
+    /**
+     * D-102. An alarm due before the first unlock after a restart can only be
+     * rung as one if the copy says it is one.
+     */
+    @Test
+    fun anAlarmStaysAnAlarmInTheCopy() {
+        val alarm = ScheduledReminder("c", "Take the pills", LocalDateTime.of(2026, 10, 11, 6, 30), ringsLikeAlarm = true)
+
+        store().replaceUpcoming(listOf(alarm, water))
+
+        assertEquals(listOf(alarm, water), store().upcoming())
+    }
+
+    /** A copy written before D-102 has no flag, and reads as plain reminders. */
+    @Test
+    fun aCopyWithoutTheFlagReadsAsPlainReminders() {
+        context.createDeviceProtectedStorageContext()
+            .getSharedPreferences("locked_reminders", Context.MODE_PRIVATE)
+            .edit()
+            .putString("upcoming", """[{"taskId":"a","title":"Call mom","ringsAt":"2026-10-11T07:00"}]""")
+            .commit()
+
+        assertEquals(listOf(call), store().upcoming())
+    }
+
     @Test
     fun upcomingRemindersSurviveANewStore() {
         store().replaceUpcoming(listOf(call, water))

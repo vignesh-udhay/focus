@@ -98,6 +98,15 @@ data class Task(
      * next occurrence.
      */
     val snoozedUntil: LocalDateTime? = null,
+    /**
+     * Whether this reminder rings like an alarm: on the alarm stream, until it
+     * is answered, full screen where Android allows it. `docs/decisions.md`
+     * D-102. Off for almost every task, and meaningless without [reminderAt].
+     *
+     * Carried into the next occurrence by `nextRecurringInstance`, like every
+     * other field it does not reset, so a daily alarm stays one (D-098).
+     */
+    val ringsLikeAlarm: Boolean = false,
     val estimatedDurationMinutes: Int? = null,
     val recurrence: Recurrence? = null,
     val occurrenceNumber: Int = 1,

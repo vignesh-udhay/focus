@@ -119,6 +119,8 @@ class TellcatBackupCodecTest {
 
         assertEquals(1, restored.tasks.size)
         assertNull(restored.tasks.single().checklist)
+        // Written before D-102: rings as a notification.
+        assertFalse(restored.tasks.single().ringsLikeAlarm)
     }
 
     /** A file cannot bring in a row the app would never have written. */
@@ -169,7 +171,10 @@ class TellcatBackupCodecTest {
         occurrenceNumber = 3,
         spawnedFromId = "task-0",
         completedAt = Instant.parse("2026-09-09T05:00:00Z"),
-        deletedAt = Instant.parse("2026-09-09T05:05:00Z")
+        deletedAt = Instant.parse("2026-09-09T05:05:00Z"),
+        // True, the value that is not the default, so a codec that dropped the
+        // field fails the round trip. D-102.
+        ringsLikeAlarm = true
     )
 }
 

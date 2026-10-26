@@ -70,5 +70,9 @@ data class TaskEntity(
     @ColumnInfo(defaultValue = "1") val occurrenceNumber: Int,
     val spawnedFromId: String?,
     val completedAt: Instant?,
-    val deletedAt: Instant?
+    val deletedAt: Instant?,
+    // Version 13, D-102: the reminder rings like an alarm. The default is the
+    // column's for the reason `occurrenceNumber` gives, and the parameter's so
+    // every row written before it reads as a plain reminder.
+    @ColumnInfo(defaultValue = "0") val ringsLikeAlarm: Boolean = false
 )

@@ -1316,7 +1316,10 @@ class TaskListViewModel(
         dueDate: LocalDate?,
         estimatedDurationMinutes: Int?,
         recurrence: Recurrence?,
-        reminderAt: LocalDateTime?
+        reminderAt: LocalDateTime?,
+        // Required for the reason [reminderAt] is: a default would turn an
+        // alarm back into a notification on every edit to another field.
+        ringsLikeAlarm: Boolean
     ) {
         val trimmed = title.trim()
         if (trimmed.isEmpty()) return
@@ -1348,7 +1351,10 @@ class TaskListViewModel(
                     // And a new time ends any snooze. The user has just said
                     // when; a snooze from before that would ring in its place.
                     // D-078.
-                    snoozedUntil = if (reminderAt == task.reminderAt) task.snoozedUntil else null
+                    snoozedUntil = if (reminderAt == task.reminderAt) task.snoozedUntil else null,
+                    // D-102. No reminder, nothing to ring: a cleared reminder
+                    // does not keep an alarm waiting for the next one.
+                    ringsLikeAlarm = ringsLikeAlarm && reminderAt != null
                 )
             } ?: return@write
 

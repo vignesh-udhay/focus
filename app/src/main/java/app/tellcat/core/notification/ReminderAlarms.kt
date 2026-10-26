@@ -135,7 +135,16 @@ class ReminderScheduler(
             val set = attempt(task.id) {
                 alarms.schedule(task.id, reminderTrigger(ringsAt, here, now))
             }
-            if (set) ScheduledReminder(taskId = task.id, title = task.title, ringsAt = ringsAt) else null
+            if (set) {
+                ScheduledReminder(
+                    taskId = task.id,
+                    title = task.title,
+                    ringsAt = ringsAt,
+                    ringsLikeAlarm = task.ringsLikeAlarm
+                )
+            } else {
+                null
+            }
         }
 
         return ReconcileResult(failures = failures, scheduled = scheduled)
@@ -151,8 +160,16 @@ class ReminderScheduler(
  */
 data class ReconcileResult(val failures: Int, val scheduled: List<ScheduledReminder>)
 
-/** A reminder that has an alarm, as much of it as ringing it needs. */
-data class ScheduledReminder(val taskId: String, val title: String, val ringsAt: LocalDateTime)
+/**
+ * A reminder that has an alarm, as much of it as ringing it needs: before the
+ * first unlock that includes whether it rings like one, D-102.
+ */
+data class ScheduledReminder(
+    val taskId: String,
+    val title: String,
+    val ringsAt: LocalDateTime,
+    val ringsLikeAlarm: Boolean = false
+)
 
 /**
  * The most reminder alarms one pass asks the system to hold.

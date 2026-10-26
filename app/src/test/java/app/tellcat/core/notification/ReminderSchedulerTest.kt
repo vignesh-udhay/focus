@@ -375,4 +375,21 @@ class ReminderSchedulerTest {
         )
         assertEquals(1, result.failures)
     }
+
+    /** D-102: the copy kept for a locked phone knows which reminders are alarms. */
+    @Test
+    fun `a pass reports which reminders ring like an alarm`() {
+        val alarms = RecordingAlarms()
+        val tasks = listOf(
+            task("alarm", LocalDateTime.of(2026, 9, 5, 14, 0)).copy(ringsLikeAlarm = true),
+            task("plain", LocalDateTime.of(2026, 9, 5, 15, 0))
+        )
+
+        val result = scheduler(alarms).reconcile(tasks)
+
+        assertEquals(
+            mapOf("alarm" to true, "plain" to false),
+            result.scheduled.associate { it.taskId to it.ringsLikeAlarm }
+        )
+    }
 }

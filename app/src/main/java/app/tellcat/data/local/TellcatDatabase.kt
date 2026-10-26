@@ -23,7 +23,7 @@ import androidx.room.RoomDatabase
  */
 @Database(
     entities = [TaskEntity::class, ReminderDeliveryEntity::class],
-    version = 12,
+    version = 13,
     exportSchema = true
 )
 abstract class TellcatDatabase : RoomDatabase() {

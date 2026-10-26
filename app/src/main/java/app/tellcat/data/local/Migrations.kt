@@ -254,6 +254,17 @@ val MIGRATION_11_12 = Migration(11, 12) { database ->
     database.execSQL("ALTER TABLE tasks ADD COLUMN checklist TEXT")
 }
 
+/**
+ * Version 13 lets a reminder ring like an alarm. `docs/decisions.md` D-102.
+ *
+ * False for every existing row, which is what every existing reminder does:
+ * ring as a notification. `NOT NULL` with the default, matching the entity, so
+ * a migrated table and a freshly created one are the same table.
+ */
+val MIGRATION_12_13 = Migration(12, 13) { database ->
+    database.execSQL("ALTER TABLE tasks ADD COLUMN ringsLikeAlarm INTEGER NOT NULL DEFAULT 0")
+}
+
 /** Every migration, in order, for the builder and the migration test. */
 val TellcatMigrations = arrayOf(
     MIGRATION_1_2,
@@ -266,5 +277,6 @@ val TellcatMigrations = arrayOf(
     MIGRATION_8_9,
     MIGRATION_9_10,
     MIGRATION_10_11,
-    MIGRATION_11_12
+    MIGRATION_11_12,
+    MIGRATION_12_13
 )
