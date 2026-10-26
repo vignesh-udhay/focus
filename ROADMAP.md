@@ -74,6 +74,11 @@ arrived as a normal one while the editor had promised full screen. Now the
 editor and Reminder health say it arrives as a normal reminder and may be
 late, which is what the phone then did (80 seconds late). The service became
 `systemExempted` and rang full screen on the phone with the grant back on.
+A third, older than 1.0, is fixed on this branch too, D-103: revoking the
+grant cancels every exact alarm and kills the app without a broadcast, so no
+reminder was scheduled until the app next started. An inexact backstop alarm
+survives the revoke and rebuilds them. On the phone, a reminder for 8:58 PM
+whose alarm the revoke removed arrived at 8:59:23.
 
 **Two reminder bugs found by the competitor study are fixed, on 1.0 too until
 this ships.** A repeating reminder nobody answered never rang again, because
