@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -42,6 +44,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -57,7 +60,9 @@ import app.tellcat.core.domain.HealthCheck
 import app.tellcat.core.domain.ReminderDelivery
 import app.tellcat.core.domain.ReminderHealth
 import app.tellcat.core.domain.ReminderHealthState
+import app.tellcat.core.domain.AlarmMode
 import app.tellcat.core.notification.TestReminder
+import app.tellcat.core.notification.currentAlarmMode
 import app.tellcat.core.notification.displayManufacturer
 import app.tellcat.core.notification.openAppSettings
 import app.tellcat.core.notification.openBackgroundWorkSettings
@@ -143,6 +148,7 @@ fun ReminderHealthScreen(
                 modifier = Modifier.padding(top = HeadlineToChecksGap)
             ) {
                 checks.forEachIndexed { index, (check, checkState) ->
+                    val (label, open) = checkAction(check, health)
                     CheckRow(
                         check = check,
                         state = checkState,
@@ -150,7 +156,9 @@ fun ReminderHealthScreen(
                         shapes = ListItemDefaults.segmentedShapes(
                             index = index,
                             count = checks.size
-                        )
+                        ),
+                        onClick = open,
+                        onClickLabel = label
                     )
                 }
             }
@@ -288,7 +296,9 @@ private fun CheckRow(
     check: HealthCheck,
     state: CheckState,
     restriction: DeviceRestriction?,
-    shapes: ListItemShapes
+    shapes: ListItemShapes,
+    onClick: () -> Unit,
+    onClickLabel: String
 ) {
     val container = when (state) {
         CheckState.Blocked -> MaterialTheme.colorScheme.errorContainer
@@ -300,11 +310,19 @@ private fun CheckRow(
         CheckState.Warning, CheckState.Ok -> MaterialTheme.colorScheme.onSurface
     }
 
+    // **Each row opens its own settings.** D-106. The rows used to report
+    // only, and one button below opened the first failing one, so the user
+    // fixed things top to bottom through a button that changed its name each
+    // time. On the owner's phone they tapped the rows instead, and nothing
+    // happened. The label names where the tap goes, for TalkBack.
     Surface(
+        onClick = onClick,
         color = container,
         contentColor = content,
         shape = shapes.shape,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics { onClick(label = onClickLabel, action = null) }
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -313,7 +331,7 @@ private fun CheckRow(
         ) {
             StatusGlyph(state = state, onContainer = content)
 
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = stringResource(check.label(restriction)),
                     style = MaterialTheme.typography.titleSmall
@@ -328,9 +346,21 @@ private fun CheckRow(
                     color = content.copy(alpha = SupportingTextAlpha)
                 )
             }
+
+            // Says the row goes somewhere, as the Plan rows' chevron does. Not
+            // described: the row's click label already says where.
+            Icon(
+                painter = painterResource(R.drawable.ic_chevron_forward),
+                contentDescription = null,
+                tint = content.copy(alpha = SupportingTextAlpha),
+                modifier = Modifier.size(CheckRowChevronSize)
+            )
         }
     }
 }
+
+/** Material's dense icon size, the Plan rows' chevron. */
+private val CheckRowChevronSize = 20.dp
 
 /**
  * A tick, a question mark or an exclamation, in a 40dp slot and nothing else.
@@ -391,20 +421,37 @@ private fun StatusGlyph(state: CheckState, onContainer: Color) {
 }
 
 /**
- * The one thing to do next.
+ * The test, once nothing is failing. D-106.
  *
- * A healthy app offers the test. An unhealthy one offers the settings screen
- * for whatever is wrong, most severe first, because a screen with three
- * buttons is a screen that has not decided what the user should do.
+ * It used to open the settings for whatever was wrong, most severe first, and
+ * become the test once all was well. Each row opens its own settings now, so
+ * the button only tests: a test while something is refused would only show
+ * the refusal again.
  */
 @Composable
 private fun PrimaryAction(health: ReminderHealth?, onTest: () -> Unit) {
-    val context = LocalContext.current
     val checks = health ?: return
+    if (checks.firstFailing != null) return
 
-    // The same ordering the headline uses, taken from the same place, so the
-    // sentence and the button can never point at different problems.
-    val (label, action) = when (checks.firstFailing) {
+    Button(
+        onClick = onTest,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = TellcatSpacing.sm)
+    ) {
+        Text(stringResource(R.string.reminder_health_test))
+    }
+}
+
+/**
+ * Where tapping a check row goes, and its name for TalkBack. D-106.
+ */
+@Composable
+private fun checkAction(check: HealthCheck, checks: ReminderHealth?): Pair<String, () -> Unit> {
+    val context = LocalContext.current
+    val restriction = checks?.restriction
+
+    return when (check) {
         HealthCheck.Notifications ->
             stringResource(R.string.reminder_health_open_notifications) to
                 { context.openNotificationSettings() }
@@ -413,37 +460,31 @@ private fun PrimaryAction(health: ReminderHealth?, onTest: () -> Unit) {
             stringResource(R.string.reminder_health_open_alarms) to
                 { context.openExactAlarmSettings() }
 
-        // The one button whose destination depends on the phone, so it is
+        // The one row whose destination depends on the phone, so its label is
         // named after where it will actually arrive. On a skin that both ships
         // a sleep feature and lets an app open it, that is the feature's own
         // screen, under the name the user will look for. Everywhere else it is
-        // the app's Android settings page, under Android's name for it. The
-        // button asks first rather than promising Autostart and opening App
-        // info, which is what OxygenOS would have it do.
+        // the app's Android settings page, under Android's name for it, rather
+        // than promising Autostart and opening App info, which is what
+        // OxygenOS would have it do.
         HealthCheck.BackgroundWork ->
-            checks.restriction.openLabel(context.hasVendorScreen(checks.restriction)) to {
-                context.openBackgroundWorkSettings(checks.restriction)
+            restriction.openLabel(context.hasVendorScreen(restriction)) to {
+                context.openBackgroundWorkSettings(restriction)
             }
 
-        // D-102. Off sends to the Alarms channel; the caution, to the
-        // full-screen toggle, which is the one thing missing.
-        HealthCheck.AlarmStyle ->
-            if (checks.alarmStyle == CheckState.Blocked) {
-                stringResource(R.string.task_reminder_alarm_channel_open) to { context.openAlarmChannelSettings() }
-            } else {
+        // D-102. To whatever the mode says is missing: the exact grant, the
+        // Alarms channel, or the full-screen toggle. With nothing missing, the
+        // Alarms channel, where its sound and lock-screen settings are.
+        HealthCheck.AlarmStyle -> when (context.currentAlarmMode()) {
+            AlarmMode.NoExactAlarms ->
+                stringResource(R.string.task_reminder_alarm_exact_allow) to { context.openExactAlarmSettings() }
+
+            AlarmMode.Banner ->
                 stringResource(R.string.task_reminder_alarm_allow) to { context.openFullScreenSettings() }
-            }
 
-        null -> stringResource(R.string.reminder_health_test) to onTest
-    }
-
-    Button(
-        onClick = action,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = TellcatSpacing.sm)
-    ) {
-        Text(label)
+            AlarmMode.PlainReminder, AlarmMode.FullScreen ->
+                stringResource(R.string.task_reminder_alarm_channel_open) to { context.openAlarmChannelSettings() }
+        }
     }
 }
 

@@ -6562,3 +6562,31 @@ drawing or animation does not.
 
 **What would reverse this.** The round check being taken for a radio button,
 which would show as people expecting one task per list to be ticked.
+
+## D-106. Each Reminder health row opens its own settings
+
+**Decision.** Tapping a check row on Reminder health opens that check's
+settings: notification settings, Alarms & reminders, the manufacturer's sleep
+screen or App info, and for alarm-style reminders whatever their mode says is
+missing (the exact grant, full screen, or the Alarms channel). Each row ends in
+a chevron, as the Plan rows do, and carries a click label naming where it goes.
+The button below the rows is only "Test reminder in 30 seconds", and only once
+nothing is failing.
+
+**What changed the answer.** `reminder-health.md` had the rows report and not
+navigate, with one primary action opening the first failing check, so the
+headline and the button always named the same problem. On the owner's phone on
+2026-10-26 that read as confusing: with more than one thing to fix, the button
+worked down the list top to bottom, changing its name each time, while the
+owner tapped the rows themselves and nothing happened.
+
+**What stays.** The headline still leads with the most certain, most severe
+problem (D-021), and its row is the red one, so the screen still says what to
+do first. It just no longer makes the user do things in its order.
+
+**Why the test waits until nothing is failing.** A test while a permission is
+refused would only show the refusal again.
+
+**What would reverse this.** Users opening settings for a check that is fine and
+changing something they should not. Then rows that are `Ok` would stop being
+tappable.
