@@ -304,6 +304,9 @@ Rules:
   has no mechanism to do.
 - Never silently swallow a scheduling failure. If the app cannot promise a
   reminder, it has to say so.
+- Revoking "Alarms & reminders" cancels every exact and alarm-clock alarm and
+  kills the app, and Android broadcasts nothing. Only inexact alarms survive
+  it, which is why the reconciliation keeps an inexact backstop. D-103.
 
 Test scheduling arithmetic, boot rescheduling, clock-change rescheduling, and
 snooze as JVM tests. They are domain logic and do not need a device.

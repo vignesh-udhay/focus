@@ -6444,3 +6444,52 @@ the switch goes and the reminder rings normally. Or testers turning it on and
 being woken by tasks they meant as quiet, which would argue for a stronger
 warning on the switch, not for removing it.
 
+
+## D-103. A backstop survives a revoked exact-alarm grant
+
+**Decision.** While reminders are scheduled exactly, one more alarm stands a
+minute after the soonest future reminder: inexact, set with
+`setAndAllowWhileIdle`, delivered to `ReminderBackstopReceiver`, which runs the
+reconciliation. Normally it never fires. The reminder's own alarm comes first,
+and the pass after it moves the backstop on to the next one.
+
+**What changed the answer.** Checking D-102 on the owner's phone on 2026-10-26,
+turning "Alarms & reminders" off closed the app. AOSP's `AlarmManagerService`
+(Android 14, `removeExactAlarmsOnPermissionRevoked`) shows why: on revoke it
+removes every alarm of the app with no window, which is every exact and
+alarm-clock reminder, then kills the app. The permission broadcast is sent
+only on a grant. So since 1.0 a user who turned the grant off had no reminders
+scheduled at all, with nothing to tell the app, until something next started
+it. The receiver for a revoke cannot exist, so the fix has to be something
+already in place before it happens.
+
+**Why an inexact alarm.** The same code removes only alarms whose window is
+zero, so an inexact one survives. Android caps a one-off inexact alarm's
+deferral at an hour past its time, and `setAndAllowWhileIdle` fires in Doze. So
+after a revoke the next reminder arrives at most about an hour late, and the
+pass it starts sets every other reminder again, inexactly, which is all
+Android allows without the grant. The editor and Reminder health already say
+reminders may be late then (D-078, D-102).
+
+**Choices this entry makes.**
+
+- **A minute after, not at, the reminder's moment.** At the same moment it
+  could arrive alongside the exact alarm and reconcile while the reminder is
+  being told. A minute is short next to the hour Android may add.
+- **Future reminders only.** A missed reminder is set for now, and one that
+  cannot be shown (notifications off) stays missed. A backstop aimed at it
+  would wake the phone every minute.
+- **Only while the grant is held.** Without it every reminder alarm is inexact
+  already and survives a revoke on its own.
+- **Not WorkManager or a periodic job.** `AGENTS.md` keeps WorkManager away
+  from reminder times, and a job every fifteen minutes would wake the app all
+  day to find nothing wrong. This costs one alarm, which fires only when
+  something already went wrong.
+
+**What it costs.** One alarm slot of Android's 500, inside the room
+`MaxScheduledReminders` leaves. When an OEM delays an exact alarm by more than
+a minute, the backstop may come first. Its pass then sets the late reminder
+for now, which is no worse.
+
+**What would reverse this.** An Android version that broadcasts the revoke, or
+one that removes inexact alarms too, which would need a different survivor.
