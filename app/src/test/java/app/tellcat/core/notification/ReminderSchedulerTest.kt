@@ -151,6 +151,48 @@ class ReminderSchedulerTest {
         assertTrue(alarms.scheduled.isEmpty())
     }
 
+    /**
+     * D-099. The test above hands the deleted task in with the live ones, and
+     * production never did: the stored stream leaves deleted rows out, so the
+     * alarm was never reached. They arrive separately now.
+     */
+    @Test
+    fun `a deleted task's alarm is cancelled though it is not among the live tasks`() {
+        val alarms = RecordingAlarms()
+        val deleted = listOf(task("gone", LocalDateTime.of(2026, 9, 5, 14, 0), deletedAt = createdAt))
+
+        scheduler(alarms).reconcile(tasks = emptyList(), deleted = deleted)
+
+        assertEquals(listOf("gone"), alarms.cancelled)
+        assertTrue(alarms.scheduled.isEmpty())
+    }
+
+    @Test
+    fun `a deleted task whose moment has passed is left alone, its alarm has already fired`() {
+        val alarms = RecordingAlarms()
+        // 09:00 local, three hours before the current 12:00.
+        val deleted = listOf(task("old", LocalDateTime.of(2026, 9, 5, 9, 0), deletedAt = createdAt))
+
+        scheduler(alarms).reconcile(tasks = emptyList(), deleted = deleted)
+
+        assertTrue(alarms.cancelled.isEmpty())
+    }
+
+    @Test
+    fun `a deleted task snoozed past now is cancelled at its snooze`() {
+        val alarms = RecordingAlarms()
+        // The reminder itself has gone by, but the snooze is still ahead and
+        // holds the alarm.
+        val deleted = listOf(
+            task("snoozed", LocalDateTime.of(2026, 9, 5, 9, 0), deletedAt = createdAt)
+                .copy(snoozedUntil = LocalDateTime.of(2026, 9, 5, 13, 0))
+        )
+
+        scheduler(alarms).reconcile(tasks = emptyList(), deleted = deleted)
+
+        assertEquals(listOf("snoozed"), alarms.cancelled)
+    }
+
     @Test
     fun `every task is either scheduled or cancelled, never both and never neither`() {
         val alarms = RecordingAlarms()

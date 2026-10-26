@@ -155,7 +155,40 @@ internal fun Context.notifyIfAllowed(notificationId: Int, notification: Notifica
 /** Takes the reminder off screen once it has been dealt with. */
 internal fun Context.cancelReminder(taskId: String) {
     NotificationManagerCompat.from(this).cancel(taskId.notificationId)
-    updateReminderGroupSummary(justCancelled = taskId)
+    updateReminderGroupSummary(justCancelled = setOf(taskId.notificationId))
+}
+
+/**
+ * Takes off the shade every reminder whose task is no longer outstanding, and
+ * returns how many it took.
+ *
+ * `docs/decisions.md` D-099. [tasks] is every live task, as the reconciliation
+ * reads them. A reminder stays while its task is among them and not
+ * completed; one deleted, completed or gone has nothing left to act on, and
+ * leaving it meant Done and Snooze working on a task the user had already
+ * deleted. Only Done and Snooze on the notification itself used to take it
+ * away, so completing in the app or the widget left it too.
+ *
+ * Read from the shade rather than from a record of what was posted, on the
+ * same terms as the summary count: whatever was swiped away or never shown is
+ * already gone. The test reminder is outside the group and is never touched.
+ */
+internal fun Context.withdrawSettledReminders(tasks: List<Task>): Int {
+    val manager = getSystemService(NotificationManager::class.java) ?: return 0
+    val outstanding = tasks
+        .filterNot { task -> task.isCompleted }
+        .mapTo(HashSet()) { task -> task.notificationId }
+
+    val settled = manager.activeNotifications
+        .filter { it.notification.group == ReminderGroup && it.id != ReminderGroupSummaryId }
+        .map { it.id }
+        .filterNot { id -> id in outstanding }
+        .toSet()
+    if (settled.isEmpty()) return 0
+
+    settled.forEach { id -> NotificationManagerCompat.from(this).cancel(id) }
+    updateReminderGroupSummary(justCancelled = settled)
+    return settled.size
 }
 
 // --- the group ----------------------------------------------------------------
@@ -183,7 +216,7 @@ internal fun Context.cancelReminder(taskId: String) {
  */
 private fun Context.updateReminderGroupSummary(
     justPosted: String? = null,
-    justCancelled: String? = null
+    justCancelled: Set<Int> = emptySet()
 ) {
     val count = postedReminderCount(including = justPosted, excluding = justCancelled)
 
@@ -226,7 +259,7 @@ private fun Context.updateReminderGroupSummary(
  * the shade already, and adding one to a count that already contains it is how
  * a summary ends up claiming a reminder that is not there.
  */
-private fun Context.postedReminderCount(including: String?, excluding: String?): Int {
+private fun Context.postedReminderCount(including: String?, excluding: Set<Int>): Int {
     val manager = getSystemService(NotificationManager::class.java) ?: return 0
 
     val ids = manager.activeNotifications
@@ -234,7 +267,7 @@ private fun Context.postedReminderCount(including: String?, excluding: String?):
         .mapTo(mutableSetOf()) { it.id }
 
     including?.let { ids += it.notificationId }
-    excluding?.let { ids -= it.notificationId }
+    ids -= excluding
 
     return ids.size
 }

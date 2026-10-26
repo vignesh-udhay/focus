@@ -92,8 +92,14 @@ class ReminderScheduler(
      * before anything asks for one. The soonest are the ones that cannot wait,
      * and anything past the cap is scheduled by a later pass, which every
      * delivery triggers by writing down that it was announced.
+     *
+     * **[deleted] is cancelled too, where an alarm could still be waiting.**
+     * D-099. A deleted task is not in [tasks], so until this nothing reached
+     * its alarm: it stayed armed, fired, and was only kept quiet by the
+     * receiver reading the task first. One whose moment has gone has fired
+     * already and holds nothing to cancel.
      */
-    fun reconcile(tasks: List<Task>): ReconcileResult {
+    fun reconcile(tasks: List<Task>, deleted: List<Task> = emptyList()): ReconcileResult {
         val now = clock()
         val here = zone()
         val localNow = LocalDateTime.ofInstant(now, here)
@@ -117,6 +123,10 @@ class ReminderScheduler(
 
         tasks
             .filter { task -> task.id !in owedIds }
+            .forEach { task -> attempt(task.id) { alarms.cancel(task.id) } }
+
+        deleted
+            .filter { task -> task.ringsAt?.isAfter(localNow) == true }
             .forEach { task -> attempt(task.id) { alarms.cancel(task.id) } }
 
         val scheduled = owed.take(MaxScheduledReminders).mapNotNull { task ->

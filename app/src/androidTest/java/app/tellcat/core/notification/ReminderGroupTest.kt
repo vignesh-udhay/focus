@@ -215,6 +215,59 @@ class ReminderGroupTest {
         )
     }
 
+    /**
+     * D-099. A deleted task's reminder stayed on screen with Done and Snooze
+     * still working, and one completed in the app stayed with a Done for work
+     * already done. The shade now follows storage after every pass.
+     */
+    @Test
+    fun aReminderForADeletedOrCompletedTaskLeavesAndTheOutstandingOneStays() {
+        postReminder("a", "Water the plants")
+        postReminder("b", "Call the dentist")
+        postReminder("c", "Pay the electricity bill")
+        await("three reminders under a summary") { reminders().size == 3 && summary() != null }
+
+        // "b" is completed, "c" is deleted and so not among the live tasks.
+        val withdrawn = context.withdrawSettledReminders(
+            listOf(task("a", "Water the plants"), task("b", "Call the dentist").copy(completedAt = Instant.now()))
+        )
+
+        assertEquals(2, withdrawn)
+        await("only the outstanding reminder, counted as one") {
+            reminders().map { it.notification.extras.getString(Notification.EXTRA_TITLE) } ==
+                listOf("Water the plants") &&
+                summaryTitle() == "1 reminder"
+        }
+    }
+
+    @Test
+    fun withdrawingTheLastReminderTakesTheSummaryAndLeavesTheTestReminder() {
+        postReminder("a", "Water the plants")
+        context.postTestReminder(Instant.now())
+        await("a reminder, its summary and a test reminder") { posted().size == 3 }
+
+        context.withdrawSettledReminders(emptyList())
+
+        await("the test reminder alone") {
+            posted().map { it.id } == listOf(TestReminder.TaskId.notificationId)
+        }
+    }
+
+    @Test
+    fun nothingIsWithdrawnWhileEveryTaskIsOutstanding() {
+        postReminder("a", "Water the plants")
+        postReminder("b", "Call the dentist")
+        await("two reminders under a summary") { reminders().size == 2 && summary() != null }
+
+        val withdrawn = context.withdrawSettledReminders(
+            listOf(task("a", "Water the plants"), task("b", "Call the dentist"))
+        )
+
+        assertEquals(0, withdrawn)
+        Thread.sleep(BurstPauseMillis)
+        assertEquals(2, reminders().size)
+    }
+
     // --- driving the shade ------------------------------------------------------
 
     /**

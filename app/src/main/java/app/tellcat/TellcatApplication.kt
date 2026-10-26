@@ -9,6 +9,7 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.core.os.UserManagerCompat
 import app.tellcat.core.domain.DeliveryOutcome
+import app.tellcat.core.domain.ReminderAnnouncement
 import app.tellcat.core.domain.ReminderDelivery
 import app.tellcat.core.domain.Task
 import app.tellcat.core.domain.hasLiveReminder
@@ -35,6 +36,7 @@ import app.tellcat.core.notification.ReminderAlarms
 import app.tellcat.core.notification.AndroidReminderHealthChecks
 import app.tellcat.core.notification.ReminderHealthChecks
 import app.tellcat.core.notification.ReminderScheduler
+import app.tellcat.core.notification.withdrawSettledReminders
 import app.tellcat.core.time.SystemCurrentDay
 import app.tellcat.data.repository.ReminderDeliveryRepository
 import app.tellcat.data.repository.BackupRepository
@@ -170,9 +172,15 @@ class TellcatApplication : Application() {
             val settled = settleLockedDeliveries()
             val current = if (settled || tasks == null) taskRepository.observeTasks().first() else tasks
 
-            val result = reminderScheduler.reconcile(current)
+            // Deleted tasks are not in `current`, and an alarm one still holds
+            // is only reached by asking for them. D-099.
+            val result = reminderScheduler.reconcile(current, deleted = taskRepository.deletedTasksWithReminders())
             schedulingRefusals.record(result.failures)
             lockedReminders.replaceUpcoming(result.scheduled)
+
+            // The shade follows storage as the alarms do: a reminder for a task
+            // deleted, completed or gone is no longer something to act on.
+            withdrawSettledReminders(current)
         }
     }
 
@@ -192,7 +200,9 @@ class TellcatApplication : Application() {
             val task = taskRepository.findTask(delivery.taskId) ?: return@forEach
             if (!task.hasLiveReminder() || task.ringsAt != delivery.ringsAt) return@forEach
 
-            taskRepository.markReminderDelivered(delivery.taskId, delivery.arrivedWallAt)
+            // Starts a repeating task's next occurrence too, counted from when
+            // it was said rather than from now. D-098.
+            ReminderAnnouncement(taskRepository).record(delivery.taskId, delivery.arrivedWallAt)
             reminderDeliveryRepository.record(
                 ReminderDelivery(
                     id = UUID.randomUUID().toString(),

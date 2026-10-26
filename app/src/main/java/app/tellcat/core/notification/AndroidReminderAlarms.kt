@@ -24,6 +24,7 @@ import app.tellcat.TellcatApplication
 import app.tellcat.MainActivity
 import app.tellcat.R
 import app.tellcat.core.domain.DeliveryOutcome
+import app.tellcat.core.domain.ReminderAnnouncement
 import app.tellcat.core.domain.ReminderDelivery
 import app.tellcat.core.domain.hasLiveReminder
 import kotlinx.coroutines.CoroutineScope
@@ -181,9 +182,9 @@ internal fun reminderAlarmClockInfo(
  * Reads the task back out of storage first, and says nothing unless it still
  * has a live reminder. That is not belt and braces, it is the same rule the
  * scheduler runs on: storage decides. An alarm is only a cache, and a cache
- * can be stale in ways cancellation does not reach. A soft-deleted task
- * disappears from the DAO's query, so the reconciliation pass never sees it to
- * cancel its alarm; this check is what stops it ringing at 6am.
+ * can be stale in ways cancellation does not reach. A soft-deleted task's alarm
+ * is cancelled by the next reconciliation, D-099, but an alarm already on its
+ * way when the task was deleted is stopped only here.
  *
  * `goAsync` because the read touches disk. A receiver has roughly ten seconds,
  * which is ample for one query, and the alternative is guessing from extras
@@ -290,8 +291,13 @@ class ReminderReceiver : BroadcastReceiver() {
                 record(DeliveryOutcome.Announced)
 
                 // Only after it was actually said. This is what stops the
-                // reminder being announced again on every later pass.
-                application.taskRepository.markReminderDelivered(taskId, arrivedWallAt)
+                // reminder being announced again on every later pass, and for
+                // a repeating task it starts the next occurrence. D-098.
+                ReminderAnnouncement(application.taskRepository).record(taskId, arrivedWallAt)
+                // Before the receiver finishes, so the next occurrence's alarm
+                // is set even if the process is frozen once this returns, and
+                // the retired occurrence's notification leaves. D-078, D-099.
+                application.reconcileReminders()
             } finally {
                 finish.finish()
             }

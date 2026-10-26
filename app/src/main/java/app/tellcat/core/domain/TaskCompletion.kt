@@ -42,6 +42,11 @@ class TaskCompletion(
      * does not recur, is missing, or was already complete. Callers use it to
      * offer an undo that can take the new occurrence back with it.
      *
+     * Null too when the next occurrence already exists, because the reminder
+     * made it when it was announced. `docs/decisions.md` D-098: an occurrence
+     * makes its successor once, and finishing Monday's late leaves Tuesday's
+     * as it is. An undo then has only the completion to take back.
+     *
      * The completed task is left exactly as any other completed task, so it
      * reaches the Logbook on its own terms, and the next occurrence is a new
      * row rather than the same one moved: the record of having done it today
@@ -64,9 +69,12 @@ class TaskCompletion(
         // complete with no successor: its reminder gone, and nothing saying so.
         // `PRODUCT.md` puts that above a crash, and requires that completing an
         // occurrence produces the next one.
-        repository.completeWithNext(completed = task.copy(completedAt = completedAt), next = next)
+        val started = repository.completeWithNext(
+            completed = task.copy(completedAt = completedAt),
+            next = next
+        )
 
-        return next?.id
+        return if (started) next?.id else null
     }
 
     /**
@@ -82,17 +90,25 @@ class TaskCompletion(
      * the user has already dealt with. Either way it is no longer a row nobody
      * asked for, and removing it would be destroying work rather than tidying
      * up.
+     *
+     * And only one this completion made. D-098: an occurrence whose reminder
+     * was announced made its successor then, before it was completed, and
+     * reopening it does not take back what the completion never created.
      */
     suspend fun reopen(id: String) {
         val task = repository.findTask(id) ?: return
-        if (!task.isCompleted) return
+        val completedAt = task.completedAt ?: return
 
         // Asked for by parent rather than filtered out of every task. The rule
         // for which occurrence counts stays here, because it is a domain rule:
         // one that has itself been completed has its own record and its own
         // successor, and removing it would be destroying work.
+        //
+        // A completion stamps its successor with its own moment, `complete`
+        // above, so a successor created before that moment came from the
+        // reminder.
         val spawn = repository.findSpawnsOf(task.id).firstOrNull { candidate ->
-            !candidate.isCompleted
+            !candidate.isCompleted && !candidate.createdAt.isBefore(completedAt)
         }
 
         // Atomic for the mirror of D-063's reason: a failure between the two

@@ -65,6 +65,13 @@ private class RefusingTaskDao(private val rows: List<TaskEntity>) : TaskDao {
     override suspend fun findSpawnsOf(parentId: String): List<TaskEntity> =
         rows.filter { it.spawnedFromId == parentId }
 
+    /** Every row, deleted ones included, as the real COUNT does. */
+    override suspend fun countSpawnsOf(parentId: String): Int =
+        rows.count { row -> row.spawnedFromId == parentId }
+
+    override suspend fun findDeletedWithReminders(): List<TaskEntity> =
+        rows.filter { row -> row.deletedAt != null && row.reminderAt != null }
+
     override suspend fun insert(task: TaskEntity) = refuse()
 
     override suspend fun update(task: TaskEntity) = refuse()
@@ -107,6 +114,13 @@ private class FakeTaskDao : TaskDao {
 
     override suspend fun findSpawnsOf(parentId: String): List<TaskEntity> =
         emissions.value.filter { row -> row.spawnedFromId == parentId && row.deletedAt == null }
+
+    /** Every row, deleted ones included, as the real COUNT does. */
+    override suspend fun countSpawnsOf(parentId: String): Int =
+        emissions.value.count { row -> row.spawnedFromId == parentId }
+
+    override suspend fun findDeletedWithReminders(): List<TaskEntity> =
+        emissions.value.filter { row -> row.deletedAt != null && row.reminderAt != null }
 
     /** Stores the row so the flow re-emits, as the real DAO does. */
     override suspend fun insert(task: TaskEntity) {

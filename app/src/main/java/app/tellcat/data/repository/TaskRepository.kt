@@ -59,10 +59,36 @@ class TaskRepository(private val dao: TaskDao) {
      * `docs/decisions.md` D-063. Two calls to [update] and [insert] could half
      * happen, and a recurring task completed without its successor is a
      * reminder silently lost, which `PRODUCT.md` ranks above a crash.
+     *
+     * Returns whether [next] was written. It is not when [completed] already
+     * has a successor, made when its reminder was announced. D-098.
      */
-    suspend fun completeWithNext(completed: Task, next: Task?) {
+    suspend fun completeWithNext(completed: Task, next: Task?): Boolean =
         dao.completeWithNext(completed = completed.toEntity(), next = next?.toEntity())
-    }
+
+    /**
+     * Applies [edit] to [id] and lets the occurrences it made follow, in one
+     * transaction. Returns the task as it was before, or null when nothing was
+     * written. `docs/decisions.md` D-098; see `TaskDao.editWithSuccessor`.
+     */
+    suspend fun editWithSuccessor(
+        id: String,
+        edit: (Task) -> Task?,
+        follow: (before: Task, after: Task, successor: Task) -> Task?
+    ): Task? = dao.editWithSuccessor(
+        id = id,
+        edit = { entity -> edit(entity.toDomain())?.toEntity() },
+        follow = { before, after, successor ->
+            val stored = successor.toDomain()
+            when (val followed = follow(before.toDomain(), after.toDomain(), stored)) {
+                null -> null
+                // Handed back as stored, so an occurrence left alone is not
+                // rewritten.
+                stored -> successor
+                else -> followed.toEntity()
+            }
+        }
+    )?.toDomain()
 
     /** Reopens [reopened] and removes [spawnId] together, or neither. */
     suspend fun reopenWithoutSpawn(reopened: Task, spawnId: String?) {
@@ -90,6 +116,24 @@ class TaskRepository(private val dao: TaskDao) {
     }
 
     /**
+     * Records [id]'s reminder announced at [deliveredAt], starts [next] and
+     * retires [retireId], in one transaction. `docs/decisions.md` D-098; see
+     * `TaskDao.recordAnnounced`.
+     */
+    suspend fun recordAnnounced(id: String, deliveredAt: Instant, next: Task?, retireId: String?) {
+        dao.recordAnnounced(
+            id = id,
+            deliveredAt = deliveredAt.toEpochMilli(),
+            next = next?.toEntity(),
+            retireId = retireId
+        )
+    }
+
+    /** Deleted tasks that had a reminder, for the alarms they may hold. D-099. */
+    suspend fun deletedTasksWithReminders(): List<Task> =
+        dao.findDeletedWithReminders().map { entity -> entity.toDomain() }
+
+    /**
      * Snoozes [id]'s reminder to [until], leaving the reminder itself alone.
      *
      * Encoded the same way `TaskConverters` stores the column, and it clears
@@ -107,6 +151,10 @@ class TaskRepository(private val dao: TaskDao) {
      * Applies [change] to [id]'s checklist as one transaction. See
      * `TaskDao.changeChecklist` for why this is not a read here and an
      * [update] after it.
+     *
+     * Not what the screens use since D-098: they go through
+     * `OccurrenceEdits`, which lets a repeating task's untouched next
+     * occurrence follow the change. This leaves it behind.
      */
     suspend fun changeChecklist(id: String, change: (List<ChecklistItem>) -> List<ChecklistItem>) {
         dao.changeChecklist(id, change)

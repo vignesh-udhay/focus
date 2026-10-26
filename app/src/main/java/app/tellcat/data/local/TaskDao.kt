@@ -62,6 +62,26 @@ interface TaskDao {
     @Query("SELECT * FROM tasks WHERE spawnedFromId = :parentId AND deletedAt IS NULL")
     suspend fun findSpawnsOf(parentId: String): List<TaskEntity>
 
+    /**
+     * How many occurrences [parentId] has made, deleted ones included.
+     *
+     * `docs/decisions.md` D-098: an occurrence makes its successor once, when
+     * its reminder is announced or when it is completed, whichever comes
+     * first. A successor the user deleted still counts, so the other path
+     * cannot bring it back.
+     */
+    @Query("SELECT COUNT(*) FROM tasks WHERE spawnedFromId = :parentId")
+    suspend fun countSpawnsOf(parentId: String): Int
+
+    /**
+     * Deleted tasks that had a reminder.
+     *
+     * D-099. [observeTasks] leaves them out, so the reconciliation never saw
+     * them to cancel the alarms they may still hold.
+     */
+    @Query("SELECT * FROM tasks WHERE deletedAt IS NOT NULL AND reminderAt IS NOT NULL")
+    suspend fun findDeletedWithReminders(): List<TaskEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(task: TaskEntity)
 
@@ -80,11 +100,68 @@ interface TaskDao {
      *
      * [next] is null for a task that does not recur, which is the ordinary
      * case and needs no second write.
+     *
+     * [next] is also left out when [completed] already has a successor, which
+     * its reminder made when it was announced. D-098. Returns whether [next]
+     * was written, so an undo only takes back what this completion made.
      */
     @Transaction
-    suspend fun completeWithNext(completed: TaskEntity, next: TaskEntity?) {
+    suspend fun completeWithNext(completed: TaskEntity, next: TaskEntity?): Boolean {
         update(completed)
-        next?.let { occurrence -> insert(occurrence) }
+        if (next == null || countSpawnsOf(completed.id) > 0) return false
+        insert(next)
+        return true
+    }
+
+    /**
+     * Records that [id]'s reminder was announced, starts its series' next
+     * occurrence, and retires the missed one before it, or does none of it.
+     *
+     * `docs/decisions.md` D-098, atomic for D-063's reason: a series marked
+     * announced without its successor has no next reminder and nothing saying
+     * so. [next] is null for a task that does not recur, and is left out when
+     * [id] already has a successor. [retireId] is the earlier occurrence still
+     * open, deleted at [deliveredAt], or null.
+     *
+     * @param deliveredAt epoch milliseconds, matching the column's encoding.
+     */
+    @Transaction
+    suspend fun recordAnnounced(id: String, deliveredAt: Long, next: TaskEntity?, retireId: String?) {
+        markReminderDelivered(id, deliveredAt)
+        if (next != null && countSpawnsOf(id) == 0) insert(next)
+        retireId?.let { retired -> softDelete(retired, deliveredAt) }
+    }
+
+    /**
+     * Applies [edit] to [id] and lets the occurrences it made follow, in one
+     * transaction, and returns the row as it was before.
+     *
+     * `docs/decisions.md` D-098. A repeating task's next occurrence can exist
+     * while this one is still open, made when its reminder rang, and an edit
+     * made after that has to reach it the way it would have reached one made
+     * at completion. [follow] decides, for each live occurrence [id] made:
+     * the row it becomes, the same row to leave it, or null to remove it.
+     * Nothing is written when [id] has no live row or [edit] returns null.
+     */
+    @Transaction
+    suspend fun editWithSuccessor(
+        id: String,
+        edit: (TaskEntity) -> TaskEntity?,
+        follow: (before: TaskEntity, after: TaskEntity, successor: TaskEntity) -> TaskEntity?
+    ): TaskEntity? {
+        val before = findTask(id) ?: return null
+        val after = edit(before) ?: return null
+        update(after)
+        findSpawnsOf(id).forEach { successor ->
+            val followed = follow(before, after, successor)
+            when {
+                // Made by the app and never touched, so erased rather than
+                // left deleted, as an undone completion's occurrence is.
+                followed == null -> deleteById(successor.id)
+                followed != successor -> update(followed)
+            }
+        }
+        return before
     }
 
     /**

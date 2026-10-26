@@ -21,6 +21,7 @@ import app.tellcat.core.domain.StoredFocusSession
 import app.tellcat.core.domain.Recurrence
 import app.tellcat.core.domain.nextRecurringInstance
 import app.tellcat.core.domain.Task
+import app.tellcat.core.domain.OccurrenceEdits
 import app.tellcat.core.domain.TaskCompletion
 import app.tellcat.core.time.CurrentDay
 import app.tellcat.core.time.SystemCurrentDay
@@ -189,6 +190,9 @@ class TaskListViewModel(
      * out of here: one implementation of what finishing a task means.
      */
     private val completion = TaskCompletion(repository, currentDay)
+
+    /** Every edit, so a repeating task's untouched next occurrence follows it. D-098. */
+    private val edits = OccurrenceEdits(repository)
 
     /**
      * The day the dated views are derived against.
@@ -1188,7 +1192,7 @@ class TaskListViewModel(
      */
     fun addChecklistItem(id: String, text: String) {
         val item = checklistItem(text) ?: return
-        write { repository.changeChecklist(id) { checklist -> checklist + item } }
+        write { changeChecklist(id) { checklist -> checklist + item } }
     }
 
     /**
@@ -1196,7 +1200,7 @@ class TaskListViewModel(
      * item the user saw there; see `withDone` for why it is passed.
      */
     fun setChecklistItemDone(id: String, index: Int, text: String, done: Boolean) {
-        write { repository.changeChecklist(id) { checklist -> checklist.withDone(index, text, done) } }
+        write { changeChecklist(id) { checklist -> checklist.withDone(index, text, done) } }
     }
 
     /**
@@ -1216,7 +1220,7 @@ class TaskListViewModel(
         if (edited.text == text) return
 
         write {
-            repository.changeChecklist(id) { checklist -> checklist.withText(index, text, edited.text) }
+            changeChecklist(id) { checklist -> checklist.withText(index, text, edited.text) }
         }
     }
 
@@ -1231,7 +1235,7 @@ class TaskListViewModel(
     fun removeChecklistItem(id: String, index: Int, text: String) {
         write {
             var removed: ChecklistItem? = null
-            repository.changeChecklist(id) { checklist ->
+            changeChecklist(id) { checklist ->
                 checklist.withoutItem(index, text).also { next ->
                     if (next.size < checklist.size) removed = checklist[index]
                 }
@@ -1250,8 +1254,17 @@ class TaskListViewModel(
         if (!_pendingUndo.compareAndSet(expect = offer, update = null)) return
 
         write {
-            repository.changeChecklist(id) { checklist -> checklist.withItemAt(offer.index, offer.item) }
+            changeChecklist(id) { checklist -> checklist.withItemAt(offer.index, offer.item) }
         }
+    }
+
+    /**
+     * Applies [change] to [id]'s stored checklist in one transaction, which is
+     * what keeps two quick ticks from undoing each other, and lets the next
+     * occurrence follow while it is untouched. D-098.
+     */
+    private suspend fun changeChecklist(id: String, change: (List<ChecklistItem>) -> List<ChecklistItem>) {
+        edits.edit(id) { task -> task.copy(checklist = change(task.checklist)) }
     }
 
     /**
@@ -1306,9 +1319,7 @@ class TaskListViewModel(
         val trimmedNotes = notes?.trim()?.takeIf { it.isNotEmpty() }
 
         write {
-            val task = repository.findTask(id) ?: return@write
-
-            repository.update(
+            val task = edits.edit(id) { task ->
                 task.copy(
                     title = trimmed,
                     notes = trimmedNotes,
@@ -1333,7 +1344,7 @@ class TaskListViewModel(
                     // D-078.
                     snoozedUntil = if (reminderAt == task.reminderAt) task.snoozedUntil else null
                 )
-            )
+            } ?: return@write
 
             // After the write, so the promise is stored whatever the user
             // says next. Refusing to be notified must not also lose the
@@ -1363,10 +1374,10 @@ class TaskListViewModel(
      */
     fun rescheduleTask(id: String, date: LocalDate?) {
         write {
-            val task = repository.findTask(id) ?: return@write
-            if (task.scheduledDate == date) return@write
+            val task = edits.edit(id) { task ->
+                if (task.scheduledDate == date) null else task.copy(scheduledDate = date)
+            } ?: return@write
 
-            repository.update(task.copy(scheduledDate = date))
             _pendingUndo.value = PendingUndo.Reschedule(task.id, previousDate = task.scheduledDate)
         }
     }
@@ -1384,9 +1395,7 @@ class TaskListViewModel(
         if (!_pendingUndo.compareAndSet(expect = offer, update = null)) return
 
         write {
-            val task = repository.findTask(id) ?: return@write
-
-            repository.update(task.copy(scheduledDate = offer.previousDate))
+            edits.edit(id) { task -> task.copy(scheduledDate = offer.previousDate) }
         }
     }
 

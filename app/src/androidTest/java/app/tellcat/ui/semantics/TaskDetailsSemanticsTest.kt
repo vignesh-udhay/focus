@@ -801,7 +801,9 @@ class TaskDetailsSemanticsTest {
             .performClick()
 
         awaitTask(viewModel) { task -> task.checklist == listOf(ChecklistItem(EGGS, done = true)) }
-        assertTrue(viewModel.pendingUndo.value is PendingUndo.ChecklistRemoval)
+        // Waited for, not read: the offer is raised once the write returns,
+        // and the stored list changes before it does.
+        rule.waitUntil(TIMEOUT_MILLIS) { viewModel.pendingUndo.value is PendingUndo.ChecklistRemoval }
     }
 
     @Test
@@ -823,7 +825,9 @@ class TaskDetailsSemanticsTest {
         rule.onNodeWithText(TITLE).performClick()
 
         awaitTask(viewModel) { task -> task.checklist == listOf(ChecklistItem(EGGS, done = true)) }
-        assertTrue(viewModel.pendingUndo.value is PendingUndo.ChecklistRemoval)
+        // Waited for, not read: the offer is raised once the write returns,
+        // and the stored list changes before it does.
+        rule.waitUntil(TIMEOUT_MILLIS) { viewModel.pendingUndo.value is PendingUndo.ChecklistRemoval }
     }
 
     @Test
@@ -842,7 +846,9 @@ class TaskDetailsSemanticsTest {
         itemField(MILK).performScrollTo().performCustomAccessibilityActionWithLabel(REMOVE_MILK)
 
         awaitTask(viewModel) { task -> task.checklist == listOf(ChecklistItem(EGGS, done = true)) }
-        assertTrue(viewModel.pendingUndo.value is PendingUndo.ChecklistRemoval)
+        // Waited for, not read: the offer is raised once the write returns,
+        // and the stored list changes before it does.
+        rule.waitUntil(TIMEOUT_MILLIS) { viewModel.pendingUndo.value is PendingUndo.ChecklistRemoval }
     }
 
     /**

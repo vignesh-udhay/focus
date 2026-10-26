@@ -6110,3 +6110,98 @@ its sheet, since it would only copy the task.
 show as titles that are whole paragraphs or checklists split into notes. The
 answer then is to tighten `sharedTask`, not to drop the target.
 
+## D-098. A repeating reminder left unanswered still rings next time
+
+**Decision.** The next occurrence of a repeating task is made when its reminder
+is announced, as well as when it is completed, whichever comes first. The same
+pass sets the new occurrence's reminder, so a daily reminder nobody answered
+rings again tomorrow. The occurrence that was announced stays open: once its day
+is over it sits in Today's Overdue band, so the miss is seen rather than rolled
+away.
+
+1. **An occurrence makes its successor once.** Completing one whose successor
+   already exists makes nothing, so finishing Monday's late leaves Tuesday's as
+   it is and never adds a second Tuesday. A successor the user deleted still
+   counts, so a snooze ringing again cannot bring back an occurrence they
+   removed. `TaskDao.countSpawnsOf` is the check, inside the same transaction
+   as the write.
+2. **Reopening takes back only what completing made.** A successor created at
+   the moment of completing is removed when the occurrence is reopened, as
+   before. One its reminder made was there before the completion and stays.
+3. **A series keeps one missed occurrence open, the latest.** When an
+   occurrence is announced and the one before it is still open, the older one
+   is deleted. `Recurrence.kt` already says missing an occurrence does not bank
+   it, and a week of an ignored daily reminder would otherwise be seven rows.
+4. **The next date comes from the series,** through `nextRecurringInstance`,
+   counted from the day the reminder was announced, as completion counts from
+   the day it was done. The reminder keeps the series' time of day; D-078 still
+   applies.
+5. **Only an announcement counts.** A reminder that fired while Tellcat could
+   not post stays owed, D-078, and makes nothing until it is announced.
+6. **Edits after the ring reach the next occurrence while it is untouched.**
+   Before D-098 the successor was made from the edited row at completion, so
+   setting Repeat to "Doesn't repeat", a new time "from now on", a new rule or
+   a new title all reached the series. With the successor made at the ring,
+   each would have reached it a day late, and "Doesn't repeat" would have left
+   tomorrow's occurrence to ring anyway. So every edit (Task Details, moving
+   the day, the checklist) goes through `OccurrenceEdits`, and in the same
+   transaction an untouched successor is made again from the edited row, with
+   its id and moment of making kept, or erased if the series no longer
+   continues. Untouched means not completed, not deleted, not announced, and
+   unchanged since it was made: `followingEdit` makes it again from the row as
+   it was before the edit and compares. Once the user has touched it, it is
+   theirs and stays as they left it.
+
+Announcing, marking the reminder delivered, adding the successor and retiring
+the older occurrence are one transaction, `TaskDao.recordAnnounced`, for D-063's
+reason: half of it would leave a series with no next reminder and nothing
+saying so. The edit in rule 6 is one too, `TaskDao.editWithSuccessor`.
+
+**What changed the answer.** The competitor study on 2026-10-26 set a daily
+5:10 reminder on the emulator, let it ring, and left it. Nothing was armed for
+the next day. `TaskCompletion` was the only code that made a next occurrence,
+so a daily reminder ignored once (asleep, phone in another room, notification
+swiped) was silent every day after, with nothing in the row or in Reminder
+health saying so. `PRODUCT.md` ranks a reminder that does not fire above a
+crash. Tasks (Pocket Brilliance) and Tasks.org fail the same way by default,
+and it is the repeat complaint reviewers name most.
+
+**What the user sees change.** Tomorrow's occurrence appears in Upcoming as
+soon as today's reminder rings, not when today's is ticked. The repeat sheet's
+footnote said "Completing an occurrence creates the next one." and now says the
+reminder does too.
+
+**What it costs.** Rule 3 deletes the older missed occurrence, with any
+checklist items ticked on it. A monthly bill left unpaid for two months shows
+one open row, not two.
+
+**What would reverse this.** Testers wanting every missed occurrence kept,
+which turns rule 3 into stacking. Or the redesign's single row for a series
+("Missed Mon, 9:00 AM · Next Tue, 9:00 AM"), which would show the miss and the
+next occurrence together and make the second row unnecessary.
+
+## D-099. Deleting a task takes its reminder off the shade and cancels its alarm
+
+**Decision.** Every reconciliation now also cancels the alarm of a deleted task
+whose reminder is still ahead, and then brings the shade into line with
+storage: a reminder notification whose task is deleted, completed or gone is
+withdrawn. Undo restores the row, and the pass that follows sets its alarm
+again. A reminder that was already announced is not posted a second time.
+
+**Why.** The competitor study found a deleted task's notification still in the
+shade with working Done and Snooze, and its alarm still armed. The alarm fired
+and posted nothing, because `ReminderReceiver` reads the task first, but the
+user was left holding a reminder for something they had deleted. `Reminders.kt`
+already promised that deleting retires a reminder. A soft delete hides the row
+from `observeTasks`, so the scheduler never saw it to cancel anything.
+
+**Why in the reconciliation, not at the delete.** Every write runs it: delete,
+complete in the app or the widget, a restored backup, and D-098's retired
+occurrence. Completing in the app had the same gap, a notification left with a
+Done button for a task already done. Storage decides and the alarms and the
+shade follow it, which is how the rest of the reminder code already works.
+
+**What it leaves.** A deleted task whose reminder time has passed keeps no
+alarm to cancel: it has fired already. The test reminder and Focus are outside
+the reminder group and are never withdrawn by this.
+

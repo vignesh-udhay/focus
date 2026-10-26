@@ -198,6 +198,9 @@ A recurring task is a task that comes back.
 Completing one occurrence must produce the next one. It must never make the
 task disappear.
 
+A reminder left unanswered must not end the series either: the next
+occurrence still rings, and the missed one stays visible (D-098).
+
 A recurring task is not a habit. Habits are out of scope.
 
 ## Focus

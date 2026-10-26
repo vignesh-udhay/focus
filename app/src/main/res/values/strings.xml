@@ -418,7 +418,7 @@
     <string name="task_repeat_ends">Ends</string>
     <string name="task_repeat_save">Save repeat</string>
     <string name="task_repeat_clear">Doesn\'t repeat</string>
-    <string name="task_repeat_footnote">Completing an occurrence creates the next one.</string>
+    <string name="task_repeat_footnote">Completing an occurrence, or its reminder ringing, creates the next one.</string>
 
     <!-- The Every substate. -->
     <string name="task_repeat_every_back">Back to the repeat rule</string>

@@ -47,7 +47,15 @@ the size, and its column is centred rather than hung from the top. The full
 instrumented suite passed on 2026-10-25, 338 of 338 on the emulator. A Task
 Details store shot was taken, Groceries with its checklist in light and dark at
 1080 x 1920, and the owner chose to leave the store set of eight as it is. The
-merge waits for the owner's word. D-085 regenerated the
+merge waits for the owner's word.
+
+**Two reminder bugs found by the competitor study are fixed, on 1.0 too until
+this ships.** A repeating reminder nobody answered never rang again, because
+only completing made the next occurrence; now the ring makes it, the missed one
+stays in Overdue, and edits after the ring carry to the untouched next
+occurrence (D-098). Deleting a task left its notification, with working Done
+and Snooze, and its alarm; every reconciliation now cancels both, and Undo
+sets the alarm again (D-099). D-085 regenerated the
 palette and D-091 withdrew it, so the colours are still 1.0's.
 
 **Seven competitor apps were walked on the emulator, 2026-10-24 and 25**,

@@ -48,6 +48,13 @@ private class FakeTaskDao : TaskDao {
     override suspend fun findSpawnsOf(parentId: String): List<TaskEntity> =
         emissions.value.filter { row -> row.spawnedFromId == parentId && row.deletedAt == null }
 
+    /** Every row, deleted ones included, as the real COUNT does. */
+    override suspend fun countSpawnsOf(parentId: String): Int =
+        emissions.value.count { row -> row.spawnedFromId == parentId }
+
+    override suspend fun findDeletedWithReminders(): List<TaskEntity> =
+        emissions.value.filter { row -> row.deletedAt != null && row.reminderAt != null }
+
     override suspend fun insert(task: TaskEntity) {
         inserted += task
     }

@@ -455,4 +455,121 @@ class TaskDaoTest {
             }
         )
     }
+
+    // D-098: an occurrence makes its successor once
+
+    @Test
+    fun countSpawnsOfIncludesASuccessorTheUserDeleted() = runBlocking {
+        dao.insert(entity("mon", recurrence = RecurrenceUnit.DAILY))
+        dao.insert(entity("tue", recurrence = RecurrenceUnit.DAILY, spawnedFromId = "mon", deletedAt = deletedAt))
+
+        assertEquals(1, dao.countSpawnsOf("mon"))
+        assertEquals(0, dao.findSpawnsOf("mon").size)
+    }
+
+    @Test
+    fun recordAnnouncedMarksToldStartsTheNextAndRetiresTheMissedOneTogether() = runBlocking {
+        val told = Instant.parse("2026-09-01T03:30:04Z")
+        dao.insert(entity("sun", recurrence = RecurrenceUnit.DAILY))
+        dao.insert(entity("mon", recurrence = RecurrenceUnit.DAILY, spawnedFromId = "sun"))
+
+        dao.recordAnnounced(
+            id = "mon",
+            deliveredAt = told.toEpochMilli(),
+            next = entity("tue", recurrence = RecurrenceUnit.DAILY, spawnedFromId = "mon"),
+            retireId = "sun"
+        )
+
+        assertEquals(told, dao.findTask("mon")?.reminderDeliveredAt)
+        assertEquals("mon", dao.findTask("tue")?.spawnedFromId)
+        assertNull("The missed occurrence is still open", dao.findTask("sun"))
+    }
+
+    @Test
+    fun recordAnnouncedAddsNoSecondSuccessor() = runBlocking {
+        dao.insert(entity("mon", recurrence = RecurrenceUnit.DAILY))
+        dao.insert(entity("tue", recurrence = RecurrenceUnit.DAILY, spawnedFromId = "mon"))
+
+        dao.recordAnnounced(
+            id = "mon",
+            deliveredAt = createdAt.toEpochMilli(),
+            next = entity("tue-again", recurrence = RecurrenceUnit.DAILY, spawnedFromId = "mon"),
+            retireId = null
+        )
+
+        assertEquals(listOf("tue"), dao.findSpawnsOf("mon").map { it.id })
+    }
+
+    @Test
+    fun completingAnOccurrenceThatAlreadyHasItsSuccessorWritesNoOther() = runBlocking {
+        dao.insert(entity("mon", recurrence = RecurrenceUnit.DAILY))
+        dao.insert(entity("tue", recurrence = RecurrenceUnit.DAILY, spawnedFromId = "mon"))
+
+        val started = dao.completeWithNext(
+            completed = entity("mon", recurrence = RecurrenceUnit.DAILY, completedAt = completedAt),
+            next = entity("tue-again", recurrence = RecurrenceUnit.DAILY, spawnedFromId = "mon")
+        )
+
+        assertEquals(false, started)
+        assertEquals(completedAt, dao.findTask("mon")?.completedAt)
+        assertEquals(listOf("tue"), dao.findSpawnsOf("mon").map { it.id })
+    }
+
+    @Test
+    fun editWithSuccessorWritesTheEditAndWhatEachSuccessorBecomes() = runBlocking {
+        dao.insert(entity("mon", title = "Pills", recurrence = RecurrenceUnit.DAILY))
+        dao.insert(entity("tue", title = "Pills", recurrence = RecurrenceUnit.DAILY, spawnedFromId = "mon"))
+
+        val before = dao.editWithSuccessor(
+            id = "mon",
+            edit = { row -> row.copy(title = "Blue pills") },
+            follow = { _, after, successor -> successor.copy(title = after.title) }
+        )
+
+        assertEquals("Pills", before?.title)
+        assertEquals("Blue pills", dao.findTask("mon")?.title)
+        assertEquals("Blue pills", dao.findTask("tue")?.title)
+    }
+
+    @Test
+    fun editWithSuccessorErasesASuccessorTheSeriesNoLongerMakes() = runBlocking {
+        dao.insert(entity("mon", recurrence = RecurrenceUnit.DAILY))
+        dao.insert(entity("tue", recurrence = RecurrenceUnit.DAILY, spawnedFromId = "mon"))
+
+        dao.editWithSuccessor(
+            id = "mon",
+            edit = { row -> row.copy(recurrence = null) },
+            follow = { _, _, _ -> null }
+        )
+
+        assertNull(dao.findTask("mon")?.recurrence)
+        assertEquals(0, dao.countSpawnsOf("mon"))
+    }
+
+    @Test
+    fun editWithSuccessorWritesNothingWhenTheEditDeclines() = runBlocking {
+        dao.insert(entity("mon", title = "Pills", recurrence = RecurrenceUnit.DAILY))
+        dao.insert(entity("tue", title = "Pills", recurrence = RecurrenceUnit.DAILY, spawnedFromId = "mon"))
+
+        val before = dao.editWithSuccessor(
+            id = "mon",
+            edit = { null },
+            follow = { _, _, _ -> null }
+        )
+
+        assertNull(before)
+        assertEquals("Pills", dao.findTask("tue")?.title)
+    }
+
+    // D-099: a deleted task's alarm
+
+    @Test
+    fun findDeletedWithRemindersReturnsOnlyDeletedRowsThatHadOne() = runBlocking {
+        val nine = LocalDateTime.of(2026, 9, 1, 9, 0)
+        dao.insert(entity("live", reminderAt = nine))
+        dao.insert(entity("gone", reminderAt = nine, deletedAt = deletedAt))
+        dao.insert(entity("gone-quiet", deletedAt = deletedAt))
+
+        assertEquals(listOf("gone"), dao.findDeletedWithReminders().map { it.id })
+    }
 }

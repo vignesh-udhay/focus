@@ -240,6 +240,22 @@ scheduled, and the alarm is a cache of it.** If a reminder is not in Room and
 recoverable by the boot receiver, it does not exist, whatever `AlarmManager`
 was told.
 
+The shade follows storage the same way, D-099. Every reconciliation in
+`TellcatApplication.reconcileReminders` also cancels the alarms of deleted
+tasks whose reminder is still ahead, then withdraws any reminder notification
+whose task is deleted, completed or gone (`withdrawSettledReminders`). No write
+path has to know about either.
+
+Two use cases in `core/domain` change a series, and both sit there because a
+receiver needs them with no view model: `TaskCompletion` when an occurrence is
+completed, and `ReminderAnnouncement` when its reminder is announced, which is
+what starts a repeating task's next occurrence even if nobody answers, D-098.
+Each occurrence makes its successor once; `TaskDao.countSpawnsOf` is the check,
+inside the write's transaction. Because the successor can exist while the
+occurrence before it is still open, every edit goes through a third,
+`OccurrenceEdits`, which lets an untouched successor follow the edit in the
+same transaction.
+
 Delivery constraints and standards for this subsystem are in `AGENTS.md`
 under "Reminder delivery". The reasoning for why reminders carry this weight
 is in `docs/decisions.md`, D-005.
