@@ -19,6 +19,7 @@ class ExampleInstrumentedTest {
     fun useAppContext() {
         // Context of the app under test.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        assertEquals("app.tellcat", appContext.packageName)
+        // The debug build installs beside the real app under its own id.
+        assertEquals("app.tellcat.debug", appContext.packageName)
     }
 }

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The debug build's name on the launcher and in settings, so it is never
+         mistaken for the real Tellcat it installs beside. -->
+    <string name="app_name">Tellcat dev</string>
+</resources>

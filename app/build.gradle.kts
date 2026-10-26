@@ -42,6 +42,16 @@ android {
     }
 
     buildTypes {
+        // **The debug build installs beside the real app**, as app.tellcat.debug
+        // labelled "Tellcat dev". The owner's phone holds the Play copy of
+        // app.tellcat with their own tasks in it, and a debug build of the same
+        // package cannot install over a Play-signed one without uninstalling
+        // it, which would delete those tasks. Nothing in the app is tied to the
+        // package name: there are no content providers, every PendingIntent is
+        // explicit, and the backup file name does not use it.
+        debug {
+            applicationIdSuffix = ".debug"
+        }
         release {
             signingConfig = signingConfigs.findByName("upload")
             // R8 on: shrinking, optimisation and resource shrinking. The release
