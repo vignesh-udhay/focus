@@ -1521,12 +1521,13 @@ class TaskListViewModel(
         /**
          * How long a just-completed row keeps its place after the last tick.
          *
-         * Long enough to see the tick and the line land, which run together on
-         * the fast spring, and short enough that the row is on its way before
-         * the moment feels like waiting. D-104 cut it from 800ms, which read as
-         * slow on the owner's phone. Not a wait: nothing is blocked while it
+         * Long enough for the tick to be drawn before the row moves, and short
+         * enough that completing never feels like waiting. The check and the
+         * line run together on the fast spring and finish as the row leaves. D-104 cut it from 800ms, which read as
+         * slow on the owner's phone, and then to 150ms, which they asked for
+         * after trying 300ms. Not a wait: nothing is blocked while it
          * runs, and the completion was written at the start of it.
          */
-        const val COMPLETION_SETTLE_MILLIS = 300L
+        const val COMPLETION_SETTLE_MILLIS = 150L
     }
 }

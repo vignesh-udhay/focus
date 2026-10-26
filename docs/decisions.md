@@ -5735,7 +5735,7 @@ notification or the widget does not settle: nothing in the app is on screen.
 worked, which would show as double taps reopening tasks. The answer then is a
 shorter hold, not none.
 
-**Superseded in part by D-104.** The hold is 300ms, and the line runs on
+**Superseded in part by D-104.** The hold is 150ms, and the line runs on
 `completion` with the check. The reasoning above for holding at all, timing from
 the write and sharing one countdown still stands.
 
@@ -6500,14 +6500,17 @@ one that removes inexact alarms too, which would need a different survivor.
 
 ## D-104. Completing a task is quick
 
-**Decision.** The completed row's hold drops from 800ms to 300ms after the
+**Decision.** The completed row's hold drops from 800ms to 150ms after the
 write, and the strikethrough runs on `completion`, the check's own spring,
-instead of `reveal`. The tick and the line land together, and the row is on its
-way to Completed about half a second after the tap instead of over a second.
+instead of `reveal`. The tick and the line start together, and the row is on
+its way to Completed within about a quarter of a second of the tap instead of
+over a second. The row starts moving while the spring is still settling, so the
+tick is seen as the row goes rather than before it.
 
 **What changed the answer.** The owner, using it on their phone on 2026-10-26:
 the check appeared, then the line drew, then a second later the task moved, and
-it did not feel nice. D-086 named this case: a hold that reads as the app being
+it did not feel nice. A first cut to 300ms was still a little slow to them, so
+the hold is 150ms. D-086 named this case: a hold that reads as the app being
 slow is answered by a shorter hold, not none. With no hold, the row leaves before
 the tick is seen, which is the failure D-086 fixed.
 

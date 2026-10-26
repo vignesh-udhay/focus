@@ -143,7 +143,7 @@ The hold is what makes the other two visible. Recorded on the emulator before
 it, a task ticked on Today faded into the collapsed Completed section within
 about 250ms, and its checkbox was never once drawn ticked: the one expressive
 moment in the app was not on screen where most completions happen. The write
-still lands at once. The row's departure waits `COMPLETION_SETTLE_MILLIS`, 300ms
+still lands at once. The row's departure waits `COMPLETION_SETTLE_MILLIS`, 150ms
 since D-104 (800ms before), timed from the write rather than the tap, and every
 new tick restarts it, so a list ticked down quickly never moves under the thumb
 mid-reach.
