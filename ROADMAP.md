@@ -20,8 +20,11 @@ registered at Cloudflare, auto-renewing. A WIPO brand search found no
 from 2026-10-10 restored into Tellcat on the emulator: 5 tasks, every field
 equal, snoozes carried. Export now suggests `Tellcat-backup-<date>.json`.
 
-**1.1 is being built on `feature/checklist` while the closed test runs**, not
-pushed and not merged. On it so far: checklists inside a task, shared as text
+**1.1 is on `main`, versionCode 2, for the owner to upload to the closed
+test.** Released on 2026-10-26 after the full
+instrumented suite passed on `9e11a2b`, 362 of 362. `main` was fast-forwarded
+to `feature/checklist`; nothing is pushed yet, which is the owner's step too.
+What 1.1 carries, as it was built on `feature/checklist`: checklists inside a task, shared as text
 (D-084, schema 12); completion made visible, with the ticked row holding its place and the
 strikethrough drawn (D-086); and Task Details showing only the fields a task has,
 the rest as chips (D-087), with every action in its toolbar: the title's
