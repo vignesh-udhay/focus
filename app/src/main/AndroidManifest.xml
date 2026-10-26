@@ -150,6 +150,13 @@
             android:name=".core.notification.TestReminderReceiver"
             android:exported="false" />
 
+        <!-- Not exported: only AlarmManager delivers to it, on our own
+             PendingIntent. The inexact alarm that survives a revoked
+             exact-alarm grant, which Android announces to no one. D-103. -->
+        <receiver
+            android:name=".core.notification.ReminderBackstopReceiver"
+            android:exported="false" />
+
         <!-- Exported, because the system sends all five of these from outside
              the app. A restart loses every alarm, and a clock or timezone
              change moves what the surviving ones mean, so all of them lead to

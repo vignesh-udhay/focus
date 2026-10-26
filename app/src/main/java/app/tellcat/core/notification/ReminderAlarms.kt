@@ -4,6 +4,7 @@ import app.tellcat.core.domain.Task
 import app.tellcat.core.domain.missedReminders
 import app.tellcat.core.domain.pendingReminders
 import app.tellcat.core.domain.reminderTrigger
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -39,6 +40,17 @@ interface ReminderAlarms {
 
     /** Drop anything outstanding for [taskId]. A no-op if there is nothing. */
     fun cancel(taskId: String)
+
+    /**
+     * Keep one inexact alarm at [at] that reconciles when it fires, replacing
+     * the one before, or none when [at] is null. D-103.
+     *
+     * Inexact on purpose. Revoking "Alarms & reminders" cancels the app's exact
+     * alarms and kills it, and Android says nothing about it, so no receiver can
+     * rebuild them. Android leaves inexact alarms standing, so this one is still
+     * there to start the rebuild.
+     */
+    fun scheduleBackstop(at: Instant?)
 
     /**
      * Whether the system will honour an exact alarm right now.
@@ -93,6 +105,14 @@ class ReminderScheduler(
      * and anything past the cap is scheduled by a later pass, which every
      * delivery triggers by writing down that it was announced.
      *
+     * **Then the backstop, [BackstopDelay] after the soonest future reminder,
+     * while the alarms are exact.** D-103. If the exact alarms are taken away,
+     * it fires, and the pass it starts sets them again, inexactly, and tells
+     * the reminder that was missed. Normally it never fires: the reminder's
+     * own alarm comes first, and the pass after it moves the backstop on.
+     * Future reminders only, never one already missed, so a reminder that
+     * cannot be shown does not wake the phone every minute.
+     *
      * **[deleted] is cancelled too, where an alarm could still be waiting.**
      * D-099. A deleted task is not in [tasks], so until this nothing reached
      * its alarm: it stayed armed, fired, and was only kept quiet by the
@@ -129,13 +149,14 @@ class ReminderScheduler(
             .filter { task -> task.ringsAt?.isAfter(localNow) == true }
             .forEach { task -> attempt(task.id) { alarms.cancel(task.id) } }
 
+        val triggers = mutableListOf<Instant>()
         val scheduled = owed.take(MaxScheduledReminders).mapNotNull { task ->
             // Every owed task rings at some moment; the queries saw to that.
             val ringsAt = task.ringsAt ?: return@mapNotNull null
-            val set = attempt(task.id) {
-                alarms.schedule(task.id, reminderTrigger(ringsAt, here, now))
-            }
+            val trigger = reminderTrigger(ringsAt, here, now)
+            val set = attempt(task.id) { alarms.schedule(task.id, trigger) }
             if (set) {
+                triggers += trigger
                 ScheduledReminder(
                     taskId = task.id,
                     title = task.title,
@@ -147,9 +168,28 @@ class ReminderScheduler(
             }
         }
 
+        val backstop = triggers
+            .filter { trigger -> trigger.isAfter(now) }
+            .minOrNull()
+            ?.takeIf { alarms.canScheduleExact() }
+            ?.plus(BackstopDelay)
+        attempt(BackstopId) { alarms.scheduleBackstop(backstop) }
+
         return ReconcileResult(failures = failures, scheduled = scheduled)
     }
 }
+
+/**
+ * How long after a reminder's moment the backstop waits. D-103.
+ *
+ * Long enough that the reminder's own alarm, and the pass that follows it,
+ * normally come first and move the backstop on before it fires. Short next
+ * to the hour by which Android may defer an inexact alarm.
+ */
+internal val BackstopDelay: Duration = Duration.ofMinutes(1)
+
+/** What a refused backstop is logged against, in place of a task id. */
+internal const val BackstopId = "backstop"
 
 /**
  * What one pass did: how many alarms the system refused, and which reminders now

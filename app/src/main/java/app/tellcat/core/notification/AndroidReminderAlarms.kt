@@ -93,6 +93,28 @@ class AndroidReminderAlarms(private val context: Context) : ReminderAlarms {
         }
 
     /**
+     * `setAndAllowWhileIdle`, the inexact call, because Android removes only
+     * alarms with no window when the exact grant is revoked. D-103. It still
+     * fires in Doze, and Android defers a one-off inexact alarm by at most an
+     * hour. Always at least [BackstopDelay] ahead, so its window is never zero.
+     */
+    override fun scheduleBackstop(at: Instant?) {
+        val alarms = alarms ?: return
+        val intent = PendingIntent.getBroadcast(
+            context,
+            0,
+            Intent(context, ReminderBackstopReceiver::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        if (at == null) {
+            alarms.cancel(intent)
+        } else {
+            alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at.toEpochMilli(), intent)
+        }
+    }
+
+    /**
      * One [PendingIntent] per task, told apart by data rather than by request
      * code alone.
      *
@@ -377,6 +399,37 @@ class ReminderRecoveryReceiver : BroadcastReceiver() {
             // literal, because the constant is API 31 and this runs from 29.
             "android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED"
         )
+    }
+}
+
+/**
+ * Rebuilds the alarms when the backstop fires. D-103.
+ *
+ * It fires only when a reminder's own alarm did not come first, which is what
+ * revoking "Alarms & reminders" does: Android cancels the exact alarms, kills
+ * the app and sends no broadcast, so [ReminderRecoveryReceiver] never hears of
+ * it. The pass sets every reminder again, inexactly now, and the missed one
+ * for now.
+ *
+ * Not direct-boot aware. A restart clears the backstop with every other alarm,
+ * and the first pass after the unlock sets it again.
+ */
+class ReminderBackstopReceiver : BroadcastReceiver() {
+
+    override fun onReceive(context: Context, intent: Intent) {
+        val application = context.applicationContext as? TellcatApplication ?: return
+        val finish = goAsync()
+
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            try {
+                Log.w(LogTag, "The reminder backstop fired. Rebuilding the alarms.")
+                application.reconcileReminders()
+            } catch (error: Exception) {
+                Log.e(LogTag, "The backstop could not reconcile reminders.", error)
+            } finally {
+                finish.finish()
+            }
+        }
     }
 }
 
