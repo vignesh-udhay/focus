@@ -81,8 +81,14 @@ sealed interface PendingUndo {
         val spawnedTaskId: String? = null
     ) : PendingUndo
 
-    /** A task that was just deleted, and can be restored. */
-    data class Deletion(override val taskId: String) : PendingUndo
+    /**
+     * A task that was just deleted, and can be restored, with the untouched
+     * next occurrences that went with it. D-098.
+     */
+    data class Deletion(
+        override val taskId: String,
+        val successorIds: List<String> = emptyList()
+    ) : PendingUndo
 
     /**
      * A task that was just moved to another day, and can be moved back.
@@ -1411,10 +1417,10 @@ class TaskListViewModel(
      */
     fun deleteTask(id: String) {
         write {
-            val task = repository.findTask(id) ?: return@write
-
-            repository.softDelete(id = task.id, deletedAt = Instant.now())
-            _pendingUndo.value = PendingUndo.Deletion(task.id)
+            // An untouched next occurrence goes too: deleting after the ring
+            // must end the series as deleting before it always did. D-098.
+            val successors = edits.delete(id, deletedAt = Instant.now()) ?: return@write
+            _pendingUndo.value = PendingUndo.Deletion(id, successors)
         }
     }
 
@@ -1429,10 +1435,14 @@ class TaskListViewModel(
      * already been superseded does nothing.
      */
     fun undoDelete(id: String) {
-        if (!_pendingUndo.compareAndSet(expect = PendingUndo.Deletion(id), update = null)) return
+        val offer = _pendingUndo.value as? PendingUndo.Deletion ?: return
+        if (offer.taskId != id) return
+        if (!_pendingUndo.compareAndSet(expect = offer, update = null)) return
 
         write {
-            repository.restore(id)
+            // Both, so the series is back as it was and the reconciliation
+            // sets the next occurrence's alarm again.
+            repository.restoreAll(listOf(id) + offer.successorIds)
         }
     }
 

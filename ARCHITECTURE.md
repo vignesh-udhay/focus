@@ -252,8 +252,8 @@ completed, and `ReminderAnnouncement` when its reminder is announced, which is
 what starts a repeating task's next occurrence even if nobody answers, D-098.
 Each occurrence makes its successor once; `TaskDao.countSpawnsOf` is the check,
 inside the write's transaction. Because the successor can exist while the
-occurrence before it is still open, every edit goes through a third,
-`OccurrenceEdits`, which lets an untouched successor follow the edit in the
+occurrence before it is still open, every edit and every delete goes through
+a third, `OccurrenceEdits`, which lets an untouched successor follow in the
 same transaction.
 
 Delivery constraints and standards for this subsystem are in `AGENTS.md`

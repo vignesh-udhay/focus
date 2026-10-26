@@ -165,6 +165,25 @@ class TaskRepository(private val dao: TaskDao) {
     }
 
     /**
+     * Deletes [id] at [deletedAt] with each occurrence it made that [follows]
+     * accepts, in one transaction. Returns their ids, or null when there was
+     * no live row. `docs/decisions.md` D-098; see
+     * `TaskDao.softDeleteWithSuccessors`.
+     */
+    suspend fun softDeleteWithSuccessors(
+        id: String,
+        deletedAt: Instant,
+        follows: (deleted: Task, successor: Task) -> Boolean
+    ): List<String>? = dao.softDeleteWithSuccessors(id, deletedAt.toEpochMilli()) { deleted, successor ->
+        follows(deleted.toDomain(), successor.toDomain())
+    }
+
+    /** Restores every one of [ids] together, or none. */
+    suspend fun restoreAll(ids: List<String>) {
+        dao.restoreAll(ids)
+    }
+
+    /**
      * Removes a task's row for good.
      *
      * Not the counterpart of [softDelete], which is what deleting a task does

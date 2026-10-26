@@ -165,6 +165,36 @@ interface TaskDao {
     }
 
     /**
+     * Deletes [id], and each live occurrence it made that [follows] says goes
+     * with it, in one transaction. Returns the ids of those occurrences, or
+     * null when [id] has no live row.
+     *
+     * `docs/decisions.md` D-098: an untouched next occurrence is deleted with
+     * the one that made it, as it would never have existed had the reminder
+     * not rung first. Soft, both of them, so one undo brings both back.
+     *
+     * @param deletedAt epoch milliseconds, matching the column's encoding.
+     */
+    @Transaction
+    suspend fun softDeleteWithSuccessors(
+        id: String,
+        deletedAt: Long,
+        follows: (deleted: TaskEntity, successor: TaskEntity) -> Boolean
+    ): List<String>? {
+        val deleted = findTask(id) ?: return null
+        val successors = findSpawnsOf(id).filter { successor -> follows(deleted, successor) }.map { it.id }
+        softDelete(id, deletedAt)
+        successors.forEach { successor -> softDelete(successor, deletedAt) }
+        return successors
+    }
+
+    /** Undoes the soft delete of every one of [ids], or of none. */
+    @Transaction
+    suspend fun restoreAll(ids: List<String>) {
+        ids.forEach { id -> restore(id) }
+    }
+
+    /**
      * Reopens a task and removes the occurrence its completion created, or
      * does neither.
      *

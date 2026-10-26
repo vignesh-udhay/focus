@@ -441,6 +441,66 @@ class ReminderAnnouncementTest {
         assertEquals(before, dao.rows.value.single { row -> row.spawnedFromId == "pills" })
     }
 
+    // 6. Deleting after the ring ends the series, as deleting before it does
+
+    private fun delete(id: String) =
+        runBlocking { edits.delete(id, deletedAt = announcedAt.plusSeconds(3_600)) }
+
+    @Test
+    fun `deleting an occurrence after the ring deletes tomorrow's with it`() {
+        store(pills())
+        announce("pills")
+        val next = spawnsOf("pills").single()
+
+        val gone = delete("pills")
+
+        assertEquals(listOf(next.id), gone)
+        assertTrue("Tomorrow's occurrence would still ring", stored().getValue(next.id).isDeleted)
+        assertTrue(stored().getValue("pills").isDeleted)
+    }
+
+    @Test
+    fun `undoing that delete brings both back, and tomorrow's reminder is owed again`() {
+        store(pills())
+        announce("pills")
+        val gone = delete("pills")!!
+
+        runBlocking { repository.restoreAll(listOf("pills") + gone) }
+
+        val live = stored().values.filterNot { task -> task.isDeleted }
+        assertEquals(setOf("pills") + gone, live.map { task -> task.id }.toSet())
+        assertEquals(
+            listOf(nine.plusDays(1)),
+            pendingReminders(live, nine.plusHours(2)).map { task -> task.ringsAt }
+        )
+    }
+
+    @Test
+    fun `deleting keeps an occurrence the user has touched`() {
+        store(pills())
+        announce("pills")
+        val next = spawnsOf("pills").single()
+        edit(next.id) { task -> task.copy(notes = "With water") }
+
+        val gone = delete("pills")
+
+        assertEquals(emptyList<String>(), gone)
+        assertNull(stored().getValue(next.id).deletedAt)
+    }
+
+    @Test
+    fun `deleting before the ring has no successor to take`() {
+        store(pills())
+
+        assertEquals(emptyList<String>(), delete("pills"))
+        assertTrue(stored().getValue("pills").isDeleted)
+    }
+
+    @Test
+    fun `deleting what is not there deletes nothing`() {
+        assertNull(delete("missing"))
+    }
+
     private fun completion(today: LocalDate) = TaskCompletion(
         repository = repository,
         currentDay = object : CurrentDay {

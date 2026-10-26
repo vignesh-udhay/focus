@@ -6151,6 +6151,16 @@ away.
    unchanged since it was made: `followingEdit` makes it again from the row as
    it was before the edit and compares. Once the user has touched it, it is
    theirs and stays as they left it.
+7. **Deleting after the ring matches deleting before it.** Before the ring,
+   deleting an open occurrence ended the series, because nothing had made the
+   next one. After it, the next one existed and went on ringing, so the same
+   action did two things depending on a moment the user cannot see. Rule 6
+   now covers deleting: `OccurrenceEdits.delete` deletes an untouched
+   successor with the occurrence, in one transaction
+   (`TaskDao.softDeleteWithSuccessors`), and Undo restores both, after which
+   the reconciliation sets the next reminder again. A successor the user has
+   touched stays. A choice between "this one" and "the whole series" is a
+   separate decision, not made here.
 
 Announcing, marking the reminder delivered, adding the successor and retiring
 the older occurrence are one transaction, `TaskDao.recordAnnounced`, for D-063's

@@ -561,6 +561,31 @@ class TaskDaoTest {
         assertEquals("Pills", dao.findTask("tue")?.title)
     }
 
+    @Test
+    fun softDeleteWithSuccessorsTakesOnlyTheOnesItIsToldToAndRestoreAllBringsThemBack() = runBlocking {
+        dao.insert(entity("mon", recurrence = RecurrenceUnit.DAILY))
+        dao.insert(entity("tue", recurrence = RecurrenceUnit.DAILY, spawnedFromId = "mon"))
+        dao.insert(entity("tue-edited", recurrence = RecurrenceUnit.DAILY, spawnedFromId = "mon"))
+
+        val gone = dao.softDeleteWithSuccessors("mon", deletedAt.toEpochMilli()) { _, successor ->
+            successor.id == "tue"
+        }
+
+        assertEquals(listOf("tue"), gone)
+        assertNull(dao.findTask("mon"))
+        assertNull(dao.findTask("tue"))
+        assertEquals("tue-edited", dao.findTask("tue-edited")?.id)
+
+        dao.restoreAll(listOf("mon") + gone!!)
+
+        assertEquals(listOf("mon", "tue", "tue-edited"), observed().map { it.id })
+    }
+
+    @Test
+    fun softDeleteWithSuccessorsDeletesNothingWithoutALiveRow() = runBlocking {
+        assertNull(dao.softDeleteWithSuccessors("missing", deletedAt.toEpochMilli()) { _, _ -> true })
+    }
+
     // D-099: a deleted task's alarm
 
     @Test

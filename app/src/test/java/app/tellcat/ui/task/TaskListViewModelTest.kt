@@ -11,6 +11,7 @@ import app.tellcat.core.domain.StoredFocusSession
 import app.tellcat.core.domain.ChecklistItem
 import app.tellcat.core.domain.Recurrence
 import app.tellcat.core.domain.RecurrenceUnit
+import app.tellcat.core.domain.nextRecurringInstance
 import app.tellcat.data.local.toDomain
 import app.tellcat.core.domain.Task
 import app.tellcat.core.domain.todaySections
@@ -40,6 +41,7 @@ import org.junit.Test
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.ZoneId
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -1049,6 +1051,44 @@ class TaskListViewModelTest {
         model.undoDelete("a")
 
         assertEquals("a", awaitRestore())
+    }
+
+    /**
+     * D-098. Deleting an open occurrence before its reminder rang ended the
+     * series; after the ring, the next one already existed and kept ringing.
+     * Now an untouched next occurrence goes with it, and one undo brings both
+     * back.
+     */
+    @Test
+    fun deletingARungOccurrenceTakesItsUntouchedNextOneAndUndoBringsBothBack() {
+        val rung = task(
+            id = "pills",
+            scheduledDate = today,
+            recurrence = Recurrence(RecurrenceUnit.DAILY),
+            reminderAt = reminder,
+            reminderDeliveredAt = reminder.atZone(ZoneId.systemDefault()).toInstant()
+        )
+        // Exactly what the ring made, at the moment it rang.
+        val next = rung.nextRecurringInstance(
+            today = today,
+            id = "pills-next",
+            createdAt = reminder.atZone(ZoneId.systemDefault()).toInstant(),
+            now = reminder
+        )!!
+        store(rung, next)
+        val model = viewModel()
+        visible(model, 1)
+
+        model.deleteTask("pills")
+
+        assertEquals(PendingUndo.Deletion("pills", listOf("pills-next")), awaitUndoOffer(model))
+        assertNotNull("Tomorrow's occurrence would still ring", storedRow("pills-next").deletedAt)
+
+        model.undoDelete("pills")
+
+        repeat(200) { if (dao.restored.size < 2) Thread.sleep(10) }
+        assertNull(storedRow("pills").deletedAt)
+        assertNull(storedRow("pills-next").deletedAt)
     }
 
     @Test

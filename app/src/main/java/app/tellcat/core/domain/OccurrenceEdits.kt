@@ -1,6 +1,7 @@
 package app.tellcat.core.domain
 
 import app.tellcat.data.repository.TaskRepository
+import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 
@@ -32,6 +33,22 @@ class OccurrenceEdits(
         repository.editWithSuccessor(id, change) { before, after, successor ->
             successor.followingEdit(before = before, after = after, zone = zone())
         }
+
+    /**
+     * Deletes [id] at [deletedAt], and its untouched successor with it, in one
+     * transaction. Returns the successors deleted, for an undo to bring back,
+     * or null when there was no live row to delete.
+     *
+     * D-098 rule 6 applied to deleting. Before the ring, deleting an open
+     * occurrence ended the series, because nothing had made the next one yet.
+     * After it, the next one already existed and kept ringing. The same action
+     * did two things depending on a moment the user cannot see, so an
+     * untouched successor goes with it. One the user has touched stays.
+     */
+    suspend fun delete(id: String, deletedAt: Instant): List<String>? =
+        repository.softDeleteWithSuccessors(id, deletedAt) { deleted, successor ->
+            successor.isUntouchedSuccessorOf(deleted, zone())
+        }
 }
 
 /**
@@ -55,17 +72,32 @@ class OccurrenceEdits(
  * holds.
  */
 fun Task.followingEdit(before: Task, after: Task, zone: ZoneId): Task? {
-    if (before.isCompleted || after.isCompleted) return this
-    if (isCompleted || isDeleted || reminderDeliveredAt != null) return this
+    if (after.isCompleted || !isUntouchedSuccessorOf(before, zone)) return this
+    return remadeFrom(after, zone)
+}
 
+/**
+ * Whether this occurrence is still exactly what [previous] made, so it is
+ * the app's to change or remove rather than the user's. D-098.
+ *
+ * Not completed, not deleted, its reminder not yet announced, and equal to
+ * the occurrence [previous] makes at the moment this one was made. Only while
+ * [previous] is open: a completed occurrence's successor is taken back on
+ * reopening, not followed.
+ */
+fun Task.isUntouchedSuccessorOf(previous: Task, zone: ZoneId): Boolean {
+    if (previous.isCompleted || spawnedFromId != previous.id) return false
+    if (isCompleted || isDeleted || reminderDeliveredAt != null) return false
+    return remadeFrom(previous, zone) == this
+}
+
+/** The occurrence [previous] makes in this one's place, at the moment this one was made. */
+private fun Task.remadeFrom(previous: Task, zone: ZoneId): Task? {
     val made = LocalDateTime.ofInstant(createdAt, zone)
-    fun madeFrom(occurrence: Task) = occurrence.nextRecurringInstance(
+    return previous.nextRecurringInstance(
         today = made.toLocalDate(),
         id = id,
         createdAt = createdAt,
         now = made
     )
-
-    if (madeFrom(before) != this) return this
-    return madeFrom(after)
 }
