@@ -6430,7 +6430,9 @@ time or complete a task twice.
   one task rings like an alarm: Action needed when the Alarms channel is off or
   exact alarms are refused, Worth checking when full screen is not allowed.
 - **Rows** show an alarm glyph in front of the reminder time, and TalkBack reads
-  ", rings like an alarm".
+  it as "Alarm 5:30 PM" where a plain reminder reads "Reminder 5:30 PM". Task
+  Details' Reminder row reads "Today, 5:30 PM · Alarm". The switch keeps "Ring
+  like an alarm": it names a choice, and the short word names the result.
 - **Stored, backed up and carried.** Schema 13 adds `ringsLikeAlarm`, false for
   every existing row. The backup gains the field; an older file without it
   reads as false, and an older app skips it, so the format version stays 1.

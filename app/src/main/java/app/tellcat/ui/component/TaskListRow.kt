@@ -174,19 +174,23 @@ private fun taskMetadata(
             )
         }
     }
-    val reminderSpoken = reminder?.let { stringResource(R.string.task_row_reminder_spoken, it) }
     val overdue = task.isPastScheduled(today)
 
-    // **An alarm glyph in front of the time, and the words for TalkBack.** D-102.
-    // Only beside a reminder still to come, which is the one that will ring.
+    // **An alarm glyph in front of the time, and "Alarm" for TalkBack in its
+    // place.** D-102. Only beside a reminder still to come, which is the one
+    // that will ring.
     val ringsLikeAlarm = task.ringsLikeAlarm && reminder != null
-    val alarmSpoken = stringResource(R.string.task_row_rings_like_alarm)
+    val reminderSpoken = reminder?.let {
+        stringResource(
+            if (ringsLikeAlarm) R.string.task_row_alarm_spoken else R.string.task_row_reminder_spoken,
+            it
+        )
+    }
     var alarmAt: Int? = null
     fun addReminder() {
         alarmAt = if (ringsLikeAlarm) segments.size else null
         segments += reminder!!
         spoken += reminderSpoken!!
-        if (ringsLikeAlarm) spoken += alarmSpoken
     }
 
     if (!overdue && reminder != null) addReminder()

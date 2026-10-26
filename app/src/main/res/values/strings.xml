@@ -73,8 +73,10 @@
     <!-- The reminder segment as TalkBack reads it, so it is not mistaken for the
          scheduled day beside it: "Reminder Tomorrow, 5:00 PM". -->
     <string name="task_row_reminder_spoken">Reminder %1$s</string>
-    <!-- Read after the reminder on a row whose reminder rings like an alarm. D-102. -->
-    <string name="task_row_rings_like_alarm">rings like an alarm</string>
+    <!-- The reminder segment as TalkBack reads it when it rings like an alarm:
+         "Alarm Tomorrow, 5:00 PM". The word stands in for the glyph drawn in
+         front of the time. D-102. -->
+    <string name="task_row_alarm_spoken">Alarm %1$s</string>
     <!-- A row's count of its task's unticked checklist items, D-084. -->
     <plurals name="task_row_checklist_left">
         <item quantity="one">%d left</item>
@@ -478,7 +480,7 @@
     <string name="task_reminder_alarm_allow">Allow full screen</string>
     <string name="task_reminder_alarm_channel_open">Open alarm settings</string>
     <!-- The reminder row on Task Details, with the alarm switched on. -->
-    <string name="task_reminder_when_alarm">%1$s · Rings like an alarm</string>
+    <string name="task_reminder_when_alarm">%1$s · Alarm</string>
 
     <!-- Asking for full screen, R-013. -->
     <string name="alarm_priming_title">Ring full screen</string>

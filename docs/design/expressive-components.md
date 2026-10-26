@@ -859,7 +859,7 @@ time the sheet returns to the front: full screen, a banner until answered, or a
 normal reminder when the Alarms channel is off. An outlined "Allow full screen"
 or "Open alarm settings" follows the two lines that need one. Saved with the
 reminder by Save, like the day and the time. Task Details' Reminder row then
-reads "Today, 5:30 PM · Rings like an alarm".
+reads "Today, 5:30 PM · Alarm".
 
 **The priming sheet (R-013).** Opened by turning the switch on without the
 full-screen grant. A picture of the alarm screen, which is the real
@@ -876,7 +876,8 @@ for the 800ms it takes, so a half-asleep tap does nothing; TalkBack's double tap
 answers at once. Nothing on it completes the task (R-020). Back does nothing.
 
 **Rows** draw the `ic_alarm` glyph, the text's size and colour, in front of
-the reminder time, and read ", rings like an alarm".
+the reminder time, and TalkBack reads the time as "Alarm 5:30 PM" where a
+plain reminder reads "Reminder 5:30 PM".
 
 ## Add to Tellcat
 

@@ -366,28 +366,30 @@ class TaskRowSemanticsTest {
         scheduledDate = TestToday
     )
 
-    // --- D-102: a reminder that rings like an alarm says so -----------------
+    // --- D-102: a reminder that rings like an alarm is read as an alarm ------
 
-    private fun assertAnAlarmReminderSaysItRingsLikeAnAlarm(fontScale: Float) {
+    private fun assertAnAlarmReminderIsReadAsAnAlarm(fontScale: Float) {
         setRow(
             fontScale,
             outstanding().copy(reminderAt = TestToday.plusDays(1).atTime(7, 0), ringsLikeAlarm = true)
         )
 
-        rule.onNode(hasContentDescription("rings like an alarm", substring = true)).assertExists()
+        // "Alarm" in place of "Reminder", as the glyph stands in front of the time.
+        rule.onNode(hasContentDescription("Alarm Tomorrow, ", substring = true)).assertExists()
+        rule.onAllNodes(hasContentDescription("Reminder Tomorrow, ", substring = true)).assertCountEquals(0)
     }
 
     @Test
-    fun anAlarmReminder_saysItRingsLikeAnAlarm_at100() = assertAnAlarmReminderSaysItRingsLikeAnAlarm(FontScale100)
+    fun anAlarmReminder_isReadAsAnAlarm_at100() = assertAnAlarmReminderIsReadAsAnAlarm(FontScale100)
 
     @Test
-    fun anAlarmReminder_saysItRingsLikeAnAlarm_at200() = assertAnAlarmReminderSaysItRingsLikeAnAlarm(FontScale200)
+    fun anAlarmReminder_isReadAsAnAlarm_at200() = assertAnAlarmReminderIsReadAsAnAlarm(FontScale200)
 
     @Test
     fun aPlainReminder_saysNothingAboutAnAlarm() {
         setRow(FontScale100, outstanding().copy(reminderAt = TestToday.plusDays(1).atTime(7, 0)))
 
-        rule.onAllNodes(hasContentDescription("rings like an alarm", substring = true)).assertCountEquals(0)
+        rule.onAllNodes(hasContentDescription("Alarm ", substring = true)).assertCountEquals(0)
     }
 
     private fun completed(): Task = outstanding().copy(
