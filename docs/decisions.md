@@ -6545,8 +6545,7 @@ segmented rows. Material's `Checkbox` has no round shape, so a custom one is the
 only way to have it.
 
 **Why checklist items stay square.** A checklist item is a line inside a task,
-not a task. Two shapes keep the two from reading as the same kind of thing, the
-convention Things and Todoist use.
+not a task. Two shapes keep the two from reading as the same kind of thing.
 
 **What it costs.** A component of Tellcat's own where Material's used to do. It
 takes Material's measurements and colour roles rather than its own, so a
