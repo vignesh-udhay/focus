@@ -26,10 +26,13 @@
 
     <!-- The alarm rings from a foreground service, because nothing the user
          does to the screen (Home, Back, the shade, the power button) may stop
-         it. mediaPlayback: it plays a sound the user asked for, and unlike
-         systemExempted it needs no exact-alarm grant. D-102. -->
+         it. systemExempted: the type Android allows an app holding the
+         exact-alarm grant, and an alarm-style reminder rings as an alarm only
+         with that grant, because Android starts a foreground service from the
+         background for an exact alarm only. Play's policy exempts this type
+         from its foreground-service criteria. D-102. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED" />
 
     <!-- The alarm always vibrates, and keeps the CPU awake while it plays. -->
     <uses-permission android:name="android.permission.VIBRATE" />
@@ -125,7 +128,7 @@
             android:name=".core.notification.AlarmRingService"
             android:directBootAware="true"
             android:exported="false"
-            android:foregroundServiceType="mediaPlayback" />
+            android:foregroundServiceType="systemExempted" />
 
         <!-- The alarm, full screen over the lock screen. D-102. Only the
              full-screen intent and the alarm's notification open it. Its own

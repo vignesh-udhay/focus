@@ -102,12 +102,18 @@ class AlarmRingService : Service() {
         ringing.value = alarm
 
         val started = try {
-            // The type has its own parameter from API 29, which is minSdk.
-            startForeground(
-                AlarmNotificationId,
-                alarmNotification(alarm),
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
-            )
+            // `systemExempted` from Android 14, the type Android allows an app
+            // holding the exact-alarm grant, which an alarm-style reminder only
+            // rings with. D-102. Below 14 there are no types to declare.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                startForeground(
+                    AlarmNotificationId,
+                    alarmNotification(alarm),
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED
+                )
+            } else {
+                startForeground(AlarmNotificationId, alarmNotification(alarm))
+            }
             true
         } catch (error: Exception) {
             // Refused by the system. The reminder must still arrive, so it is

@@ -26,7 +26,7 @@ class AlarmManifestTest {
         listOf(
             "android.permission.USE_FULL_SCREEN_INTENT",
             "android.permission.FOREGROUND_SERVICE",
-            "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+            "android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED",
             "android.permission.VIBRATE",
             "android.permission.WAKE_LOCK"
         ).forEach { permission ->
@@ -34,14 +34,25 @@ class AlarmManifestTest {
         }
     }
 
+    /**
+     * systemExempted, the type Android allows an app holding the exact-alarm
+     * grant, which an alarm-style reminder only rings with. Not mediaPlayback:
+     * Play asks that playback be started by the user, and an alarm starts itself.
+     */
     @Test
-    fun `the service is a media-playback foreground service, private, and runs before the first unlock`() {
+    fun `the service is a system-exempted foreground service, private, and runs before the first unlock`() {
         val service = declaration(".core.notification.AlarmRingService")
 
         assertTrue("AlarmRingService is not declared.", service.isNotEmpty())
-        assertTrue("""android:foregroundServiceType="mediaPlayback"""" in service)
+        assertTrue("""android:foregroundServiceType="systemExempted"""" in service)
         assertTrue("""android:exported="false"""" in service)
         assertTrue("""android:directBootAware="true"""" in service)
+    }
+
+    @Test
+    fun `no media-playback declaration is left for Play to ask about`() {
+        assertTrue("FOREGROUND_SERVICE_MEDIA_PLAYBACK" !in manifest)
+        assertTrue("mediaPlayback" !in manifest)
     }
 
     @Test
