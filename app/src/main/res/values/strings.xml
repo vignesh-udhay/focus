@@ -545,14 +545,11 @@
          Slate. Android shows no dialog for exact alarms, so the screen walks
          the user to the settings page instead, and says so. -->
     <string name="reminder_permission_title">Allow precise reminders</string>
-    <string name="reminder_permission_body">Tellcat needs permission to deliver reminders at the exact time you choose.</string>
-    <!-- The headline card's eyebrow: Android's own name for the setting. D-107. -->
-    <string name="reminder_permission_eyebrow">Alarms &amp; reminders</string>
-    <!-- What the permission buys, as one paragraph rather than a list. D-107. -->
-    <string name="reminder_permission_why">With it, a reminder arrives on the minute, even when Tellcat is closed and the phone has been sitting idle. Without it, Android can hold reminders back, so they may arrive late.</string>
+    <!-- One line, what the user gets. D-107. -->
+    <string name="reminder_permission_body">So reminders arrive on the minute, even when Tellcat is closed.</string>
     <string name="reminder_permission_open_settings">Open Android settings</string>
     <string name="reminder_permission_not_now">Not now</string>
-    <string name="reminder_permission_note">This opens Alarms &amp; reminders in Android settings. Android does not ask for this one with a popup.</string>
+    <string name="reminder_permission_note">Opens Alarms &amp; reminders in Android settings. Android has no popup for this one.</string>
     <!-- Reminder health, from the reminder/Health * frames. -->
     <string name="reminder_health_title">Reminder health</string>
     <string name="reminder_health_back">Back</string>

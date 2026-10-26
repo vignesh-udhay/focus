@@ -6594,25 +6594,24 @@ test under a warning too, and on the owner's OnePlus it vanished entirely.
 changing something they should not. Then rows that are `Ok` would stop being
 tappable.
 
-## D-107. The exact-alarm ask opens with Reminder health's headline card
+## D-107. The exact-alarm ask is a bottom sheet, like the full-screen one
 
-**Decision.** The "Allow precise reminders" screen opens on a headline card
-drawn like Reminder health's: extra-large corners, an eyebrow naming Android's
-setting ("Alarms & reminders"), the title in `headlineSmallEmphasized`, one
-sentence, on the neutral `surfaceContainerHigh`. Below it, what the permission
-buys as one paragraph. "Open Android settings", "Not now" and the footnote are
-unchanged. There is no top bar: "Not now" and Back already close it.
+**Decision.** "Allow precise reminders" is a bottom sheet over the reminder
+just saved, laid out like the full-screen alarm's ask (R-013): the title, one
+line ("So reminders arrive on the minute, even when Tellcat is closed."),
+"Open Android settings" filled, "Not now" outlined, and a one-line footnote
+saying Android has no popup for this one. Swipe, scrim and Back answer Not now.
 
 **What changed the answer.** On 2026-10-26 the owner found the screen looked
-off beside Settings, Reminder health and Backup & restore, and did not want
-bullet points. It opened on an 88dp icon tile and a `headlineLargeEmphasized`
-title, then a "Why this matters" card of three bullets, drawn from the Clean
-Slate board's frame. Nothing else in the app looks like that.
+off beside Settings, Reminder health and Backup & restore, did not want bullet
+points, and asked why one permission ask was a sheet and the other a whole
+screen. They grew up apart: this one was drawn as a page on the Clean Slate
+board for 1.0, with an 88dp icon tile, a `headlineLargeEmphasized` title and a
+"Why this matters" card of three bullets; the alarm's came later as a sheet.
+Both are the same moment, a permission asked in context that can be declined,
+so they now have one shape. A first pass that kept the page with Reminder
+health's headline card and a paragraph was still too wordy to scan.
 
-**Why neutral, not error.** Reminder health colours what it knows (D-021): red
-for a refusal it has seen. Here nothing has failed yet; the app is asking
-before a reminder depends on it.
-
-**What would reverse this.** People declining more often once the reasons are a
-paragraph, which would show as more reminders set without the grant. Then the
-reasons get shorter, not bullets again.
+**What would reverse this.** People declining more often once the reasons are
+one line, which would show as more reminders set without the grant. Then the
+line changes, not the shape.
