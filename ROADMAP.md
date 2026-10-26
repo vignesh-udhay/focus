@@ -55,7 +55,11 @@ only completing made the next occurrence; now the ring makes it, the missed one
 stays in Overdue, and edits after the ring carry to the untouched next
 occurrence (D-098). Deleting a task left its notification, with working Done
 and Snooze, and its alarm; every reconciliation now cancels both, and Undo
-sets the alarm again (D-099). D-085 regenerated the
+sets the alarm again (D-099). Deleting an occurrence after its ring takes its
+untouched next one too, so delete ends a series whenever it happens (D-098 rule
+7). Reminders vibrate, on a new channel that carries 1.0's settings across and
+keeps one set to None silenced (D-100). Quick Add says "No reminder set. Add am
+or pm to the time." under a title ending "at six" (D-101). D-085 regenerated the
 palette and D-091 withdrew it, so the colours are still 1.0's.
 
 **Seven competitor apps were walked on the emulator, 2026-10-24 and 25**,
