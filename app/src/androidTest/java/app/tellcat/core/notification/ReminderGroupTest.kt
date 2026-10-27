@@ -16,6 +16,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
+import app.tellcat.ui.semantics.grantRuntimePermission
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -63,12 +64,7 @@ class ReminderGroupTest {
      */
     @Before
     fun grantNotificationsAndClearTheShade() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            InstrumentationRegistry.getInstrumentation().uiAutomation.grantRuntimePermission(
-                context.packageName,
-                Manifest.permission.POST_NOTIFICATIONS
-            )
-        }
+        grantRuntimePermission(Manifest.permission.POST_NOTIFICATIONS)
         context.ensureReminderChannel()
         clearShade()
     }

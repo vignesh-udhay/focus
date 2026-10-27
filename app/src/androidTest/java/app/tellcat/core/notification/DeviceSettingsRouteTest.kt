@@ -6,6 +6,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import app.tellcat.core.domain.DeviceRestriction
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeFalse
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -45,6 +46,16 @@ class DeviceSettingsRouteTest {
     @Test
     fun aRestrictedDeviceHasAtLeastOneScreenToOffer() {
         val restriction = restrictionFor(Build.MANUFACTURER) ?: return
+
+        // ColorOS and OxygenOS 12 and later moved every one of these screens to
+        // `com.oplus` behind a signature permission, so the list is empty there
+        // by design and the button falls back to App info. D-010. Skipped rather
+        // than passed, so the run says it was not checked here.
+        assumeFalse(
+            "D-010: no third-party app can open the sleep standby screens on Android 12+",
+            restriction == DeviceRestriction.SleepStandby &&
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+        )
 
         assertTrue(
             "${Build.MANUFACTURER} maps to $restriction, but none of its screens resolved. " +

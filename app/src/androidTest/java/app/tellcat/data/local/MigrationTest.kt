@@ -554,7 +554,9 @@ class MigrationTest {
                         // Appended by version 11, D-078.
                         "snoozedUntil",
                         // Appended by version 12.
-                        "checklist"
+                        "checklist",
+                        // Appended by version 13, D-102.
+                        "ringsLikeAlarm"
                     ),
                     columns
                 )
