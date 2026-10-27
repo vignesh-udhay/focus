@@ -6552,8 +6552,10 @@ only way to have it.
 **Why checklist items stay square.** A checklist item is a line inside a task,
 not a task. Two shapes keep the two from reading as the same kind of thing.
 They are also drawn smaller, Material's checkbox scaled to a 16dp box, at the
-owner's request, so the task's check leads and the items follow. Scaling keeps
-Material's 48dp target and semantics.
+owner's request, so the task's check leads and the items follow. Only the
+drawing is scaled: a box around it takes the tap at Material's target, with the
+checkbox role and the item's name. The first build scaled the whole checkbox,
+which shrank its touch target to 42.7dp; the semantics test caught it.
 
 **What it costs.** A component of Tellcat's own where Material's used to do. It
 takes Material's measurements and colour roles rather than its own, so a

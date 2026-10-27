@@ -84,7 +84,7 @@ internal fun RoundCheck(
                 enabled = enabled,
                 role = Role.Checkbox,
                 interactionSource = remember { MutableInteractionSource() },
-                indication = ripple(bounded = false, radius = StateLayerSize / 2),
+                indication = ripple(bounded = false, radius = CheckboxStateLayerSize / 2),
                 onValueChange = onCheckedChange
             )
     ) {
@@ -137,4 +137,4 @@ private val BoxSize = 22.dp
 private val StrokeWidth = 2.dp
 
 /** Material's checkbox state layer, `CheckboxTokens.StateLayerSize`. */
-private val StateLayerSize = 40.dp
+internal val CheckboxStateLayerSize = 40.dp

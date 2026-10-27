@@ -2,7 +2,9 @@ package app.tellcat.ui.task
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
@@ -12,6 +14,8 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.material3.ripple
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItemDefaults
@@ -39,6 +43,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
@@ -51,6 +56,7 @@ import app.tellcat.core.design.TellcatMotion
 import app.tellcat.core.design.TellcatHaptics
 import app.tellcat.core.domain.ChecklistItem
 import app.tellcat.core.domain.Task
+import app.tellcat.ui.component.CheckboxStateLayerSize
 import app.tellcat.ui.component.SectionLabel
 import app.tellcat.ui.component.planRowColors
 
@@ -197,23 +203,38 @@ private fun ChecklistRow(
         shapes = shapes,
         colors = planRowColors(),
         leadingContent = {
-            Checkbox(
-                checked = item.done,
-                // A light toggle tick, which the system plays only if touch
-                // feedback is on. `expressive-motion.md` says why this one and
-                // not the completion spring.
-                onCheckedChange = { done ->
-                    TellcatHaptics.checklistTick(haptics, done)
-                    onSetDone(done)
-                },
-                // Drawn at a 16dp box rather than Material's 18dp, so an item
-                // inside a task reads lighter than the task's own 22dp round
-                // check. Scaled, not resized: the 48dp target and the
-                // semantics are Material's, untouched. D-105.
+            // **The box takes the tap; the checkbox inside only draws.** D-105
+            // draws it at a 16dp box rather than Material's 18dp, so an item
+            // inside a task reads lighter than the task's own 22dp round check.
+            // Scaling the checkbox itself scaled its touch target too, to
+            // 42.7dp, which the semantics test caught on 2026-10-27. Here the
+            // box keeps Material's target, its ripple, `Role.Checkbox` and the
+            // item's name, and only the drawing is scaled.
+            Box(
+                contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .scale(ChecklistCheckScale)
+                    .minimumInteractiveComponentSize()
+                    .toggleable(
+                        value = item.done,
+                        role = Role.Checkbox,
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = ripple(bounded = false, radius = CheckboxStateLayerSize / 2),
+                        // A light toggle tick, which the system plays only if
+                        // touch feedback is on. `expressive-motion.md` says why
+                        // this one and not the completion spring.
+                        onValueChange = { done ->
+                            TellcatHaptics.checklistTick(haptics, done)
+                            onSetDone(done)
+                        }
+                    )
                     .semantics { contentDescription = item.text }
-            )
+            ) {
+                Checkbox(
+                    checked = item.done,
+                    onCheckedChange = null,
+                    modifier = Modifier.scale(ChecklistCheckScale)
+                )
+            }
         },
         trailingContent = if (editing) {
             {
@@ -373,5 +394,8 @@ private fun AddChecklistItemRow(
     }
 }
 
-/** A checklist item's checkbox: Material's 18dp box drawn at 16dp. D-105. */
+/**
+ * A checklist item's checkbox: Material's 18dp box drawn at 16dp. D-105. The
+ * drawing only; the box around it keeps the touch target.
+ */
 private const val ChecklistCheckScale = 16f / 18f
