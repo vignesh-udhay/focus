@@ -3,6 +3,7 @@ package app.tellcat.ui.semantics
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.hasAnySibling
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.isToggleable
 import androidx.test.platform.app.InstrumentationRegistry
@@ -145,7 +146,11 @@ class ReminderSheetSemanticsTest {
 
         rule.waitUntilExactlyOneExists(hasText(PRIMING_TITLE), TIMEOUT_MILLIS)
         rule.onNode(hasContentDescription(PRIMING_PICTURE)).assertExists()
-        rule.onNodeWithText(PRIMING_ALLOW).assertIsDisplayed()
+        // The sheet's own button, beside the picture. The editor under it shows
+        // an "Allow full screen" of its own in this mode, so the label alone
+        // matches two.
+        rule.onNode(hasText(PRIMING_ALLOW) and hasAnySibling(hasContentDescription(PRIMING_PICTURE)))
+            .assertIsDisplayed()
     }
 
     // --- the two rows, which are the whole sheet ------------------------------
