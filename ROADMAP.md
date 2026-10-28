@@ -20,9 +20,9 @@ registered at Cloudflare, auto-renewing. A WIPO brand search found no
 from 2026-10-10 restored into Tellcat on the emulator: 5 tasks, every field
 equal, snoozes carried. Export now suggests `Tellcat-backup-<date>.json`.
 
-**1.1, versionCode 2, is in Google's review for the Alpha closed test**, sent
+**1.1, versionCode 2, is live on the Alpha closed test.** Sent for review
 on 2026-10-26 as release "2 (1.1)" at full rollout, with managed publishing
-off, so it reaches testers once approved. Built after the full instrumented
+off; by 2026-10-27 Play had updated the owner's own phone to it. Built after the full instrumented
 suite passed on `9e11a2b`, 362 of 362; `main` was fast-forwarded to
 `feature/checklist` and pushed. Play accepted the upload key. Its one warning:
 no debug symbols for the native code.
@@ -54,16 +54,21 @@ Details store shot was taken, Groceries with its checklist in light and dark at
 1080 x 1920, and the owner chose to leave the store set of eight as it is. The
 merge waits for the owner's word.
 
-**"Ring like an alarm" is built on `feature/alarm`, cut from `main` at
-`38f3c29`, not merged and not pushed, D-102.** Each reminder can ring on the
-alarm stream until answered: full screen when the phone is locked and the
-permission is given, otherwise a heads-up on a new Alarms channel, with Stop
-and Snooze 10 min and never Done. Schema 13 stores it and the backup carries
-it. The owner asked for its tests to be written and not run, so none of it has
-run yet, on a device or the JVM; the main and test sources compile. Before it
-ships: the owner runs the tests, and files two Play Console declarations,
-full-screen intent (answered as not an alarm or calling app) and the
-`systemExempted` foreground service. Checked by hand on the owner's OnePlus 8T
+**1.2, versionCode 3, is on `main` for the owner to upload to the closed
+test, with "Ring like an alarm", D-102.** `feature/alarm` was merged on
+2026-10-28 as `15cb026`, not pushed. Before the merge the full instrumented
+suite ran on the owner's OnePlus at `ab3b623`: 378 passed, 2 skipped by their
+own assumptions, and the full-screen sheet's class passed 14 of 14 with full
+screen off; the JVM suite passed 904 of 904 on the merge, and lint found no
+errors. Each reminder can ring on the alarm stream until answered: full screen
+when the phone is locked and the permission is given, otherwise a heads-up on
+a new Alarms channel, with Stop and Snooze 10 min and never Done. Schema 13
+stores it and the backup carries it. Also in 1.2: completing a task is quick
+again (D-104); a task's check is round and a checklist's is smaller (D-105);
+each Reminder health row opens its own settings (D-106); and the exact-alarm
+ask is a short bottom sheet (D-107). Before it reaches testers the owner files
+two Play Console declarations, full-screen intent (answered as not an alarm or
+calling app) and the `systemExempted` foreground service. Checked by hand on the owner's OnePlus 8T
 (Android 14) on 2026-10-26, as "Tellcat dev" (`app.tellcat.debug`, which
 installs beside the Play copy): it rang on the minute on the alarm stream, kept
 ringing through Home, Back and the shade, ignored taps and answered to a hold,
@@ -76,7 +81,7 @@ arrived as a normal one while the editor had promised full screen. Now the
 editor and Reminder health say it arrives as a normal reminder and may be
 late, which is what the phone then did (80 seconds late). The service became
 `systemExempted` and rang full screen on the phone with the grant back on.
-A third, older than 1.0, is fixed on this branch too, D-103: revoking the
+A third, older than 1.0, is fixed in 1.2 too, D-103: revoking the
 grant cancels every exact alarm and kills the app without a broadcast, so no
 reminder was scheduled until the app next started. An inexact backstop alarm
 survives the revoke and rebuilds them. On the phone, a reminder for 8:58 PM
