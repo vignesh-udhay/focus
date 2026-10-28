@@ -254,7 +254,8 @@ class MigrationTest {
             MIGRATION_8_9,
             MIGRATION_9_10,
             MIGRATION_10_11,
-            MIGRATION_11_12
+            MIGRATION_11_12,
+            MIGRATION_12_13
         ).use { database ->
             database.query(
                 "SELECT notes, recurrence, spawnedFromId, reminderAt FROM tasks WHERE id = ?",
@@ -493,7 +494,8 @@ class MigrationTest {
             MIGRATION_8_9,
             MIGRATION_9_10,
             MIGRATION_10_11,
-            MIGRATION_11_12
+            MIGRATION_11_12,
+            MIGRATION_12_13
         ).use { database ->
             database.query(
                 """
@@ -552,7 +554,9 @@ class MigrationTest {
                         // Appended by version 11, D-078.
                         "snoozedUntil",
                         // Appended by version 12.
-                        "checklist"
+                        "checklist",
+                        // Appended by version 13, D-102.
+                        "ringsLikeAlarm"
                     ),
                     columns
                 )
@@ -608,7 +612,8 @@ class MigrationTest {
             true,
             MIGRATION_9_10,
             MIGRATION_10_11,
-            MIGRATION_11_12
+            MIGRATION_11_12,
+            MIGRATION_12_13
         ).use { database ->
             database.query(
                 """
@@ -701,7 +706,7 @@ class MigrationTest {
         const val TEST_DB = "migration-test.db"
 
         /** The schema every migration in this test is aimed at. */
-        const val LatestVersion = 12
+        const val LatestVersion = 13
     }
 
     /**
@@ -741,5 +746,30 @@ class MigrationTest {
                 assertEquals(3, rows)
             }
         }
+    }
+
+    /**
+     * Version 13 adds the alarm flag as false on every row. D-102. A migration
+     * that backfilled true would turn every existing reminder into one that
+     * rings until answered, and the first the user would know of it is the
+     * phone ringing on Silent.
+     */
+    @Test
+    fun migratedRowsRingAsNotifications() {
+        seedVersion1()
+
+        migrate().use { database ->
+            database.query("SELECT id, ringsLikeAlarm FROM tasks").use { cursor ->
+                var rows = 0
+                while (cursor.moveToNext()) {
+                    rows++
+                    assertEquals(cursor.getString(0) + " rings like an alarm", 0, cursor.getInt(1))
+                }
+
+                assertEquals(3, rows)
+            }
+        }
+
+        assertTrue(openAndReadTasks().none { it.ringsLikeAlarm })
     }
 }

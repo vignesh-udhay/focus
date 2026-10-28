@@ -1,5 +1,6 @@
 package app.tellcat.ui.semantics
 
+import android.content.pm.PackageManager
 import android.os.Build
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -88,15 +89,29 @@ internal fun ComposeContentTestRule.setTellcatContent(
  *
  * A no-op below API 33, where the runtime notification permission does not
  * exist and granting it throws.
+ *
+ * **Only what is missing is granted.** OxygenOS refuses grants from the shell
+ * outright, even of a permission the app already holds, so an unconditional
+ * grant failed 29 tests on the owner's OnePlus on 2026-10-27 while Tellcat dev
+ * held the permission all along. Where it is missing and the device refuses,
+ * the failure says what to do instead of reading as a crash.
  */
 internal fun grantRuntimePermission(permission: String) {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
 
     val instrumentation = InstrumentationRegistry.getInstrumentation()
-    instrumentation.uiAutomation.grantRuntimePermission(
-        instrumentation.targetContext.packageName,
-        permission
-    )
+    val target = instrumentation.targetContext
+    if (target.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED) return
+
+    try {
+        instrumentation.uiAutomation.grantRuntimePermission(target.packageName, permission)
+    } catch (refused: SecurityException) {
+        throw AssertionError(
+            "This device refuses to grant $permission from the shell. Allow it for " +
+                "${target.packageName} in Settings once, then run again.",
+            refused
+        )
+    }
 }
 
 /** Matches a node marked as a heading for accessibility services. */

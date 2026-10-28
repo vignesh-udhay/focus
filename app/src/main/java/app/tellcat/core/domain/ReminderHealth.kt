@@ -52,15 +52,28 @@ data class ReminderHealth(
      * was claiming otherwise. This is the field that lets it say which of the
      * two it has.
      */
-    val verifiedDelivery: Boolean = false
+    val verifiedDelivery: Boolean = false,
+
+    /**
+     * Whether alarm-style reminders can ring as alarms, or null when no task
+     * rings like one and the row is not listed at all. D-102, R-014.
+     */
+    val alarmStyle: CheckState? = null
 ) {
 
-    /** The three rows the health screen draws, in the order it draws them. */
+    /**
+     * The rows the health screen draws, in the order it draws them: three,
+     * and a fourth while any reminder rings like an alarm.
+     *
+     * The alarm row is last because its failure is the gentlest: an alarm that
+     * cannot ring as one still arrives as a normal reminder.
+     */
     val checks: List<Pair<HealthCheck, CheckState>>
-        get() = listOf(
+        get() = listOfNotNull(
             HealthCheck.Notifications to notifications,
             HealthCheck.ExactAlarms to exactAlarms,
-            HealthCheck.BackgroundWork to backgroundWork
+            HealthCheck.BackgroundWork to backgroundWork,
+            alarmStyle?.let { state -> HealthCheck.AlarmStyle to state }
         )
 
     /**
@@ -152,7 +165,18 @@ enum class HealthCheck {
      * is one part of it; the manufacturer features that `PRODUCT.md` cares
      * about are not visible to any API and have to be inferred.
      */
-    BackgroundWork
+    BackgroundWork,
+
+    /**
+     * Whether a reminder that rings like an alarm can ring as one. D-102.
+     *
+     * Blocked when the Alarms channel or the exact-alarm grant is off, because
+     * then it arrives as a normal reminder; a caution without the full-screen
+     * grant, because then it rings as a banner. Without the exact grant this row
+     * says only how alarms will arrive. The exact-alarm row comes first, so the
+     * headline and the button go to the refusal that matters most.
+     */
+    AlarmStyle
 }
 
 /** How a check came out. */
@@ -311,7 +335,9 @@ fun reminderHealth(
     restriction: DeviceRestriction?,
     deliveries: List<ReminderDelivery>,
     now: Instant,
-    window: Duration = ConcernWindow
+    window: Duration = ConcernWindow,
+    // Null when no task rings like an alarm, so the row is not listed. D-102.
+    alarmStyle: CheckState? = null
 ): ReminderHealth {
     val recent = deliveries.filter { it.arrivedWallAt.isAfter(now.minus(window)) }
 
@@ -326,7 +352,8 @@ fun reminderHealth(
         // reminder from this app ever arrived", not "does this device delay
         // them", and requiring idle exposure would put the answer out of reach
         // of the Test reminder button that sits on the same screen.
-        verifiedDelivery = recent.any { delivery -> !delivery.isConcerning() }
+        verifiedDelivery = recent.any { delivery -> !delivery.isConcerning() },
+        alarmStyle = alarmStyle
     )
 }
 

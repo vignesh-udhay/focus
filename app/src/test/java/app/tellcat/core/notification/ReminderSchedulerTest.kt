@@ -2,6 +2,7 @@ package app.tellcat.core.notification
 
 import app.tellcat.core.domain.Task
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Instant
@@ -26,9 +27,10 @@ class ReminderSchedulerTest {
 
     private val createdAt: Instant = Instant.parse("2026-01-01T09:00:00Z")
 
-    private class RecordingAlarms : ReminderAlarms {
+    private class RecordingAlarms(private val exact: Boolean = true) : ReminderAlarms {
         val scheduled = linkedMapOf<String, Instant>()
         val cancelled = mutableListOf<String>()
+        var backstop: Instant? = Instant.EPOCH
 
         override fun schedule(taskId: String, at: Instant) {
             scheduled[taskId] = at
@@ -38,7 +40,11 @@ class ReminderSchedulerTest {
             cancelled += taskId
         }
 
-        override fun canScheduleExact(): Boolean = true
+        override fun scheduleBackstop(at: Instant?) {
+            backstop = at
+        }
+
+        override fun canScheduleExact(): Boolean = exact
     }
 
     private fun task(
@@ -70,6 +76,8 @@ class ReminderSchedulerTest {
         }
 
         override fun cancel(taskId: String) = Unit
+
+        override fun scheduleBackstop(at: Instant?) = Unit
 
         override fun canScheduleExact(): Boolean = true
     }
@@ -374,5 +382,99 @@ class ReminderSchedulerTest {
             result.scheduled
         )
         assertEquals(1, result.failures)
+    }
+
+    /** D-102: the copy kept for a locked phone knows which reminders are alarms. */
+    @Test
+    fun `a pass reports which reminders ring like an alarm`() {
+        val alarms = RecordingAlarms()
+        val tasks = listOf(
+            task("alarm", LocalDateTime.of(2026, 9, 5, 14, 0)).copy(ringsLikeAlarm = true),
+            task("plain", LocalDateTime.of(2026, 9, 5, 15, 0))
+        )
+
+        val result = scheduler(alarms).reconcile(tasks)
+
+        assertEquals(
+            mapOf("alarm" to true, "plain" to false),
+            result.scheduled.associate { it.taskId to it.ringsLikeAlarm }
+        )
+    }
+
+    // D-103: the backstop, for exact alarms taken away without a word
+
+    @Test
+    fun `the backstop stands a minute after the soonest future reminder`() {
+        val alarms = RecordingAlarms()
+        val tasks = listOf(
+            task("later", LocalDateTime.of(2026, 9, 5, 18, 0)),
+            task("soon", LocalDateTime.of(2026, 9, 5, 14, 0))
+        )
+
+        scheduler(alarms).reconcile(tasks)
+
+        // 14:00 in Kolkata is 08:30 UTC.
+        assertEquals(Instant.parse("2026-09-05T08:31:00Z"), alarms.backstop)
+    }
+
+    /**
+     * A missed reminder is set for now, and one that cannot be shown stays
+     * missed. A backstop aimed at it would wake the phone every minute.
+     */
+    @Test
+    fun `a missed reminder does not move the backstop`() {
+        val alarms = RecordingAlarms()
+        val tasks = listOf(
+            task("missed", LocalDateTime.of(2026, 9, 5, 9, 0)),
+            task("future", LocalDateTime.of(2026, 9, 5, 14, 0))
+        )
+
+        scheduler(alarms).reconcile(tasks)
+
+        assertEquals(Instant.parse("2026-09-05T08:31:00Z"), alarms.backstop)
+    }
+
+    @Test
+    fun `no backstop with nothing still to come`() {
+        val alarms = RecordingAlarms()
+        val tasks = listOf(
+            task("missed", LocalDateTime.of(2026, 9, 5, 9, 0)),
+            task("told", LocalDateTime.of(2026, 9, 5, 14, 0), reminderDeliveredAt = now),
+            task("none")
+        )
+
+        scheduler(alarms).reconcile(tasks)
+
+        assertNull(alarms.backstop)
+    }
+
+    /** Without the grant every alarm is inexact already, and survives as it is. */
+    @Test
+    fun `no backstop without the exact-alarm grant`() {
+        val alarms = RecordingAlarms(exact = false)
+
+        scheduler(alarms).reconcile(listOf(task("a", LocalDateTime.of(2026, 9, 5, 14, 0))))
+
+        assertNull(alarms.backstop)
+    }
+
+    @Test
+    fun `a refused reminder does not get the backstop`() {
+        val alarms = RefusingAlarms(refused = "soon")
+        val recorded = mutableListOf<Instant?>()
+        val backstopping = object : ReminderAlarms by alarms {
+            override fun scheduleBackstop(at: Instant?) {
+                recorded += at
+            }
+        }
+        val tasks = listOf(
+            task("soon", LocalDateTime.of(2026, 9, 5, 14, 0)),
+            task("later", LocalDateTime.of(2026, 9, 5, 18, 0))
+        )
+
+        scheduler(backstopping).reconcile(tasks)
+
+        // 18:00 in Kolkata is 12:30 UTC.
+        assertEquals(listOf<Instant?>(Instant.parse("2026-09-05T12:31:00Z")), recorded)
     }
 }

@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ListItemColors
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.ListItemShapes
@@ -36,7 +35,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
@@ -106,7 +113,11 @@ fun TaskRow(
     // is drawn. Null reads the line as it is.
     metadataSpoken: String? = null,
     trailingContent: (@Composable () -> Unit)? = null,
-    isOverdue: Boolean = false
+    isOverdue: Boolean = false,
+    // The metadata segment an alarm glyph leads: the reminder time, on a
+    // reminder that rings like an alarm. D-102. Drawn only; [metadataSpoken]
+    // says it in words.
+    alarmSegment: Int? = null
 ) {
     val titleTextSize = MaterialTheme.typography.bodyLarge.fontSize
     val titleColor by animateColorAsState(
@@ -126,18 +137,15 @@ fun TaskRow(
     // control in and lets it spring back, and the strikethrough draws across the
     // title as it does. D-086. Nothing else here moves.
     //
-    // The two start together and run on different specs. The checkbox takes
-    // `completion`, whose overshoot is the feel. The line takes `reveal`: on
-    // the fast spring it crossed the title inside one frame and read as simply
-    // appearing, measured on the emulator, and a line has to be seen travelling
-    // to be a line being drawn.
+    // The two start together on the same `completion` spring, so they land as
+    // one quick gesture. D-104 moved the line off `reveal`, whose slower spring,
+    // with the hold after it, made completing feel sluggish on the owner's phone.
     val haptics = LocalHapticFeedback.current
     val completionScale = remember { Animatable(1f) }
     // How much of the title the strikethrough has crossed, 0 to 1. Drawn rather
     // than set as a text decoration, so it can travel.
     val strike = remember { Animatable(if (isCompleted) 1f else 0f) }
     val completionSpec = TellcatMotion.completion<Float>()
-    val strikeSpec = TellcatMotion.reveal<Float>()
     var isFirstComposition by remember { mutableStateOf(true) }
     var titleLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
 
@@ -152,7 +160,7 @@ fun TaskRow(
             completionScale.snapTo(CompletionPressScale)
             launch { completionScale.animateTo(1f, completionSpec) }
             strike.snapTo(0f)
-            strike.animateTo(1f, strikeSpec)
+            strike.animateTo(1f, completionSpec)
         } else {
             // Reopening is a reversal, not a moment.
             strike.snapTo(0f)
@@ -161,6 +169,7 @@ fun TaskRow(
 
     val metadataText = metadataAnnotatedString(
         metadata = metadata,
+        alarmSegment = alarmSegment,
         isOverdue = isOverdue,
         // `tertiary`, not `error`. Material scopes error to error states, and
         // makes it a static red that never follows the wallpaper; an overdue
@@ -195,7 +204,9 @@ fun TaskRow(
         onLongClickLabel = onLongClickLabel,
         colors = colors,
         leadingContent = {
-            Checkbox(
+            // Round, not Material's square box. D-105. Same size, colours,
+            // target and semantics; checklist items keep the square one.
+            RoundCheck(
                 checked = isCompleted,
                 onCheckedChange = { completed ->
                     TellcatHaptics.taskCompletion(haptics, completed)
@@ -222,6 +233,7 @@ fun TaskRow(
                 Text(
                     text = metadataText,
                     style = MaterialTheme.typography.bodySmall,
+                    inlineContent = AlarmGlyphContent,
                     modifier = if (metadataSpoken.isNullOrEmpty()) {
                         Modifier
                     } else {
@@ -312,6 +324,7 @@ private const val CompletionPressScale = 0.8f
 @Composable
 private fun metadataAnnotatedString(
     metadata: List<String>,
+    alarmSegment: Int?,
     isOverdue: Boolean,
     overdueColor: Color
 ): AnnotatedString? {
@@ -321,6 +334,14 @@ private fun metadataAnnotatedString(
         metadata.forEachIndexed { index, segment ->
             if (index > 0) append(MetadataSeparator)
 
+            // In front of the time, as a label on it: "alarm at 6:26 PM". After
+            // it, the glyph sat against the separator and could belong to
+            // either side. D-102.
+            if (index == alarmSegment) {
+                appendInlineContent(AlarmGlyphId, AlarmGlyphAlternate)
+                append(" ")
+            }
+
             if (index == 0 && isOverdue) {
                 withStyle(SpanStyle(color = overdueColor)) { append(segment) }
             } else {
@@ -329,6 +350,27 @@ private fun metadataAnnotatedString(
         }
     }
 }
+
+private const val AlarmGlyphId = "alarm"
+
+/** What the glyph stands for in plain text, which nothing reads aloud: the row's spoken line does. */
+private const val AlarmGlyphAlternate = "[alarm]"
+
+/**
+ * The alarm glyph, the size of the text it sits in and in its colour, so it
+ * reads as part of the line rather than as a control. D-102.
+ */
+private val AlarmGlyphContent = mapOf(
+    AlarmGlyphId to InlineTextContent(
+        Placeholder(width = 1.em, height = 1.em, placeholderVerticalAlign = PlaceholderVerticalAlign.TextCenter)
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_alarm),
+            contentDescription = null,
+            tint = LocalContentColor.current
+        )
+    }
+)
 
 private const val MetadataSeparator = " · "
 

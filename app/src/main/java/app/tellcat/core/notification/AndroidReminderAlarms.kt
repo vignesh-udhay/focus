@@ -93,6 +93,28 @@ class AndroidReminderAlarms(private val context: Context) : ReminderAlarms {
         }
 
     /**
+     * `setAndAllowWhileIdle`, the inexact call, because Android removes only
+     * alarms with no window when the exact grant is revoked. D-103. It still
+     * fires in Doze, and Android defers a one-off inexact alarm by at most an
+     * hour. Always at least [BackstopDelay] ahead, so its window is never zero.
+     */
+    override fun scheduleBackstop(at: Instant?) {
+        val alarms = alarms ?: return
+        val intent = PendingIntent.getBroadcast(
+            context,
+            0,
+            Intent(context, ReminderBackstopReceiver::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        if (at == null) {
+            alarms.cancel(intent)
+        } else {
+            alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at.toEpochMilli(), intent)
+        }
+    }
+
+    /**
      * One [PendingIntent] per task, told apart by data rather than by request
      * code alone.
      *
@@ -282,7 +304,12 @@ class ReminderReceiver : BroadcastReceiver() {
                 }
 
                 context.ensureReminderChannel()
-                if (!context.postReminder(task)) {
+                // **An alarm rings; anything else, or an alarm that cannot,
+                // arrives as the reminder it always was.** D-102. Ringing
+                // counts as announcing: the service's notification is on
+                // screen and the task is told.
+                val announced = context.ringAsAlarm(task) || context.postReminder(task)
+                if (!announced) {
                     Log.w(LogTag, "Cannot post. Reminder permission changed for $taskId.")
                     record(DeliveryOutcome.Suppressed)
                     return@launch
@@ -376,6 +403,37 @@ class ReminderRecoveryReceiver : BroadcastReceiver() {
 }
 
 /**
+ * Rebuilds the alarms when the backstop fires. D-103.
+ *
+ * It fires only when a reminder's own alarm did not come first, which is what
+ * revoking "Alarms & reminders" does: Android cancels the exact alarms, kills
+ * the app and sends no broadcast, so [ReminderRecoveryReceiver] never hears of
+ * it. The pass sets every reminder again, inexactly now, and the missed one
+ * for now.
+ *
+ * Not direct-boot aware. A restart clears the backstop with every other alarm,
+ * and the first pass after the unlock sets it again.
+ */
+class ReminderBackstopReceiver : BroadcastReceiver() {
+
+    override fun onReceive(context: Context, intent: Intent) {
+        val application = context.applicationContext as? TellcatApplication ?: return
+        val finish = goAsync()
+
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            try {
+                Log.w(LogTag, "The reminder backstop fired. Rebuilding the alarms.")
+                application.reconcileReminders()
+            } catch (error: Exception) {
+                Log.e(LogTag, "The backstop could not reconcile reminders.", error)
+            } finally {
+                finish.finish()
+            }
+        }
+    }
+}
+
+/**
  * Sets an alarm for every reminder in the copy kept for the locked phone.
  *
  * The same alarms, by the same identity, that the reconciliation sets, so the
@@ -430,9 +488,12 @@ private fun Context.deliverWhileLocked(
         id = reminder.taskId,
         title = reminder.title,
         createdAt = Instant.EPOCH,
-        reminderAt = reminder.ringsAt
+        reminderAt = reminder.ringsAt,
+        // From the copy, so an alarm due before the first unlock still rings
+        // as one. D-102.
+        ringsLikeAlarm = reminder.ringsLikeAlarm
     )
-    if (!postReminder(task, requireUnlockForActions = true)) return
+    if (!ringAsAlarm(task) && !postReminder(task, requireUnlockForActions = true)) return
 
     store.recordLockedDelivery(
         LockedDelivery(

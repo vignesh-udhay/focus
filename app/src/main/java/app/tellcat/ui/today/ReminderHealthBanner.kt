@@ -224,6 +224,9 @@ private fun bannerTitle(state: ReminderHealthState): String = when (state) {
 
         HealthCheck.BackgroundWork ->
             stringResource(R.string.reminder_restriction_action_title, displayManufacturer())
+
+        // D-102: the Alarms channel is off, so alarms arrive as reminders.
+        HealthCheck.AlarmStyle -> stringResource(R.string.reminder_health_alarm_off_title)
     }
 
     is ReminderHealthState.Missed ->

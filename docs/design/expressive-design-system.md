@@ -284,7 +284,6 @@ true there or what the screen is about. Every use in the app is one of these:
 | Onboarding's welcome | `headlineMediumEmphasized` |
 | Reminder health's verdict, such as "Reminders are arriving on time" | `headlineSmallEmphasized` |
 | Backup's "Your data stays on this device" | `headlineMediumEmphasized` |
-| The permission screen's "Allow precise reminders" | `headlineLargeEmphasized` |
 
 [CD] Everything else uses the standard scale:
 

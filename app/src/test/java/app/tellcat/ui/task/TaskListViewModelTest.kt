@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -1615,7 +1616,8 @@ class TaskListViewModelTest {
         dueDate: LocalDate? = null,
         estimatedDurationMinutes: Int? = null,
         recurrence: Recurrence? = storedRecurrence(id),
-        reminderAt: LocalDateTime? = storedReminder(id)
+        reminderAt: LocalDateTime? = storedReminder(id),
+        ringsLikeAlarm: Boolean = storedRingsLikeAlarm(id)
     ) = editTask(
         id = id,
         title = title,
@@ -1624,8 +1626,13 @@ class TaskListViewModelTest {
         dueDate = dueDate,
         estimatedDurationMinutes = estimatedDurationMinutes,
         recurrence = recurrence,
-        reminderAt = reminderAt
+        reminderAt = reminderAt,
+        ringsLikeAlarm = ringsLikeAlarm
     )
+
+    /** Whether the row rings like an alarm, as the open sheet would hold it. D-102. */
+    private fun storedRingsLikeAlarm(id: String): Boolean =
+        dao.emissions.value.firstOrNull { it.id == id }?.ringsLikeAlarm ?: false
 
     /** The note the row currently holds, as the open sheet would be holding it. */
     private fun storedNotes(id: String): String? =
@@ -2914,6 +2921,47 @@ class TaskListViewModelTest {
         assertNull(awaitEdited("a").reminderAt)
     }
 
+    // D-102: ring like an alarm
+
+    @Test
+    fun savingAReminderThatRingsLikeAnAlarmStoresBoth() {
+        store(task(id = "a", scheduledDate = today))
+        val model = viewModel()
+        visible(model, 1)
+
+        model.edit(id = "a", reminderAt = reminder, ringsLikeAlarm = true)
+
+        val edited = awaitEdited("a")
+        assertEquals(reminder, edited.reminderAt)
+        assertTrue(edited.ringsLikeAlarm)
+    }
+
+    /** Required on `editTask`, so an edit to the title cannot silence an alarm. */
+    @Test
+    fun editingAnotherFieldKeepsTheAlarm() {
+        store(task(id = "a", scheduledDate = today, reminderAt = reminder).copy(ringsLikeAlarm = true))
+        val model = viewModel()
+        visible(model, 1)
+
+        model.edit(id = "a", title = "Take the pills")
+
+        assertTrue(awaitEdited("a").ringsLikeAlarm)
+    }
+
+    @Test
+    fun clearingTheReminderClearsTheAlarmWithIt() {
+        store(task(id = "a", scheduledDate = today, reminderAt = reminder).copy(ringsLikeAlarm = true))
+        val model = viewModel()
+        visible(model, 1)
+
+        // The sheet still holding the switch on, as it would.
+        model.edit(id = "a", reminderAt = null, ringsLikeAlarm = true)
+
+        val edited = awaitEdited("a")
+        assertNull(edited.reminderAt)
+        assertFalse(edited.ringsLikeAlarm)
+    }
+
     /**
      * The same regression the notes tests exist for, on the field where it
      * matters most. The sheet passes back every value it is holding, so an
@@ -3100,7 +3148,8 @@ class TaskListViewModelTest {
             dueDate = stored.dueDate,
             estimatedDurationMinutes = stored.estimatedDurationMinutes,
             recurrence = null,
-            reminderAt = stored.reminderAt
+            reminderAt = stored.reminderAt,
+            ringsLikeAlarm = stored.ringsLikeAlarm
         )
 
         assertEquals("Ask Priya which logo to use", awaitEdited("a").notes)
@@ -3128,7 +3177,8 @@ class TaskListViewModelTest {
             dueDate = stored.dueDate,
             estimatedDurationMinutes = stored.estimatedDurationMinutes,
             recurrence = null,
-            reminderAt = stored.reminderAt
+            reminderAt = stored.reminderAt,
+            ringsLikeAlarm = stored.ringsLikeAlarm
         )
 
         val edited = awaitEdited("a")
@@ -3705,7 +3755,8 @@ class TaskListViewModelTest {
             dueDate = null,
             estimatedDurationMinutes = null,
             recurrence = null,
-            reminderAt = null
+            reminderAt = null,
+            ringsLikeAlarm = false
         )
 
         assertEquals("a", awaitFocusedTaskId(model, "a"))
@@ -4267,7 +4318,8 @@ class TaskListViewModelTest {
             dueDate = null,
             estimatedDurationMinutes = null,
             recurrence = Recurrence(RecurrenceUnit.WEEKLY),
-            reminderAt = null
+            reminderAt = null,
+            ringsLikeAlarm = false
         )
 
         assertEquals(Recurrence(RecurrenceUnit.WEEKLY), awaitUpdate().toDomain().recurrence)

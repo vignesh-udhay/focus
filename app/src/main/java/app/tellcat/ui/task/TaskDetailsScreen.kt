@@ -189,7 +189,8 @@ fun TaskDetailsScreen(
                 dueDate = edited.dueDate,
                 estimatedDurationMinutes = edited.estimatedDurationMinutes,
                 recurrence = edited.recurrence,
-                reminderAt = edited.reminderAt
+                reminderAt = edited.reminderAt,
+                ringsLikeAlarm = edited.ringsLikeAlarm
             )
         },
         // **Navigation follows the answer, not the tap.** `docs/decisions.md`
@@ -767,7 +768,7 @@ internal enum class PlanSheet {
 
         DUE -> task.dueDate?.let { date -> scheduledDateLabel(date, today) }
 
-        REMINDER -> task.reminderAt?.let { at -> reminderValue(at, today) }
+        REMINDER -> task.reminderAt?.let { at -> reminderValue(at, today, task.ringsLikeAlarm) }
 
         // Through `durationLabel`, so this reads 45m, 1h, 1h 30m like every
         // other duration in the app. Never "45 min".
@@ -781,17 +782,22 @@ internal enum class PlanSheet {
     }
 }
 
-/** A reminder as a day and a time, in the reader's own locale. */
+/**
+ * A reminder as a day and a time, in the reader's own locale, and whether it
+ * rings like an alarm, as `editors/Reminder` draws the row. D-102.
+ */
 @Composable
-private fun reminderValue(at: LocalDateTime, today: LocalDate): String {
+private fun reminderValue(at: LocalDateTime, today: LocalDate, ringsLikeAlarm: Boolean): String {
     // The phone's 12 or 24 hour setting, as the notification says it. D-079.
     val time = at.toLocalTime().format(rememberTimeFormat())
 
-    return stringResource(
+    val moment = stringResource(
         R.string.task_reminder_when,
         scheduledDateLabel(at.toLocalDate(), today),
         time
     )
+
+    return if (ringsLikeAlarm) stringResource(R.string.task_reminder_when_alarm, moment) else moment
 }
 
 /** What the column holds at the largest system font scale, as on Focus. */
@@ -848,9 +854,11 @@ private fun PlanSheetHost(
                 ?: task.scheduledDate?.takeIf { date -> !date.isBefore(today) }
                 ?: today,
             today = today,
-            onSet = { at -> onEdit(task.copy(reminderAt = at)) },
-            onClear = { onEdit(task.copy(reminderAt = null)) },
-            onDismiss = onDismiss
+            onSet = { at, alarm -> onEdit(task.copy(reminderAt = at, ringsLikeAlarm = alarm)) },
+            // No reminder, nothing to ring. D-102.
+            onClear = { onEdit(task.copy(reminderAt = null, ringsLikeAlarm = false)) },
+            onDismiss = onDismiss,
+            ringsLikeAlarm = task.ringsLikeAlarm
         )
 
         PlanSheet.DURATION -> DurationSheet(

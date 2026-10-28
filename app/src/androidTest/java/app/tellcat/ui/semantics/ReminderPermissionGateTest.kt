@@ -33,13 +33,7 @@ class ReminderPermissionGateTest {
     /** So the notification dialog never comes first and hides what is tested. */
     @Before
     fun grantNotifications() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val instrumentation = InstrumentationRegistry.getInstrumentation()
-            instrumentation.uiAutomation.grantRuntimePermission(
-                instrumentation.targetContext.packageName,
-                Manifest.permission.POST_NOTIFICATIONS
-            )
-        }
+        grantRuntimePermission(Manifest.permission.POST_NOTIFICATIONS)
     }
 
     @Test

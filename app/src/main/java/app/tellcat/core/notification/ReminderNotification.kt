@@ -52,19 +52,24 @@ internal fun Context.postReminder(
     task: Task,
     // Before the first unlock after a restart, Done and Snooze cannot reach the
     // database, so Android asks for the unlock before running them. D-079.
-    requireUnlockForActions: Boolean = false
+    requireUnlockForActions: Boolean = false,
+    // Posted without sound or a heads-up: what an alarm leaves behind after
+    // Stop, or after ringing unanswered for `AlarmRingLimit`. The alarm already
+    // made the noise; this is the record with Done and Snooze on it. D-102.
+    silent: Boolean = false
 ): Boolean {
     val summary = task.reminderSummary(this)
 
     fun action(label: Int, action: String) = NotificationCompat.Action.Builder(
         0,
         getString(label),
-        actionIntent(task.id, action)
+        actionIntent(task.id, action, postedFor = task.ringsAt)
     ).setAuthenticationRequired(requireUnlockForActions).build()
 
     val builder = reminderBuilder(task, summary)
         .addAction(action(R.string.reminder_action_done, ReminderActionReceiver.ACTION_DONE))
         .addAction(action(R.string.reminder_action_snooze, ReminderActionReceiver.ACTION_SNOOZE))
+        .setSilent(silent)
 
     // The expanded form is where the notes live. Collapsed shows the title and
     // the summary line, which is what the frame draws.
@@ -95,7 +100,7 @@ internal fun Context.postSnoozeOptions(task: Task, now: LocalDateTime): Boolean 
         builder.addAction(
             0,
             snoozeLabel(option),
-            actionIntent(task.id, ReminderActionReceiver.ACTION_SNOOZE_UNTIL, option)
+            actionIntent(task.id, ReminderActionReceiver.ACTION_SNOOZE_UNTIL, option, postedFor = task.ringsAt)
         )
     }
 
@@ -366,7 +371,7 @@ private fun Task.reminderSummary(context: Context): String {
     }
 }
 
-private fun Context.formatTime(time: LocalTime): String {
+internal fun Context.formatTime(time: LocalTime): String {
     val moment = LocalDateTime.now().with(time).atZone(ZoneId.systemDefault()).toInstant()
     return android.text.format.DateFormat.getTimeFormat(this).format(Date.from(moment))
 }
@@ -387,17 +392,24 @@ private fun Context.snoozeLabel(option: SnoozeOption): String = when (option) {
  * Matching ignores extras, so the action and the option have to be in the
  * data URI. Without that, Done and Snooze on the same task would be the same
  * pending intent and the second would silently replace the first.
+ *
+ * [postedFor] is the moment the notification was for, carried so an action
+ * from a notification that has since gone stale is ignored. R-002, D-102. An
+ * extra rather than part of the URI: a newer post for the same task replaces
+ * this one, and `FLAG_UPDATE_CURRENT` rewrites the extra with it.
  */
 private fun Context.actionIntent(
     taskId: String,
     action: String,
-    option: SnoozeOption? = null
+    option: SnoozeOption? = null,
+    postedFor: LocalDateTime? = null
 ): PendingIntent {
     val intent = Intent(this, ReminderActionReceiver::class.java).apply {
         this.action = action
         data = Uri.parse("tellcat://reminder/$taskId/$action/${option?.name.orEmpty()}")
         putExtra(ReminderActionReceiver.EXTRA_TASK_ID, taskId)
         option?.let { putExtra(ReminderActionReceiver.EXTRA_SNOOZE_OPTION, it.name) }
+        postedFor?.let { putExtra(ReminderActionReceiver.EXTRA_POSTED_FOR, it.toString()) }
     }
 
     return PendingIntent.getBroadcast(

@@ -54,6 +54,34 @@ Details store shot was taken, Groceries with its checklist in light and dark at
 1080 x 1920, and the owner chose to leave the store set of eight as it is. The
 merge waits for the owner's word.
 
+**"Ring like an alarm" is built on `feature/alarm`, cut from `main` at
+`38f3c29`, not merged and not pushed, D-102.** Each reminder can ring on the
+alarm stream until answered: full screen when the phone is locked and the
+permission is given, otherwise a heads-up on a new Alarms channel, with Stop
+and Snooze 10 min and never Done. Schema 13 stores it and the backup carries
+it. The owner asked for its tests to be written and not run, so none of it has
+run yet, on a device or the JVM; the main and test sources compile. Before it
+ships: the owner runs the tests, and files two Play Console declarations,
+full-screen intent (answered as not an alarm or calling app) and the
+`systemExempted` foreground service. Checked by hand on the owner's OnePlus 8T
+(Android 14) on 2026-10-26, as "Tellcat dev" (`app.tellcat.debug`, which
+installs beside the Play copy): it rang on the minute on the alarm stream, kept
+ringing through Home, Back and the shade, ignored taps and answered to a hold,
+came up full screen over the lock screen with the screen off, snoozed ten
+minutes from the lock screen and rang again, and Stop left the normal reminder.
+One bug was found and fixed: dark status bar icons on the dark alarm screen.
+A second was found the same day with "Alarms & reminders" off: the alarm is
+then inexact, Android refused to start the ringing service, and the reminder
+arrived as a normal one while the editor had promised full screen. Now the
+editor and Reminder health say it arrives as a normal reminder and may be
+late, which is what the phone then did (80 seconds late). The service became
+`systemExempted` and rang full screen on the phone with the grant back on.
+A third, older than 1.0, is fixed on this branch too, D-103: revoking the
+grant cancels every exact alarm and kills the app without a broadcast, so no
+reminder was scheduled until the app next started. An inexact backstop alarm
+survives the revoke and rebuilds them. On the phone, a reminder for 8:58 PM
+whose alarm the revoke removed arrived at 8:59:23.
+
 **Two reminder bugs found by the competitor study are fixed, on 1.0 too until
 this ships.** A repeating reminder nobody answered never rang again, because
 only completing made the next occurrence; now the ring makes it, the missed one
@@ -3538,7 +3566,8 @@ Estimate: 3 to 4 weeks.
 
 In rough evidence order, and only once real users ask:
 
-- The full-screen alarm, per-task opt-in, held here by D-038 rather than cut.
+- The full-screen alarm, per-task opt-in, held here by D-038 rather than cut. Being built on
+  `feature/alarm` since 2026-10-26, D-102.
   It has the strongest prior evidence of anything on this list, 202 reviews
   asking for an alarm rather than a notification, and it is still below the
   line for 1.0 because it is a schema change and a lock-screen surface threaded

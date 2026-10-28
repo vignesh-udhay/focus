@@ -2,6 +2,7 @@ package app.tellcat.core.notification
 
 import android.content.Context
 import android.os.Build
+import app.tellcat.core.domain.AlarmMode
 import app.tellcat.core.domain.CheckState
 import app.tellcat.core.domain.DeviceRestriction
 
@@ -32,6 +33,12 @@ interface ReminderHealthChecks {
      * can read the setting.
      */
     fun restriction(): DeviceRestriction?
+
+    /**
+     * Whether alarm-style reminders can ring as alarms. D-102. Defaulted, so a
+     * check that has no alarms to ask about reports nothing wrong.
+     */
+    fun alarmStyle(): CheckState = CheckState.Ok
 }
 
 /**
@@ -65,6 +72,13 @@ class AndroidReminderHealthChecks(
         if (alarms.canScheduleExact() && !refusedRecently()) CheckState.Ok else CheckState.Blocked
 
     override fun restriction(): DeviceRestriction? = restrictionFor(manufacturer)
+
+    // D-102: by the same answer the editor's line and the receiver use.
+    override fun alarmStyle(): CheckState = when (context.currentAlarmMode()) {
+        AlarmMode.PlainReminder, AlarmMode.NoExactAlarms -> CheckState.Blocked
+        AlarmMode.Banner -> CheckState.Warning
+        AlarmMode.FullScreen -> CheckState.Ok
+    }
 }
 
 /**

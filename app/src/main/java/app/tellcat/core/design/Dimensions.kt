@@ -147,4 +147,22 @@ object TellcatDimensions {
         TellcatSpacing.xxl + TellcatSpacing.xs +
             TellcatSpacing.md +
             TellcatSpacing.xs
+
+    /**
+     * The picture of the alarm screen on the full-screen priming sheet. D-102.
+     *
+     * Half a phone's proportions, at a size that leaves the sheet's sentence and
+     * its two buttons on screen at 200% font scale. The picture is the real
+     * [app.tellcat.ui.alarm.AlarmScreen] laid out at [AlarmPreviewSourceWidth] and
+     * scaled down to this, so it can never drift from the screen it shows.
+     */
+    val AlarmPreviewWidth = 144.dp
+    val AlarmPreviewHeight = 288.dp
+
+    /** The size the previewed alarm screen is laid out at before scaling. */
+    val AlarmPreviewSourceWidth = 360.dp
+    val AlarmPreviewSourceHeight = 720.dp
+
+    /** The hairline that separates the picture from the sheet it sits on. */
+    val AlarmPreviewBorder = 1.dp
 }

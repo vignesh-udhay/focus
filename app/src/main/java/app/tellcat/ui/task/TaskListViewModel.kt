@@ -1316,7 +1316,10 @@ class TaskListViewModel(
         dueDate: LocalDate?,
         estimatedDurationMinutes: Int?,
         recurrence: Recurrence?,
-        reminderAt: LocalDateTime?
+        reminderAt: LocalDateTime?,
+        // Required for the reason [reminderAt] is: a default would turn an
+        // alarm back into a notification on every edit to another field.
+        ringsLikeAlarm: Boolean
     ) {
         val trimmed = title.trim()
         if (trimmed.isEmpty()) return
@@ -1348,7 +1351,10 @@ class TaskListViewModel(
                     // And a new time ends any snooze. The user has just said
                     // when; a snooze from before that would ring in its place.
                     // D-078.
-                    snoozedUntil = if (reminderAt == task.reminderAt) task.snoozedUntil else null
+                    snoozedUntil = if (reminderAt == task.reminderAt) task.snoozedUntil else null,
+                    // D-102. No reminder, nothing to ring: a cleared reminder
+                    // does not keep an alarm waiting for the next one.
+                    ringsLikeAlarm = ringsLikeAlarm && reminderAt != null
                 )
             } ?: return@write
 
@@ -1515,12 +1521,13 @@ class TaskListViewModel(
         /**
          * How long a just-completed row keeps its place after the last tick.
          *
-         * Long enough for the checkbox's spring and the strikethrough drawing
-         * across the title to finish and be read, which together take about
-         * half of it, and short enough that the list has tidied itself before
-         * the user looks for the next thing. Not a wait: nothing is blocked
-         * while it runs, and the completion was written at the start of it.
+         * Long enough for the tick to be drawn before the row moves, and short
+         * enough that completing never feels like waiting. The check and the
+         * line run together on the fast spring and finish as the row leaves. D-104 cut it from 800ms, which read as
+         * slow on the owner's phone, and then to 150ms, which they asked for
+         * after trying 300ms. Not a wait: nothing is blocked while it
+         * runs, and the completion was written at the start of it.
          */
-        const val COMPLETION_SETTLE_MILLIS = 800L
+        const val COMPLETION_SETTLE_MILLIS = 150L
     }
 }

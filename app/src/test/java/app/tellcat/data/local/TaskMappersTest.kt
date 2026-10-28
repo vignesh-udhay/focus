@@ -35,6 +35,9 @@ class TaskMappersTest {
         reminderAt = reminderAt,
         reminderDeliveredAt = deliveredAt,
         snoozedUntil = snoozedUntil,
+        // True, so a mapping that dropped it would fail rather than fall back
+        // to the default. D-102.
+        ringsLikeAlarm = true,
         estimatedDurationMinutes = 45,
         recurrence = Recurrence(RecurrenceUnit.WEEKLY),
         spawnedFromId = "task-0",
@@ -62,7 +65,8 @@ class TaskMappersTest {
         occurrenceNumber = 1,
         spawnedFromId = "task-0",
         completedAt = completedAt,
-        deletedAt = deletedAt
+        deletedAt = deletedAt,
+        ringsLikeAlarm = true
     )
 
     // 1. Task -> Entity
@@ -99,6 +103,7 @@ class TaskMappersTest {
         assertEquals("task-0", entity.spawnedFromId)
         assertEquals(completedAt, entity.completedAt)
         assertEquals(deletedAt, entity.deletedAt)
+        assertTrue(entity.ringsLikeAlarm)
     }
 
     @Test
@@ -126,6 +131,7 @@ class TaskMappersTest {
         assertEquals("task-0", task.spawnedFromId)
         assertEquals(completedAt, task.completedAt)
         assertEquals(deletedAt, task.deletedAt)
+        assertTrue(task.ringsLikeAlarm)
     }
 
     @Test

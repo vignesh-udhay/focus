@@ -62,6 +62,21 @@ class ReminderRecoveryManifestTest {
         )
     }
 
+    /**
+     * D-103. Revoking the exact-alarm grant cancels the exact alarms and
+     * announces nothing, so this receiver, on its inexact alarm, is the only
+     * thing left to rebuild them.
+     */
+    @Test
+    fun `the backstop receiver is declared, and private`() {
+        val backstop = manifest.substringAfter(
+            """android:name=".core.notification.ReminderBackstopReceiver"""", ""
+        ).substringBefore("/>", "")
+
+        assertTrue("ReminderBackstopReceiver is missing from the manifest.", backstop.isNotEmpty())
+        assertTrue("""android:exported="false"""" in backstop)
+    }
+
     @Test
     fun `the boot permission is held`() {
         // BOOT_COMPLETED is not delivered without it, however the receiver is

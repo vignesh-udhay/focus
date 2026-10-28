@@ -270,6 +270,20 @@ class RecurrenceTest {
         assertNull(next.snoozedUntil)
     }
 
+    /** D-102 with D-098: a daily alarm stays an alarm, every day. */
+    @Test
+    fun `the next occurrence still rings like an alarm`() {
+        val alarm = chore.copy(
+            reminderAt = LocalDateTime.of(2026, 9, 2, 6, 30),
+            ringsLikeAlarm = true
+        )
+
+        val next = alarm.nextRecurringInstance(date("2026-09-02"), "next", createdAt)!!
+
+        assertTrue(next.ringsLikeAlarm)
+        assertEquals(LocalDateTime.of(2026, 9, 3, 6, 30), next.reminderAt)
+    }
+
     @Test
     fun `the next occurrence keeps the checklist with nothing ticked`() {
         val groceries = chore.copy(

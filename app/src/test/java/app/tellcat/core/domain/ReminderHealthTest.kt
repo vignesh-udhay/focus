@@ -49,13 +49,15 @@ class ReminderHealthTest {
         notifications: CheckState = CheckState.Ok,
         exactAlarms: CheckState = CheckState.Ok,
         restriction: DeviceRestriction? = null,
-        deliveries: List<ReminderDelivery> = emptyList()
+        deliveries: List<ReminderDelivery> = emptyList(),
+        alarmStyle: CheckState? = null
     ) = reminderHealth(
         notifications = notifications,
         exactAlarms = exactAlarms,
         restriction = restriction,
         deliveries = deliveries,
-        now = now
+        now = now,
+        alarmStyle = alarmStyle
     )
 
     // 1. Nothing wrong
@@ -539,5 +541,53 @@ class ReminderHealthTest {
         val missed = ReminderHealthState.Missed(delivery(lateBy = Duration.ofMinutes(20)))
 
         assertEquals(missed, missed.onToday(emptyList()))
+    }
+
+    // D-102: the alarm row, listed only while a reminder rings like an alarm
+
+    @Test
+    fun `no alarm-style reminder lists the three rows it always did`() {
+        assertEquals(
+            listOf(HealthCheck.Notifications, HealthCheck.ExactAlarms, HealthCheck.BackgroundWork),
+            health().checks.map { it.first }
+        )
+    }
+
+    @Test
+    fun `an alarm-style reminder adds its row last`() {
+        assertEquals(
+            HealthCheck.AlarmStyle to CheckState.Ok,
+            health(alarmStyle = CheckState.Ok).checks.last()
+        )
+        assertEquals(ReminderHealthState.Ready(verified = false), health(alarmStyle = CheckState.Ok).state)
+    }
+
+    @Test
+    fun `the Alarms channel off needs action`() {
+        assertEquals(
+            ReminderHealthState.ActionNeeded(HealthCheck.AlarmStyle),
+            health(alarmStyle = CheckState.Blocked).state
+        )
+    }
+
+    @Test
+    fun `no full screen is worth checking, because it still rings`() {
+        assertEquals(
+            ReminderHealthState.WorthChecking(HealthCheck.AlarmStyle),
+            health(alarmStyle = CheckState.Warning).state
+        )
+    }
+
+    /** An alarm that cannot ring as one still arrives; a blocked reminder does not. */
+    @Test
+    fun `a blocked reminder check outranks the alarm row`() {
+        assertEquals(
+            ReminderHealthState.ActionNeeded(HealthCheck.Notifications),
+            health(notifications = CheckState.Blocked, alarmStyle = CheckState.Blocked).state
+        )
+        assertEquals(
+            ReminderHealthState.ActionNeeded(HealthCheck.ExactAlarms),
+            health(exactAlarms = CheckState.Blocked, alarmStyle = CheckState.Blocked).state
+        )
     }
 }

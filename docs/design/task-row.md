@@ -291,11 +291,14 @@ toggle. The rest of the row does not.
 `SegmentedListItem` also has a toggleable overload that applies
 `Role.Checkbox` to the whole row. Do not use it here. It would turn the
 entire row into one toggle and erase the distinction between completing a
-task and opening it. Use the `onClick` overload and keep a `Checkbox` in
+task and opening it. Use the `onClick` overload and keep the check in
 `leadingContent`.
 
-Do not create a custom checkbox unless Material's component cannot provide
-the required behavior.
+**The check is round.** D-105. `RoundCheck` is Material's checkbox drawn as a
+circle 22dp across, with its 2dp outline, `CheckboxDefaults.colors()` roles,
+40dp state layer, 48dp target, `Role.Checkbox` and toggleable state, with a
+tick scaled to sit inside the circle. Checklist items in Task Details keep
+Material's square `Checkbox`. Do not create any other custom checkbox.
 
 ---
 

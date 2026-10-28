@@ -151,6 +151,7 @@ object TellcatBackupCodec {
         writer.name("reminderAt").nullableValue(task.reminderAt?.toString())
         writer.name("reminderDeliveredAt").nullableValue(task.reminderDeliveredAt?.toString())
         writer.name("snoozedUntil").nullableValue(task.snoozedUntil?.toString())
+        writer.name("ringsLikeAlarm").value(task.ringsLikeAlarm)
         writer.name("estimatedDurationMinutes").nullableValue(task.estimatedDurationMinutes)
         writer.name("recurrenceUnit").nullableValue(task.recurrence?.name)
         writer.name("recurrenceInterval").nullableValue(task.recurrenceInterval)
@@ -182,6 +183,9 @@ object TellcatBackupCodec {
         var reminderDeliveredAt: Instant? = null
         // Absent from backups written before D-078, which reads as no snooze.
         var snoozedUntil: LocalDateTime? = null
+        // Absent from backups written before D-102, which reads as a plain
+        // reminder. An older app skips it, so the format version stays.
+        var ringsLikeAlarm = false
         var estimatedDurationMinutes: Int? = null
         var recurrence: RecurrenceUnit? = null
         var recurrenceInterval: Int? = null
@@ -208,6 +212,7 @@ object TellcatBackupCodec {
                     reader.nextNullableString()?.let(Instant::parse)
                 "snoozedUntil" -> snoozedUntil =
                     reader.nextNullableString()?.let(LocalDateTime::parse)
+                "ringsLikeAlarm" -> ringsLikeAlarm = reader.nextBoolean()
                 "estimatedDurationMinutes" -> estimatedDurationMinutes = reader.nextNullableInt()
                 "recurrenceUnit" -> recurrence = reader.nextNullableString()?.let(RecurrenceUnit::valueOf)
                 "recurrenceInterval" -> recurrenceInterval = reader.nextNullableInt()
@@ -256,7 +261,8 @@ object TellcatBackupCodec {
             occurrenceNumber = occurrence,
             spawnedFromId = spawnedFromId,
             completedAt = completedAt,
-            deletedAt = deletedAt
+            deletedAt = deletedAt,
+            ringsLikeAlarm = ringsLikeAlarm
         )
     }
 

@@ -256,6 +256,27 @@ occurrence before it is still open, every edit and every delete goes through
 a third, `OccurrenceEdits`, which lets an untouched successor follow in the
 same transaction.
 
+**Revoking the exact-alarm grant (D-103)** cancels the exact alarms and kills
+the app, and nothing is broadcast. So every pass also keeps one inexact
+backstop alarm a minute after the soonest future reminder, delivered to
+`ReminderBackstopReceiver`, which reconciles. It survives the revoke because
+it is inexact, and normally the next pass moves it on before it fires.
+
+**A reminder that rings like an alarm (D-102)** takes the same exact alarm and
+the same `ReminderReceiver`, which then starts `AlarmRingService` instead of
+posting, but only while the exact-alarm grant is held, because Android lets an
+inexact alarm start no foreground service. The service is a `systemExempted`
+foreground service, the type Android allows an app holding that grant: it plays on the
+alarm stream and vibrates until Stop, Snooze or ten minutes, and its
+notification, on the separate Alarms channel, carries those two answers and the
+full-screen intent to `AlarmActivity`. The activity sits beside `MainActivity`
+because `core/notification` opens it; what it draws, `AlarmScreen`, is in
+`ui/alarm`. The rules (how it rings, when it stops, which taps are stale) are
+pure functions in `core/domain/Alarm.kt`. The service holds which alarm it is
+ringing and nothing else: every reconciliation calls
+`AlarmRingService.silenceIfSettled`, so storage stays the one state. Anything
+that cannot ring as an alarm, at any step, is posted as a normal reminder.
+
 Delivery constraints and standards for this subsystem are in `AGENTS.md`
 under "Reminder delivery". The reasoning for why reminders carry this weight
 is in `docs/decisions.md`, D-005.

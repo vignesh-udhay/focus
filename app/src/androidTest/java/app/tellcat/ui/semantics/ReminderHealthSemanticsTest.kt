@@ -1,6 +1,11 @@
 package app.tellcat.ui.semantics
 
 import androidx.compose.ui.test.assertIsDisplayed
+import kotlinx.coroutines.flow.flowOf
+import androidx.compose.ui.test.waitUntilExactlyOneExists
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -57,19 +62,26 @@ class ReminderHealthSemanticsTest {
     private class FixedChecks(
         private val notifications: CheckState,
         private val exactAlarms: CheckState = CheckState.Ok,
-        private val restriction: DeviceRestriction? = null
+        private val restriction: DeviceRestriction? = null,
+        private val alarmStyle: CheckState = CheckState.Ok
     ) : ReminderHealthChecks {
         override fun notifications() = notifications
         override fun exactAlarms() = exactAlarms
         override fun restriction() = restriction
+        override fun alarmStyle() = alarmStyle
     }
 
-    private fun show(checks: ReminderHealthChecks, fontScale: Float = FontScale100) {
+    private fun show(
+        checks: ReminderHealthChecks,
+        fontScale: Float = FontScale100,
+        hasAlarms: Boolean = false
+    ) {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val viewModel = ReminderHealthViewModel(
             deliveries = ReminderDeliveryRepository(EmptyDeliveryDao()),
             checks = checks,
-            acknowledgements = ReminderHealthAcknowledgements(context)
+            acknowledgements = ReminderHealthAcknowledgements(context),
+            alarmStyleReminders = flowOf(hasAlarms)
         )
 
         rule.setTellcatContent(fontScale) {
@@ -110,5 +122,32 @@ class ReminderHealthSemanticsTest {
         const val NOT_ALLOWED = "Not allowed"
         const val BLOCKED_MARK = "!"
         const val WARNING_MARK = "?"
+        const val ALARM_ROW = "Alarm-style reminders"
+        const val ALARM_BANNER = "Ring as a banner until answered"
+        const val TIMEOUT_MILLIS = 5_000L
     }
+
+    // --- D-102: the alarm row ------------------------------------------------
+
+    @Test
+    fun theAlarmRowIsAbsentWithoutAnAlarmStyleReminder() {
+        show(FixedChecks(notifications = CheckState.Ok), hasAlarms = false)
+
+        rule.waitForIdle()
+        rule.onAllNodesWithText(ALARM_ROW).assertCountEquals(0)
+    }
+
+    @OptIn(ExperimentalTestApi::class)
+    private fun assertTheAlarmRowSaysHowTheyRing(fontScale: Float) {
+        show(FixedChecks(notifications = CheckState.Ok, alarmStyle = CheckState.Warning), fontScale, hasAlarms = true)
+
+        rule.waitUntilExactlyOneExists(hasText(ALARM_ROW), TIMEOUT_MILLIS)
+        rule.onNodeWithText(ALARM_BANNER).assertExists()
+    }
+
+    @Test
+    fun theAlarmRowSaysHowTheyRing_at100() = assertTheAlarmRowSaysHowTheyRing(FontScale100)
+
+    @Test
+    fun theAlarmRowSaysHowTheyRing_at200() = assertTheAlarmRowSaysHowTheyRing(FontScale200)
 }

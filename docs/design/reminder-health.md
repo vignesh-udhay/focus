@@ -113,13 +113,18 @@ A room: back arrow, no navigation bar, reached from the app-bar overflow.
     Room header
     Headline card          the state, its eyebrow, and one sentence
     Three check rows       one segmented group, 2dp gap
-    Primary action         Test reminder, or Open <the right settings>
+    Primary action         Test reminder, unless a check is refused
     Last checked           Ready only
 
 The check rows are a segmented group like every other list in the app, First,
 Middle and Last, with their radii bound to `Segmented/Radius outer` and
-`inner`. They are not interactive and carry no pressed or focused state: they
-report, they do not navigate.
+`inner`. **Each row opens its own settings** (D-106): notification settings,
+Alarms & reminders, the manufacturer's sleep screen or App info, or whatever an
+alarm-style reminder is missing. A chevron at the end says so, as on the Plan
+rows, and TalkBack hears where the tap goes. The rows used to only report, with
+one button below opening the first failing check's settings; fixing several
+meant pressing a button whose name changed each time, and the owner tapped the
+rows instead.
 
 **The status glyph has no container.** It sits directly in a 40dp leading slot,
 which keeps the tick, the question mark and the exclamation on one axis without

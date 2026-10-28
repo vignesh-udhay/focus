@@ -1,6 +1,15 @@
 package app.tellcat.ui.semantics
 
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.hasAnySibling
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.isToggleable
+import androidx.test.platform.app.InstrumentationRegistry
+import app.tellcat.core.domain.AlarmMode
+import app.tellcat.core.notification.currentAlarmMode
+import org.junit.Assume.assumeTrue
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
@@ -61,7 +70,7 @@ class ReminderSheetSemanticsTest {
                 reminderAt = reminderAt,
                 defaultDay = defaultDay,
                 today = TODAY,
-                onSet = { at -> saved += at },
+                onSet = { at, _ -> saved += at },
                 onClear = {},
                 onDismiss = {},
                 now = NOW
@@ -70,6 +79,78 @@ class ReminderSheetSemanticsTest {
 
         rule.waitUntilExactlyOneExists(hasText(SAVE), TIMEOUT_MILLIS)
         return saved
+    }
+
+    /** The sheet as Task Details opens it with the alarm switch, and what Save writes. D-102. */
+    private fun setAlarmSheet(
+        reminderAt: LocalDateTime? = null,
+        ringsLikeAlarm: Boolean = false
+    ): MutableList<Pair<LocalDateTime, Boolean>> {
+        val saved = mutableListOf<Pair<LocalDateTime, Boolean>>()
+
+        rule.setTellcatContent(FontScale100) {
+            ReminderSheet(
+                reminderAt = reminderAt,
+                defaultDay = TODAY,
+                today = TODAY,
+                onSet = { at, alarm -> saved += at to alarm },
+                onClear = {},
+                onDismiss = {},
+                now = NOW,
+                ringsLikeAlarm = ringsLikeAlarm
+            )
+        }
+
+        rule.waitUntilExactlyOneExists(hasText(SAVE), TIMEOUT_MILLIS)
+        return saved
+    }
+
+    // --- D-102: ring like an alarm ---------------------------------------------
+
+    @Test
+    fun aNewReminderDoesNotRingLikeAnAlarm() {
+        val saved = setAlarmSheet()
+
+        rule.onNode(isToggleable() and hasText(ALARM)).assertIsOff()
+        rule.onNodeWithText(SAVE).performClick()
+
+        assertEquals(listOf(TODAY.atTime(19, 0) to false), saved)
+    }
+
+    /** The editor says how it will ring before the user relies on it. */
+    @Test
+    fun anAlarmReminderSaysHowItWillRingAndSavesAsOne() {
+        val saved = setAlarmSheet(reminderAt = TODAY.atTime(21, 0), ringsLikeAlarm = true)
+
+        rule.onNode(isToggleable() and hasText(ALARM)).assertIsOn()
+        val promises = ALARM_PROMISES.sumOf { promise ->
+            rule.onAllNodesWithText(promise).fetchSemanticsNodes().size
+        }
+        assertEquals("The editor does not say how the alarm will ring", 1, promises)
+
+        rule.onNodeWithText(SAVE).performClick()
+        assertEquals(listOf(TODAY.atTime(21, 0) to true), saved)
+    }
+
+    /**
+     * R-013. Only meaningful where full screen is not yet allowed, which is a
+     * fresh install on Android 14 and later; elsewhere there is nothing to ask.
+     */
+    @Test
+    fun turningItOnWithoutFullScreenAsksWithAPictureOfTheAlarm() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        assumeTrue(context.currentAlarmMode() == AlarmMode.Banner)
+        setAlarmSheet()
+
+        rule.onNode(isToggleable() and hasText(ALARM)).performClick()
+
+        rule.waitUntilExactlyOneExists(hasText(PRIMING_TITLE), TIMEOUT_MILLIS)
+        rule.onNode(hasContentDescription(PRIMING_PICTURE)).assertExists()
+        // The sheet's own button, beside the picture. The editor under it shows
+        // an "Allow full screen" of its own in this mode, so the label alone
+        // matches two.
+        rule.onNode(hasText(PRIMING_ALLOW) and hasAnySibling(hasContentDescription(PRIMING_PICTURE)))
+            .assertIsDisplayed()
     }
 
     // --- the two rows, which are the whole sheet ------------------------------
@@ -224,6 +305,16 @@ class ReminderSheetSemanticsTest {
         const val DAY = "Day"
         const val TIME = "Time"
         const val SAVE = "Save reminder"
+        const val ALARM = "Ring like an alarm"
+        val ALARM_PROMISES = listOf(
+            "Rings full screen until you stop or snooze it, even on Silent.",
+            "Rings as a banner until you answer. Full screen needs permission.",
+            "Alarms are off for Tellcat, so this arrives as a normal reminder.",
+            "Alarms & reminders is off for Tellcat, so this arrives as a normal reminder, and may be late."
+        )
+        const val PRIMING_TITLE = "Ring full screen"
+        const val PRIMING_ALLOW = "Allow full screen"
+        const val PRIMING_PICTURE = "The alarm screen, with the reminder time, the task, Snooze 10 min and Stop"
         const val CLEAR = "Clear"
         const val PAST = "That moment has already passed"
 

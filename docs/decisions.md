@@ -5735,6 +5735,10 @@ notification or the widget does not settle: nothing in the app is on screen.
 worked, which would show as double taps reopening tasks. The answer then is a
 shorter hold, not none.
 
+**Superseded in part by D-104.** The hold is 150ms, and the line runs on
+`completion` with the check. The reasoning above for holding at all, timing from
+the write and sharing one countdown still stands.
+
 ---
 
 ## D-087. Task Details shows the fields a task has, and offers the rest as chips
@@ -6294,3 +6298,322 @@ reminders under "Buy 6 eggs" would teach users to ignore the line.
 line, which would argue for a one-tap "6 am / 6 pm" choice on the sheet. That
 is a second control, and a decision of its own.
 
+## D-102. A reminder can ring like an alarm
+
+**Decision.** Each reminder gets a "Ring like an alarm" switch in its editor,
+off by default. When it is on, the reminder rings on the alarm stream until it
+is answered: full screen when the phone is locked or the screen is off and
+Android allows full-screen alerts, otherwise a heads-up on a separate Alarms
+channel. The alarm answers with Stop and Snooze 10 min, never Done (R-020). It
+reverses D-038's deferral, which named its own trigger: 1.0 shipped and the
+reminder pipeline has been observed working. Per task, as D-038 required, so the
+alarm-grade path is a choice the user made rather than a claim that every task
+reminder is an alarm. Designed in the redesign as R-002, R-013, R-014, R-020 and
+IA F2b and F5, adapted here to 1.0's design system and colours (D-091).
+
+**Step 0, the platform rules, checked on 2026-10-26.**
+
+- **`USE_FULL_SCREEN_INTENT`.** Play's "Permissions and APIs that Access
+  Sensitive Information" policy pre-grants it on Android 14 and later only when
+  the app's core functionality is setting an alarm or receiving phone or video
+  calls, and asks for a declaration in Play Console. Tellcat's core function is
+  task reminders; an alarm is one way a reminder can ring. Claiming the
+  pre-grant would be the contested declaration D-038 warned about, now on an app
+  with testers to lose. So Tellcat declares the permission, answers the Play
+  Console declaration honestly (not an alarm or calling app), and asks the user
+  through `ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT`. Below Android 14 the
+  permission is granted at install.
+- **`USE_EXACT_ALARM`.** The same policy limits it to apps whose core
+  functionality is an alarm or timer, or a calendar that shows event
+  notifications, and other apps are pointed at `SCHEDULE_EXACT_ALARM`. Tellcat is
+  neither, so D-078 stands: Tellcat keeps `SCHEDULE_EXACT_ALARM` and its
+  explainer. Google Tasks and Todoist declaring `USE_EXACT_ALARM` (competitor
+  study, item 7) is their risk, not evidence of the policy. Nothing about exact
+  alarms changes here.
+
+**What the competitor study found, and the rule each finding became.** Six
+apps ring; between them they failed every way an alarm can
+(`research/competitors/ANALYSIS.md`, item 3):
+
+1. **The alarm stream, whatever the ringer, and always vibrate.** To Do Reminder
+   was silent on Silent and Tasks.org played on the notification stream. Tellcat
+   plays with `USAGE_ALARM` and vibrates with alarm attributes.
+2. **Back, Home, a tap outside, the shade and the power button do not stop it.**
+   To Do Reminder ended on Home with no trace, Tasks.org went quiet when the
+   shade opened and Todoist on one Back. So the sound is not the notification's:
+   Android clears an insistent notification's sound when the shade is opened,
+   which is Tasks.org's failure. A foreground service, `AlarmRingService`, plays
+   and vibrates, and its notification carries Stop and Snooze. The full screen
+   ignores Back.
+3. **Stop and Snooze only, and not by accident.** Todoist's biggest button was
+   Complete and To Do Reminder's Dismiss completed. On the full screen both are
+   press-and-hold controls, so a half-asleep tap does nothing.
+4. **The task's time, not the clock.** Todoist showed 7:10 for a 7:08 task. The
+   alarm shows the time the reminder was set for.
+5. **Other reminders are never touched.** Todoist's dismiss wiped unrelated
+   reminders from the shade, twice. The alarm only ever removes its own
+   notification.
+6. **On the minute.** To Do Reminder was up to 59 seconds late. The alarm uses
+   the existing exact path, which fires on the minute (D-009, D-078).
+7. **After Stop a normal notification remains.** To Do Reminder left nothing.
+   Stop re-posts the reminder quietly with Done and Snooze, and the task stays
+   as reminded.
+
+**One state, two paths (R-002).** Storage is the only state, as everywhere in
+the reminder code. Snooze from the alarm or the notification writes the same
+`snoozedUntil`; Done completes the task; every reconciliation then stops an
+alarm whose task is completed, deleted, or no longer due at the moment it is
+ringing for (snoozed or moved). So Done from the notification stops a ringing
+alarm, a snooze from either path moves both, and deleting or completing the
+task while it rings stops it, through D-099's pass. Every action carries the
+moment its notification was for, and one that no longer matches the task is
+ignored and its stale notification removed, so an old tap cannot snooze a new
+time or complete a task twice.
+
+**Choices this entry makes.**
+
+- **How long it rings unanswered: ten minutes**, then it stops and leaves the
+  normal notification, as Stop does. Ten is Android's own Clock default for
+  "Silence after", long enough to wake someone and short enough that a phone
+  left at home does not ring for an hour.
+- **Not `setAlarmClock`.** Alarm-style reminders use the same exact path as any
+  reminder. `setAlarmClock` puts the reminder in the lock screen's "Next alarm"
+  slot, where it can hide the user's wake-up alarm, and the exact path already
+  fires on the minute and lets the service start from the background. D-042's
+  OnePlus exception, which uses `setAlarmClock` for every reminder on OnePlus
+  because OxygenOS demotes the exact call, is left as measured; that is a
+  disagreement with the brief, which said ordinary reminders must never use it.
+- **Without "Alarms & reminders" it arrives as a normal reminder, possibly
+  late.** Found on 2026-10-26 by tracing a phone that refused the grant. The
+  reminder's alarm is then inexact (`setAndAllowWhileIdle`), and from Android
+  12 an app may start a foreground service from the background for an exact
+  alarm, not an inexact one, so starting the ringing service throws
+  `ForegroundServiceStartNotAllowedException`. The first build caught that and
+  posted the normal reminder, so nothing was lost, but the editor's line and
+  the health row still promised full screen. Now the exact grant is the first
+  thing `alarmMode` asks. Without it the receiver does not try to ring, the
+  editor says the reminder "arrives as a normal reminder, and may be late" and
+  offers "Allow Alarms & reminders", and the health row is Action needed,
+  under the exact-alarm row that already leads. An alarm that might ring at
+  the wrong minute is worse than a reminder that says it may be late.
+- **The foreground service is `systemExempted`** from Android 14, the first
+  version with foreground-service types to check; below it the service starts
+  with no type. Changed on 2026-10-26 from `mediaPlayback`. Android allows
+  `systemExempted` to "Apps holding `SCHEDULE_EXACT_ALARM` or
+  `USE_EXACT_ALARM` permission" (Android's foreground service types page), and
+  the rule above makes that grant a condition of ringing, so it always holds
+  when the service starts. Play's Device and Network Abuse policy exempts
+  `systemExempted` and `shortService` from its foreground-service criteria.
+  `mediaPlayback` was chosen first because it had no prerequisite, and lost its
+  reason once ringing needed the grant. Its Play declaration also asks that
+  playback be started by the user, which an alarm is not. `specialUse` would be
+  a free-text case judged by a reviewer, for a use Android already names. If
+  Android still refuses to start the service, the reminder arrives as a normal
+  one rather than not at all.
+- **The Alarms channel makes no sound of its own.** The service owns the sound
+  and the vibration; a channel sound would play twice. If the user switches the
+  Alarms channel off, alarm-style reminders arrive as normal reminders: a
+  foreground service whose notification is hidden would ring with nothing on
+  screen to stop it.
+- **Before the first unlock after a restart** an alarm-style reminder still
+  rings as an alarm, from the copy D-079 keeps. Stop works; Snooze asks for the
+  unlock first, because it has to write to the database.
+- **Asking for full screen (R-013).** Turning the switch on without the
+  permission shows a sheet with a picture of the alarm screen and "Allow full
+  screen", which opens the exact settings toggle. The switch stays on either
+  way; without the grant the editor's line says it will ring as a banner until
+  answered.
+- **The editor says how it will ring**, in one line under the switch, before
+  the user relies on it: full screen, as a banner, or as a normal reminder when
+  the Alarms channel or the exact-alarm grant is off.
+- **Reminder health gains "Alarm-style reminders"**, listed only while at least
+  one task rings like an alarm: Action needed when the Alarms channel is off or
+  exact alarms are refused, Worth checking when full screen is not allowed.
+- **Rows** show an alarm glyph in front of the reminder time, and TalkBack reads
+  it as "Alarm 5:30 PM" where a plain reminder reads "Reminder 5:30 PM". Task
+  Details' Reminder row reads "Today, 5:30 PM · Alarm". The switch keeps "Ring
+  like an alarm": it names a choice, and the short word names the result.
+- **Stored, backed up and carried.** Schema 13 adds `ringsLikeAlarm`, false for
+  every existing row. The backup gains the field; an older file without it
+  reads as false, and an older app skips it, so the format version stays 1.
+  The next occurrence of a repeating task copies it (D-098), and the locked copy
+  (D-079) carries it, so a restart re-arms alarm-style reminders as alarms.
+
+**What it costs.** Two Play Console declarations, both the owner's to file:
+`USE_FULL_SCREEN_INTENT` (answered as not an alarm or calling app) and the
+`systemExempted` foreground service. A second delivery path through the one
+subsystem that cannot break, which D-038 named as the risk; it is opt-in per
+task and falls back to the normal reminder at every point where it cannot ring.
+
+**What would reverse this.** Play refusing either declaration, in which case
+the switch goes and the reminder rings normally. Or testers turning it on and
+being woken by tasks they meant as quiet, which would argue for a stronger
+warning on the switch, not for removing it.
+
+
+## D-103. A backstop survives a revoked exact-alarm grant
+
+**Decision.** While reminders are scheduled exactly, one more alarm stands a
+minute after the soonest future reminder: inexact, set with
+`setAndAllowWhileIdle`, delivered to `ReminderBackstopReceiver`, which runs the
+reconciliation. Normally it never fires. The reminder's own alarm comes first,
+and the pass after it moves the backstop on to the next one.
+
+**What changed the answer.** Checking D-102 on the owner's phone on 2026-10-26,
+turning "Alarms & reminders" off closed the app. AOSP's `AlarmManagerService`
+(Android 14, `removeExactAlarmsOnPermissionRevoked`) shows why: on revoke it
+removes every alarm of the app with no window, which is every exact and
+alarm-clock reminder, then kills the app. The permission broadcast is sent
+only on a grant. So since 1.0 a user who turned the grant off had no reminders
+scheduled at all, with nothing to tell the app, until something next started
+it. The receiver for a revoke cannot exist, so the fix has to be something
+already in place before it happens.
+
+**Why an inexact alarm.** The same code removes only alarms whose window is
+zero, so an inexact one survives. Android caps a one-off inexact alarm's
+deferral at an hour past its time, and `setAndAllowWhileIdle` fires in Doze. So
+after a revoke the next reminder arrives at most about an hour late, and the
+pass it starts sets every other reminder again, inexactly, which is all
+Android allows without the grant. The editor and Reminder health already say
+reminders may be late then (D-078, D-102).
+
+**Choices this entry makes.**
+
+- **A minute after, not at, the reminder's moment.** At the same moment it
+  could arrive alongside the exact alarm and reconcile while the reminder is
+  being told. A minute is short next to the hour Android may add.
+- **Future reminders only.** A missed reminder is set for now, and one that
+  cannot be shown (notifications off) stays missed. A backstop aimed at it
+  would wake the phone every minute.
+- **Only while the grant is held.** Without it every reminder alarm is inexact
+  already and survives a revoke on its own.
+- **Not WorkManager or a periodic job.** `AGENTS.md` keeps WorkManager away
+  from reminder times, and a job every fifteen minutes would wake the app all
+  day to find nothing wrong. This costs one alarm, which fires only when
+  something already went wrong.
+
+**What it costs.** One alarm slot of Android's 500, inside the room
+`MaxScheduledReminders` leaves. When an OEM delays an exact alarm by more than
+a minute, the backstop may come first. Its pass then sets the late reminder
+for now, which is no worse.
+
+**What would reverse this.** An Android version that broadcasts the revoke, or
+one that removes inexact alarms too, which would need a different survivor.
+
+## D-104. Completing a task is quick
+
+**Decision.** The completed row's hold drops from 800ms to 150ms after the
+write, and the strikethrough runs on `completion`, the check's own spring,
+instead of `reveal`. The tick and the line start together, and the row is on
+its way to Completed within about a quarter of a second of the tap instead of
+over a second. The row starts moving while the spring is still settling, so the
+tick is seen as the row goes rather than before it.
+
+**What changed the answer.** The owner, using it on their phone on 2026-10-26:
+the check appeared, then the line drew, then a second later the task moved, and
+it did not feel nice. A first cut to 300ms was still a little slow to them, so
+the hold is 150ms. D-086 named this case: a hold that reads as the app being
+slow is answered by a shorter hold, not none. With no hold, the row leaves before
+the tick is seen, which is the failure D-086 fixed.
+
+**What stays from D-086.** The write lands at once, the countdown starts at the
+write, and one shared countdown means a list ticked down quickly does not move
+under the thumb.
+
+**Why the line can share the spring now.** D-086 moved it to `reveal` because on
+the fast spring it seemed to appear rather than travel, measured on an emulator
+under a screen recorder. The owner wanted speed over that distinction. If the
+line now reads as simply appearing, that is accepted.
+
+**What would reverse this.** Ticks that are not seen to land before the row
+moves, which would show as double taps reopening tasks. The answer then is a
+hold between the two, not a return to 800ms.
+
+## D-105. A task's check is round
+
+**Decision.** A task row completes with a round check, `RoundCheck`, instead of
+Material's square `Checkbox`. It is Material's checkbox in every way but shape
+and size:
+a 22dp circle where Material's box is 18dp, because a circle that size read
+small on the owner's phone, and otherwise the 2dp outline,
+`CheckboxDefaults.colors()` roles, 40dp state layer,
+48dp target, `Role.Checkbox` and toggleable state, so TalkBack reads it as it
+read the square one. The tick is Material's check mark scaled to 72% about the
+centre, with round ends, so it sits inside the circle. Checklist items in Task
+Details keep the square `Checkbox`.
+
+**What changed the answer.** `task-row.md` said not to create a custom checkbox
+unless Material's could not do the job. The owner saw a round check on their
+phone on 2026-10-26, in a trial that also made the lists flat. They turned the
+flat lists down and asked for the round check, with a smaller tick, on the
+segmented rows. Material's `Checkbox` has no round shape, so a custom one is the
+only way to have it.
+
+**Why checklist items stay square.** A checklist item is a line inside a task,
+not a task. Two shapes keep the two from reading as the same kind of thing.
+They are also drawn smaller, Material's checkbox scaled to a 16dp box, at the
+owner's request, so the task's check leads and the items follow. Only the
+drawing is scaled: a box around it takes the tap at Material's target, with the
+checkbox role and the item's name. The first build scaled the whole checkbox,
+which shrank its touch target to 42.7dp; the semantics test caught it.
+
+**What it costs.** A component of Tellcat's own where Material's used to do. It
+takes Material's measurements and colour roles rather than its own, so a
+Material update to the checkbox's colours still reaches it, but a change to its
+drawing or animation does not.
+
+**What would reverse this.** The round check being taken for a radio button,
+which would show as people expecting one task per list to be ticked.
+
+## D-106. Each Reminder health row opens its own settings
+
+**Decision.** Tapping a check row on Reminder health opens that check's
+settings: notification settings, Alarms & reminders, the manufacturer's sleep
+screen or App info, and for alarm-style reminders whatever their mode says is
+missing (the exact grant, full screen, or the Alarms channel). Each row ends in
+a chevron, as the Plan rows do, and carries a click label naming where it goes.
+The button below the rows is only "Test reminder in 30 seconds", hidden while a
+check is refused (`Blocked`) and shown under a `Warning`.
+
+**What changed the answer.** `reminder-health.md` had the rows report and not
+navigate, with one primary action opening the first failing check, so the
+headline and the button always named the same problem. On the owner's phone on
+2026-10-26 that read as confusing: with more than one thing to fix, the button
+worked down the list top to bottom, changing its name each time, while the
+owner tapped the rows themselves and nothing happened.
+
+**What stays.** The headline still leads with the most certain, most severe
+problem (D-021), and its row is the red one, so the screen still says what to
+do first. It just no longer makes the user do things in its order.
+
+**Why the test hides only for a refusal.** A test while a permission is refused
+would only show the refusal again. A `Warning` is different: it is the
+manufacturer guess D-021 describes, on for good on a OnePlus or a Samsung, and
+a test is the one way to find out whether it bites. The first build hid the
+test under a warning too, and on the owner's OnePlus it vanished entirely.
+
+**What would reverse this.** Users opening settings for a check that is fine and
+changing something they should not. Then rows that are `Ok` would stop being
+tappable.
+
+## D-107. The exact-alarm ask is a bottom sheet, like the full-screen one
+
+**Decision.** "Allow precise reminders" is a bottom sheet over the reminder
+just saved, laid out like the full-screen alarm's ask (R-013): the title, one
+line ("So reminders arrive on the minute, even when Tellcat is closed."),
+"Open Android settings" filled, "Not now" a text button, and a one-line footnote
+saying Android has no popup for this one. Swipe, scrim and Back answer Not now.
+
+**What changed the answer.** On 2026-10-26 the owner found the screen looked
+off beside Settings, Reminder health and Backup & restore, did not want bullet
+points, and asked why one permission ask was a sheet and the other a whole
+screen. They grew up apart: this one was drawn as a page on the Clean Slate
+board for 1.0, with an 88dp icon tile, a `headlineLargeEmphasized` title and a
+"Why this matters" card of three bullets; the alarm's came later as a sheet.
+Both are the same moment, a permission asked in context that can be declined,
+so they now have one shape. A first pass that kept the page with Reminder
+health's headline card and a paragraph was still too wordy to scan.
+
+**What would reverse this.** People declining more often once the reasons are
+one line, which would show as more reminders set without the grant. Then the
+line changes, not the shape.

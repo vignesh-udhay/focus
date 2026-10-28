@@ -66,6 +66,7 @@ internal fun TaskListRow(
         colors = colors,
         metadata = metadata.segments,
         metadataSpoken = metadata.spoken,
+        alarmSegment = metadata.alarmAt,
         // **The estimate sits at the end of the row, not in the metadata line.**
         // Date and repeat both answer *when*; a duration answers *how much*, and
         // folding a number into a comma-list of words means reading a sentence
@@ -173,13 +174,26 @@ private fun taskMetadata(
             )
         }
     }
-    val reminderSpoken = reminder?.let { stringResource(R.string.task_row_reminder_spoken, it) }
     val overdue = task.isPastScheduled(today)
 
-    if (!overdue && reminder != null) {
-        segments += reminder
+    // **An alarm glyph in front of the time, and "Alarm" for TalkBack in its
+    // place.** D-102. Only beside a reminder still to come, which is the one
+    // that will ring.
+    val ringsLikeAlarm = task.ringsLikeAlarm && reminder != null
+    val reminderSpoken = reminder?.let {
+        stringResource(
+            if (ringsLikeAlarm) R.string.task_row_alarm_spoken else R.string.task_row_reminder_spoken,
+            it
+        )
+    }
+    var alarmAt: Int? = null
+    fun addReminder() {
+        alarmAt = if (ringsLikeAlarm) segments.size else null
+        segments += reminder!!
         spoken += reminderSpoken!!
     }
+
+    if (!overdue && reminder != null) addReminder()
 
     // Omitted where a section heading already names the day. Upcoming groups by
     // date and Today by band, so repeating it on every row would say the same
@@ -192,10 +206,7 @@ private fun taskMetadata(
         }
     }
 
-    if (overdue && reminder != null) {
-        segments += reminder
-        spoken += reminderSpoken!!
-    }
+    if (overdue && reminder != null) addReminder()
 
     // **After the scheduled date, because it answers the next question.** The
     // line reads when the task will announce itself, then when it is planned,
@@ -241,9 +252,12 @@ private fun taskMetadata(
         }
     }
 
-    return RowMetadata(segments = segments, spoken = spoken.joinToString(", "))
+    return RowMetadata(segments = segments, spoken = spoken.joinToString(", "), alarmAt = alarmAt)
 }
 
-/** The row's second line as drawn, and as TalkBack should read it. */
-private data class RowMetadata(val segments: List<String>, val spoken: String)
+/**
+ * The row's second line as drawn, and as TalkBack should read it, and which
+ * segment an alarm glyph leads, if any.
+ */
+private data class RowMetadata(val segments: List<String>, val spoken: String, val alarmAt: Int? = null)
 

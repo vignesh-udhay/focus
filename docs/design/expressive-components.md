@@ -223,7 +223,8 @@ is noise, not delight.
 ## Motion
 
 [CD] Title colour uses `stateColor`. The checkbox uses `completion`, and the
-strikethrough draws across the title on `reveal` as it does, D-086. The
+strikethrough draws across the title on the same `completion` spring as it does,
+D-086 and D-104. The
 strikethrough is drawn rather than set as a text decoration so that it can
 travel; it sits where Skia puts a default strikethrough, at the same weight, so a
 completed row looks as it always did once the line has arrived. Rows entering, leaving and moving use `listChange`. No other
@@ -294,10 +295,14 @@ one more way to express one decision.
 
 # Checkbox
 
-[IMPL] Material `Checkbox`, unchanged.
+[IMPL] On a task row, `RoundCheck` (D-105): Material's checkbox drawn as a
+circle, with Material's size, colour roles, state layer, target and semantics,
+and a tick scaled to the circle. Everywhere else, including checklist items,
+Material `Checkbox`, unchanged, except that a checklist item's is drawn at a
+16dp box (scaled, so its target and semantics are Material's).
 
-[CD] Its state change is the strongest expressive moment in the app and uses
-the `completion` token. This is the only component with that privilege.
+[CD] A task's state change is the strongest expressive moment in the app and
+uses the `completion` token. This is the only component with that privilege.
 
 ---
 
@@ -842,6 +847,38 @@ defensible. An example costs nothing and adds no second mechanism.
 and not everyone sees it, so the supporting line carries the same fact in text.
 A rewrite the user cannot see is one they cannot correct. See
 `date-parsing.md`.
+
+## Ring like an alarm
+
+D-102. Three surfaces, all in 1.0's colours (D-091), none of the redesign's
+palette, fonts or cat poses.
+
+**The switch, in the reminder sheet.** "Ring like an alarm" under Day and Time,
+off by default, the whole row the switch (role Switch). Under it, while on, one
+line saying how this reminder will actually ring on this phone, read again each
+time the sheet returns to the front: full screen, a banner until answered, or a
+normal reminder when the Alarms channel is off. An outlined "Allow full screen"
+or "Open alarm settings" follows the two lines that need one. Saved with the
+reminder by Save, like the day and the time. Task Details' Reminder row then
+reads "Today, 5:30 PM · Alarm".
+
+**The priming sheet (R-013).** Opened by turning the switch on without the
+full-screen grant. A picture of the alarm screen, which is the real
+`AlarmScreen` laid out at phone size and scaled down
+(`TellcatDimensions.AlarmPreview*`), one sentence, a filled "Allow full screen"
+that opens the exact settings toggle, and a text "Not now". The switch
+stays on either way.
+
+**The alarm screen.** Always dark. "Tellcat alarm", the reminder's own time in
+`displayLarge` (never the clock's), its day, the title in `headlineMedium`, the
+notes, and two full-width pill controls: Snooze 10 min in `primary` and Stop in
+`secondaryContainer`. Both are press-and-hold, with a fill across the control
+for the 800ms it takes, so a half-asleep tap does nothing; TalkBack's double tap
+answers at once. Nothing on it completes the task (R-020). Back does nothing.
+
+**Rows** draw the `ic_alarm` glyph, the text's size and colour, in front of
+the reminder time, and TalkBack reads the time as "Alarm 5:30 PM" where a
+plain reminder reads "Reminder 5:30 PM".
 
 ## Add to Tellcat
 
@@ -1430,7 +1467,7 @@ treatment, unmodified.
 | Component | Default | Pressed | Selected | Disabled | Error | Completed |
 | --- | --- | --- | --- | --- | --- | --- |
 | Task row | `surfaceContainer` | Material ripple | n/a | n/a | n/a | strikethrough + `onSurfaceVariant` |
-| Checkbox | Material | Material | Material checked | Material | n/a | checked, with `completion` motion |
+| Checkbox | Material roles, round on a task row (D-105) | Material | Material checked | Material | n/a | checked, with `completion` motion |
 | Navigation item | Material | Material | Material + filled icon | n/a | n/a | n/a |
 | Button | Material | Material | n/a | Material | n/a | n/a |
 | Text field | Material | Material | Material focused | Material | Material + supporting text | n/a |
