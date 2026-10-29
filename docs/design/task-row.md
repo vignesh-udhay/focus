@@ -95,6 +95,12 @@ date, and on Today only the Overdue band shows one, because its tasks come from
 various past days. Everywhere else the row was repeating its own heading. One
 rule: the row says what its heading does not.
 
+**The reminder segment says what the reminder will do next.** A snooze still
+to ring reads "Snoozed until 5:37 PM" (D-109), and a pending follow-up "Reminds
+again at 9:40 AM" (D-108), drawn and read aloud the same, so a snooze or a
+follow-up is never passed off as the time the user set. `rowReminder` decides
+which, and the day rules below apply to the moment it names.
+
 **An overdue row shows no time.** Its reminder has already fired, so "6:00 PM"
 on a row from last Tuesday describes nothing that is going to happen. That also
 keeps the date first on exactly the rows where being overdue is the point, which

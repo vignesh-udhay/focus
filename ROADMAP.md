@@ -54,8 +54,18 @@ Details store shot was taken, Groceries with its checklist in light and dark at
 1080 x 1920, and the owner chose to leave the store set of eight as it is. The
 merge waits for the owner's word.
 
-**1.2, versionCode 3, is on `main` for the owner to upload to the closed
-test, with "Ring like an alarm", D-102.** `feature/alarm` was merged on
+**A follow-up and a fuller snooze are built on `feature/follow-up-snooze`,
+cut from `main` at `b59b2ad`, not merged and not pushed, D-108 and D-109.** An
+unanswered reminder is posted once more ten minutes later, on its own channel
+("Reminders again") so Android's settings can turn it off; schema 14 stores it.
+The reminder sheet gains a Snooze pane, and rows and Task Details say "Snoozed
+until" and "Reminds again at". The tests are written and none has run: the
+owner asked for the suites to wait until the phone is connected. The main and
+test sources compile.
+
+**1.2, versionCode 3, is live on the closed test, with "Ring like an alarm",
+D-102.** Google approved it on 2026-10-28, with the full-screen declaration
+answered "Other". `feature/alarm` was merged on
 2026-10-28 as `15cb026`, not pushed. Before the merge the full instrumented
 suite ran on the owner's OnePlus at `ab3b623`: 378 passed, 2 skipped by their
 own assumptions, and the full-screen sheet's class passed 14 of 14 with full
@@ -66,9 +76,7 @@ a new Alarms channel, with Stop and Snooze 10 min and never Done. Schema 13
 stores it and the backup carries it. Also in 1.2: completing a task is quick
 again (D-104); a task's check is round and a checklist's is smaller (D-105);
 each Reminder health row opens its own settings (D-106); and the exact-alarm
-ask is a short bottom sheet (D-107). Before it reaches testers the owner files
-two Play Console declarations, full-screen intent (answered as not an alarm or
-calling app) and the `systemExempted` foreground service. Checked by hand on the owner's OnePlus 8T
+ask is a short bottom sheet (D-107). Checked by hand on the owner's OnePlus 8T
 (Android 14) on 2026-10-26, as "Tellcat dev" (`app.tellcat.debug`, which
 installs beside the Play copy): it rang on the minute on the alarm stream, kept
 ringing through Home, Back and the shade, ignored taps and answered to a hold,

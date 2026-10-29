@@ -6617,3 +6617,121 @@ health's headline card and a paragraph was still too wordy to scan.
 **What would reverse this.** People declining more often once the reasons are
 one line, which would show as more reminders set without the grant. Then the
 line changes, not the shape.
+
+## D-108. An unanswered reminder is posted once more, ten minutes later
+
+**Decision.** A reminder announced as a notification and not answered within
+ten minutes is posted once more, and only once. Answered means Done, Snooze,
+opening the task, giving the reminder a new time, completing it or deleting it.
+The follow-up is the reminder again: the task's title, the line "Reminder again
+· set for 9:30 AM", Done and Snooze. It takes the reminder's place in the shade
+rather than stacking beside it. While it is pending the row's reminder segment
+reads "Reminds again at 9:40 AM", drawn and read aloud.
+
+**What changed the answer.** `reminders.md` listed "a reminder that repeats
+until dismissed" as out of scope, and that still holds: this is one repeat, never
+a loop. The owner asked for it on 2026-10-29, after 1.2 reached the closed test.
+A reminder seen on a lock screen and forgotten is missed as surely as one that
+never fired, and the principle this app ranks above everything is that it does
+not miss.
+
+**How it is kept, which is principle 1.**
+
+1. **It is an alarm like any other**, on the task's own alarm slot, which is
+   free because a task waiting on a follow-up has no reminder owed. Exact when
+   the grant is held, inexact otherwise, and counted by the D-103 backstop.
+2. **Storage is the state.** Schema 14 adds `followUpAt`, set in the same
+   transaction that records the announcement (`TaskDao.recordAnnounced`) and
+   cleared by every answer: the snooze and delete queries clear it in the same
+   statement, completing clears it on the row, a new time clears it in the edit
+   that moves the reminder, and opening Task Details clears it. It is pending
+   only while the reminder stands announced, so a stale value cannot fire.
+3. **It survives a restart.** The copy kept for the locked phone (D-079) carries
+   which reminder a follow-up follows up, so one due before the first unlock is
+   posted from the copy and cleared at the unlock rather than posted twice. A
+   reminder told while locked earns its follow-up at the unlock.
+4. **Stale actions are ignored** by the rule every reminder action follows: Done
+   and Snooze carry the moment the reminder was for, so after a snooze or a new
+   time they do nothing.
+5. **D-098 is untouched.** The next occurrence of a repeat is made at the
+   announcement as before and carries no follow-up; the missed occurrence keeps
+   its own, and loses it when the next announcement retires it.
+
+**Choices this entry makes.**
+
+- **Ten minutes, on the minute.** Measured from the minute the reminder was
+  announced in, so the row's "9:40" means 9:40.
+- **Not for a reminder that rang like an alarm.** It rang until it was answered
+  (D-102). One that could not ring as an alarm and arrived as a notification is
+  followed up like any other notification.
+- **The off switch is a notification channel, "Reminders again", not a Settings
+  row.** The brief asked for a setting where reminder settings live. `settings.md`
+  closes the Settings list (D-024) and keeps how a notification behaves in
+  Android's channel settings, so the follow-up has its own channel, on by
+  default, and turning it off in Android's settings turns follow-ups off. The app
+  reads the channel before setting a follow-up and again before posting one.
+- **The words keep `reminders.md`'s rule.** The title is the task's title with
+  nothing added, so the brief's "Reminder again: Call the dentist" became the
+  title plus the line "Reminder again · set for 9:30 AM". "Set for", not "due":
+  `task-row.md` keeps "due" for the due date.
+- **Not in the backup.** It is about one announcement minutes long; restoring an
+  old file must not bring a nag back.
+- **Reminder health is unchanged.** A follow-up that cannot be shown is the same
+  failure as a reminder that cannot be shown, which the Notifications row already
+  reports.
+
+**What would reverse this.** Testers turning the channel off in numbers, or
+finding a second post intrusive, which would argue for a longer delay before it
+argues for removing it.
+
+## D-109. A snooze can be chosen inside the app, and says that it is a snooze
+
+**Decision.** The reminder sheet in Task Details offers "Snooze…" while the
+reminder has rung and waits for an answer, or is snoozed. It opens a Snooze
+pane: every snooze preset that applies, "Pick a time…" through the existing time
+picker, the line "Snoozes until 4:00 PM", and a Snooze button. A snooze from the
+app writes what the notification's does (D-078). Rows and Task Details' Reminder
+row say "Snoozed until 5:37 PM" while a snooze is still to ring, and a snoozed
+reminder that rings again says "Snoozed from 5:26 PM" under its title.
+
+**What changed the answer.** The owner asked for a fuller snooze on 2026-10-29.
+The app could snooze only from a notification, and a snooze, once made, was
+invisible: the row showed the snooze's time as though it were the reminder's,
+Task Details showed the reminder's own time, and the snoozed notification passed
+the snooze time off as the time it was set for.
+
+**Where it departs from the brief, and why.**
+
+- **The notification is unchanged.** The brief asked for three one-tap actions:
+  10 min, 1 hour, and This evening or "Tomorrow, same time". The notification
+  already offers Done and Snooze, then those choices in place, and `reminders.md`
+  fixes the vocabulary: the third is "Tomorrow 9:00" after the evening has gone.
+  Android shows three actions, so three one-tap snoozes would leave no Done. Kept
+  as written.
+- **"Pick a time…" is in the app, not on the notification.** The notification's
+  three actions are taken, and a fourth that opened the app would break the rule
+  that its actions finish without opening it. Tapping the notification opens Task
+  Details, where the reminder sheet has the snooze.
+- **"Snoozed from 5:26 PM", not "Was due at 5:26 PM",** for the reason D-108
+  says "set for": "due" is the due date's word.
+
+**Choices this entry makes.**
+
+- **In the reminder sheet, as a third pane.** The sheet already has a Day pane
+  with a back arrow; the Snooze pane takes the same shape, with the date sheet's
+  preset buttons and its full-width "Choose…" control. A draft and a Snooze
+  button, for the reason the sheet has a Save: a preset written on the first tap
+  could not be read back before it took effect.
+- **Every option that applies, not three.** A sheet is not held to a
+  notification's limit, so "This evening" and "Tomorrow 9:00" sit together until
+  six, after which "This evening" is not offered rather than meaning tomorrow.
+- **A picked time lands on the next time the clock reads it**, today while it is
+  ahead and otherwise tomorrow, and the line says which. A snooze is about the
+  next while; another day is what Save is for.
+- **The snoozed notification leaves the shade** when a snooze is made in the
+  app, or the reminder is given a new time, since what it says is out of date.
+- **The alarm's own snooze is unchanged**, 10 min from the alarm screen (D-102).
+
+**What would reverse this.** People snoozing from the app and expecting the
+notification to come back at once, which would show as reports of a missing
+reminder; the answer then is a clearer line, not a different place.

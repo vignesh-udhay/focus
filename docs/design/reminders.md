@@ -51,7 +51,9 @@ draws.
 
 **The line beneath is the time it was set for and how often it repeats**, from
 `reminderSummary`. The time takes the device's own 12 or 24 hour preference
-rather than a format this app picks.
+rather than a format this app picks. A snoozed reminder ringing again says
+"Snoozed from 5:26 PM", the time it was set for, so the snooze is not passed off
+as the reminder (D-109).
 
 **The notes go in the expanded form and nowhere else.** `BigTextStyle` carries
 them, so the collapsed notification stays the title and one line. A task with no
@@ -89,6 +91,21 @@ one time and sets another is worse than a chip that is not there.
 
 **Two are relative and two land on a named hour**, which is why the arithmetic
 has a file of its own. "In ten minutes" cannot be got wrong; "this evening" can.
+
+---
+
+# One follow-up
+
+D-108. A reminder announced as a notification and not answered within ten
+minutes is posted once more, and only once: the task's title, the line "Reminder
+again · set for 9:30 AM", Done and Snooze, in the reminder's place in the shade.
+Done, Snooze, opening the task, a new time, completing and deleting all answer
+it. A reminder that rang like an alarm is not followed up; it rang until it was
+answered.
+
+It posts on its own channel, "Reminders again", so it can be turned off in
+Android's settings without touching reminders. The Settings list stays closed
+(D-024).
 
 ---
 
@@ -169,7 +186,8 @@ and summary, which is the common case and not a guarantee.
 
 Not part of delivery:
 
-- a reminder that repeats until dismissed
+- a reminder that repeats until dismissed. D-108 posts one follow-up, never a
+  loop
 - custom sounds per task, which belong to the channel and to Android's settings
 - anything shown after Done that is not the undo every list already raises
 

@@ -256,6 +256,15 @@ occurrence before it is still open, every edit and every delete goes through
 a third, `OccurrenceEdits`, which lets an untouched successor follow in the
 same transaction.
 
+**One follow-up (D-108)** rides on the task's own alarm. A task whose reminder
+stands announced has none owed, so the reconciliation schedules its
+`followUpAt` there instead, in time order with the reminders, and the same
+`ReminderReceiver` tells the two apart by reading the task: no live reminder and
+a pending follow-up means post the follow-up and clear it. `followUpAt` is
+written with the announcement in `TaskDao.recordAnnounced` and cleared by every
+answer; the locked copy carries `followUpOf` so one due before the first unlock
+is posted from the copy.
+
 **Revoking the exact-alarm grant (D-103)** cancels the exact alarms and kills
 the app, and nothing is broadcast. So every pass also keeps one inexact
 backstop alarm a minute after the soonest future reminder, delivered to

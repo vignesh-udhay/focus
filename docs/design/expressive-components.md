@@ -862,6 +862,15 @@ or "Open alarm settings" follows the two lines that need one. Saved with the
 reminder by Save, like the day and the time. Task Details' Reminder row then
 reads "Today, 5:30 PM · Alarm".
 
+**The Snooze pane, in the reminder sheet.** D-109. "Snooze…", a text button
+under Save, while the reminder has rung and waits for an answer or is snoozed.
+It opens a pane shaped like the Day pane: a back arrow and "Snooze", the snooze
+presets that apply as tonal preset buttons two to a row (10 min, 1 hour, This
+evening until six, Tomorrow 9:00), a full-width "Pick a time…" with the clock
+icon that opens the time picker and fills once it holds a time, the line
+"Snoozes until 4:00 PM" once something is chosen, and a filled Snooze button.
+Task Details' Reminder row then reads "Snoozed until 5:37 PM" until it rings.
+
 **The priming sheet (R-013).** Opened by turning the switch on without the
 full-screen grant. A picture of the alarm screen, which is the real
 `AlarmScreen` laid out at phone size and scaled down
