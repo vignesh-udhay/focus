@@ -287,6 +287,8 @@
     <!-- Announced as one action, so a row reads as label, value and a control. -->
     <string name="task_plan_row_action">%1$s, %2$s</string>
     <string name="task_start_focus">Start focus</string>
+    <!-- A state, not a command: Task Details has no Done button, D-111. -->
+    <string name="task_details_completed">Completed</string>
     <!-- D-068. The same control, worded for what the tap actually does. A
          session already open on this task resumes rather than restarting, per
          D-057, and the button used to promise a fresh clock either way. Must

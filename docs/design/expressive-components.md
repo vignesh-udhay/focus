@@ -925,8 +925,8 @@ identity, checklist, plan, action.
 | Plan row | a set field only; 56dp, `surfaceContainerLow`, 16dp outer and 4dp inner, 2dp gap |
 | Plan chip | an unset field; Material `AssistChip`, `ic_add` leading, the field's name, in a `FlowRow` under the rows, `xs` apart |
 | Toolbar | Delete in `error`, Share, Complete, then Focus; D-093, D-096 |
-| Complete | `IconToggleButton`, `ic_check`, filled `secondaryContainer` when on, the row checkbox's words for a screen reader |
-| Focus | the toolbar's one `FilledIconButton`, `ic_focus`, named by a tooltip on long press; absent once the task is complete |
+| Complete | a toggle with `Role.Checkbox`, `ic_check` in a 40dp container; once on, it grows into Focus's place as a filled `secondaryContainer` pill reading "Completed", the row checkbox's words for a screen reader; D-111 |
+| Focus | the toolbar's one `FilledIconButton`, `ic_focus`, named by a tooltip on long press; fades where it stands once the task is complete, and is gone for a screen reader at once |
 
 [CD] **No card around the identity region**, and that is the fix rather than the
 omission. A tinted container read as a summary, which is exactly why the two

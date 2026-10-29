@@ -54,6 +54,13 @@ Details store shot was taken, Groceries with its checklist in light and dark at
 1080 x 1920, and the owner chose to leave the store set of eight as it is. The
 merge waits for the owner's word.
 
+**Completing on Task Details is being refined on `feature/complete-in-place`,
+cut from `main` at `b59b2ad`, D-111.** Complete grows into the place Focus leaves
+as a pill reading "Completed", Focus fades where it stands, and the title's line
+draws across on the row's spring, so nothing moves under the thumb. The main and
+test sources compile; nothing has run, and the motion has not been seen on a
+phone.
+
 **A follow-up and a fuller snooze are on `main`, D-108 to D-110,** merged from
 `feature/follow-up-snooze` on 2026-10-29 as a fast-forward to `feb63eb`, not
 pushed and with no version bump. An

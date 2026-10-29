@@ -97,7 +97,10 @@ names its field and opens the same sheet. D-087.
 Complete, and Focus. D-093. Share sends any task as text, D-096. Complete is a toggle carrying
 the row checkbox's words. Focus is the one filled control, drawn with Tellcat's
 own focus symbol and named by a tooltip on a long press, and it leaves once the
-task is complete. It is one of two ways into Focus alongside the Focus now card;
+task is complete. Completing grows Complete into Focus's place as a pill reading
+"Completed" while Focus fades where it stands, so the control just tapped stays
+under the thumb for the tap that takes it back, and the title's line draws across
+on the row's spring. D-111. It is one of two ways into Focus alongside the Focus now card;
 `focus.md` carries the entry rules.
 
 The toolbar replaced an app-bar overflow whose only item was Delete, D-037: the

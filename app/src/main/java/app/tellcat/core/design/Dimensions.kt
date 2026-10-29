@@ -14,6 +14,12 @@ object TellcatDimensions {
     /** The smallest an interactive target may be, in either direction. */
     val TouchTargetMin = 48.dp
 
+    /**
+     * A floating toolbar control's container, Material's icon button at 40dp
+     * inside its 48dp target. Task Details' Complete grows from it, D-111.
+     */
+    val ToolbarControlSize = 40.dp
+
     /** The shortest a task row may be, before its content makes it taller. */
     val TaskRowMinHeight = 56.dp
 

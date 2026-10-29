@@ -1,6 +1,42 @@
 package app.tellcat.ui.task
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.material3.ripple
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.lerp
+import app.tellcat.core.design.TellcatMotion
+import app.tellcat.ui.component.CompletionPressScale
+import kotlin.math.ceil
+import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -25,7 +61,6 @@ import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.IconButton
@@ -582,19 +617,34 @@ private fun IdentityRegion(task: Task, onEdit: (Task) -> Unit) {
 private fun TitleField(task: Task, onEdit: (Task) -> Unit) {
     var draft by rememberSaveable(task.id) { mutableStateOf(task.title) }
 
+    // A completed task's title reads as a completed row's does, struck through
+    // on `onSurfaceVariant`, now that no checkbox above says so. Completing here
+    // draws the line across it on the row's own spring, D-104 and D-111;
+    // reopening takes it away at once. A title already complete when the screen
+    // opens starts with the line drawn.
+    val strike = remember(task.id) { Animatable(if (task.isCompleted) 1f else 0f) }
+    val completionSpec = TellcatMotion.completion<Float>()
+    LaunchedEffect(task.isCompleted) {
+        if (task.isCompleted) strike.animateTo(1f, completionSpec) else strike.snapTo(0f)
+    }
+    val color by animateColorAsState(
+        targetValue = if (task.isCompleted) {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        } else {
+            MaterialTheme.colorScheme.onSurface
+        },
+        animationSpec = TellcatMotion.stateColor(),
+        label = "TitleColor"
+    )
+    // Struck a character at a time: the field draws its own text, so the line
+    // is the font's own strikethrough over a growing run of it.
+    val struck = ceil(draft.length * strike.value.coerceIn(0f, 1f)).toInt()
+
     TextField(
         value = draft,
         onValueChange = { draft = it },
-        // A completed task's title reads as a completed row's does, struck
-        // through on `onSurfaceVariant`, now that no checkbox above says so.
-        textStyle = if (task.isCompleted) {
-            MaterialTheme.typography.headlineSmall.copy(
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textDecoration = TextDecoration.LineThrough
-            )
-        } else {
-            MaterialTheme.typography.headlineSmall
-        },
+        textStyle = MaterialTheme.typography.headlineSmall.copy(color = color),
+        visualTransformation = StruckThrough(struck),
         colors = borderlessFieldColors(),
         placeholder = {
             Text(
@@ -956,43 +1006,180 @@ private fun TaskDetailsActions(
             )
         }
 
-        // The row checkbox's words, because it is the same act on the same task.
-        val completeLabel = stringResource(
-            if (task.isCompleted) R.string.task_row_mark_incomplete
-            else R.string.task_row_mark_complete,
-            task.title
+        CompleteAndFocus(
+            task = task,
+            onToggleComplete = { completed ->
+                TellcatHaptics.taskCompletion(haptics, completed)
+                onToggleComplete()
+            },
+            onStartFocus = onStartFocus,
+            resumesSession = resumesSession
         )
-        ToolbarTooltip(completeLabel) {
-            IconToggleButton(
-                checked = task.isCompleted,
-                onCheckedChange = { completed ->
-                    TellcatHaptics.taskCompletion(haptics, completed)
-                    onToggleComplete()
-                },
-                // Checked takes the navigation bar's selected-marker fill, so a
-                // completed task's control reads as on rather than as tinted.
-                colors = IconButtonDefaults.iconToggleButtonColors(
-                    checkedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    checkedContentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                )
+    }
+}
+
+/**
+ * Complete, and Focus beside it, as one piece of the toolbar. D-111.
+ *
+ * Completing grows Complete into the place Focus leaves, as a filled pill
+ * reading "Completed", while Focus fades where it stands. Nothing slides: the
+ * spot the thumb tapped stays inside Complete, so the second tap that takes the
+ * task back lands on it (D-094), and Delete and Share only move if the word needs
+ * more room than Focus gave up. Reopening plays it back on `reveal`, without the
+ * spring, because a reversal is not a moment.
+ *
+ * The control presses in while the finger is down and springs back on release,
+ * on `completion`. Each value follows its target from wherever it is, so a
+ * second tap mid-gesture turns it round rather than restarting it.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CompleteAndFocus(
+    task: Task,
+    onToggleComplete: (Boolean) -> Unit,
+    onStartFocus: () -> Unit,
+    resumesSession: Boolean
+) {
+    val completed = task.isCompleted
+    val colors = MaterialTheme.colorScheme
+    val density = LocalDensity.current
+
+    // How far Complete has grown into Focus's place, 0 to 1. Clamped where it
+    // sets widths, so the spring's overshoot never pushes the toolbar wider.
+    val grown by animateFloatAsState(
+        targetValue = if (completed) 1f else 0f,
+        animationSpec = if (completed) TellcatMotion.completion() else TellcatMotion.reveal(),
+        label = "CompleteGrown"
+    )
+    val shown by animateFloatAsState(
+        targetValue = if (completed) 1f else 0f,
+        animationSpec = TellcatMotion.stateColor(),
+        label = "CompleteLabel"
+    )
+    val container by animateColorAsState(
+        targetValue = if (completed) colors.secondaryContainer else Color.Transparent,
+        animationSpec = TellcatMotion.stateColor(),
+        label = "CompleteContainer"
+    )
+    val content by animateColorAsState(
+        targetValue = if (completed) colors.onSecondaryContainer else colors.onSurfaceVariant,
+        animationSpec = TellcatMotion.stateColor(),
+        label = "CompleteContent"
+    )
+
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val press by animateFloatAsState(
+        // Only on the way to complete: reopening is a reversal, not a moment,
+        // and keeps Material's ripple alone.
+        targetValue = if (pressed && !completed) CompletionPressScale else 1f,
+        animationSpec = TellcatMotion.completion(),
+        label = "CompletePress"
+    )
+
+    // The pill's full width: the word at the current font scale with the icon
+    // and Material's button padding, and never less than the two places it
+    // spans, so Focus's place is always enough to cover.
+    val word = stringResource(R.string.task_details_completed)
+    val wordStyle = MaterialTheme.typography.labelLarge
+    val measurer = rememberTextMeasurer()
+    val check = painterResource(R.drawable.ic_check)
+    val wordWidth = with(density) { measurer.measure(word, wordStyle).size.width.toDp() }
+    val iconWidth = with(density) { check.intrinsicSize.width.toDp() }
+    val place = TellcatDimensions.TouchTargetMin
+    val inset = (place - TellcatDimensions.ToolbarControlSize) / 2
+    val full = maxOf(
+        place * 2,
+        TellcatSpacing.md * 2 + iconWidth + TellcatSpacing.xs + wordWidth + inset * 2
+    )
+    val g = grown.coerceIn(0f, 1f)
+    val completeWidth = lerp(place, full, g)
+
+    // The row checkbox's words, because it is the same act on the same task.
+    val completeLabel = stringResource(
+        if (completed) R.string.task_row_mark_incomplete else R.string.task_row_mark_complete,
+        task.title
+    )
+
+    ToolbarTooltip(completeLabel) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .width(completeWidth)
+                .height(place)
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .minimumInteractiveComponentSize()
+                    .size(width = completeWidth - inset * 2, height = TellcatDimensions.ToolbarControlSize)
+                    .graphicsLayer {
+                        scaleX = press
+                        scaleY = press
+                    }
+                    .clip(CircleShape)
+                    .background(container)
+                    .toggleable(
+                        value = completed,
+                        role = Role.Checkbox,
+                        interactionSource = interactionSource,
+                        indication = ripple(),
+                        onValueChange = onToggleComplete
+                    )
+                    .semantics { contentDescription = completeLabel }
             ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_check),
-                    contentDescription = completeLabel
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.clearAndSetSemantics {}
+                ) {
+                    Icon(painter = check, contentDescription = null, tint = content)
+                    Spacer(Modifier.width(TellcatSpacing.xs * g))
+                    // Revealed as the pill grows, never squeezed onto two lines.
+                    Text(
+                        text = word,
+                        style = wordStyle,
+                        color = content,
+                        maxLines = 1,
+                        softWrap = false,
+                        modifier = Modifier
+                            .clipToBounds()
+                            .layout { measurable, constraints ->
+                                val placeable = measurable.measure(constraints.copy(minWidth = 0, maxWidth = Constraints.Infinity))
+                                layout((placeable.width * g).roundToInt(), placeable.height) {
+                                    placeable.placeRelative(0, 0)
+                                }
+                            }
+                            .graphicsLayer { alpha = shown }
+                    )
+                }
             }
         }
+    }
 
-        if (!task.isCompleted) {
-            val focusLabel = stringResource(
-                if (resumesSession) R.string.task_resume_focus else R.string.task_start_focus
-            )
-            ToolbarTooltip(focusLabel) {
-                FilledIconButton(onClick = onStartFocus) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_focus),
-                        contentDescription = focusLabel
-                    )
+    // Focus's place narrows as Complete grows over it, and Focus fades where it
+    // stands rather than moving. It is gone for a screen reader at once, since
+    // a finished task has nothing to work on. D-093.
+    if (g < 1f) {
+        val focusLabel = stringResource(
+            if (resumesSession) R.string.task_resume_focus else R.string.task_start_focus
+        )
+        Box(
+            contentAlignment = Alignment.CenterEnd,
+            modifier = Modifier
+                .width(place * (1f - g))
+                .height(place)
+                .clipToBounds()
+                .graphicsLayer { alpha = 1f - shown }
+                .then(if (completed) Modifier.clearAndSetSemantics {} else Modifier)
+        ) {
+            Box(Modifier.wrapContentWidth(align = Alignment.End, unbounded = true)) {
+                ToolbarTooltip(focusLabel) {
+                    FilledIconButton(onClick = { if (!completed) onStartFocus() }) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_focus),
+                            contentDescription = focusLabel
+                        )
+                    }
                 }
             }
         }
@@ -1009,4 +1196,20 @@ private fun ToolbarTooltip(label: String, content: @Composable () -> Unit) {
         state = rememberTooltipState(),
         content = content
     )
+}
+
+/**
+ * Strikes the first [chars] characters of a field's text through, so the line
+ * can travel across a title the field lays out itself. D-111.
+ */
+private data class StruckThrough(val chars: Int) : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val end = chars.coerceIn(0, text.length)
+        if (end == 0) return TransformedText(text, OffsetMapping.Identity)
+        val struck = buildAnnotatedString {
+            append(text)
+            addStyle(SpanStyle(textDecoration = TextDecoration.LineThrough), 0, end)
+        }
+        return TransformedText(struck, OffsetMapping.Identity)
+    }
 }

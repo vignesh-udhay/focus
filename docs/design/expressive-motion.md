@@ -102,6 +102,7 @@ licence to invent a fifth.
 | Completing a task | `completion` | **Strongest in the app** |
 | The strikethrough drawing across a completed title | `completion` (D-104) | Part of completion |
 | A just-completed row holding its place, then leaving | a hold, then `listChange` | Part of completion |
+| Task Details' Complete pressing in while held and growing into Focus's place, Focus fading where it stands (D-111) | `completion`, the fade and fill on `stateColor`; back on `reveal` | Part of completion |
 | Task title colour | `stateColor` | Restrained |
 | A checklist item's text colour when ticked | `stateColor` | Restrained |
 | A task entering, leaving or moving in a list | `listChange` | Mild |

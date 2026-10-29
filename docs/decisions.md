@@ -6785,3 +6785,44 @@ opens, so the user lands on the heading they tapped.
 **What it does not say.** A phone with Tellcat's notifications off entirely
 shows no follow-ups whatever the row says. That is Reminder health's to report,
 in its Notifications check, and Reminder health is the row above.
+
+## D-111. Completing on Task Details grows Complete into Focus's place
+
+Amends D-093.
+
+**Decision.** Completing from Task Details' toolbar grows Complete into the
+place Focus leaves: a filled `secondaryContainer` pill with the check and the
+word "Completed", while Focus fades where it stands and does not move. The
+control presses in while the finger is down and springs back on release, on
+`completion`. The title's line draws across it on the same spring, as a row's
+does (D-104), and the title fades to `onSurfaceVariant` on `stateColor`.
+Reopening plays it back on `reveal`, with no press and no spring: the pill
+narrows to the check, Focus fades back, and the line goes at once.
+
+**What changed the answer.** The owner found completing here abrupt on
+2026-10-29: the fill, the strikethrough and Focus's exit all landed in one frame.
+The first proposal, the row's gesture with Focus fading and the toolbar closing
+up, left the real fault in place. The toolbar is centred, so taking Focus out
+moved Complete 24dp, half its target, and the second tap that D-094 relies on to
+take the task back landed on its edge. No curve fixes a control that moves under
+the thumb, so the space Focus leaves is given to Complete instead.
+
+**Why "Completed" and not "Done".** `task-details.md` keeps Done off this screen
+because text at the foot of a surface reads as "commit and leave", and a tap
+there meant to leave would reopen the task. "Completed" is a state, and the
+check beside it says the control is a toggle.
+
+**Why this is not shape morphing.** The pill keeps fully round ends and changes
+width, a bounds change on a spatial spec. It is not a `MaterialShapes` morph, and
+`expressive-motion.md`'s rule against those stands. Nor is it a decorative pill:
+it carries the task's state in a word, the one place on the screen that says it
+outside the strikethrough.
+
+**What it costs.** At large font scales "Completed" needs more room than Focus
+gave up, so the toolbar widens and Delete and Share move outward by half the
+difference. Complete still covers the spot that was tapped; a test holds that at
+100% and 200%.
+
+**What would reverse this.** People reading "Completed" as a button that does
+something other than reopen, or tapping it expecting to leave. The fallback is
+the check alone in the grown pill, not the slide.

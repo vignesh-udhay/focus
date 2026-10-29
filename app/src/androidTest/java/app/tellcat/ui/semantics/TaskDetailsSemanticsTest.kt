@@ -714,6 +714,34 @@ class TaskDetailsSemanticsTest {
         rule.onNodeWithContentDescription(MARK_INCOMPLETE).assertIsDisplayed()
     }
 
+    /**
+     * D-111: completing grows Complete into Focus's place rather than sliding
+     * it, so the spot just tapped is still Complete, and the tap that takes the
+     * task back (D-094) lands on it. At 200% the word needs more room, and the
+     * spot must still hold.
+     */
+    private fun assertCompleteKeepsTheSpotItWasTapped(fontScale: Float) {
+        val viewModel = setScreen(fontScale)
+
+        val tapped = rule.onNodeWithContentDescription(MARK_COMPLETE)
+            .fetchSemanticsNode().touchBoundsInRoot.center
+        rule.onNodeWithContentDescription(MARK_COMPLETE).performClick()
+        awaitTask(viewModel) { task -> task.isCompleted }
+        rule.waitUntilExactlyOneExists(hasContentDescription(MARK_INCOMPLETE), TIMEOUT_MILLIS)
+        rule.waitForIdle()
+
+        val completed = rule.onNodeWithContentDescription(MARK_INCOMPLETE)
+            .assertTouchTargetIsAtLeast(TellcatDimensions.TouchTargetMin)
+            .fetchSemanticsNode().touchBoundsInRoot
+        assertTrue("$tapped outside $completed", completed.contains(tapped))
+    }
+
+    @Test
+    fun complete_keepsTheSpotItWasTapped_at100() = assertCompleteKeepsTheSpotItWasTapped(FontScale100)
+
+    @Test
+    fun complete_keepsTheSpotItWasTapped_at200() = assertCompleteKeepsTheSpotItWasTapped(FontScale200)
+
 
     // --- the checklist --------------------------------------------------------
 

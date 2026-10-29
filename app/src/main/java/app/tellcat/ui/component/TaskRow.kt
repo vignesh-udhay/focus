@@ -307,7 +307,7 @@ fun TaskRow(
 private const val TitleMaxLines = 2
 
 /** How far the completion control presses in before springing back. */
-private const val CompletionPressScale = 0.8f
+internal const val CompletionPressScale = 0.8f
 
 /**
  * The metadata line, with the date coloured when the task is overdue.
