@@ -57,9 +57,10 @@ merge waits for the owner's word.
 **Completing on Task Details is being refined on `feature/complete-in-place`,
 cut from `main` at `b59b2ad`, D-111.** Complete grows into the place Focus leaves
 as a pill reading "Completed", Focus fades where it stands, and the title's line
-draws across on the row's spring, so nothing moves under the thumb. The main and
-test sources compile; nothing has run, and the motion has not been seen on a
-phone.
+draws across on the row's spring, so nothing moves under the thumb. On the
+owner's phone on 2026-10-29, `TaskDetailsSemanticsTest` passed 49 of 49, the two
+new tapped-spot tests included, and the owner tried the motion and approved it.
+Not merged and not pushed; the merge waits for the owner's word.
 
 **A follow-up and a fuller snooze are on `main`, D-108 to D-110,** merged from
 `feature/follow-up-snooze` on 2026-10-29 as a fast-forward to `feb63eb`, not
