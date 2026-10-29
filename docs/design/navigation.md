@@ -89,7 +89,8 @@ It opens, as labels with no icons:
 
 Reminder health is the first row inside Settings rather than a second route in
 this menu. D-029 records why the duplicate was removed. `settings.md` describes
-the seven board frames and D-024 closes the list at four rows.
+the seven board frames and D-024 closes the list, which D-083 and D-110 have
+since added to.
 
 Not on the screens it opens, because each of those already has a back arrow
 and offering a way in from inside would be a loop.

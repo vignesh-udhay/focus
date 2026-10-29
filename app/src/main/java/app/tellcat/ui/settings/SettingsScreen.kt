@@ -43,13 +43,18 @@ import app.tellcat.data.local.AppearancePreferences
 import app.tellcat.ui.component.TellcatTopAppBar
 import app.tellcat.ui.component.SectionLabel
 
-/** D-024's closed Settings screen, with D-083's privacy policy link under Data. */
+/**
+ * D-024's closed Settings screen, with D-083's privacy policy link under Data
+ * and D-110's way to the follow-up's switch under Reminders.
+ */
 @Composable
 fun SettingsScreen(
     preferences: AppearancePreferences,
     onDynamicColorChange: (Boolean) -> Unit,
     onThemeChange: (ThemePreference) -> Unit,
     onOpenReminderHealth: () -> Unit,
+    followUpsOn: Boolean,
+    onOpenFollowUps: () -> Unit,
     onOpenBackup: () -> Unit,
     onOpenPrivacyPolicy: () -> Unit,
     onBack: () -> Unit,
@@ -97,6 +102,21 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_reminder_health),
                     supporting = stringResource(R.string.settings_reminder_health_supporting),
                     onClick = onOpenReminderHealth,
+                    shape = ListItemDefaults.segmentedShapes(index = 0, count = 2).shape,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // The switch is Android's, on the follow-up's own channel, so
+                // the row opens that page rather than holding a second switch
+                // that could disagree with it. D-110.
+                NavigationSettingRow(
+                    title = stringResource(R.string.settings_follow_up),
+                    supporting = stringResource(
+                        if (followUpsOn) R.string.settings_follow_up_on else R.string.settings_follow_up_off
+                    ),
+                    onClick = onOpenFollowUps,
+                    trailingIcon = R.drawable.ic_open_in_new,
+                    shape = ListItemDefaults.segmentedShapes(index = 1, count = 2).shape,
                     modifier = Modifier.fillMaxWidth()
                 )
             }

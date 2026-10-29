@@ -2,6 +2,8 @@ package app.tellcat.ui.semantics
 
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -29,6 +31,8 @@ class SettingsSemanticsTest {
                     onDynamicColorChange = {},
                     onThemeChange = {},
                     onOpenReminderHealth = {},
+                    followUpsOn = true,
+                    onOpenFollowUps = {},
                     onOpenBackup = {},
                     onOpenPrivacyPolicy = {},
                     onBack = {},
@@ -53,6 +57,8 @@ class SettingsSemanticsTest {
                     onDynamicColorChange = { dynamicColor = it },
                     onThemeChange = { selectedTheme = it },
                     onOpenReminderHealth = {},
+                    followUpsOn = true,
+                    onOpenFollowUps = {},
                     onOpenBackup = {},
                     onOpenPrivacyPolicy = {},
                     onBack = {}
@@ -82,6 +88,8 @@ class SettingsSemanticsTest {
                     onDynamicColorChange = {},
                     onThemeChange = {},
                     onOpenReminderHealth = {},
+                    followUpsOn = true,
+                    onOpenFollowUps = {},
                     onOpenBackup = {},
                     onOpenPrivacyPolicy = { opened = true },
                     onBack = {}
@@ -93,6 +101,40 @@ class SettingsSemanticsTest {
         composeRule.onNodeWithText("tellcat.app/privacy").assertIsDisplayed()
         composeRule.onNodeWithText("Privacy policy").performClick()
         assertEquals(true, opened)
+    }
+
+    /**
+     * D-110: the follow-up's switch is Android's channel, so the row says
+     * whether it is on and opens that page.
+     */
+    @Test
+    fun theRemindersAgainRowSaysWhetherFollowUpsAreOnAndOpensTheirSwitch() {
+        var followUpsOn by mutableStateOf(true)
+        var opened = false
+
+        composeRule.setContent {
+            TellcatTheme(dynamicColor = false) {
+                SettingsScreen(
+                    preferences = AppearancePreferences(),
+                    onDynamicColorChange = {},
+                    onThemeChange = {},
+                    onOpenReminderHealth = {},
+                    followUpsOn = followUpsOn,
+                    onOpenFollowUps = { opened = true },
+                    onOpenBackup = {},
+                    onOpenPrivacyPolicy = {},
+                    onBack = {}
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("On, 10 minutes after an unanswered reminder").assertIsDisplayed()
+        composeRule.onNodeWithText("Reminders again").performClick()
+        assertEquals(true, opened)
+
+        followUpsOn = false
+        composeRule.onNodeWithText("Off, each reminder is posted once").assertIsDisplayed()
+        composeRule.onNodeWithText("On, 10 minutes after an unanswered reminder").assertDoesNotExist()
     }
 }
 

@@ -184,6 +184,10 @@
     <string name="settings_section_data">Data</string>
     <string name="settings_reminder_health">Reminder health</string>
     <string name="settings_reminder_health_supporting">Check exact reminder reliability</string>
+    <!-- Named as Android names the channel it opens, D-110. -->
+    <string name="settings_follow_up">Reminders again</string>
+    <string name="settings_follow_up_on">On, 10 minutes after an unanswered reminder</string>
+    <string name="settings_follow_up_off">Off, each reminder is posted once</string>
     <string name="settings_dynamic_color">Dynamic color</string>
     <string name="settings_dynamic_color_supporting">Use colors from Android</string>
     <string name="settings_theme">Theme</string>

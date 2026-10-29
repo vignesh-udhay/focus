@@ -1,8 +1,9 @@
 # Settings
 
-Five rows on one screen, plus two places they lead: the theme chooser and
-Backup & restore. The fifth, Privacy policy, is a link out rather than a
-setting, D-083.
+Six rows on one screen, plus two places they lead: the theme chooser and
+Backup & restore. Two of them leave the app: Privacy policy is a link out rather
+than a setting, D-083, and Reminders again opens Android's switch for the
+follow-up rather than holding one, D-110.
 
 **Built under D-028.** `SettingsScreen.kt` is reached from the app-bar overflow,
 and Backup & restore is the room behind its Data row. The work was pulled ahead
@@ -26,9 +27,11 @@ otherwise covers what this particular screen holds and why the list is closed.
 
 # What it holds
 
-Three sections, four rows, and that is the whole screen.
+Three sections, six rows, and that is the whole screen.
 
     Reminders     Reminder health      Check exact reminder reliability   >
+                  Reminders again      On, 10 minutes after an unanswered
+                                       reminder                          [↗]
     Appearance    Dynamic color        Use colors from Android        [off]
                   Theme                System default                     >
     Data          Backup & restore     Export or restore a local file     >
@@ -46,6 +49,14 @@ does not count against the closed list below; D-083 has the argument.
 Every row carries supporting text, because a settings row whose label alone
 explains it does not need a settings screen, and one that needs a paragraph is a
 feature wearing a row.
+
+**Reminders again opens Android's page for the follow-up's channel**, D-108's
+one follow-up for an unanswered reminder. Its supporting text says whether the
+channel is on, or "Off, each reminder is posted once", read again each time the
+screen returns to the front, so it agrees with Android's switch after the user
+has been to it. It holds no switch of its own: an app cannot turn a channel back
+on, so a switch here would be a second one that could disagree. It ends in
+open-in-new for the reason Privacy policy does. D-110 has the argument.
 
 **Reminder health has one permanent entry, here.** D-029 removes its duplicate
 from the overflow: two identically labelled routes to the same room asked the
@@ -73,7 +84,8 @@ Not on this screen, and each already answered elsewhere:
   D-002 and D-003.
 - **Notification sound, vibration, channel importance.** These belong to the
   Android channel, which the system settings own. Duplicating them creates two
-  switches that disagree.
+  switches that disagree. Reminders again is a way to one channel's page, not a
+  copy of what is on it.
 
 The general rule: a setting is a decision the product refused to make. Four is
 the number of decisions genuinely belonging to the user, and each is about

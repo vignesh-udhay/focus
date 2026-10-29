@@ -42,6 +42,8 @@ import app.tellcat.ui.reminder.ReminderPermissionGate
 import app.tellcat.ui.settings.BackupScreen
 import app.tellcat.ui.settings.BackupViewModel
 import app.tellcat.ui.settings.SettingsScreen
+import app.tellcat.ui.settings.openFollowUpChannelSettings
+import app.tellcat.ui.settings.rememberFollowUpsOn
 import app.tellcat.ui.task.TaskListViewModel
 import app.tellcat.ui.today.TodayScreen
 import app.tellcat.ui.upcoming.UpcomingScreen
@@ -264,6 +266,7 @@ fun TellcatNavHost(
                 val preferences by application.preferences.state.collectAsStateWithLifecycle()
                 val uriHandler = LocalUriHandler.current
                 val privacyPolicyUrl = stringResource(R.string.privacy_policy_url)
+                val context = LocalContext.current
 
                 SettingsScreen(
                     preferences = preferences,
@@ -272,6 +275,8 @@ fun TellcatNavHost(
                     onOpenReminderHealth = {
                         navController.navigate(TellcatRoutes.REMINDER_HEALTH)
                     },
+                    followUpsOn = rememberFollowUpsOn(),
+                    onOpenFollowUps = context::openFollowUpChannelSettings,
                     onOpenBackup = { navController.navigate(TellcatRoutes.BACKUP) },
                     // No browser installed throws. The row shows the address,
                     // so the user still has it (D-083).

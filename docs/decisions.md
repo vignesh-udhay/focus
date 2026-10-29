@@ -6664,12 +6664,13 @@ not miss.
 - **Not for a reminder that rang like an alarm.** It rang until it was answered
   (D-102). One that could not ring as an alarm and arrived as a notification is
   followed up like any other notification.
-- **The off switch is a notification channel, "Reminders again", not a Settings
-  row,** which the owner agreed on 2026-10-29. The brief asked for a setting where reminder settings live. `settings.md`
-  closes the Settings list (D-024) and keeps how a notification behaves in
-  Android's channel settings, so the follow-up has its own channel, on by
-  default, and turning it off in Android's settings turns follow-ups off. The app
-  reads the channel before setting a follow-up and again before posting one.
+- **The off switch is a notification channel, "Reminders again".** `settings.md`
+  keeps how a notification behaves in Android's channel settings (D-024), so the
+  follow-up has its own channel, on by default, and turning it off in Android's
+  settings turns follow-ups off. The app reads the channel before setting a
+  follow-up and again before posting one. The brief asked for a setting where
+  reminder settings live; D-110 gives Settings a row that says whether the
+  channel is on and opens it, rather than a second switch.
 - **The words keep `reminders.md`'s rule.** The title is the task's title with
   nothing added, so the brief's "Reminder again: Call the dentist" became the
   title plus the line "Reminder again · set for 9:30 AM". "Set for", not "due":
@@ -6747,3 +6748,40 @@ the snooze time off as the time it was set for.
 **What would reverse this.** People snoozing from the app and expecting the
 notification to come back at once, which would show as reports of a missing
 reminder; the answer then is a clearer line, not a different place.
+
+## D-110. Settings has a way to the follow-up's switch, under Reminders
+
+Amends D-024 and D-108: Settings gains a sixth row, "Reminders again", the
+second row of the Reminders section. Its supporting text says whether follow-ups
+are on ("On, 10 minutes after an unanswered reminder" or "Off, each reminder is
+posted once"), and a tap opens Android's page for the "Reminders again" channel,
+where the switch is. The row ends in the open-in-new icon, since it leaves the
+app.
+
+**What changed.** D-108 left the off switch in Android's channel settings alone,
+on the ground that the Settings list is closed. The owner asked on 2026-10-29
+why it could not be in Settings too, and chose whichever was better to use. A
+switch that exists only in Android's settings is one a user has to know is
+there: nothing in the app said follow-ups could be turned off, or where.
+
+**Why a way to the switch, not a switch.** D-024 refuses a copy of the channel's
+settings here because two switches can disagree about a reminder. An app cannot
+turn its own channel back on once the user has turned it off, so an in-app
+switch would have to be a second, separate switch, and a follow-up would need
+both on. This row holds no state of its own. It reads the channel, every time
+Settings returns to the front, and sends the user to the one switch there is, so
+it cannot say On while follow-ups are off.
+
+**Why this passes D-024's test.** D-024 lets a row in when the app cannot choose
+correctly for everyone and the wrong choice loses a reminder. The follow-up is
+that choice: on is right for someone who forgets a notification once it is seen,
+and off is right for someone who finds a second post a nag and might otherwise
+turn reminders off altogether. The refusals D-024 names still stand; sound,
+vibration and importance stay on Android's page, and are not repeated here.
+
+**Why the channel's name.** The row is called what Android calls the page it
+opens, so the user lands on the heading they tapped.
+
+**What it does not say.** A phone with Tellcat's notifications off entirely
+shows no follow-ups whatever the row says. That is Reminder health's to report,
+in its Notifications check, and Reminder health is the row above.

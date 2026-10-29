@@ -263,7 +263,10 @@ stands announced has none owed, so the reconciliation schedules its
 a pending follow-up means post the follow-up and clear it. `followUpAt` is
 written with the announcement in `TaskDao.recordAnnounced` and cleared by every
 answer; the locked copy carries `followUpOf` so one due before the first unlock
-is posted from the copy.
+is posted from the copy. Its off switch is the "Reminders again" channel and
+nothing else: Settings' row of that name reads it through `followUpChannelOn`
+on every resume and opens Android's page for it (D-110), so the app stores no
+copy that could disagree.
 
 **Revoking the exact-alarm grant (D-103)** cancels the exact alarms and kills
 the app, and nothing is broadcast. So every pass also keeps one inexact

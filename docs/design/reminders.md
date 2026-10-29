@@ -108,8 +108,9 @@ it. A reminder that rang like an alarm is not followed up; it rang until it was
 answered.
 
 It posts on its own channel, "Reminders again", so it can be turned off in
-Android's settings without touching reminders. The Settings list stays closed
-(D-024).
+Android's settings without touching reminders. Settings has a row of the same
+name that says whether it is on and opens that page (D-110); the switch stays
+Android's, so there is only one.
 
 ---
 

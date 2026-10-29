@@ -744,11 +744,16 @@ internal fun Context.ensureFollowUpChannel() {
 
 /**
  * Whether a follow-up posted now would be shown: reminders can be, and the
- * follow-up channel is not switched off. D-108. A channel not yet made counts as
- * on, as [canPostReminders] counts its own.
+ * follow-up channel is not switched off. D-108.
  */
-internal fun Context.canPostFollowUps(): Boolean {
-    if (!canPostReminders()) return false
+internal fun Context.canPostFollowUps(): Boolean = canPostReminders() && followUpChannelOn()
+
+/**
+ * Whether the follow-up channel is on in Android's settings, which is the
+ * follow-up's one switch. Settings' row says this, D-110. A channel not yet made
+ * counts as on, as [canPostReminders] counts its own.
+ */
+internal fun Context.followUpChannelOn(): Boolean {
     val channel = getSystemService<NotificationManager>()?.getNotificationChannel(FollowUpChannelId)
     return channel == null || channel.importance != NotificationManager.IMPORTANCE_NONE
 }
