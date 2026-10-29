@@ -54,8 +54,9 @@ Details store shot was taken, Groceries with its checklist in light and dark at
 1080 x 1920, and the owner chose to leave the store set of eight as it is. The
 merge waits for the owner's word.
 
-**A follow-up and a fuller snooze are built on `feature/follow-up-snooze`,
-cut from `main` at `b59b2ad`, not merged and not pushed, D-108 and D-109.** An
+**A follow-up and a fuller snooze are on `main`, D-108 to D-110,** merged from
+`feature/follow-up-snooze` on 2026-10-29 as a fast-forward to `feb63eb`, not
+pushed and with no version bump. An
 unanswered reminder is posted once more ten minutes later, on its own channel
 ("Reminders again") so Android's settings can turn it off, and a Settings row of
 the same name says whether it is on and opens that page (D-110); schema 14
@@ -64,8 +65,7 @@ The reminder sheet gains a Snooze pane, and rows, the widget and Task Details
 say "Snoozed until" and "Reminds again at". Both fit one line of a 231dp
 widget on the owner's phone. On 2026-10-29 the suites ran: JVM 951 of 951,
 lint with no errors, and the full instrumented suite 402 of 402 on the owner's
-phone, after the build migrated the dev app's own database from 13 to 14. Not
-merged and not pushed; the merge waits for the owner's word.
+phone, after the build migrated the dev app's own database from 13 to 14.
 
 **1.2, versionCode 3, is live on the closed test, with "Ring like an alarm",
 D-102.** Google approved it on 2026-10-28, with the full-screen declaration
