@@ -146,8 +146,9 @@ repeat. A row with none of them is one line tall, and on a widget that is a row
 of someone else's content bought back. The reminder says what it will do next,
 in the app row's words: "Snoozed until 5:37 PM" while a snooze is still to ring
 (D-109), "Reminds again at 9:40 AM" while a follow-up is pending (D-108). Those
-are longer than a time alone; whether they fit a Compact row is checked on a
-phone, and a shorter widget-only form is the fallback if they do not.
+are longer than a time alone. Checked on the owner's OnePlus 8T on 2026-10-29 in
+a widget four cells wide, about 231dp and narrower than the Compact drawing: both
+fit on one line with room to spare, so no shorter widget-only form is needed.
 
 **A title that does not fit is truncated, not wrapped.** A wrapped title costs a
 whole row at Compact width, and rows are the scarcest thing here.

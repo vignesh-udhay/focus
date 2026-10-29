@@ -61,8 +61,8 @@ unanswered reminder is posted once more ten minutes later, on its own channel
 the same name says whether it is on and opens that page (D-110); schema 14
 stores it.
 The reminder sheet gains a Snooze pane, and rows, the widget and Task Details
-say "Snoozed until" and "Reminds again at". Still to check on the phone: that
-those words fit a Compact widget row. On 2026-10-29 the suites ran: JVM 951 of 951,
+say "Snoozed until" and "Reminds again at". Both fit one line of a 231dp
+widget on the owner's phone. On 2026-10-29 the suites ran: JVM 951 of 951,
 lint with no errors, and the full instrumented suite 402 of 402 on the owner's
 phone, after the build migrated the dev app's own database from 13 to 14. Not
 merged and not pushed; the merge waits for the owner's word.
