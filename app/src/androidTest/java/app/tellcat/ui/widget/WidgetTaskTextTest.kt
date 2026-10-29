@@ -53,4 +53,27 @@ class WidgetTaskTextTest {
     fun aReminderWhoseDayIsOverIsDropped() {
         assertEquals(null, metadata(today.minusDays(1).atTime(17, 0)))
     }
+
+    /** D-109: the widget says a snooze is a snooze, as the app's row does. */
+    @Test
+    fun aSnoozeStillToRingSaysSo() {
+        val snoozed = task(today.atTime(17, 26)).copy(snoozedUntil = today.atTime(17, 36))
+
+        val text = widgetTaskText(context, snoozed, today).metadata!!
+
+        assertTrue(text, text.startsWith("Snoozed until "))
+    }
+
+    /** D-108: and a pending follow-up is what it will do next. */
+    @Test
+    fun aPendingFollowUpSaysSo() {
+        val waiting = task(today.atTime(9, 30)).copy(
+            reminderDeliveredAt = Instant.parse("2026-09-02T09:30:04Z"),
+            followUpAt = today.atTime(9, 40)
+        )
+
+        val text = widgetTaskText(context, waiting, today).metadata!!
+
+        assertTrue(text, text.startsWith("Reminds again at "))
+    }
 }

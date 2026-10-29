@@ -1,6 +1,7 @@
 package app.tellcat.core.domain
 
 import java.time.Duration
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
 
@@ -40,6 +41,17 @@ fun followUpTime(announcedAt: LocalDateTime): LocalDateTime =
  */
 val Task.pendingFollowUp: LocalDateTime?
     get() = followUpAt?.takeIf { !isCompleted && !isDeleted && reminderDeliveredAt != null }
+
+/**
+ * The day a notification line has to name for a reminder set for [at], or null
+ * when it was today and the time alone says it. D-108, D-109.
+ *
+ * A follow-up posted after a phone was off overnight, or a snooze carried to
+ * the next morning, would otherwise say "set for 9:30 PM" the next day with
+ * nothing to say it was last night.
+ */
+fun dayToName(at: LocalDateTime, today: LocalDate): LocalDate? =
+    at.toLocalDate().takeIf { day -> day != today }
 
 /** Every task with a follow-up owed, soonest first. */
 fun followUpsOwed(tasks: List<Task>): List<Task> =

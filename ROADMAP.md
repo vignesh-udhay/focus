@@ -58,8 +58,9 @@ merge waits for the owner's word.
 cut from `main` at `b59b2ad`, not merged and not pushed, D-108 and D-109.** An
 unanswered reminder is posted once more ten minutes later, on its own channel
 ("Reminders again") so Android's settings can turn it off; schema 14 stores it.
-The reminder sheet gains a Snooze pane, and rows and Task Details say "Snoozed
-until" and "Reminds again at". The tests are written and none has run: the
+The reminder sheet gains a Snooze pane, and rows, the widget and Task Details
+say "Snoozed until" and "Reminds again at". Still to check on the phone: that
+those words fit a Compact widget row. The tests are written and none has run: the
 owner asked for the suites to wait until the phone is connected. The main and
 test sources compile.
 

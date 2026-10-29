@@ -53,7 +53,9 @@ draws.
 `reminderSummary`. The time takes the device's own 12 or 24 hour preference
 rather than a format this app picks. A snoozed reminder ringing again says
 "Snoozed from 5:26 PM", the time it was set for, so the snooze is not passed off
-as the reminder (D-109).
+as the reminder (D-109). When that time was not today the line names its day,
+"Snoozed from Oct 28, 9:30 PM", in the month-and-day form the app writes every
+day it does not name.
 
 **The notes go in the expanded form and nowhere else.** `BigTextStyle` carries
 them, so the collapsed notification stays the title and one line. A task with no
@@ -99,6 +101,8 @@ has a file of its own. "In ten minutes" cannot be got wrong; "this evening" can.
 D-108. A reminder announced as a notification and not answered within ten
 minutes is posted once more, and only once: the task's title, the line "Reminder
 again · set for 9:30 AM", Done and Snooze, in the reminder's place in the shade.
+A follow-up posted on a later day, after the phone was off, names the day the
+reminder was set for: "set for Oct 28, 9:30 PM".
 Done, Snooze, opening the task, a new time, completing and deleting all answer
 it. A reminder that rang like an alarm is not followed up; it rang until it was
 answered.

@@ -6665,7 +6665,7 @@ not miss.
   (D-102). One that could not ring as an alarm and arrived as a notification is
   followed up like any other notification.
 - **The off switch is a notification channel, "Reminders again", not a Settings
-  row.** The brief asked for a setting where reminder settings live. `settings.md`
+  row,** which the owner agreed on 2026-10-29. The brief asked for a setting where reminder settings live. `settings.md`
   closes the Settings list (D-024) and keeps how a notification behaves in
   Android's channel settings, so the follow-up has its own channel, on by
   default, and turning it off in Android's settings turns follow-ups off. The app
@@ -6674,6 +6674,11 @@ not miss.
   nothing added, so the brief's "Reminder again: Call the dentist" became the
   title plus the line "Reminder again · set for 9:30 AM". "Set for", not "due":
   `task-row.md` keeps "due" for the due date.
+- **Late is still once.** A phone off when the follow-up was due posts it when
+  it is back, even hours later: a restart clears the shade, so it may be the only
+  trace of the miss. It names the day the reminder was set for when that was not
+  today ("set for Oct 28, 9:30 PM"), so it does not read as tonight. The owner
+  chose this over dropping a late follow-up, on 2026-10-29.
 - **Not in the backup.** It is about one announcement minutes long; restoring an
   old file must not bring a nag back.
 - **Reminder health is unchanged.** A follow-up that cannot be shown is the same
@@ -6731,6 +6736,13 @@ the snooze time off as the time it was set for.
 - **The snoozed notification leaves the shade** when a snooze is made in the
   app, or the reminder is given a new time, since what it says is out of date.
 - **The alarm's own snooze is unchanged**, 10 min from the alarm screen (D-102).
+- **"Tomorrow 9:00" stays, chosen by the owner on 2026-10-29.** Besides the
+  written vocabulary, "Tomorrow, same time" on a daily task would ring in the
+  same minute as the next occurrence D-098 has already made.
+- **The widget says it too.** Its rows take the same `rowReminder` decision and
+  the same words as the app's row, so it cannot pass a snooze off as the time
+  the user set. "Snoozed from" names the day when the reminder was set for
+  another one, as the follow-up's line does.
 
 **What would reverse this.** People snoozing from the app and expecting the
 notification to come back at once, which would show as reports of a missing

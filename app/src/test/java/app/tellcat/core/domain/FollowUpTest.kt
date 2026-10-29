@@ -44,6 +44,25 @@ class FollowUpTest {
         assertEquals(10L, FollowUpDelay.toMinutes())
     }
 
+    // Which day a notification line names
+
+    @Test
+    fun `a reminder set for today needs no day named`() {
+        assertNull(dayToName(nine, nine.toLocalDate()))
+    }
+
+    /** Posted the morning after the phone was off: last night has to be said. */
+    @Test
+    fun `a reminder set for another day names that day`() {
+        assertEquals(nine.toLocalDate(), dayToName(nine, nine.toLocalDate().plusDays(1)))
+    }
+
+    @Test
+    fun `a reminder set last year names its day, and the formatter adds the year`() {
+        val newYearsEve = LocalDateTime.of(2026, 12, 31, 22, 0)
+        assertEquals(newYearsEve.toLocalDate(), dayToName(newYearsEve, newYearsEve.toLocalDate().plusDays(1)))
+    }
+
     // Whether
 
     @Test

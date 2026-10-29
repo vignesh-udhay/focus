@@ -20,6 +20,8 @@ import app.tellcat.core.domain.hasLiveReminder
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import app.tellcat.core.domain.dayToName
 import java.time.LocalTime
 import java.time.ZoneId
 import java.util.Date
@@ -97,7 +99,9 @@ internal fun Context.postReminder(
  * follow-ups off without touching reminders.
  */
 internal fun Context.postFollowUp(task: Task, requireUnlockForActions: Boolean = false): Boolean {
-    val set = task.reminderAt?.let { at -> formatTime(at.toLocalTime()) } ?: return false
+    // The day too when it was not today: posted after a night with the phone
+    // off, "set for 9:30 PM" alone would read as tonight.
+    val set = task.reminderAt?.let { at -> formatReminderMoment(at) } ?: return false
     val summary = getString(R.string.reminder_follow_up_summary, set)
 
     fun action(label: Int, action: String) = NotificationCompat.Action.Builder(
@@ -396,7 +400,7 @@ private fun Task.reminderSummary(context: Context): String {
     // ringing, so it read as the reminder's time and hid that it was late.
     val set = reminderAt
     val time = if (snoozedUntil != null && set != null) {
-        context.getString(R.string.reminder_snoozed_summary, context.formatTime(set.toLocalTime()))
+        context.getString(R.string.reminder_snoozed_summary, context.formatReminderMoment(set))
     } else {
         // When it rang. D-078.
         val at = ringsAt ?: return ""
@@ -419,6 +423,27 @@ private fun Task.reminderSummary(context: Context): String {
     } else {
         context.getString(R.string.reminder_summary_separator, time, repeat)
     }
+}
+
+/**
+ * A reminder's moment for a notification line: the time when it was [today],
+ * and the day and the time otherwise, "Oct 28, 9:30 PM". D-108, D-109.
+ *
+ * The day is written as the app writes every date it does not name: month and
+ * day by the locale's own pattern, with the year only when it is not this one.
+ * Not "Yesterday", which nothing else in the app says. Formatted here rather
+ * than through the row's helpers, which are Compose functions in `ui`, and the
+ * notification is drawn from a receiver.
+ */
+internal fun Context.formatReminderMoment(at: LocalDateTime, today: LocalDate = LocalDate.now()): String {
+    val time = formatTime(at.toLocalTime())
+    val day = dayToName(at, today) ?: return time
+    val locale = resources.configuration.locales[0]
+    val skeleton = if (day.year != today.year) "MMMdy" else "MMMd"
+    val date = day.format(
+        DateTimeFormatter.ofPattern(android.text.format.DateFormat.getBestDateTimePattern(locale, skeleton), locale)
+    )
+    return getString(R.string.task_reminder_when, date, time)
 }
 
 internal fun Context.formatTime(time: LocalTime): String {

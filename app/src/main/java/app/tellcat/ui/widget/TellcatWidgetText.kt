@@ -3,7 +3,9 @@ package app.tellcat.ui.widget
 import android.content.Context
 import android.text.format.DateFormat
 import app.tellcat.R
+import app.tellcat.core.domain.ReminderStage
 import app.tellcat.core.domain.Task
+import app.tellcat.core.domain.rowReminder
 import app.tellcat.core.text.recurrenceSummary
 import app.tellcat.ui.component.DurationLabel
 import app.tellcat.ui.component.durationLabel
@@ -23,10 +25,26 @@ internal fun widgetTaskText(context: Context, task: Task, today: LocalDate): Wid
     // The row's rule, D-075: a reminder names its day when that is not the
     // task's day, and is dropped once its own day is over. On an overdue task it
     // follows the date, as on the app's row, so one still to come is not hidden.
-    val reminder = task.ringsAt?.takeUnless { it.toLocalDate().isBefore(today) }?.let { at ->
+    //
+    // And it says what the reminder will do next, as the app's row does: a
+    // snooze still to ring is "Snoozed until 5:37 PM" (D-109), a pending
+    // follow-up "Reminds again at 9:40 AM" (D-108). The same decision,
+    // `rowReminder`, and the same words, so the widget cannot pass a snooze off
+    // as the time the user set.
+    val shown = task.rowReminder()?.takeUnless { it.at.toLocalDate().isBefore(today) }
+    val reminder = shown?.let { next ->
+        val at = next.at
         val time = at.toLocalTime().format(context.timeFormatter())
-        if (at.toLocalDate() == task.scheduledDate) time
-        else context.getString(R.string.task_row_reminder_on_day, context.dayLabel(at.toLocalDate(), today), time)
+        val moment = if (at.toLocalDate() == task.scheduledDate) {
+            time
+        } else {
+            context.getString(R.string.task_row_reminder_on_day, context.dayLabel(at.toLocalDate(), today), time)
+        }
+        when (next.stage) {
+            ReminderStage.Set -> moment
+            ReminderStage.Snoozed -> context.getString(R.string.task_row_snoozed, moment)
+            ReminderStage.FollowUp -> context.getString(R.string.task_row_follow_up, moment)
+        }
     }
     val metadata = buildList {
         if (!overdue) reminder?.let(::add)
