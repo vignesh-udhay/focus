@@ -75,6 +75,12 @@ private class FakeTaskDao : TaskDao {
         remindersSnoozed += id to snoozedUntil
     }
 
+    val followUpsSet = mutableListOf<Pair<String, String?>>()
+
+    override suspend fun setFollowUp(id: String, followUpAt: String?) {
+        followUpsSet += id to followUpAt
+    }
+
     override suspend fun setChecklist(id: String, checklist: String?) {
         checklistsSet += id to checklist
     }

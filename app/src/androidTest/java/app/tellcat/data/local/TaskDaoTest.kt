@@ -500,6 +500,56 @@ class TaskDaoTest {
         assertEquals(listOf("tue"), dao.findSpawnsOf("mon").map { it.id })
     }
 
+    // D-108: the follow-up, written with the announcement and cleared by the answers
+
+    private val followUp: LocalDateTime = LocalDateTime.of(2026, 9, 1, 9, 10)
+
+    @Test
+    fun recordAnnouncedWritesTheFollowUpInTheSameTransaction() = runBlocking {
+        dao.insert(entity("mon"))
+
+        dao.recordAnnounced(
+            id = "mon",
+            deliveredAt = createdAt.toEpochMilli(),
+            next = null,
+            retireId = null,
+            followUpAt = followUp.toString()
+        )
+
+        assertEquals(followUp, dao.findTask("mon")?.followUpAt)
+    }
+
+    @Test
+    fun setFollowUpClearsIt() = runBlocking {
+        dao.insert(entity("mon"))
+        dao.setFollowUp("mon", followUp.toString())
+
+        dao.setFollowUp("mon", null)
+
+        assertNull(dao.findTask("mon")?.followUpAt)
+    }
+
+    @Test
+    fun snoozingClearsTheFollowUp() = runBlocking {
+        dao.insert(entity("mon"))
+        dao.setFollowUp("mon", followUp.toString())
+
+        dao.snoozeReminder("mon", followUp.plusHours(1).toString())
+
+        assertNull(dao.findTask("mon")?.followUpAt)
+    }
+
+    @Test
+    fun deletingClearsTheFollowUp() = runBlocking {
+        dao.insert(entity("mon"))
+        dao.setFollowUp("mon", followUp.toString())
+
+        dao.softDelete("mon", deletedAt.toEpochMilli())
+        dao.restore("mon")
+
+        assertNull("Undoing the delete brought the follow-up back", dao.findTask("mon")?.followUpAt)
+    }
+
     @Test
     fun completingAnOccurrenceThatAlreadyHasItsSuccessorWritesNoOther() = runBlocking {
         dao.insert(entity("mon", recurrence = RecurrenceUnit.DAILY))

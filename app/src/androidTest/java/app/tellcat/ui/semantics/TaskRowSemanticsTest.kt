@@ -366,6 +366,62 @@ class TaskRowSemanticsTest {
         scheduledDate = TestToday
     )
 
+    // --- D-108 and D-109: what the reminder will do next, drawn and read -----
+
+    private fun assertAPendingFollowUpIsSaid(fontScale: Float) {
+        setRow(
+            fontScale,
+            outstanding().copy(
+                reminderAt = TestToday.atTime(9, 30),
+                reminderDeliveredAt = Instant.parse("2026-09-02T09:30:04Z"),
+                followUpAt = TestToday.atTime(9, 40)
+            )
+        )
+
+        rule.onNode(hasContentDescription("Reminds again at ", substring = true)).assertExists()
+        rule.onAllNodes(hasContentDescription("Reminder ", substring = true)).assertCountEquals(0)
+    }
+
+    @Test
+    fun aPendingFollowUp_isSaid_at100() = assertAPendingFollowUpIsSaid(FontScale100)
+
+    @Test
+    fun aPendingFollowUp_isSaid_at200() = assertAPendingFollowUpIsSaid(FontScale200)
+
+    private fun assertASnoozeIsSaid(fontScale: Float) {
+        setRow(
+            fontScale,
+            outstanding().copy(
+                reminderAt = TestToday.atTime(17, 26),
+                snoozedUntil = TestToday.atTime(17, 36)
+            )
+        )
+
+        rule.onNode(hasContentDescription("Snoozed until ", substring = true)).assertExists()
+    }
+
+    @Test
+    fun aSnooze_isSaid_at100() = assertASnoozeIsSaid(FontScale100)
+
+    @Test
+    fun aSnooze_isSaid_at200() = assertASnoozeIsSaid(FontScale200)
+
+    /** Once the snooze has rung it is the time the reminder spoke, as any other. */
+    @Test
+    fun aSnoozeThatHasRung_isReadAsAReminder() {
+        setRow(
+            FontScale100,
+            outstanding().copy(
+                reminderAt = TestToday.atTime(17, 26),
+                snoozedUntil = TestToday.atTime(17, 36),
+                reminderDeliveredAt = Instant.parse("2026-09-02T17:36:04Z")
+            )
+        )
+
+        rule.onNode(hasContentDescription("Reminder ", substring = true)).assertExists()
+        rule.onAllNodes(hasContentDescription("Snoozed until ", substring = true)).assertCountEquals(0)
+    }
+
     // --- D-102: a reminder that rings like an alarm is read as an alarm ------
 
     private fun assertAnAlarmReminderIsReadAsAnAlarm(fontScale: Float) {

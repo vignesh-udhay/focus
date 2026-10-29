@@ -62,6 +62,48 @@ class LockedReminderStoreTest {
         assertEquals(listOf(call), store().upcoming())
     }
 
+    /**
+     * D-108. A follow-up due before the first unlock is posted from the copy,
+     * so the copy has to say it is one, and which reminder it follows up.
+     */
+    @Test
+    fun aFollowUpStaysAFollowUpInTheCopy() {
+        val followUp = ScheduledReminder(
+            "d",
+            "Call the dentist",
+            LocalDateTime.of(2026, 10, 11, 9, 40),
+            followUpOf = LocalDateTime.of(2026, 10, 11, 9, 30)
+        )
+
+        store().replaceUpcoming(listOf(followUp, water))
+
+        assertEquals(listOf(followUp, water), store().upcoming())
+    }
+
+    /**
+     * D-108. The unlock decides from these whether to set a follow-up, and
+     * whether one was already posted while locked.
+     */
+    @Test
+    fun aLockedDeliveryKeepsWhetherItWasAFollowUpAndWhetherItRemindsAgain() {
+        val delivery = LockedDelivery(
+            taskId = "a",
+            title = "Call mom",
+            ringsAt = call.ringsAt,
+            scheduledWallAt = Instant.EPOCH,
+            scheduledElapsedAt = 0L,
+            arrivedWallAt = Instant.EPOCH,
+            arrivedElapsedAt = 0L,
+            scheduledAhead = Duration.ZERO,
+            followUp = true,
+            remindsAgain = true
+        )
+
+        store().recordLockedDelivery(delivery)
+
+        assertEquals(listOf(delivery), store().lockedDeliveries())
+    }
+
     @Test
     fun upcomingRemindersSurviveANewStore() {
         store().replaceUpcoming(listOf(call, water))

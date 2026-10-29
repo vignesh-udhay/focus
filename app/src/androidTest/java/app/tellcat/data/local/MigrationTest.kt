@@ -255,7 +255,8 @@ class MigrationTest {
             MIGRATION_9_10,
             MIGRATION_10_11,
             MIGRATION_11_12,
-            MIGRATION_12_13
+            MIGRATION_12_13,
+            MIGRATION_13_14
         ).use { database ->
             database.query(
                 "SELECT notes, recurrence, spawnedFromId, reminderAt FROM tasks WHERE id = ?",
@@ -495,7 +496,8 @@ class MigrationTest {
             MIGRATION_9_10,
             MIGRATION_10_11,
             MIGRATION_11_12,
-            MIGRATION_12_13
+            MIGRATION_12_13,
+            MIGRATION_13_14
         ).use { database ->
             database.query(
                 """
@@ -556,7 +558,9 @@ class MigrationTest {
                         // Appended by version 12.
                         "checklist",
                         // Appended by version 13, D-102.
-                        "ringsLikeAlarm"
+                        "ringsLikeAlarm",
+                        // Appended by version 14, D-108.
+                        "followUpAt"
                     ),
                     columns
                 )
@@ -613,7 +617,8 @@ class MigrationTest {
             MIGRATION_9_10,
             MIGRATION_10_11,
             MIGRATION_11_12,
-            MIGRATION_12_13
+            MIGRATION_12_13,
+            MIGRATION_13_14
         ).use { database ->
             database.query(
                 """
@@ -706,7 +711,7 @@ class MigrationTest {
         const val TEST_DB = "migration-test.db"
 
         /** The schema every migration in this test is aimed at. */
-        const val LatestVersion = 13
+        const val LatestVersion = 14
     }
 
     /**
@@ -771,5 +776,29 @@ class MigrationTest {
         }
 
         assertTrue(openAndReadTasks().none { it.ringsLikeAlarm })
+    }
+
+    /**
+     * Version 14 adds the follow-up as null on every row. D-108. A backfill
+     * would post a reminder again on every existing install the moment the
+     * update landed.
+     */
+    @Test
+    fun migratedRowsHaveNoFollowUp() {
+        seedVersion1()
+
+        migrate().use { database ->
+            database.query("SELECT id, followUpAt FROM tasks").use { cursor ->
+                var rows = 0
+                while (cursor.moveToNext()) {
+                    rows++
+                    assertTrue(cursor.getString(0) + " has a follow-up", cursor.isNull(1))
+                }
+
+                assertEquals(3, rows)
+            }
+        }
+
+        assertTrue(openAndReadTasks().none { it.followUpAt != null })
     }
 }

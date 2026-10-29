@@ -477,4 +477,104 @@ class ReminderSchedulerTest {
         // 18:00 in Kolkata is 12:30 UTC.
         assertEquals(listOf<Instant?>(Instant.parse("2026-09-05T12:31:00Z")), recorded)
     }
+
+    // D-108: the one follow-up, on the task's own alarm
+
+    /** Announced at 11:55, ten minutes ago or less, and nobody has answered. */
+    private fun waiting(id: String, followUpAt: LocalDateTime) =
+        task(
+            id,
+            LocalDateTime.of(2026, 9, 5, 11, 55),
+            reminderDeliveredAt = Instant.parse("2026-09-05T06:25:00Z")
+        ).copy(followUpAt = followUpAt)
+
+    @Test
+    fun `a pending follow-up is scheduled at its time`() {
+        val alarms = RecordingAlarms()
+
+        scheduler(alarms).reconcile(listOf(waiting("a", LocalDateTime.of(2026, 9, 5, 12, 5))))
+
+        // 12:05 in Kolkata is 06:35 UTC.
+        assertEquals(mapOf("a" to Instant.parse("2026-09-05T06:35:00Z")), alarms.scheduled)
+    }
+
+    /** The phone was off when it was due: it is posted now, once. */
+    @Test
+    fun `a follow-up whose moment has passed is scheduled for now`() {
+        val alarms = RecordingAlarms()
+
+        scheduler(alarms).reconcile(listOf(waiting("a", LocalDateTime.of(2026, 9, 5, 11, 58))))
+
+        assertEquals(mapOf("a" to now), alarms.scheduled)
+    }
+
+    @Test
+    fun `a completed task's follow-up is cancelled, not scheduled`() {
+        val alarms = RecordingAlarms()
+        val done = waiting("a", LocalDateTime.of(2026, 9, 5, 12, 5)).copy(completedAt = createdAt)
+
+        scheduler(alarms).reconcile(listOf(done))
+
+        assertTrue(alarms.scheduled.isEmpty())
+        assertTrue("a" in alarms.cancelled)
+    }
+
+    @Test
+    fun `a follow-up is reported with the reminder it follows up, and never as an alarm`() {
+        val alarms = RecordingAlarms()
+        val alarmStyle = waiting("a", LocalDateTime.of(2026, 9, 5, 12, 5)).copy(ringsLikeAlarm = true)
+
+        val result = scheduler(alarms).reconcile(listOf(alarmStyle))
+
+        assertEquals(
+            listOf(
+                ScheduledReminder(
+                    taskId = "a",
+                    title = "Task a",
+                    ringsAt = LocalDateTime.of(2026, 9, 5, 12, 5),
+                    ringsLikeAlarm = false,
+                    followUpOf = LocalDateTime.of(2026, 9, 5, 11, 55)
+                )
+            ),
+            result.scheduled
+        )
+    }
+
+    @Test
+    fun `a follow-up keeps the backstop`() {
+        val alarms = RecordingAlarms()
+
+        scheduler(alarms).reconcile(listOf(waiting("a", LocalDateTime.of(2026, 9, 5, 12, 5))))
+
+        assertEquals(Instant.parse("2026-09-05T06:36:00Z"), alarms.backstop)
+    }
+
+    @Test
+    fun `a follow-up due before a reminder is scheduled before it`() {
+        val alarms = RecordingAlarms()
+        val tasks = listOf(
+            task("later", LocalDateTime.of(2026, 9, 5, 18, 0)),
+            waiting("soon", LocalDateTime.of(2026, 9, 5, 12, 5))
+        )
+
+        val result = scheduler(alarms).reconcile(tasks)
+
+        assertEquals(listOf("soon", "later"), result.scheduled.map { it.taskId })
+    }
+
+    /** Its follow-up alarm may still be armed; deleting cleared the column. */
+    @Test
+    fun `a task deleted inside the follow-up window has its alarm cancelled`() {
+        val alarms = RecordingAlarms()
+        val deleted = task(
+            "gone",
+            LocalDateTime.of(2026, 9, 5, 11, 55),
+            reminderDeliveredAt = Instant.parse("2026-09-05T06:25:00Z"),
+            deletedAt = Instant.parse("2026-09-05T06:28:00Z")
+        )
+
+        scheduler(alarms).reconcile(emptyList(), deleted = listOf(deleted))
+
+        assertTrue("gone" in alarms.cancelled)
+    }
 }

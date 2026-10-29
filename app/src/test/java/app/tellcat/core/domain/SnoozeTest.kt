@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 import java.time.LocalDateTime
+import java.time.LocalTime
 
 /**
  * The snooze arithmetic, including the hours it is easy to get wrong.
@@ -211,5 +212,69 @@ class SnoozeTest {
                 assertEquals("$option at $now is not in the future", true, until!!.isAfter(now))
             }
         }
+    }
+
+    // D-109: the snooze inside the app, every option and a picked time
+
+    @Test
+    fun `inside the app every option shows while the evening is ahead`() {
+        assertEquals(SnoozeOption.entries, snoozeOptionsInApp(morning))
+    }
+
+    @Test
+    fun `after six this evening is not offered rather than meaning tomorrow`() {
+        assertEquals(
+            listOf(SnoozeOption.TenMinutes, SnoozeOption.OneHour, SnoozeOption.TomorrowMorning),
+            snoozeOptionsInApp(LocalDateTime.of(2026, 9, 5, 18, 0))
+        )
+    }
+
+    @Test
+    fun `a picked time still ahead today lands today`() {
+        assertEquals(
+            LocalDateTime.of(2026, 9, 5, 16, 0),
+            snoozedUntil(LocalTime.of(16, 0), morning)
+        )
+    }
+
+    @Test
+    fun `a picked time already gone lands tomorrow`() {
+        assertEquals(
+            LocalDateTime.of(2026, 9, 6, 8, 0),
+            snoozedUntil(LocalTime.of(8, 0), morning)
+        )
+    }
+
+    /** Strictly after, as "this evening" is: never the moment just arrived. */
+    @Test
+    fun `picking the minute it is now lands tomorrow`() {
+        assertEquals(
+            LocalDateTime.of(2026, 9, 6, 9, 30),
+            snoozedUntil(LocalTime.of(9, 30), morning)
+        )
+    }
+
+    @Test
+    fun `a picked time after midnight from late evening lands the next day`() {
+        assertEquals(
+            LocalDateTime.of(2026, 9, 6, 0, 30),
+            snoozedUntil(LocalTime.of(0, 30), LocalDateTime.of(2026, 9, 5, 23, 50))
+        )
+    }
+
+    @Test
+    fun `a picked time on the last day of the month lands on the first of the next`() {
+        assertEquals(
+            LocalDateTime.of(2026, 10, 1, 7, 0),
+            snoozedUntil(LocalTime.of(7, 0), LocalDateTime.of(2026, 9, 30, 21, 0))
+        )
+    }
+
+    @Test
+    fun `a picked time keeps whole minutes`() {
+        assertEquals(
+            LocalDateTime.of(2026, 9, 5, 16, 0),
+            snoozedUntil(LocalTime.of(16, 0, 45), morning)
+        )
     }
 }

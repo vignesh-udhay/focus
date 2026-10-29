@@ -85,6 +85,8 @@ private class RefusingTaskDao(private val rows: List<TaskEntity>) : TaskDao {
 
     override suspend fun snoozeReminder(id: String, snoozedUntil: String) = refuse()
 
+    override suspend fun setFollowUp(id: String, followUpAt: String?) = refuse()
+
     override suspend fun setChecklist(id: String, checklist: String?) = refuse()
 
     override suspend fun restore(id: String) = refuse()
@@ -155,8 +157,19 @@ private class FakeTaskDao : TaskDao {
             if (stored.id == id) {
                 stored.copy(
                     snoozedUntil = TaskConverters.textToLocalDateTime(snoozedUntil),
-                    reminderDeliveredAt = null
+                    reminderDeliveredAt = null,
+                    followUpAt = null
                 )
+            } else {
+                stored
+            }
+        }
+    }
+
+    override suspend fun setFollowUp(id: String, followUpAt: String?) {
+        emissions.value = emissions.value.map { stored ->
+            if (stored.id == id) {
+                stored.copy(followUpAt = TaskConverters.textToLocalDateTime(followUpAt))
             } else {
                 stored
             }
@@ -177,7 +190,7 @@ private class FakeTaskDao : TaskDao {
         softDeleted += id to deletedAt
         emissions.value = emissions.value.map { stored ->
             if (stored.id == id) {
-                stored.copy(deletedAt = Instant.ofEpochMilli(deletedAt))
+                stored.copy(deletedAt = Instant.ofEpochMilli(deletedAt), followUpAt = null)
             } else {
                 stored
             }
@@ -1697,6 +1710,70 @@ class TaskListViewModelTest {
      */
     private fun awaitReminderSignal(model: TaskListViewModel): Boolean = runBlocking {
         withTimeoutOrNull(TIMEOUT_MILLIS) { model.reminderJustSet.first { it } } ?: false
+    }
+
+    // D-108 and D-109: what answers a pending follow-up, and the snooze inside the app
+
+    /** Announced at nine and unanswered, with its follow-up at 9:10. */
+    private fun waitingOnFollowUp(id: String) = task(
+        id,
+        scheduledDate = today,
+        reminderAt = reminder,
+        reminderDeliveredAt = Instant.parse("2026-08-31T09:00:04Z")
+    ).copy(followUpAt = reminder.plusMinutes(10))
+
+    /** The stored row once [done] holds, waited for rather than sampled. */
+    private fun awaitRow(id: String, done: (TaskEntity) -> Boolean): TaskEntity {
+        repeat(200) {
+            val row = dao.emissions.value.firstOrNull { it.id == id }
+            if (row != null && done(row)) return row
+            Thread.sleep(10)
+        }
+        throw AssertionError("$id never reached the expected state")
+    }
+
+    @Test
+    fun `moving the reminder forgets its follow-up`() {
+        store(waitingOnFollowUp("a"))
+
+        viewModel().edit("a", reminderAt = reminder.plusHours(2))
+
+        val edited = awaitEdited("a")
+        assertNull(edited.followUpAt)
+        assertNull(edited.reminderDeliveredAt)
+    }
+
+    @Test
+    fun `editing something else keeps the follow-up`() {
+        store(waitingOnFollowUp("a"))
+
+        viewModel().edit("a", title = "Call the dentist")
+
+        assertEquals(reminder.plusMinutes(10), awaitEdited("a").followUpAt)
+    }
+
+    @Test
+    fun `opening the task forgets its follow-up`() {
+        store(waitingOnFollowUp("a"))
+
+        viewModel().acknowledgeFollowUp("a")
+
+        assertNull(awaitRow("a") { it.followUpAt == null }.followUpAt)
+    }
+
+    @Test
+    fun `snoozing inside the app moves the next announcement and forgets the follow-up`() {
+        store(waitingOnFollowUp("a"))
+        val until = reminder.plusHours(1)
+
+        viewModel().snoozeReminder("a", until)
+
+        val snoozed = awaitRow("a") { it.snoozedUntil != null }.toDomain()
+        assertEquals(until, snoozed.snoozedUntil)
+        // D-078: the reminder's own time is left alone.
+        assertEquals(reminder, snoozed.reminderAt)
+        assertNull(snoozed.reminderDeliveredAt)
+        assertNull(snoozed.followUpAt)
     }
 
     /** Waits until at least [count] writes have reached the DAO. */

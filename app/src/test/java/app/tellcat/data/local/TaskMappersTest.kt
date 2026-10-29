@@ -24,6 +24,9 @@ class TaskMappersTest {
     private val snoozedUntil: LocalDateTime = LocalDateTime.of(2026, 8, 31, 10, 30)
     private val checklist = listOf(ChecklistItem("Logo"), ChecklistItem("Copy", done = true))
 
+    /** D-108: set, so a mapping that dropped it would fail. */
+    private val followUpAt: LocalDateTime = LocalDateTime.of(2026, 9, 5, 14, 10)
+
     private fun fullTask() = Task(
         id = "task-1",
         title = "Finish the landing page",
@@ -38,6 +41,7 @@ class TaskMappersTest {
         // True, so a mapping that dropped it would fail rather than fall back
         // to the default. D-102.
         ringsLikeAlarm = true,
+        followUpAt = followUpAt,
         estimatedDurationMinutes = 45,
         recurrence = Recurrence(RecurrenceUnit.WEEKLY),
         spawnedFromId = "task-0",
@@ -66,7 +70,8 @@ class TaskMappersTest {
         spawnedFromId = "task-0",
         completedAt = completedAt,
         deletedAt = deletedAt,
-        ringsLikeAlarm = true
+        ringsLikeAlarm = true,
+        followUpAt = followUpAt
     )
 
     // 1. Task -> Entity
@@ -104,6 +109,7 @@ class TaskMappersTest {
         assertEquals(completedAt, entity.completedAt)
         assertEquals(deletedAt, entity.deletedAt)
         assertTrue(entity.ringsLikeAlarm)
+        assertEquals(followUpAt, entity.followUpAt)
     }
 
     @Test
@@ -132,6 +138,7 @@ class TaskMappersTest {
         assertEquals(completedAt, task.completedAt)
         assertEquals(deletedAt, task.deletedAt)
         assertTrue(task.ringsLikeAlarm)
+        assertEquals(followUpAt, task.followUpAt)
     }
 
     @Test

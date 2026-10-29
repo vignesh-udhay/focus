@@ -270,6 +270,21 @@ class RecurrenceTest {
         assertNull(next.snoozedUntil)
     }
 
+    /** D-108: the follow-up belonged to one announcement, not the series. */
+    @Test
+    fun `the next occurrence carries no follow-up`() {
+        val waiting = chore.copy(
+            reminderAt = LocalDateTime.of(2026, 9, 2, 8, 0),
+            reminderDeliveredAt = Instant.parse("2026-09-02T08:00:04Z"),
+            followUpAt = LocalDateTime.of(2026, 9, 2, 8, 10)
+        )
+
+        val next = waiting.nextRecurringInstance(date("2026-09-02"), "next", createdAt)!!
+
+        assertNull(next.followUpAt)
+        assertNull(next.reminderDeliveredAt)
+    }
+
     /** D-102 with D-098: a daily alarm stays an alarm, every day. */
     @Test
     fun `the next occurrence still rings like an alarm`() {

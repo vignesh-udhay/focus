@@ -14,6 +14,7 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -289,7 +290,103 @@ class ReminderSheetSemanticsTest {
         rule.onNodeWithText(SAVE).assertIsEnabled()
     }
 
+    // --- D-109: the snooze inside the app -------------------------------------
+
+    /** The sheet on a reminder that has rung, and what Snooze writes. */
+    private fun setSnoozeSheet(
+        fontScale: Float = FontScale100,
+        canSnooze: Boolean = true
+    ): MutableList<LocalDateTime> {
+        val snoozed = mutableListOf<LocalDateTime>()
+
+        rule.setTellcatContent(fontScale) {
+            ReminderSheet(
+                reminderAt = TODAY.atTime(17, 30),
+                defaultDay = TODAY,
+                today = TODAY,
+                onSet = { _, _ -> },
+                onClear = {},
+                onDismiss = {},
+                now = NOW,
+                canSnooze = canSnooze,
+                onSnooze = { until -> snoozed += until }
+            )
+        }
+
+        rule.waitUntilExactlyOneExists(hasText(SAVE), TIMEOUT_MILLIS)
+        return snoozed
+    }
+
+    /** The pane's Snooze button, apart from its title, which reads the same. */
+    private fun snoozeButton() = rule.onNode(hasText(SNOOZE_CONFIRM) and hasClickAction())
+
+    @Test
+    fun snoozeIsOfferedOnceTheReminderHasRung() {
+        setSnoozeSheet()
+
+        rule.onNodeWithText(SNOOZE_ENTRY).assertIsDisplayed()
+    }
+
+    @Test
+    fun snoozeIsNotOfferedBeforeTheReminderHasRung() {
+        setSnoozeSheet(canSnooze = false)
+
+        rule.onAllNodesWithText(SNOOZE_ENTRY).assertCountEquals(0)
+    }
+
+    /** Six in the evening: "This evening" has gone, and is not offered. */
+    private fun assertThePaneOffersWhatApplies(fontScale: Float) {
+        setSnoozeSheet(fontScale)
+
+        rule.onNodeWithText(SNOOZE_ENTRY).performClick()
+        rule.waitUntilExactlyOneExists(hasText(TEN_MINUTES), TIMEOUT_MILLIS)
+
+        rule.onNodeWithText(ONE_HOUR).assertExists()
+        rule.onNode(hasText(TOMORROW_PRESET, substring = true) and hasClickAction()).assertExists()
+        rule.onNodeWithText(PICK_A_TIME).assertExists()
+        rule.onAllNodesWithText(THIS_EVENING).assertCountEquals(0)
+        snoozeButton().assertExists()
+    }
+
+    @Test
+    fun thePaneOffersWhatApplies_at100() = assertThePaneOffersWhatApplies(FontScale100)
+
+    @Test
+    fun thePaneOffersWhatApplies_at200() = assertThePaneOffersWhatApplies(FontScale200)
+
+    @Test
+    fun snoozeWaitsForAChoice() {
+        setSnoozeSheet()
+        rule.onNodeWithText(SNOOZE_ENTRY).performClick()
+        rule.waitUntilExactlyOneExists(hasText(TEN_MINUTES), TIMEOUT_MILLIS)
+
+        snoozeButton().assertIsNotEnabled()
+        rule.onAllNodesWithText(SNOOZES_UNTIL, substring = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun aPresetSaysWhereItLandsAndSnoozeWritesIt() {
+        val snoozed = setSnoozeSheet()
+        rule.onNodeWithText(SNOOZE_ENTRY).performClick()
+        rule.waitUntilExactlyOneExists(hasText(ONE_HOUR), TIMEOUT_MILLIS)
+
+        rule.onNodeWithText(ONE_HOUR).performClick()
+
+        rule.onNodeWithText(SNOOZES_UNTIL, substring = true).assertIsDisplayed()
+        snoozeButton().assertIsEnabled().performClick()
+        assertEquals(listOf(NOW.plusHours(1)), snoozed)
+    }
+
     private companion object {
+
+        const val SNOOZE_ENTRY = "Snooze…"
+        const val SNOOZE_CONFIRM = "Snooze"
+        const val TEN_MINUTES = "10 min"
+        const val ONE_HOUR = "1 hour"
+        const val THIS_EVENING = "This evening"
+        const val TOMORROW_PRESET = "Tomorrow "
+        const val PICK_A_TIME = "Pick a time…"
+        const val SNOOZES_UNTIL = "Snoozes until"
 
         /** A Tuesday, matching `RemindersTest`. */
         val TODAY: LocalDate = LocalDate.of(2026, 9, 8)

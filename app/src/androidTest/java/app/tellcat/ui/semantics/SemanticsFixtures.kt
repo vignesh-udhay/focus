@@ -229,7 +229,8 @@ internal class FakeTaskDao(initial: List<Task> = emptyList()) : TaskDao {
             if (stored.id == id) {
                 stored.copy(
                     snoozedUntil = TaskConverters.textToLocalDateTime(snoozedUntil),
-                    reminderDeliveredAt = null
+                    reminderDeliveredAt = null,
+                    followUpAt = null
                 )
             } else {
                 stored
@@ -249,7 +250,21 @@ internal class FakeTaskDao(initial: List<Task> = emptyList()) : TaskDao {
 
     override suspend fun softDelete(id: String, deletedAt: Long) {
         rows.value = rows.value.map { stored ->
-            if (stored.id == id) stored.copy(deletedAt = Instant.ofEpochMilli(deletedAt)) else stored
+            if (stored.id == id) {
+                stored.copy(deletedAt = Instant.ofEpochMilli(deletedAt), followUpAt = null)
+            } else {
+                stored
+            }
+        }
+    }
+
+    override suspend fun setFollowUp(id: String, followUpAt: String?) {
+        rows.value = rows.value.map { stored ->
+            if (stored.id == id) {
+                stored.copy(followUpAt = TaskConverters.textToLocalDateTime(followUpAt))
+            } else {
+                stored
+            }
         }
     }
 

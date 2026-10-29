@@ -56,13 +56,20 @@ private class ListTaskDao : TaskDao {
     override suspend fun update(task: TaskEntity) = change(task.id) { task }
 
     override suspend fun softDelete(id: String, deletedAt: Long) =
-        change(id) { row -> row.copy(deletedAt = Instant.ofEpochMilli(deletedAt)) }
+        change(id) { row -> row.copy(deletedAt = Instant.ofEpochMilli(deletedAt), followUpAt = null) }
+
+    override suspend fun setFollowUp(id: String, followUpAt: String?) =
+        change(id) { row -> row.copy(followUpAt = TaskConverters.textToLocalDateTime(followUpAt)) }
 
     override suspend fun markReminderDelivered(id: String, deliveredAt: Long) =
         change(id) { row -> row.copy(reminderDeliveredAt = Instant.ofEpochMilli(deliveredAt)) }
 
     override suspend fun snoozeReminder(id: String, snoozedUntil: String) = change(id) { row ->
-        row.copy(snoozedUntil = TaskConverters.textToLocalDateTime(snoozedUntil), reminderDeliveredAt = null)
+        row.copy(
+            snoozedUntil = TaskConverters.textToLocalDateTime(snoozedUntil),
+            reminderDeliveredAt = null,
+            followUpAt = null
+        )
     }
 
     override suspend fun setChecklist(id: String, checklist: String?) =
@@ -499,6 +506,101 @@ class ReminderAnnouncementTest {
     @Test
     fun `deleting what is not there deletes nothing`() {
         assertNull(delete("missing"))
+    }
+
+    // D-108: the one follow-up, set at the announcement and cleared by every answer
+
+    private fun announceRemindingAgain(id: String, at: Instant = announcedAt) =
+        runBlocking { announcement.record(id, at, remindsAgain = true) }
+
+    @Test
+    fun `a reminder announced as a notification is followed up ten minutes after its minute`() {
+        store(pills(recurrence = null))
+
+        announceRemindingAgain("pills")
+
+        // Announced at 9:00:04, so the follow-up is 9:10 on the dot.
+        val told = stored().getValue("pills")
+        assertEquals(nine.plusMinutes(10), told.followUpAt)
+        assertEquals(nine.plusMinutes(10), told.pendingFollowUp)
+    }
+
+    @Test
+    fun `an announcement that does not remind again sets no follow-up`() {
+        store(pills(recurrence = null))
+
+        announce("pills")
+
+        assertNull(stored().getValue("pills").followUpAt)
+    }
+
+    @Test
+    fun `the next occurrence of a repeat carries no follow-up, and is still made`() {
+        store(pills())
+
+        announceRemindingAgain("pills")
+
+        val next = spawnsOf("pills").single()
+        assertNull(next.followUpAt)
+        assertEquals(nine.plusDays(1), next.reminderAt)
+        assertEquals(nine.plusMinutes(10), stored().getValue("pills").pendingFollowUp)
+    }
+
+    @Test
+    fun `snoozing forgets the follow-up`() {
+        store(pills(recurrence = null))
+        announceRemindingAgain("pills")
+
+        runBlocking { repository.snoozeReminder("pills", nine.plusHours(1)) }
+
+        val snoozed = stored().getValue("pills")
+        assertNull(snoozed.followUpAt)
+        assertNull(snoozed.pendingFollowUp)
+    }
+
+    @Test
+    fun `completing forgets the follow-up, so a reopen cannot bring it back`() {
+        store(pills(recurrence = null))
+        announceRemindingAgain("pills")
+
+        runBlocking { completion(today = monday).complete("pills") }
+
+        assertNull(stored().getValue("pills").followUpAt)
+    }
+
+    @Test
+    fun `deleting forgets the follow-up`() {
+        store(pills(recurrence = null))
+        announceRemindingAgain("pills")
+
+        runBlocking { repository.softDelete("pills", announcedAt.plusSeconds(60)) }
+
+        assertNull(stored().getValue("pills").followUpAt)
+    }
+
+    @Test
+    fun `opening the task, which clears it, forgets the follow-up`() {
+        store(pills(recurrence = null))
+        announceRemindingAgain("pills")
+
+        runBlocking { repository.clearFollowUp("pills") }
+
+        assertNull(stored().getValue("pills").pendingFollowUp)
+    }
+
+    @Test
+    fun `the next occurrence taking over retires the missed one and its follow-up`() {
+        store(pills())
+        announceRemindingAgain("pills")
+        val next = spawnsOf("pills").single()
+
+        // A day later, nobody having answered either.
+        announceRemindingAgain(next.id, announcedAt.plusSeconds(24 * 60 * 60))
+
+        val missed = stored().getValue("pills")
+        assertTrue(missed.isDeleted)
+        assertNull(missed.pendingFollowUp)
+        assertEquals(nine.plusDays(1).plusMinutes(10), stored().getValue(next.id).pendingFollowUp)
     }
 
     private fun completion(today: LocalDate) = TaskCompletion(
