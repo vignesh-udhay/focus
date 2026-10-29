@@ -27,6 +27,8 @@ import app.tellcat.core.domain.DeliveryOutcome
 import app.tellcat.core.domain.ReminderAnnouncement
 import app.tellcat.core.domain.ReminderDelivery
 import app.tellcat.core.domain.hasLiveReminder
+import java.time.LocalDateTime
+import app.tellcat.core.domain.pendingFollowUp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -252,10 +254,21 @@ class ReminderReceiver : BroadcastReceiver() {
                 val task = application.taskRepository.observeTasks().first()
                     .firstOrNull { it.id == taskId }
 
-                // Completed, deleted, or its reminder cleared since the alarm
-                // was set. All three mean the user is owed nothing, and none
-                // of them is a delivery, so none is written down.
-                if (task == null || !task.hasLiveReminder()) return@launch
+                if (task == null) return@launch
+
+                // **The one follow-up.** D-108. A task whose reminder stands
+                // announced has no reminder owed, so the alarm on its slot is
+                // the follow-up, if one is still pending.
+                if (!task.hasLiveReminder()) {
+                    task.pendingFollowUp?.let { at ->
+                        context.deliverFollowUp(application, task, at, arrivedWallAt)
+                    }
+                    // Otherwise completed, deleted, or its reminder cleared
+                    // since the alarm was set. All three mean the user is owed
+                    // nothing, and none of them is a delivery, so none is
+                    // written down.
+                    return@launch
+                }
 
                 // The moment it was owed at, which is a snooze's when there is
                 // one, so lateness is measured against what was promised. D-078.
@@ -308,7 +321,8 @@ class ReminderReceiver : BroadcastReceiver() {
                 // arrives as the reminder it always was.** D-102. Ringing
                 // counts as announcing: the service's notification is on
                 // screen and the task is told.
-                val announced = context.ringAsAlarm(task) || context.postReminder(task)
+                val rang = context.ringAsAlarm(task)
+                val announced = rang || context.postReminder(task)
                 if (!announced) {
                     Log.w(LogTag, "Cannot post. Reminder permission changed for $taskId.")
                     record(DeliveryOutcome.Suppressed)
@@ -320,7 +334,15 @@ class ReminderReceiver : BroadcastReceiver() {
                 // Only after it was actually said. This is what stops the
                 // reminder being announced again on every later pass, and for
                 // a repeating task it starts the next occurrence. D-098.
-                ReminderAnnouncement(application.taskRepository).record(taskId, arrivedWallAt)
+                //
+                // Posted as a notification, it is followed up once if nobody
+                // answers, unless the follow-up channel is off. An alarm is
+                // not: it rang until it was answered. D-108.
+                ReminderAnnouncement(application.taskRepository).record(
+                    taskId,
+                    arrivedWallAt,
+                    remindsAgain = !rang && context.canPostFollowUps()
+                )
                 // Before the receiver finishes, so the next occurrence's alarm
                 // is set even if the process is frozen once this returns, and
                 // the retired occurrence's notification leaves. D-078, D-099.
@@ -434,6 +456,36 @@ class ReminderBackstopReceiver : BroadcastReceiver() {
 }
 
 /**
+ * Posts the one follow-up for [task], due at [at], and forgets it. D-108.
+ *
+ * Checked against the clock first, as a reminder is: an alarm aimed at a
+ * follow-up the task has since moved past is stale, so the alarms are
+ * reconciled instead. Cleared whether or not it could be shown, so a follow-up
+ * is never owed twice; a phone that cannot show it is Reminder health's to say.
+ */
+private suspend fun Context.deliverFollowUp(
+    application: TellcatApplication,
+    task: Task,
+    at: LocalDateTime,
+    arrivedWallAt: Instant
+) {
+    if (!isDueAt(at, ZoneId.systemDefault(), arrivedWallAt)) {
+        application.reconcileReminders()
+        return
+    }
+
+    if (canPostFollowUps()) {
+        ensureFollowUpChannel()
+        postFollowUp(task)
+    } else {
+        Log.w(LogTag, "Follow-ups are off or cannot be shown. Not posting one for ${task.id}.")
+    }
+
+    application.taskRepository.clearFollowUp(task.id)
+    application.reconcileReminders()
+}
+
+/**
  * Sets an alarm for every reminder in the copy kept for the locked phone.
  *
  * The same alarms, by the same identity, that the reconciliation sets, so the
@@ -476,6 +528,34 @@ private fun Context.deliverWhileLocked(
 
     if (!isDueAt(reminder.ringsAt, ZoneId.systemDefault(), arrivedWallAt)) return
 
+    // A follow-up in the copy, D-108: posted from what the copy holds, and
+    // written down so the unlock clears it rather than posting it again.
+    reminder.followUpOf?.let { set ->
+        if (!canPostFollowUps()) return
+        ensureFollowUpChannel()
+        val followed = Task(
+            id = reminder.taskId,
+            title = reminder.title,
+            createdAt = Instant.EPOCH,
+            reminderAt = set
+        )
+        if (!postFollowUp(followed, requireUnlockForActions = true)) return
+        store.recordLockedDelivery(
+            LockedDelivery(
+                taskId = reminder.taskId,
+                title = reminder.title,
+                ringsAt = reminder.ringsAt,
+                scheduledWallAt = scheduledWallAt,
+                scheduledElapsedAt = scheduledElapsedAt,
+                arrivedWallAt = arrivedWallAt,
+                arrivedElapsedAt = arrivedElapsedAt,
+                scheduledAhead = scheduledAhead,
+                followUp = true
+            )
+        )
+        return
+    }
+
     // Left owed rather than recorded. After the unlock it is announced as a
     // reminder whose moment passed, which is late, but it is not lost.
     if (!canPostReminders()) {
@@ -493,7 +573,8 @@ private fun Context.deliverWhileLocked(
         // as one. D-102.
         ringsLikeAlarm = reminder.ringsLikeAlarm
     )
-    if (!ringAsAlarm(task) && !postReminder(task, requireUnlockForActions = true)) return
+    val rang = ringAsAlarm(task)
+    if (!rang && !postReminder(task, requireUnlockForActions = true)) return
 
     store.recordLockedDelivery(
         LockedDelivery(
@@ -504,7 +585,9 @@ private fun Context.deliverWhileLocked(
             scheduledElapsedAt = scheduledElapsedAt,
             arrivedWallAt = arrivedWallAt,
             arrivedElapsedAt = arrivedElapsedAt,
-            scheduledAhead = scheduledAhead
+            scheduledAhead = scheduledAhead,
+            // The unlock decides the follow-up from this. D-108.
+            remindsAgain = !rang && canPostFollowUps()
         )
     )
 }
@@ -636,6 +719,42 @@ internal fun reminderChannel(
         lightColor = first.lightColor
     }
 }
+
+/**
+ * The follow-up's channel, made beside the reminder's. D-108.
+ *
+ * Its own so it can be turned off on its own, in Android's settings, which is
+ * where `settings.md` keeps everything about how a notification behaves: the
+ * app's Settings list is closed (D-024). High importance and vibrating, like
+ * the reminder it repeats. Created at start so it is in Android's list before
+ * the first follow-up is needed.
+ */
+internal fun Context.ensureFollowUpChannel() {
+    getSystemService<NotificationManager>()?.createNotificationChannel(
+        NotificationChannel(
+            FollowUpChannelId,
+            getString(R.string.follow_up_channel_name),
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            description = getString(R.string.follow_up_channel_description)
+            enableVibration(true)
+        }
+    )
+}
+
+/**
+ * Whether a follow-up posted now would be shown: reminders can be, and the
+ * follow-up channel is not switched off. D-108. A channel not yet made counts as
+ * on, as [canPostReminders] counts its own.
+ */
+internal fun Context.canPostFollowUps(): Boolean {
+    if (!canPostReminders()) return false
+    val channel = getSystemService<NotificationManager>()?.getNotificationChannel(FollowUpChannelId)
+    return channel == null || channel.importance != NotificationManager.IMPORTANCE_NONE
+}
+
+/** The follow-up channel. D-108. */
+internal const val FollowUpChannelId = "tellcat.reminder.again"
 
 /** The reminder channel. Vibrating, D-100. */
 internal const val ReminderChannelId = "tellcat.reminder.vibrating"

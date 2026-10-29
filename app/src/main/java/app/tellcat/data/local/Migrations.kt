@@ -265,6 +265,17 @@ val MIGRATION_12_13 = Migration(12, 13) { database ->
     database.execSQL("ALTER TABLE tasks ADD COLUMN ringsLikeAlarm INTEGER NOT NULL DEFAULT 0")
 }
 
+/**
+ * Version 14 remembers when an unanswered reminder is posted once more.
+ * `docs/decisions.md` D-108.
+ *
+ * Null for every existing row: nothing was waiting on a follow-up before there
+ * were follow-ups.
+ */
+val MIGRATION_13_14 = Migration(13, 14) { database ->
+    database.execSQL("ALTER TABLE tasks ADD COLUMN followUpAt TEXT")
+}
+
 /** Every migration, in order, for the builder and the migration test. */
 val TellcatMigrations = arrayOf(
     MIGRATION_1_2,
@@ -278,5 +289,6 @@ val TellcatMigrations = arrayOf(
     MIGRATION_9_10,
     MIGRATION_10_11,
     MIGRATION_11_12,
-    MIGRATION_12_13
+    MIGRATION_12_13,
+    MIGRATION_13_14
 )

@@ -107,6 +107,21 @@ data class Task(
      * other field it does not reset, so a daily alarm stays one (D-098).
      */
     val ringsLikeAlarm: Boolean = false,
+    /**
+     * When this reminder is posted once more, because nobody answered it, or
+     * null. `docs/decisions.md` D-108.
+     *
+     * Set when the reminder is announced as a notification, [FollowUpDelay]
+     * later; never for one that rang like an alarm, which already rings until
+     * it is answered. Cleared by everything that answers or moves the
+     * reminder: Done, Snooze, opening the task, a new time, deleting it. Cleared
+     * again once the follow-up is posted, so there is only ever one. Pending
+     * only while [reminderDeliveredAt] is set; see [pendingFollowUp].
+     *
+     * Not carried into the next occurrence and not written to a backup: it is
+     * about one announcement, minutes long.
+     */
+    val followUpAt: LocalDateTime? = null,
     val estimatedDurationMinutes: Int? = null,
     val recurrence: Recurrence? = null,
     val occurrenceNumber: Int = 1,

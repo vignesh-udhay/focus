@@ -120,13 +120,28 @@ class TaskRepository(private val dao: TaskDao) {
      * retires [retireId], in one transaction. `docs/decisions.md` D-098; see
      * `TaskDao.recordAnnounced`.
      */
-    suspend fun recordAnnounced(id: String, deliveredAt: Instant, next: Task?, retireId: String?) {
+    suspend fun recordAnnounced(
+        id: String,
+        deliveredAt: Instant,
+        next: Task?,
+        retireId: String?,
+        followUpAt: LocalDateTime? = null
+    ) {
         dao.recordAnnounced(
             id = id,
             deliveredAt = deliveredAt.toEpochMilli(),
             next = next?.toEntity(),
-            retireId = retireId
+            retireId = retireId,
+            followUpAt = TaskConverters.localDateTimeToText(followUpAt)
         )
+    }
+
+    /**
+     * Forgets [id]'s pending follow-up: it was posted, or the user answered the
+     * reminder some other way. D-108.
+     */
+    suspend fun clearFollowUp(id: String) {
+        dao.setFollowUp(id = id, followUpAt = null)
     }
 
     /** Deleted tasks that had a reminder, for the alarms they may hold. D-099. */

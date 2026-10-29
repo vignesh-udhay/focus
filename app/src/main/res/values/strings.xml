@@ -73,6 +73,10 @@
     <!-- The reminder segment as TalkBack reads it, so it is not mistaken for the
          scheduled day beside it: "Reminder Tomorrow, 5:00 PM". -->
     <string name="task_row_reminder_spoken">Reminder %1$s</string>
+    <!-- The reminder segment while a snooze is still to ring, drawn and read. D-109. -->
+    <string name="task_row_snoozed">Snoozed until %1$s</string>
+    <!-- The reminder segment while the one follow-up is pending, drawn and read. D-108. -->
+    <string name="task_row_follow_up">Reminds again at %1$s</string>
     <!-- The reminder segment as TalkBack reads it when it rings like an alarm:
          "Alarm Tomorrow, 5:00 PM". The word stands in for the glyph drawn in
          front of the time. D-102. -->
@@ -448,6 +452,16 @@
     <!-- The day and time a reminder is set for, as "Today, 9:00". -->
     <string name="task_reminder_when">%1$s, %2$s</string>
     <string name="task_reminder_clear">Clear</string>
+    <!-- D-109: the snooze inside the app, on the reminder sheet while the
+         reminder has rung and waits for an answer. -->
+    <string name="task_reminder_snooze">Snooze…</string>
+    <string name="task_reminder_snooze_title">Snooze</string>
+    <string name="task_reminder_snooze_back">Back to the reminder</string>
+    <string name="task_reminder_snooze_pick">Pick a time…</string>
+    <string name="task_reminder_snooze_until">Snoozes until %1$s</string>
+    <string name="task_reminder_snooze_confirm">Snooze</string>
+    <!-- The Reminder row while a snooze is waiting to ring. D-109. -->
+    <string name="task_reminder_snoozed">Snoozed until %1$s</string>
     <!--
         Why the confirm button is disabled, per D-030. Reached only when the
         user picked the day themselves; a day the dialog chose has already been
@@ -619,6 +633,9 @@
     </plurals>
     <string name="reminder_channel_name">Reminders</string>
     <string name="reminder_channel_description">Tasks you asked to be reminded about, at the time you chose.</string>
+    <!-- The follow-up's own channel, so it can be turned off in Android's settings. D-108. -->
+    <string name="follow_up_channel_name">Reminders again</string>
+    <string name="follow_up_channel_description">A reminder posted once more, ten minutes after nobody answered it. Turn this off to be reminded once.</string>
 
     <!--
       Ring like an alarm, D-102. The channel names what it holds; the
@@ -649,4 +666,10 @@
       a weekday set, so the notification asks it for the sentence form.
     -->
     <string name="reminder_summary_separator">%1$s · %2$s</string>
+    <!-- The line under a follow-up's title: the time the reminder was set for.
+         Not "due", which is the due date's word. D-108. -->
+    <string name="reminder_follow_up_summary">Reminder again · set for %1$s</string>
+    <!-- The line under a snoozed reminder when it rings again: the time it was
+         set for, so the snooze is not passed off as the reminder. D-109. -->
+    <string name="reminder_snoozed_summary">Snoozed from %1$s</string>
 </resources>

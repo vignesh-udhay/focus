@@ -16,6 +16,8 @@ import androidx.room.RoomDatabase
  * obsolete task placement column, and version 10 gives a recurrence rule an
  * interval, a weekday set and an end condition, version 11 stores a snooze
  * apart from its reminder, and version 12 gives a task a checklist.
+ * Version 13 lets a reminder ring like an alarm, and version 14 remembers
+ * when an unanswered reminder is posted once more.
  * Schemas are exported to `app/schemas` and the migrations live in
  * `Migrations.kt`; both are what let an existing install carry its tasks
  * across a version bump. See
@@ -23,7 +25,7 @@ import androidx.room.RoomDatabase
  */
 @Database(
     entities = [TaskEntity::class, ReminderDeliveryEntity::class],
-    version = 13,
+    version = 14,
     exportSchema = true
 )
 abstract class TellcatDatabase : RoomDatabase() {

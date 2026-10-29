@@ -51,7 +51,11 @@ class LockedReminderStore(context: Context) {
                     title = item.getString(KeyTitle),
                     ringsAt = LocalDateTime.parse(item.getString(KeyRingsAt)),
                     // Absent from copies written before D-102: a plain reminder.
-                    ringsLikeAlarm = item.optBoolean(KeyRingsLikeAlarm, false)
+                    ringsLikeAlarm = item.optBoolean(KeyRingsLikeAlarm, false),
+                    // Absent before D-108, and for every reminder: not a follow-up.
+                    followUpOf = item.optString(KeyFollowUpOf, "")
+                        .takeIf { it.isNotEmpty() }
+                        ?.let(LocalDateTime::parse)
                 )
             }
         }.orEmpty()
@@ -76,6 +80,8 @@ class LockedReminderStore(context: Context) {
                     .put(KeyArrivedWall, delivery.arrivedWallAt.toEpochMilli())
                     .put(KeyArrivedElapsed, delivery.arrivedElapsedAt)
                     .put(KeyAhead, delivery.scheduledAhead.toMillis())
+                    .put(KeyFollowUp, delivery.followUp)
+                    .put(KeyRemindsAgain, delivery.remindsAgain)
             )
         }
         val remaining = upcoming().filterNot { it.taskId == delivery.taskId }
@@ -98,7 +104,10 @@ class LockedReminderStore(context: Context) {
                     scheduledElapsedAt = item.getLong(KeyScheduledElapsed),
                     arrivedWallAt = Instant.ofEpochMilli(item.getLong(KeyArrivedWall)),
                     arrivedElapsedAt = item.getLong(KeyArrivedElapsed),
-                    scheduledAhead = Duration.ofMillis(item.getLong(KeyAhead))
+                    scheduledAhead = Duration.ofMillis(item.getLong(KeyAhead)),
+                    // Both absent before D-108: a reminder, with no follow-up.
+                    followUp = item.optBoolean(KeyFollowUp, false),
+                    remindsAgain = item.optBoolean(KeyRemindsAgain, false)
                 )
             }
         }.orEmpty()
@@ -116,6 +125,9 @@ class LockedReminderStore(context: Context) {
                     .put(KeyTitle, reminder.title)
                     .put(KeyRingsAt, reminder.ringsAt.toString())
                     .put(KeyRingsLikeAlarm, reminder.ringsLikeAlarm)
+                    .apply {
+                        reminder.followUpOf?.let { set -> put(KeyFollowUpOf, set.toString()) }
+                    }
             )
         }
     }.toString()
@@ -130,6 +142,9 @@ class LockedReminderStore(context: Context) {
         const val KeyTitle = "title"
         const val KeyRingsAt = "ringsAt"
         const val KeyRingsLikeAlarm = "ringsLikeAlarm"
+        const val KeyFollowUpOf = "followUpOf"
+        const val KeyFollowUp = "followUp"
+        const val KeyRemindsAgain = "remindsAgain"
         const val KeyScheduledWall = "scheduledWall"
         const val KeyScheduledElapsed = "scheduledElapsed"
         const val KeyArrivedWall = "arrivedWall"
@@ -150,5 +165,9 @@ data class LockedDelivery(
     val scheduledElapsedAt: Long,
     val arrivedWallAt: Instant,
     val arrivedElapsedAt: Long,
-    val scheduledAhead: Duration
+    val scheduledAhead: Duration,
+    /** This was the reminder's one follow-up, not the reminder. D-108. */
+    val followUp: Boolean = false,
+    /** Posted as a notification, with follow-ups on, so it earns one. D-108. */
+    val remindsAgain: Boolean = false
 )

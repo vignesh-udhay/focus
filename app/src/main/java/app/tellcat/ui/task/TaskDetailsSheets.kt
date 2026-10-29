@@ -58,6 +58,10 @@ import app.tellcat.core.design.TellcatSpacing
 import app.tellcat.core.domain.nextReminderOccurrence
 import app.tellcat.core.domain.endOfWeek
 import app.tellcat.core.domain.thisWeekend
+import app.tellcat.core.domain.snoozedUntil
+import app.tellcat.core.domain.snoozeOptionsInApp
+import app.tellcat.core.domain.SnoozeOption
+import app.tellcat.core.domain.MorningHour
 import app.tellcat.ui.component.PlanRowGroup
 import app.tellcat.ui.component.TaskDatePickerDialog
 import app.tellcat.ui.component.durationLabel
@@ -234,7 +238,13 @@ internal fun DateSheet(
  * design drift into two.
  */
 @Composable
-private fun ChooseDateButton(label: String, holdsValue: Boolean, onClick: () -> Unit) {
+private fun ChooseDateButton(
+    label: String,
+    holdsValue: Boolean,
+    onClick: () -> Unit,
+    // The calendar, or the clock for the snooze pane's picked time. D-109.
+    icon: Int = R.drawable.ic_today
+) {
     val modifier = Modifier
         .fillMaxWidth()
         .heightIn(min = TellcatDimensions.ActionHeight)
@@ -242,7 +252,7 @@ private fun ChooseDateButton(label: String, holdsValue: Boolean, onClick: () -> 
 
     val content: @Composable RowScope.() -> Unit = {
         Icon(
-            painter = painterResource(R.drawable.ic_today),
+            painter = painterResource(icon),
             // The label beside it already names the action.
             contentDescription = null,
             modifier = Modifier.size(ButtonDefaults.IconSize)
@@ -739,7 +749,11 @@ internal fun ReminderSheet(
     // a sheet that reads a clock it owns can only be tested by waiting.
     now: LocalDateTime = LocalDateTime.now(),
     // Whether the reminder rings like an alarm now. Off for a new one. D-102.
-    ringsLikeAlarm: Boolean = false
+    ringsLikeAlarm: Boolean = false,
+    // Whether "Snooze…" is offered: the reminder has rung and waits for an
+    // answer, or is snoozed. D-109.
+    canSnooze: Boolean = false,
+    onSnooze: (LocalDateTime) -> Unit = {}
 ) {
     var ringsAsAlarm by rememberSaveable { mutableStateOf(ringsLikeAlarm) }
 
@@ -862,6 +876,22 @@ internal fun ReminderSheet(
                         Text(stringResource(R.string.task_reminder_save))
                     }
 
+                    // **A snooze, once the reminder has spoken.** D-109. A
+                    // text action like Clear, because it is a second thing the
+                    // sheet can do rather than the sheet's purpose; Save still
+                    // sets the reminder's own time, and a snooze leaves that
+                    // alone (D-078).
+                    if (canSnooze) {
+                        TextButton(
+                            onClick = { pane = ReminderPane.SNOOZE },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = TellcatDimensions.ActionHeight)
+                        ) {
+                            Text(stringResource(R.string.task_reminder_snooze))
+                        }
+                    }
+
                     // Offered only where there is something to clear, so the
                     // sheet does not propose undoing a thing not done.
                     if (reminderAt != null) {
@@ -875,6 +905,13 @@ internal fun ReminderSheet(
                         }
                     }
                 }
+
+                ReminderPane.SNOOZE -> ReminderSnoozePane(
+                    today = today,
+                    now = now,
+                    onSnooze = onSnooze,
+                    onBack = { pane = ReminderPane.MAIN }
+                )
 
                 ReminderPane.DAY -> ReminderDayPane(
                     selected = at.toLocalDate(),
@@ -920,8 +957,145 @@ internal fun suggestedReminderTime(defaultDay: LocalDate, now: LocalDateTime): L
     }
 }
 
-/** Which of the sheet's two faces is showing. */
-private enum class ReminderPane { MAIN, DAY }
+/** Which of the sheet's faces is showing. */
+private enum class ReminderPane { MAIN, DAY, SNOOZE }
+
+/**
+ * Snoozing from inside the app. D-109.
+ *
+ * **The Day pane's shape**: a back arrow and title, preset buttons, and a
+ * full-width control that leaves for the platform picker and says what it
+ * holds. Then the line saying where the snooze lands, and a Snooze button, for
+ * the reason this sheet has a Save: a preset and a picked time are drafts until
+ * the user says so, and a snooze written on the first tap could not be read
+ * back before it took effect.
+ *
+ * **Every option that applies, not the notification's three.** A notification
+ * is held to three actions; a sheet is not, so "This evening" and "Tomorrow"
+ * sit together until the evening has gone, and then "This evening" is not
+ * offered rather than quietly meaning tomorrow (`reminders.md`).
+ *
+ * **"Pick a time…" lands on the next time the clock reads it**, today while it
+ * is still ahead and otherwise tomorrow, and the line says which. A snooze is
+ * about the next while, not a day of the user's choosing; moving the reminder
+ * to another day is what Save on the main pane is for.
+ */
+@Composable
+private fun ReminderSnoozePane(
+    today: LocalDate,
+    now: LocalDateTime,
+    onSnooze: (LocalDateTime) -> Unit,
+    onBack: () -> Unit
+) {
+    // The draft, as a preset's name or a picked time of day, so it is saved
+    // across a rotation without a saver and recomputed against the clock.
+    var preset by rememberSaveable { mutableStateOf<String?>(null) }
+    var pickedSecond by rememberSaveable { mutableStateOf(NoTimePicked) }
+    var isTimeOpen by rememberSaveable { mutableStateOf(false) }
+
+    val options = snoozeOptionsInApp(now)
+    val until: LocalDateTime? = when {
+        pickedSecond != NoTimePicked ->
+            snoozedUntil(LocalTime.ofSecondOfDay(pickedSecond.toLong()), now)
+        else -> options.firstOrNull { it.name == preset }?.let { option -> snoozedUntil(option, now) }
+    }
+
+    if (isTimeOpen) {
+        ReminderTimePickerDialog(
+            time = until?.toLocalTime() ?: suggestedReminderTime(today, now),
+            onDismiss = { isTimeOpen = false },
+            onPicked = { picked ->
+                isTimeOpen = false
+                pickedSecond = picked.toSecondOfDay()
+                preset = null
+            }
+        )
+    }
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        IconButton(onClick = onBack) {
+            Icon(
+                painter = painterResource(R.drawable.ic_arrow_back),
+                contentDescription = stringResource(R.string.task_reminder_snooze_back)
+            )
+        }
+        Text(
+            text = stringResource(R.string.task_reminder_snooze_title),
+            style = MaterialTheme.typography.titleLarge
+        )
+    }
+
+    options.chunked(2).forEach { pair ->
+        Row(horizontalArrangement = Arrangement.spacedBy(TellcatSpacing.xs)) {
+            pair.forEach { option ->
+                PresetButton(
+                    label = snoozeOptionLabel(option),
+                    selected = pickedSecond == NoTimePicked && preset == option.name,
+                    onClick = {
+                        preset = option.name
+                        pickedSecond = NoTimePicked
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+
+    // Lit once it holds the answer, as Choose a date is in the Day pane.
+    val holdsTime = pickedSecond != NoTimePicked
+    val timeFormat = rememberTimeFormat()
+    ChooseDateButton(
+        label = if (holdsTime && until != null) {
+            until.toLocalTime().format(timeFormat)
+        } else {
+            stringResource(R.string.task_reminder_snooze_pick)
+        },
+        holdsValue = holdsTime,
+        onClick = { isTimeOpen = true },
+        icon = R.drawable.ic_schedule
+    )
+
+    until?.let { landing ->
+        val moment = if (landing.toLocalDate() == today) {
+            landing.toLocalTime().format(timeFormat)
+        } else {
+            stringResource(
+                R.string.task_reminder_when,
+                scheduledDateLabel(landing.toLocalDate(), today),
+                landing.toLocalTime().format(timeFormat)
+            )
+        }
+        Text(
+            text = stringResource(R.string.task_reminder_snooze_until, moment),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+
+    Button(
+        onClick = { until?.let(onSnooze) },
+        enabled = until != null,
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = TellcatDimensions.ActionHeight)
+            .padding(top = TellcatSpacing.xs)
+    ) {
+        Text(stringResource(R.string.task_reminder_snooze_confirm))
+    }
+}
+
+/** A snooze preset's words, the notification's own. D-109. */
+@Composable
+private fun snoozeOptionLabel(option: SnoozeOption): String = when (option) {
+    SnoozeOption.TenMinutes -> stringResource(R.string.reminder_snooze_ten_minutes)
+    SnoozeOption.OneHour -> stringResource(R.string.reminder_snooze_one_hour)
+    SnoozeOption.ThisEvening -> stringResource(R.string.reminder_snooze_this_evening)
+    SnoozeOption.TomorrowMorning ->
+        stringResource(R.string.reminder_snooze_tomorrow, MorningHour.format(rememberTimeFormat()))
+}
+
+/** No time picked yet in the snooze pane. */
+private const val NoTimePicked = -1
 
 /**
  * The day, as the two presets and the calendar.

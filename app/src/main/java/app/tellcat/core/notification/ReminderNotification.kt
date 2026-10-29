@@ -16,6 +16,7 @@ import app.tellcat.core.text.recurrenceSummary
 import app.tellcat.core.domain.SnoozeOption
 import app.tellcat.core.domain.Task
 import app.tellcat.core.domain.availableSnoozeOptions
+import app.tellcat.core.domain.hasLiveReminder
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -77,6 +78,40 @@ internal fun Context.postReminder(
         builder.setStyle(
             NotificationCompat.BigTextStyle().bigText("$summary\n$notes")
         )
+    }
+
+    val posted = notifyIfAllowed(task.notificationId, builder.build())
+    updateReminderGroupSummary(justPosted = task.id)
+    return posted
+}
+
+/**
+ * The one follow-up, posted ten minutes after nobody answered. D-108.
+ *
+ * The reminder again, under its own title as `reminders.md` requires, with the
+ * line saying what it is and the time it was set for. Done and Snooze carry the
+ * moment the reminder was for, as the reminder's own did, so an answer to either
+ * notification is current and an answer after a snooze or a new time is stale.
+ * The same notification id, so it takes the reminder's place in the shade rather
+ * than stacking beside it. On its own channel, so Android's settings can turn
+ * follow-ups off without touching reminders.
+ */
+internal fun Context.postFollowUp(task: Task, requireUnlockForActions: Boolean = false): Boolean {
+    val set = task.reminderAt?.let { at -> formatTime(at.toLocalTime()) } ?: return false
+    val summary = getString(R.string.reminder_follow_up_summary, set)
+
+    fun action(label: Int, action: String) = NotificationCompat.Action.Builder(
+        0,
+        getString(label),
+        actionIntent(task.id, action, postedFor = task.ringsAt)
+    ).setAuthenticationRequired(requireUnlockForActions).build()
+
+    val builder = reminderBuilder(task, summary, channelId = FollowUpChannelId)
+        .addAction(action(R.string.reminder_action_done, ReminderActionReceiver.ACTION_DONE))
+        .addAction(action(R.string.reminder_action_snooze, ReminderActionReceiver.ACTION_SNOOZE))
+
+    task.notes?.takeIf { it.isNotBlank() }?.let { notes ->
+        builder.setStyle(NotificationCompat.BigTextStyle().bigText("$summary\n$notes"))
     }
 
     val posted = notifyIfAllowed(task.notificationId, builder.build())
@@ -178,10 +213,17 @@ internal fun Context.cancelReminder(taskId: String) {
  * same terms as the summary count: whatever was swiped away or never shown is
  * already gone. The test reminder is outside the group and is never touched.
  */
-internal fun Context.withdrawSettledReminders(tasks: List<Task>): Int {
+internal fun Context.withdrawSettledReminders(
+    tasks: List<Task>,
+    now: LocalDateTime = LocalDateTime.now()
+): Int {
     val manager = getSystemService(NotificationManager::class.java) ?: return 0
+    // **A reminder moved ahead is settled too.** D-109. Snoozed from inside the
+    // app, or given a new time, the reminder in the shade describes a moment
+    // the task has left behind, and its actions are already stale.
     val outstanding = tasks
         .filterNot { task -> task.isCompleted }
+        .filterNot { task -> task.hasLiveReminder() && task.ringsAt?.isAfter(now) == true }
         .mapTo(HashSet()) { task -> task.notificationId }
 
     val settled = manager.activeNotifications
@@ -324,8 +366,8 @@ private const val ReminderGroupSummaryId = Int.MIN_VALUE
 
 // --- internals ----------------------------------------------------------------
 
-private fun Context.reminderBuilder(task: Task, summary: String) =
-    NotificationCompat.Builder(this, ReminderChannelId)
+private fun Context.reminderBuilder(task: Task, summary: String, channelId: String = ReminderChannelId) =
+    NotificationCompat.Builder(this, channelId)
         // The mark rather than a stock bell, D-072. Android masks this drawable
         // down to its alpha and tints it, which is why the launcher icon cannot
         // be passed here and why [R.drawable.ic_notification_cat] is a
@@ -349,9 +391,17 @@ private fun Context.reminderBuilder(task: Task, summary: String) =
  * notification.
  */
 private fun Task.reminderSummary(context: Context): String {
-    // When it rang, which is a snooze's time when there was one. D-078.
-    val at = ringsAt ?: return ""
-    val time = context.formatTime(at.toLocalTime())
+    // **A snooze says so, and names the time the reminder was set for.** D-109.
+    // The line used to give the snooze's own time, which is the moment it is
+    // ringing, so it read as the reminder's time and hid that it was late.
+    val set = reminderAt
+    val time = if (snoozedUntil != null && set != null) {
+        context.getString(R.string.reminder_snoozed_summary, context.formatTime(set.toLocalTime()))
+    } else {
+        // When it rang. D-078.
+        val at = ringsAt ?: return ""
+        context.formatTime(at.toLocalTime())
+    }
     // Sentence form: "Every week" rather than "Weekly", which is how a line
     // read at a glance mid-task should phrase itself. `strings.xml` used to
     // carry a second set of four names for this; the plurals behind

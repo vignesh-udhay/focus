@@ -13,6 +13,7 @@ import app.tellcat.core.domain.ReminderAnnouncement
 import app.tellcat.core.domain.ReminderDelivery
 import app.tellcat.core.domain.Task
 import app.tellcat.core.domain.hasLiveReminder
+import app.tellcat.core.domain.pendingFollowUp
 import app.tellcat.data.local.LockedReminderStore
 import app.tellcat.data.local.SchedulingRefusals
 import app.tellcat.ui.widget.armWidgetMidnight
@@ -38,6 +39,7 @@ import app.tellcat.core.notification.ReminderHealthChecks
 import app.tellcat.core.notification.ReminderScheduler
 import app.tellcat.core.notification.AlarmRingService
 import app.tellcat.core.notification.ensureAlarmChannel
+import app.tellcat.core.notification.ensureFollowUpChannel
 import app.tellcat.core.notification.ensureReminderChannel
 import app.tellcat.core.notification.withdrawSettledReminders
 import app.tellcat.core.time.SystemCurrentDay
@@ -205,11 +207,23 @@ class TellcatApplication : Application() {
 
         deliveries.forEach { delivery ->
             val task = taskRepository.findTask(delivery.taskId) ?: return@forEach
+
+            // A follow-up posted while locked: it is done, so forget it rather
+            // than post it again now. D-108.
+            if (delivery.followUp) {
+                if (task.pendingFollowUp == delivery.ringsAt) taskRepository.clearFollowUp(task.id)
+                return@forEach
+            }
+
             if (!task.hasLiveReminder() || task.ringsAt != delivery.ringsAt) return@forEach
 
             // Starts a repeating task's next occurrence too, counted from when
             // it was said rather than from now. D-098.
-            ReminderAnnouncement(taskRepository).record(delivery.taskId, delivery.arrivedWallAt)
+            ReminderAnnouncement(taskRepository).record(
+                delivery.taskId,
+                delivery.arrivedWallAt,
+                remindsAgain = delivery.remindsAgain
+            )
             reminderDeliveryRepository.record(
                 ReminderDelivery(
                     id = UUID.randomUUID().toString(),
@@ -283,6 +297,9 @@ class TellcatApplication : Application() {
         ensureReminderChannel()
         // The Alarms channel too, so Reminder health can read it. D-102.
         ensureAlarmChannel()
+        // And the follow-up's, so it is in Android's list to turn off before
+        // the first one is needed. D-108.
+        ensureFollowUpChannel()
 
         // **Nothing in credential-encrypted storage until the user unlocks.**
         // D-079. The reminder receivers are direct-boot aware, so this process

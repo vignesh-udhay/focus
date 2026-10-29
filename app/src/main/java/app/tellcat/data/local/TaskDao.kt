@@ -126,8 +126,16 @@ interface TaskDao {
      * @param deliveredAt epoch milliseconds, matching the column's encoding.
      */
     @Transaction
-    suspend fun recordAnnounced(id: String, deliveredAt: Long, next: TaskEntity?, retireId: String?) {
+    suspend fun recordAnnounced(
+        id: String,
+        deliveredAt: Long,
+        next: TaskEntity?,
+        retireId: String?,
+        // When it is posted once more if nobody answers, or null. D-108.
+        followUpAt: String? = null
+    ) {
         markReminderDelivered(id, deliveredAt)
+        setFollowUp(id, followUpAt)
         if (next != null && countSpawnsOf(id) == 0) insert(next)
         retireId?.let { retired -> softDelete(retired, deliveredAt) }
     }
@@ -217,8 +225,21 @@ interface TaskDao {
      *
      * @param deletedAt epoch milliseconds, matching the column's encoding.
      */
-    @Query("UPDATE tasks SET deletedAt = :deletedAt WHERE id = :id")
+    @Query("UPDATE tasks SET deletedAt = :deletedAt, followUpAt = NULL WHERE id = :id")
     suspend fun softDelete(id: String, deletedAt: Long)
+
+    /**
+     * Sets or clears when [id]'s unanswered reminder is posted once more.
+     * `docs/decisions.md` D-108.
+     *
+     * A targeted write for `markReminderDelivered`'s reasons: it happens in a
+     * receiver about to be frozen, and when a task is opened, and neither may
+     * race an edit the user is making.
+     *
+     * @param followUpAt ISO-8601 local date and time, or null to clear it.
+     */
+    @Query("UPDATE tasks SET followUpAt = :followUpAt WHERE id = :id")
+    suspend fun setFollowUp(id: String, followUpAt: String?)
 
     /**
      * Records that a task's reminder has been announced.
@@ -243,13 +264,15 @@ interface TaskDao {
      * `Task.reminderDeliveredAt`; this is where it is kept.
      *
      * `reminderAt` is left alone. D-078: it is the time the user chose, and for
-     * a recurring task the series' time, which a snooze must not move.
+     * a recurring task the series' time, which a snooze must not move. A
+     * pending follow-up goes with the old announcement, D-108.
      *
      * @param snoozedUntil ISO-8601 local date and time, matching the column's
      * encoding.
      */
     @Query(
-        "UPDATE tasks SET snoozedUntil = :snoozedUntil, reminderDeliveredAt = NULL WHERE id = :id"
+        "UPDATE tasks SET snoozedUntil = :snoozedUntil, reminderDeliveredAt = NULL, " +
+            "followUpAt = NULL WHERE id = :id"
     )
     suspend fun snoozeReminder(id: String, snoozedUntil: String)
 

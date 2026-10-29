@@ -314,6 +314,8 @@ fun Task.nextRecurringInstance(
         // A snooze moved one announcement of the occurrence just finished. It
         // says nothing about the next one, which rings at the series' time.
         snoozedUntil = null,
+        // Nor did the follow-up of the one just finished. D-108.
+        followUpAt = null,
         // The same items, all of them owed again. Next week's groceries.
         checklist = checklist.reset(),
         // And it has not been announced. Carrying the old delivery record

@@ -1352,6 +1352,9 @@ class TaskListViewModel(
                     // when; a snooze from before that would ring in its place.
                     // D-078.
                     snoozedUntil = if (reminderAt == task.reminderAt) task.snoozedUntil else null,
+                    // A new time is an answer too: the follow-up was about the
+                    // old one. D-108.
+                    followUpAt = if (reminderAt == task.reminderAt) task.followUpAt else null,
                     // D-102. No reminder, nothing to ring: a cleared reminder
                     // does not keep an alarm waiting for the next one.
                     ringsLikeAlarm = ringsLikeAlarm && reminderAt != null
@@ -1409,6 +1412,27 @@ class TaskListViewModel(
         write {
             edits.edit(id) { task -> task.copy(scheduledDate = offer.previousDate) }
         }
+    }
+
+    /**
+     * Forgets [id]'s pending follow-up, because the task has been opened.
+     * `docs/decisions.md` D-108: looking at the task is an answer, as Done and
+     * Snooze are, and posting the reminder again after it would be the app not
+     * noticing the user had already come.
+     */
+    fun acknowledgeFollowUp(id: String) {
+        write { repository.clearFollowUp(id) }
+    }
+
+    /**
+     * Snoozes [id]'s reminder to [until], from inside the app. D-109.
+     *
+     * The same write the notification's snooze makes, so the two cannot mean
+     * different things: the reminder's own time is left alone (D-078), it is
+     * owed again, and a pending follow-up goes with the old announcement.
+     */
+    fun snoozeReminder(id: String, until: LocalDateTime) {
+        write { repository.snoozeReminder(id, until) }
     }
 
     /**

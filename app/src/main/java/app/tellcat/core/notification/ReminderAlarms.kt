@@ -1,6 +1,9 @@
 package app.tellcat.core.notification
 
 import app.tellcat.core.domain.Task
+import app.tellcat.core.domain.FollowUpDelay
+import app.tellcat.core.domain.pendingFollowUp
+import app.tellcat.core.domain.followUpsOwed
 import app.tellcat.core.domain.missedReminders
 import app.tellcat.core.domain.pendingReminders
 import app.tellcat.core.domain.reminderTrigger
@@ -127,8 +130,21 @@ class ReminderScheduler(
         // Missed first, because they are already late, then pending, which is
         // sorted soonest first. The trigger time is what separates them, and
         // `reminderTrigger` decides that.
-        val owed = missedReminders(tasks, localNow) + pendingReminders(tasks, localNow)
-        val owedIds = owed.mapTo(HashSet()) { task -> task.id }
+        //
+        // **Follow-ups take their place in the same order**, on the task's own
+        // alarm, D-108. A task waiting on one has no reminder owed (it stands
+        // announced), so the slot is free, and the receiver tells the two apart
+        // by reading the task. Sorted by trigger, so a follow-up due in four
+        // minutes is scheduled before a reminder due tomorrow and a missed one
+        // still leads.
+        val owed = (
+            (missedReminders(tasks, localNow) + pendingReminders(tasks, localNow))
+                .mapNotNull { task -> task.ringsAt?.let { at -> Owed(task, at, followUpOf = null) } } +
+                followUpsOwed(tasks).mapNotNull { task ->
+                    task.pendingFollowUp?.let { at -> Owed(task, at, followUpOf = task.ringsAt) }
+                }
+            ).sortedBy { due -> reminderTrigger(due.at, here, now) }
+        val owedIds = owed.mapTo(HashSet()) { due -> due.task.id }
 
         var failures = 0
         fun attempt(taskId: String, action: () -> Unit): Boolean =
@@ -145,14 +161,20 @@ class ReminderScheduler(
             .filter { task -> task.id !in owedIds }
             .forEach { task -> attempt(task.id) { alarms.cancel(task.id) } }
 
+        // And one announced within the follow-up window, whose follow-up alarm
+        // may still be armed. D-108.
+        val followUpWindow = now.minus(FollowUpDelay).minus(BackstopDelay)
         deleted
-            .filter { task -> task.ringsAt?.isAfter(localNow) == true }
+            .filter { task ->
+                task.ringsAt?.isAfter(localNow) == true ||
+                    task.reminderDeliveredAt?.isAfter(followUpWindow) == true
+            }
             .forEach { task -> attempt(task.id) { alarms.cancel(task.id) } }
 
         val triggers = mutableListOf<Instant>()
-        val scheduled = owed.take(MaxScheduledReminders).mapNotNull { task ->
-            // Every owed task rings at some moment; the queries saw to that.
-            val ringsAt = task.ringsAt ?: return@mapNotNull null
+        val scheduled = owed.take(MaxScheduledReminders).mapNotNull { due ->
+            val task = due.task
+            val ringsAt = due.at
             val trigger = reminderTrigger(ringsAt, here, now)
             val set = attempt(task.id) { alarms.schedule(task.id, trigger) }
             if (set) {
@@ -161,7 +183,8 @@ class ReminderScheduler(
                     taskId = task.id,
                     title = task.title,
                     ringsAt = ringsAt,
-                    ringsLikeAlarm = task.ringsLikeAlarm
+                    ringsLikeAlarm = task.ringsLikeAlarm && due.followUpOf == null,
+                    followUpOf = due.followUpOf
                 )
             } else {
                 null
@@ -208,8 +231,16 @@ data class ScheduledReminder(
     val taskId: String,
     val title: String,
     val ringsAt: LocalDateTime,
-    val ringsLikeAlarm: Boolean = false
+    val ringsLikeAlarm: Boolean = false,
+    /**
+     * For a follow-up, the moment of the reminder it posts once more, and
+     * [ringsAt] is when. Null for a reminder. D-108.
+     */
+    val followUpOf: LocalDateTime? = null
 )
+
+/** One alarm a pass owes: whose, when, and whether it is a follow-up. */
+private data class Owed(val task: Task, val at: LocalDateTime, val followUpOf: LocalDateTime?)
 
 /**
  * The most reminder alarms one pass asks the system to hold.

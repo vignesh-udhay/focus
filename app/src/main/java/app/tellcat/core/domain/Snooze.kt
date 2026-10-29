@@ -99,3 +99,27 @@ fun snoozedUntil(option: SnoozeOption, now: LocalDateTime): LocalDateTime? {
  */
 fun availableSnoozeOptions(now: LocalDateTime): List<SnoozeOption> =
     SnoozeOption.entries.filter { option -> snoozedUntil(option, now) != null }.take(3)
+
+/**
+ * Every option that applies at [now], for the snooze inside the app. D-109.
+ *
+ * All of them rather than three: a sheet is not held to a notification's three
+ * actions, so "this evening" and "tomorrow" sit side by side until the evening
+ * has gone.
+ */
+fun snoozeOptionsInApp(now: LocalDateTime): List<SnoozeOption> =
+    SnoozeOption.entries.filter { option -> snoozedUntil(option, now) != null }
+
+/**
+ * Where a snooze to a picked [time] lands: the next time the clock reads it,
+ * strictly after [now]. Today while it is still ahead, otherwise tomorrow.
+ * D-109.
+ *
+ * Strictly after, as [SnoozeOption.ThisEvening] is: picking the minute the user
+ * is in would snooze to the moment that has just arrived. Whole minutes, since
+ * the picker offers nothing finer.
+ */
+fun snoozedUntil(time: LocalTime, now: LocalDateTime): LocalDateTime {
+    val today = now.toLocalDate().atTime(time.truncatedTo(ChronoUnit.MINUTES))
+    return if (today.isAfter(now)) today else today.plusDays(1)
+}

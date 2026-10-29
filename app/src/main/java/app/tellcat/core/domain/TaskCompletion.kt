@@ -70,7 +70,9 @@ class TaskCompletion(
         // `PRODUCT.md` puts that above a crash, and requires that completing an
         // occurrence produces the next one.
         val started = repository.completeWithNext(
-            completed = task.copy(completedAt = completedAt),
+            // Done answers the reminder, so nothing follows it up, even
+            // after a reopen. D-108.
+            completed = task.copy(completedAt = completedAt, followUpAt = null),
             next = next
         )
 

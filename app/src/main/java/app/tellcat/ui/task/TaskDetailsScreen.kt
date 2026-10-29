@@ -61,6 +61,9 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.tellcat.R
+import app.tellcat.core.domain.pendingFollowUp
+import app.tellcat.core.domain.hasLiveReminder
+import app.tellcat.core.domain.canSnooze
 import app.tellcat.core.design.TellcatDimensions
 import app.tellcat.core.design.TellcatSpacing
 import app.tellcat.core.design.tellcatContentGutter
@@ -166,6 +169,15 @@ fun TaskDetailsScreen(
 
     val current = task
 
+    // **Opening the task answers its reminder.** D-108. A follow-up still
+    // pending is forgotten, here or from the notification that brought the user
+    // in. Keyed on the pending moment, so one that comes due while the screen
+    // is open is answered too: the user is looking at the task.
+    val followUp = current.pendingFollowUp
+    LaunchedEffect(current.id, followUp) {
+        if (followUp != null) viewModel.acknowledgeFollowUp(current.id)
+    }
+
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     UndoSnackbarEffect(viewModel = viewModel, snackbarHostState = snackbarHostState)
@@ -224,6 +236,7 @@ fun TaskDetailsScreen(
             viewModel.removeChecklistItem(current.id, index, item.text)
         },
         onShare = { shareTask(context, current) },
+        onSnooze = { until -> viewModel.snoozeReminder(current.id, until) },
         modifier = modifier
     )
 
@@ -427,7 +440,9 @@ private fun TaskDetailsContent(
     onEditChecklistItem: (Int, ChecklistItem, String) -> Unit,
     onRemoveChecklistItem: (Int, ChecklistItem) -> Unit,
     onShare: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // The snooze inside the app. D-109.
+    onSnooze: (LocalDateTime) -> Unit = {}
 ) {
     var openSheet by rememberSaveable { mutableStateOf<PlanSheet?>(null) }
     val paneTitleText = stringResource(R.string.task_details_heading)
@@ -521,6 +536,10 @@ private fun TaskDetailsContent(
         onEdit = { edited ->
             openSheet = null
             onEdit(edited)
+        },
+        onSnooze = { until ->
+            openSheet = null
+            onSnooze(until)
         }
     )
 }
@@ -768,7 +787,12 @@ internal enum class PlanSheet {
 
         DUE -> task.dueDate?.let { date -> scheduledDateLabel(date, today) }
 
-        REMINDER -> task.reminderAt?.let { at -> reminderValue(at, today, task.ringsLikeAlarm) }
+        // A snooze still to ring is what the reminder will do next, so the row
+        // says it, in the row's own words. D-109.
+        REMINDER -> task.reminderAt?.let { at ->
+            val snoozed = task.snoozedUntil?.takeIf { task.hasLiveReminder() }
+            reminderValue(snoozed ?: at, today, task.ringsLikeAlarm, snoozed = snoozed != null)
+        }
 
         // Through `durationLabel`, so this reads 45m, 1h, 1h 30m like every
         // other duration in the app. Never "45 min".
@@ -787,7 +811,12 @@ internal enum class PlanSheet {
  * rings like an alarm, as `editors/Reminder` draws the row. D-102.
  */
 @Composable
-private fun reminderValue(at: LocalDateTime, today: LocalDate, ringsLikeAlarm: Boolean): String {
+private fun reminderValue(
+    at: LocalDateTime,
+    today: LocalDate,
+    ringsLikeAlarm: Boolean,
+    snoozed: Boolean = false
+): String {
     // The phone's 12 or 24 hour setting, as the notification says it. D-079.
     val time = at.toLocalTime().format(rememberTimeFormat())
 
@@ -797,7 +826,8 @@ private fun reminderValue(at: LocalDateTime, today: LocalDate, ringsLikeAlarm: B
         time
     )
 
-    return if (ringsLikeAlarm) stringResource(R.string.task_reminder_when_alarm, moment) else moment
+    val said = if (snoozed) stringResource(R.string.task_reminder_snoozed, moment) else moment
+    return if (ringsLikeAlarm) stringResource(R.string.task_reminder_when_alarm, said) else said
 }
 
 /** What the column holds at the largest system font scale, as on Focus. */
@@ -816,7 +846,8 @@ private fun PlanSheetHost(
     task: Task,
     today: LocalDate,
     onDismiss: () -> Unit,
-    onEdit: (Task) -> Unit
+    onEdit: (Task) -> Unit,
+    onSnooze: (LocalDateTime) -> Unit
 ) {
     when (open) {
         null -> Unit
@@ -858,7 +889,11 @@ private fun PlanSheetHost(
             // No reminder, nothing to ring. D-102.
             onClear = { onEdit(task.copy(reminderAt = null, ringsLikeAlarm = false)) },
             onDismiss = onDismiss,
-            ringsLikeAlarm = task.ringsLikeAlarm
+            ringsLikeAlarm = task.ringsLikeAlarm,
+            // Only while it has rung and waits for an answer, or is snoozed:
+            // the moments a snooze means anything. D-109.
+            canSnooze = task.canSnooze,
+            onSnooze = onSnooze
         )
 
         PlanSheet.DURATION -> DurationSheet(

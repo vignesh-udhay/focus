@@ -13,6 +13,8 @@ import androidx.compose.ui.semantics.semantics
 import app.tellcat.R
 import app.tellcat.core.text.recurrenceSummary
 import app.tellcat.core.domain.Task
+import app.tellcat.core.domain.rowReminder
+import app.tellcat.core.domain.ReminderStage
 import java.time.LocalDate
 
 /**
@@ -162,7 +164,15 @@ private fun taskMetadata(
     // the row because the rule above was written for reminders that fired on
     // that day. It now follows the date, so the date stays first and keeps the
     // overdue colour, and it names its day because that is not the task's.
-    val reminder = task.ringsAt?.takeUnless { at -> at.toLocalDate().isBefore(today) }?.let { at ->
+    //
+    // **What the reminder will do next, in words.** A snooze still to ring
+    // reads "Snoozed until 5:37 PM" (D-109), and a pending follow-up "Reminds
+    // again at 9:40 AM" (D-108), so the time on the row is never a snooze or a
+    // follow-up passed off as the time the user set. `rowReminder` decides
+    // which; the day rule above applies to the moment it names.
+    val shown = task.rowReminder()?.takeUnless { next -> next.at.toLocalDate().isBefore(today) }
+    val moment = shown?.let { next ->
+        val at = next.at
         val time = at.toLocalTime().format(rememberTimeFormat())
         if (at.toLocalDate() == task.scheduledDate) {
             time
@@ -174,17 +184,27 @@ private fun taskMetadata(
             )
         }
     }
+    val reminder = moment?.let { said ->
+        when (shown.stage) {
+            ReminderStage.Set -> said
+            ReminderStage.Snoozed -> stringResource(R.string.task_row_snoozed, said)
+            ReminderStage.FollowUp -> stringResource(R.string.task_row_follow_up, said)
+        }
+    }
     val overdue = task.isPastScheduled(today)
 
     // **An alarm glyph in front of the time, and "Alarm" for TalkBack in its
     // place.** D-102. Only beside a reminder still to come, which is the one
-    // that will ring.
-    val ringsLikeAlarm = task.ringsLikeAlarm && reminder != null
+    // that will ring. A follow-up is never an alarm's, D-108.
+    val ringsLikeAlarm =
+        task.ringsLikeAlarm && reminder != null && shown.stage != ReminderStage.FollowUp
     val reminderSpoken = reminder?.let {
-        stringResource(
-            if (ringsLikeAlarm) R.string.task_row_alarm_spoken else R.string.task_row_reminder_spoken,
-            it
-        )
+        when {
+            // The drawn words already say what it is; TalkBack reads them.
+            shown.stage != ReminderStage.Set -> it
+            ringsLikeAlarm -> stringResource(R.string.task_row_alarm_spoken, it)
+            else -> stringResource(R.string.task_row_reminder_spoken, it)
+        }
     }
     var alarmAt: Int? = null
     fun addReminder() {

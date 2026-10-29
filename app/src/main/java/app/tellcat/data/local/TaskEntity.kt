@@ -74,5 +74,7 @@ data class TaskEntity(
     // Version 13, D-102: the reminder rings like an alarm. The default is the
     // column's for the reason `occurrenceNumber` gives, and the parameter's so
     // every row written before it reads as a plain reminder.
-    @ColumnInfo(defaultValue = "0") val ringsLikeAlarm: Boolean = false
+    @ColumnInfo(defaultValue = "0") val ringsLikeAlarm: Boolean = false,
+    // Version 14, D-108: when an unanswered reminder is posted once more.
+    val followUpAt: LocalDateTime? = null
 )

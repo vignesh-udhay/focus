@@ -48,7 +48,13 @@ class ReminderAnnouncement(
      *
      * Does nothing for a task with no live row.
      */
-    suspend fun record(taskId: String, announcedAt: Instant) {
+    suspend fun record(
+        taskId: String,
+        announcedAt: Instant,
+        // Whether to post it once more if nobody answers: true when it was
+        // announced as a notification and follow-ups are allowed. D-108.
+        remindsAgain: Boolean = false
+    ) {
         val task = repository.findTask(taskId) ?: return
         val announcedHere = LocalDateTime.ofInstant(announcedAt, zone())
 
@@ -70,7 +76,8 @@ class ReminderAnnouncement(
             id = taskId,
             deliveredAt = announcedAt,
             next = next,
-            retireId = missed?.id
+            retireId = missed?.id,
+            followUpAt = if (remindsAgain) followUpTime(announcedHere) else null
         )
     }
 }
