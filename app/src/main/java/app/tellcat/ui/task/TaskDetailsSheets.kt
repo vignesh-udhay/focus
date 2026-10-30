@@ -771,6 +771,20 @@ internal fun ReminderSheet(
         )
     }
 
+    // **The time follows the day until the user picks one.** D-113. A new
+    // reminder opens on the next whole hour, D-071, and choosing Tomorrow used
+    // to keep it: noon tomorrow, which nobody asks for, so the morning case
+    // cost three more taps every time. Now a day chosen for a new reminder
+    // takes that day's suggestion, nine in the morning on any day but today.
+    // A reminder that already has a time, or a time picked from the clock,
+    // is the user's and stays where it is.
+    var timePicked by rememberSaveable { mutableStateOf(reminderAt != null) }
+
+    fun chooseDay(day: LocalDate) {
+        chosenDay = day.toEpochDay()
+        if (!timePicked) timeOfDay = suggestedReminderTime(day, now).toSecondOfDay()
+    }
+
     var pane by rememberSaveable { mutableStateOf(ReminderPane.MAIN) }
     var isTimeOpen by rememberSaveable { mutableStateOf(false) }
     var isDatePickerOpen by rememberSaveable { mutableStateOf(false) }
@@ -796,6 +810,7 @@ internal fun ReminderSheet(
             onPicked = { picked ->
                 isTimeOpen = false
                 timeOfDay = picked.toSecondOfDay()
+                timePicked = true
             }
         )
     }
@@ -806,7 +821,7 @@ internal fun ReminderSheet(
             onDismiss = { isDatePickerOpen = false },
             onPicked = { picked ->
                 isDatePickerOpen = false
-                chosenDay = picked.toEpochDay()
+                chooseDay(picked)
                 pane = ReminderPane.MAIN
             }
         )
@@ -923,7 +938,7 @@ internal fun ReminderSheet(
                     selected = at.toLocalDate(),
                     today = today,
                     onPick = { picked ->
-                        chosenDay = picked.toEpochDay()
+                        chooseDay(picked)
                         pane = ReminderPane.MAIN
                     },
                     onChooseDate = { isDatePickerOpen = true },

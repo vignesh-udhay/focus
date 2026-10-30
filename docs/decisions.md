@@ -6925,3 +6925,25 @@ cross is a separate 48dp button, "Remove reminder".
 today, tomorrow morning and next week, with and without the chip, against
 Tellcat 1.2 from Play. If the chip saves little over typing, or the written words
 confuse more than they teach, the placeholder change can ship alone.
+
+## D-113. A new reminder's time follows the day until a time is picked
+
+Extends D-071. Part of the Quick Add trial (D-112), and it changes Task Details
+too, because both open the same reminder sheet.
+
+**Decision.** In the reminder sheet, for a reminder that has no time yet,
+choosing a day also moves the Time row to that day's suggestion: nine in the
+morning on any day but today, and the next whole hour when Today is chosen
+again. Once the user picks a time from the clock, or when the reminder already
+had one, the time stays put whatever day is chosen.
+
+**What changed the answer.** The owner's trial of D-112 on 2026-10-30. A new
+reminder opens on the next whole hour (D-071), and choosing Tomorrow kept it,
+so the sheet proposed noon tomorrow. Nobody asks for that, so "tomorrow at 9am"
+always needed the clock: 9, AM, OK. With the chip that was 10 taps; with this
+it is 7. The same three taps are saved in Task Details.
+
+**Why this stays inside D-071.** D-071 already says nine in the morning is the
+suggestion for a day that is not today. The sheet only applied it to the day it
+opened on, not to a day chosen in it. A time the user set is never replaced:
+that would be the sheet overriding a decision rather than offering a default.

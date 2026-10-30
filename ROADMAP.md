@@ -62,8 +62,9 @@ into the field as words the parser reads back. On 2026-10-30: JVM 972 of 972,
 lint with no errors, and the instrumented suite 415 of 415 on the owner's phone
 once the placeholder was shortened (the brief's example was cut off at 100%).
 Trial in Tellcat dev, taps with the chip against the 1.2 path: later today 7
-against 9, tomorrow 9am 10 against 12, a day next week 13 against 15. The sheet
-keeps 12:00 when Tomorrow is chosen, which costs the morning case three taps.
+against 9, tomorrow 9am 10 against 12, a day next week 13 against 15. D-113 then
+made a new reminder's time follow the day (nine on any day but today), which the
+trial showed was costing the morning case three taps, in Task Details too.
 The owner decides whether it ships. Not merged and not pushed.
 
 **Completing on Task Details grows Complete into Focus's place, D-111, and is

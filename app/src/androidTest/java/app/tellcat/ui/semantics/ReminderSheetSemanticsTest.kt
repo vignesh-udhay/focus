@@ -290,6 +290,50 @@ class ReminderSheetSemanticsTest {
         rule.onNodeWithText(SAVE).assertIsEnabled()
     }
 
+    // --- D-113: the time follows the day until one is picked -----------------
+
+    /**
+     * A new reminder opens on the next whole hour today. Choosing Tomorrow takes
+     * tomorrow's suggestion, nine in the morning, rather than keeping seven in
+     * the evening, which is the tap the morning case used to cost.
+     */
+    @Test
+    fun choosingTomorrowForANewReminderMovesTheTimeToNine() {
+        val saved = setSheet()
+
+        rule.onNodeWithText(DAY).performClick()
+        rule.onNodeWithText(TOMORROW_LABEL).performClick()
+        rule.onNodeWithText(SAVE).performClick()
+
+        assertEquals(listOf(TODAY.plusDays(1).atTime(9, 0)), saved)
+    }
+
+    /** And back to Today, the next whole hour again. */
+    @Test
+    fun choosingTodayAgainReturnsToTheNextHour() {
+        val saved = setSheet()
+
+        rule.onNodeWithText(DAY).performClick()
+        rule.onNodeWithText(TOMORROW_LABEL).performClick()
+        rule.onNodeWithText(DAY).performClick()
+        rule.onNodeWithText(TODAY_LABEL).performClick()
+        rule.onNodeWithText(SAVE).performClick()
+
+        assertEquals(listOf(TODAY.atTime(19, 0)), saved)
+    }
+
+    /** A reminder that already has a time keeps it when its day changes. */
+    @Test
+    fun anExistingReminderKeepsItsTimeWhenTheDayChanges() {
+        val saved = setSheet(reminderAt = TODAY.atTime(21, 0))
+
+        rule.onNodeWithText(DAY).performClick()
+        rule.onNodeWithText(TOMORROW_LABEL).performClick()
+        rule.onNodeWithText(SAVE).performClick()
+
+        assertEquals(listOf(TODAY.plusDays(1).atTime(21, 0)), saved)
+    }
+
     // --- D-109: the snooze inside the app -------------------------------------
 
     /** The sheet on a reminder that has rung, and what Snooze writes. */
