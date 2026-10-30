@@ -58,9 +58,13 @@ merge waits for the owner's word.
 from `main` at `02ef416` and rebased onto the D-111 merge, D-112, for the owner to try before anything is
 decided.** The placeholder teaches a time, the Reminder chip is always on the
 sheet, and tapping it opens Task Details' reminder sheet, whose choice is typed
-into the field as words the parser reads back. The main and test sources
-compile; the JVM and instrumented tests are written and none has run, and the
-phone has not been touched. Not merged and not pushed.
+into the field as words the parser reads back. On 2026-10-30: JVM 972 of 972,
+lint with no errors, and the instrumented suite 415 of 415 on the owner's phone
+once the placeholder was shortened (the brief's example was cut off at 100%).
+Trial in Tellcat dev, taps with the chip against the 1.2 path: later today 7
+against 9, tomorrow 9am 10 against 12, a day next week 13 against 15. The sheet
+keeps 12:00 when Tomorrow is chosen, which costs the morning case three taps.
+The owner decides whether it ships. Not merged and not pushed.
 
 **Completing on Task Details grows Complete into Focus's place, D-111, and is
 on `main`,** merged from `feature/complete-in-place` on 2026-10-30 as a
