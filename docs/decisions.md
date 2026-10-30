@@ -6829,7 +6829,8 @@ the check alone in the grown pill, not the slide.
 
 ## D-112. Quick Add's Reminder chip is always there, and types the reminder into the field
 
-**A proposal for the owner to try on the phone, not yet a decision to ship.**
+**Decided on 2026-10-30, after the owner tried it on the phone with D-113.** It
+began as a proposal for that trial.
 Extends D-011.
 
 **Decision.** Three changes to Quick Add, on Today and Inbox.

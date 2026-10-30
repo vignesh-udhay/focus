@@ -54,9 +54,10 @@ Details store shot was taken, Groceries with its checklist in light and dark at
 1080 x 1920, and the owner chose to leave the store set of eight as it is. The
 merge waits for the owner's word.
 
-**A Quick Add reminder chip is proposed on `feature/quick-add-reminder`, cut
-from `main` at `02ef416` and rebased onto the D-111 merge, D-112, for the owner to try before anything is
-decided.** The placeholder teaches a time, the Reminder chip is always on the
+**Quick Add teaches a time and has a Reminder chip that types it, D-112 and
+D-113, and both are on `main`,** merged from `feature/quick-add-reminder` on
+2026-10-30 as a fast-forward after the owner tried them, not pushed and with no
+version bump. The placeholder teaches a time, the Reminder chip is always on the
 sheet, and tapping it opens Task Details' reminder sheet, whose choice is typed
 into the field as words the parser reads back. On 2026-10-30: JVM 972 of 972,
 lint with no errors, and the instrumented suite 415 of 415 on the owner's phone
@@ -65,7 +66,8 @@ Trial in Tellcat dev, taps with the chip against the 1.2 path: later today 7
 against 9, tomorrow 9am 10 against 12, a day next week 13 against 15. D-113 then
 made a new reminder's time follow the day (nine on any day but today), which the
 trial showed was costing the morning case three taps, in Task Details too.
-The owner decides whether it ships. Not merged and not pushed.
+With it, tomorrow at 9am is 6 taps with the chip, measured, against 12 in 1.2;
+the reminder sheet, Quick Add and Task Details classes passed 112 of 112.
 
 **Completing on Task Details grows Complete into Focus's place, D-111, and is
 on `main`,** merged from `feature/complete-in-place` on 2026-10-30 as a
