@@ -791,6 +791,15 @@ did not move; the top row went back to the text.
 [CD] One field and one action. Do not add a second field or a date picker.
 Capture should require almost no decisions.
 
+**Amended by D-112, narrowly.** The Reminder chip is always on the sheet and
+opens Task Details' reminder sheet, which has a day and a time picker behind it.
+It sets nothing itself: what is chosen is typed into the field as words ("
+tomorrow at 9am") and marked as typed words are, so the field is still the only
+setter and the sheet still has one field. Unset, the chip reads "Reminder" and
+is live once there is a title. Its cross unmarks the run, as before; the
+reminder sheet's Clear does the same, and its "Ring like an alarm" switch is not
+offered from here, because the field has no words for it.
+
 [CD] The field reads a day off the end of the title and marks it: the matched
 words take `primary`, and a supporting line under the field names the resolved
 date. That is one field still, not two — the marking and the line are feedback
@@ -834,7 +843,9 @@ live region so TalkBack says it when it appears. Only after "at" and only when
 no reminder was read, so it never sits under the Reminder chip.
 
 [CD] The placeholder is an example of exactly that, and it is there to teach
-it. Nothing else on the sheet says a date can be typed, so without one the
+it. Since D-112 it teaches a time as well, `Try "Call the plumber tomorrow at
+9am"`, written as the phone writes times, and `Try "Dentist at 9am"` where the
+long one does not fit a line. Nothing else on the sheet says a date can be typed, so without one the
 field looks like a plain text box and the feature is found by accident or never.
 The design this screen was drawn from solved the same problem with a row of
 Today / Tomorrow / No date chips; those were declined, because they would be a

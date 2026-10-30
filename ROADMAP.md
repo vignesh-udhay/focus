@@ -54,6 +54,14 @@ Details store shot was taken, Groceries with its checklist in light and dark at
 1080 x 1920, and the owner chose to leave the store set of eight as it is. The
 merge waits for the owner's word.
 
+**A Quick Add reminder chip is proposed on `feature/quick-add-reminder`, cut
+from `main` at `02ef416` and rebased onto the D-111 merge, D-112, for the owner to try before anything is
+decided.** The placeholder teaches a time, the Reminder chip is always on the
+sheet, and tapping it opens Task Details' reminder sheet, whose choice is typed
+into the field as words the parser reads back. The main and test sources
+compile; the JVM and instrumented tests are written and none has run, and the
+phone has not been touched. Not merged and not pushed.
+
 **Completing on Task Details grows Complete into Focus's place, D-111, and is
 on `main`,** merged from `feature/complete-in-place` on 2026-10-30 as a
 fast-forward, not pushed and with no version bump. Complete grows into the place Focus leaves

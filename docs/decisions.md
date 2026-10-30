@@ -6826,3 +6826,97 @@ difference. Complete still covers the spot that was tapped; a test holds that at
 **What would reverse this.** People reading "Completed" as a button that does
 something other than reopen, or tapping it expecting to leave. The fallback is
 the check alone in the grown pill, not the slide.
+
+## D-112. Quick Add's Reminder chip is always there, and types the reminder into the field
+
+**A proposal for the owner to try on the phone, not yet a decision to ship.**
+Extends D-011.
+
+**Decision.** Three changes to Quick Add, on Today and Inbox.
+
+1. **The placeholder teaches a time.** `Try "Call the plumber tomorrow at 9am"`,
+   with the time written the way the phone writes times ("09:00" on a 24-hour
+   phone). Where that does not fit on one line, at large font scales, it reads
+   `Try "Dentist at 9am"`, which keeps the time: the half that was never taught.
+2. **The Reminder chip is always on the sheet.** Unset it reads "Reminder";
+   once the field reads a reminder it names it, "Reminder Tomorrow at 9:00 AM",
+   as it always has. It is live once there is a title, the same test Add uses.
+3. **Tapping it opens Task Details' reminder sheet** (D-018), and what is chosen
+   there is typed into the field: "Call the plumber" becomes "Call the plumber
+   tomorrow at 9am", marked exactly as if it had been typed. If the field already
+   ends in a day, a time or an offset, that run is rewritten rather than a second
+   one added. The chip's cross keeps D-011's meaning, unmark the run, and the
+   sheet's Clear does the same. When the sheet closes, the keyboard comes back
+   with the cursor after the new words.
+
+**What changed the answer.** The owner hit it: in Quick Add a reminder needs the
+time typed, and without the syntax it is about eight taps after the task exists
+(Add, find the row, open it, Reminder, day, time, OK, back). The placeholder
+taught a day and never a time, so few people would find out a time could be
+typed at all. D-011's chip appeared only once a time had been typed, so it
+could not help anyone who did not already know.
+
+**Why this keeps D-011's one mechanism.** The field is still the only thing that
+sets a reminder. The chip does not hold a reminder of its own, and the sheet
+sets nothing: it hands its moment to `writeReminder` in
+`core/domain/CaptureWriter.kt`, which writes words, and the field reads them as
+it reads anything typed. There is no precedence rule because there is only one
+value, the text. And the words it writes are the syntax, so every use of the
+chip shows how to skip it next time.
+
+**The words are checked against the parser before they are written.** Shortest
+first: "at 5pm" for today, "tomorrow at 9am", "on Friday at 9am" for the rest
+of the week, then the date, "on 7 November at 9am", with its year only when the
+next 7 November is not the one meant. A phrase is kept only if the parser reads
+it back as exactly the chosen moment and leaves the title as it was. A shorter
+form loses where the title already ends in something the parser takes: "Pass it
+on" plus "tomorrow" reads as "on tomorrow" and costs the title its last word, so
+the date is written instead. Every day the sheet can give, at the times it opens
+on and a spread the picker reaches, on both clocks and both date orders, reads
+back in `CaptureWriterTest`. Nothing the sheet offers is unwritable; the alarm
+switch, below, is the one thing it no longer offers.
+
+**Where the app's rules pushed back on the brief.**
+
+- **`expressive-components.md` says "Do not add a second field or a date
+  picker."** This adds a way to a date and time picker, so that rule is amended
+  here, narrowly: the picker is reached only through the chip and sets nothing
+  itself, so the sheet is still one field and one action. The rule's reason,
+  capture with almost no decisions, still holds for anyone who types.
+- **"Ring like an alarm" has no words**, so it is not offered when Quick Add
+  opens the sheet. Writing it would need a phrase the parser reads ("alarm at
+  9am"), which is a vocabulary change, not this one. It is a tap away in Task
+  Details once the task exists.
+- **A reminder's day schedules the task**, D-075, so choosing Friday in the
+  sheet makes the task Friday's, exactly as typing "on Friday at 9am" does.
+  The supporting line says so. The day still has no chip of its own (D-011).
+- **Not until there is a title.** The parser never empties a title, so a field
+  holding only "tomorrow at 9am" is a task called that, not a reminder. A chip
+  that wrote into an empty field would show a reminder the field did not read.
+- **24-hour times are written with two hour digits**, "09:00", because "9:00"
+  is refused on purpose (D-070): a speech recognizer writes a spoken "nine" that
+  way.
+- **A time dismissed with the cross stays in the title.** Choosing a reminder
+  afterwards writes after those words rather than over them, because the user
+  said they were part of the title.
+
+**What does not change.** The permission ask (notifications, exact alarms) still
+comes when Add saves the task, D-107, so it can never fall on a draft: the chip
+only types. D-101's "No reminder set. Add am or pm" line still appears under a
+bare hour. "Add to Tellcat" from the share sheet keeps its own sheet and no
+reminder, D-097. Repeat and duration stay out of Quick Add, D-069.
+
+**A later option, not part of this.** The parser could read "every day at
+8am", which would let a repeat arrive the same way. It is a vocabulary change
+with its own questions (which day it starts, what "every weekday" means) and
+belongs in a decision of its own.
+
+**For screen readers.** The chip is one node in both states, a button that says
+"Add reminder" or the reminder itself, and a polite live region, so TalkBack
+announces the reminder as soon as the field reads one, typed or written. The
+cross is a separate 48dp button, "Remove reminder".
+
+**What would reverse this.** The owner's trial: tap counts for a reminder later
+today, tomorrow morning and next week, with and without the chip, against
+Tellcat 1.2 from Play. If the chip saves little over typing, or the written words
+confuse more than they teach, the placeholder change can ship alone.

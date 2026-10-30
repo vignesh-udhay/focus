@@ -170,6 +170,13 @@ Focus is a sheet rather than a destination, which matches `PRODUCT.md`
 treating it as a mode rather than a place. `TellcatNavHost` opens
 `FocusSheet` over whatever list the user was on.
 
+Quick Add's Reminder chip writes rather than sets, D-112. The reminder sheet
+hands its moment to `writeReminder` in `core/domain/CaptureWriter.kt`, the
+inverse of `CaptureParser`, which tries phrases shortest first and keeps the
+first one `splitTrailingCapture` reads back as exactly that moment. It sits in
+`core/domain` beside the parser because it is the parser's vocabulary, English
+on every device, not wording a screen chooses.
+
 Shared text enters through `ui/share/ShareActivity`, a second, see-through
 activity with its own task, so "Add to Tellcat" sits over the app shared from
 and returns to it. It parses with `sharedTask` in `core/domain` and writes
