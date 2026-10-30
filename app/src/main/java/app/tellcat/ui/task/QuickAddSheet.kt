@@ -1,5 +1,29 @@
 package app.tellcat.ui.task
 
+import android.text.format.DateFormat
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.ripple
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.rememberTextMeasurer
+import app.tellcat.core.design.TellcatDimensions
+import app.tellcat.core.domain.reminderTimeWords
+import app.tellcat.core.domain.writeReminder
+import java.time.LocalTime
+import java.util.Locale
+import kotlinx.coroutines.flow.first
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -92,6 +116,12 @@ import kotlinx.coroutines.delay
  * the sheet sets a reminder, and dismissing it unmarks the same run the field
  * already owns, so there is one mechanism rather than two competing ones.
  *
+ * **Since D-112 the chip is always there, and it types.** Unset it reads
+ * "Reminder"; tapped, it opens Task Details' reminder sheet, and what is chosen
+ * there is written into the field as the words that say it, " tomorrow at 9am",
+ * marked as typed words are. The field is still the only setter: the chip is a
+ * shortcut to typing, and the words it leaves teach the syntax.
+ *
  * The colour is the quieter half of the signal and never the only one. The
  * supporting line carries the same fact in text, which is what a screen reader
  * announces and what survives a colour-blind reading.
@@ -119,19 +149,28 @@ fun QuickAddSheet(
 ) {
     val now = rememberCurrentMinute(clock)
 
-    var title by rememberSaveable { mutableStateOf("") }
+    // A value rather than a string, so the chip can put the cursor after the
+    // words it writes. D-112.
+    var title by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue()) }
 
     // Whether the user has dismissed the reminder for what is currently typed.
     // Reset by typing, because the next keystroke makes a new parse and a
     // dismissal cannot outlive the text it was about.
     var reminderDismissed by rememberSaveable { mutableStateOf(false) }
 
+    // The reminder sheet the chip opens, D-112, and a count of the times it
+    // has closed, which is what hands focus back to the field.
+    var isReminderOpen by rememberSaveable { mutableStateOf(false) }
+    var reminderClosed by remember { mutableIntStateOf(0) }
+
     val focusRequester = remember { FocusRequester() }
+    val context = LocalContext.current
+    val locale = LocalConfiguration.current.locales[0]
 
     // Recomputed as the user types: it decides what the field marks, what the
     // supporting line says, and what Save hands over, so the three can never
     // disagree.
-    val parsed = splitTrailingCapture(title, today).let { capture ->
+    val parsed = splitTrailingCapture(title.text, today).let { capture ->
         if (reminderDismissed) capture.withoutReminder() else capture
     }
 
@@ -173,6 +212,22 @@ fun QuickAddSheet(
         ),
         modifier = modifier
     ) {
+        // This sheet's own window and keyboard, read inside it: Quick Add is a
+        // window of its own, and the reminder sheet is another over it.
+        val keyboard = LocalSoftwareKeyboardController.current
+        val windowInfo = LocalWindowInfo.current
+
+        // **Focus and the keyboard come back to the field** when the reminder
+        // sheet closes, D-112, with the cursor after the words it wrote. Once
+        // this window has focus again: asked for while the reminder sheet's
+        // window still held it, the field would take focus with no keyboard.
+        LaunchedEffect(reminderClosed) {
+            if (reminderClosed == 0) return@LaunchedEffect
+            snapshotFlow { windowInfo.isWindowFocused }.first { it }
+            focusRequester.requestFocus()
+            keyboard?.show()
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -211,12 +266,13 @@ fun QuickAddSheet(
                 colors = tellcatFieldColors(),
                 shape = TellcatFieldShape,
                 onValueChange = { typed ->
-                    title = typed
                     // A new parse is a new reminder, so an old dismissal has
                     // nothing left to be about. Without this, typing a second
                     // time after dismissing would silently suppress a reminder
-                    // the user never declined.
-                    reminderDismissed = false
+                    // the user never declined. Only a change to the text: a
+                    // moved cursor is not a new parse.
+                    if (typed.text != title.text) reminderDismissed = false
+                    title = typed
                 },
                 // No label. The heading above carries the name, and a filled
                 // field is 56dp with or without one, so dropping it leaves the
@@ -234,11 +290,10 @@ fun QuickAddSheet(
                     // field is single-line but a placeholder is not held to
                     // that, and an empty field taller than a filled one is what
                     // happens at large font scales otherwise.
-                    Text(
-                        text = stringResource(R.string.quick_add_placeholder),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    //
+                    // **It teaches a time as well as a day**, D-112, written the
+                    // way this phone writes times.
+                    QuickAddPlaceholder(time = reminderTimeWords(ExampleTime, DateFormat.is24HourFormat(context)))
                 },
                 singleLine = true,
                 visualTransformation = markTheRun,
@@ -278,19 +333,27 @@ fun QuickAddSheet(
                     .focusRequester(focusRequester)
             )
 
-            // The one control on the sheet besides Save, and it appears only
-            // when there is a reminder to be dismissed. An offset is one too:
-            // keyed on the clock time alone, "in 2 hours" set a reminder this
-            // sheet never showed and could not take back. D-075.
-            if (parsed.hasReminder) {
-                ReminderChip(
-                    parsed = parsed,
-                    today = today,
-                    now = now,
-                    onDismiss = { reminderDismissed = true },
-                    modifier = Modifier.padding(top = TellcatSpacing.xs)
-                )
-            }
+            // The one control on the sheet besides Save. An offset is a
+            // reminder too: keyed on the clock time alone, "in 2 hours" set a
+            // reminder this sheet never showed and could not take back. D-075.
+            //
+            // **Always drawn since D-112**, so Add no longer moves down the
+            // moment a time is read. Live only once there is a title, the test
+            // Add itself uses: a reminder about nothing is not a capture.
+            ReminderChip(
+                parsed = parsed,
+                today = today,
+                now = now,
+                enabled = parsed.title.isNotBlank(),
+                onOpen = {
+                    // The keyboard goes down so the sheet has the screen, and
+                    // comes back when it closes.
+                    keyboard?.hide()
+                    isReminderOpen = true
+                },
+                onDismiss = { reminderDismissed = true },
+                modifier = Modifier.padding(top = TellcatSpacing.xs)
+            )
 
             Button(
                 onClick = { onSave(parsed) },
@@ -307,8 +370,87 @@ fun QuickAddSheet(
         }
     }
 
+    // **Task Details' reminder sheet, writing into the field.** D-112. It opens
+    // on the reminder the field holds, or on the day the field names, so
+    // choosing again edits the run already there. Its Save writes the words and
+    // its Clear does what the chip's cross does, unmark the run; it sets nothing
+    // itself. No "Ring like an alarm": the field has no words for it, and the
+    // switch is a tap away in Task Details once the task exists.
+    if (isReminderOpen) {
+        val held = parsed.reminderAt(today, now)
+        ReminderSheet(
+            reminderAt = held,
+            defaultDay = held?.toLocalDate() ?: parsed.date ?: today,
+            today = today,
+            now = clock(),
+            offersAlarm = false,
+            onSet = { at, _ ->
+                writeReminder(
+                    text = title.text,
+                    marked = parsed.markRange,
+                    at = at,
+                    today = today,
+                    now = clock(),
+                    twentyFourHour = DateFormat.is24HourFormat(context),
+                    dayFirst = writesDayFirst(locale)
+                )?.let { written ->
+                    title = TextFieldValue(written.text, TextRange(written.text.length))
+                    reminderDismissed = false
+                }
+                isReminderOpen = false
+                reminderClosed++
+            },
+            onClear = {
+                reminderDismissed = true
+                isReminderOpen = false
+                reminderClosed++
+            },
+            onDismiss = {
+                isReminderOpen = false
+                reminderClosed++
+            }
+        )
+    }
+
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
+    }
+}
+
+/** The time the placeholder's example is set for. */
+private val ExampleTime: LocalTime = LocalTime.of(9, 0)
+
+/**
+ * Whether this phone writes a date day first, "6 November", or month first,
+ * "November 6", so the words the chip writes look like the phone's own dates.
+ * The parser reads both.
+ */
+private fun writesDayFirst(locale: Locale): Boolean {
+    val pattern = DateFormat.getBestDateTimePattern(locale, "MMMMd")
+    return pattern.indexOf('d') < pattern.indexOf('M')
+}
+
+/**
+ * The example in the empty field, D-112: a day and a time on the end of a title.
+ *
+ * Two lengths, and the longer one whenever it fits on a line. At large font
+ * scales it does not, and an example cut off at "tomo…" teaches nothing, so the
+ * shorter one keeps the time, which is the half that was never taught.
+ */
+@Composable
+private fun QuickAddPlaceholder(time: String) {
+    val full = stringResource(R.string.quick_add_placeholder, time)
+    val short = stringResource(R.string.quick_add_placeholder_short, time)
+    val measurer = rememberTextMeasurer()
+    val style = LocalTextStyle.current
+
+    BoxWithConstraints {
+        val fits = measurer.measure(full, style, maxLines = 1, softWrap = false).size.width <= constraints.maxWidth
+        Text(
+            text = if (fits) full else short,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
@@ -379,20 +521,29 @@ private fun QuickAddSupportingText(
 }
 
 /**
- * The Reminder chip, and the only thing on the sheet that can be dismissed.
+ * The Reminder chip. D-011, and since D-112 always on the sheet.
  *
  * An `InputChip` rather than an `AssistChip`, because Material's input chip is
  * the one that represents a piece of information the user supplied and offers to
- * remove it. That is exactly what this is: the time came out of what they typed.
+ * remove it. That is exactly what this is: the time came out of what they typed,
+ * or was typed for them by this chip.
  *
- * It names the moment in words. The chip is the reminder's only presence in
- * text, so a screen reader has to get the whole fact from it.
+ * **Unset, it reads "Reminder"** and opens the reminder sheet. **Set, it names
+ * the moment in words**, opens the sheet to change it, and its cross unmarks the
+ * run, as it always has. The chip is the reminder's only presence in text, so a
+ * screen reader has to get the whole fact from it.
+ *
+ * One chip in both states rather than two, so it is one node whose words change:
+ * a polite live region, and TalkBack says the new reminder when the field reads
+ * one, typed or written.
  */
 @Composable
 private fun ReminderChip(
     parsed: CapturedTask,
     today: LocalDate,
     now: LocalDateTime,
+    enabled: Boolean,
+    onOpen: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -400,42 +551,82 @@ private fun ReminderChip(
     // the reminder actually lands: D-030 resolves a time that has gone by to
     // tomorrow, and a chip still reading "Today" would be the disagreement
     // between the chip and the saved value that D-011 exists to prevent.
-    val at = parsed.reminderAt(today, now) ?: return
-    val time = at.toLocalTime().format(rememberTimeFormat())
-    val label = stringResource(
-        R.string.quick_add_reminder,
-        scheduledDateLabel(at.toLocalDate(), today),
-        time
+    val at = parsed.reminderAt(today, now)
+    val time = at?.toLocalTime()?.format(rememberTimeFormat())
+    val label = if (at == null) {
+        stringResource(R.string.quick_add_reminder_unset)
+    } else {
+        stringResource(R.string.quick_add_reminder, scheduledDateLabel(at.toLocalDate(), today), time.orEmpty())
+    }
+    // What a screen reader hears: unset, the action; set, the reminder.
+    val spoken = if (at == null) stringResource(R.string.quick_add_reminder_add) else label
+    val openLabel = stringResource(
+        if (at == null) R.string.quick_add_reminder_add else R.string.quick_add_reminder_change
     )
-
     val dismissLabel = stringResource(R.string.quick_add_reminder_dismiss)
 
-    InputChip(
-        selected = true,
-        onClick = onDismiss,
-        label = { Text(label) },
-        trailingIcon = {
-            Icon(
-                painter = painterResource(R.drawable.ic_close),
-                // The chip's own label already names the reminder, so this
-                // names the action instead of describing the glyph.
-                contentDescription = stringResource(R.string.quick_add_reminder_dismiss),
-                modifier = Modifier.size(InputChipDefaults.IconSize)
-            )
-        },
-        // **A button that removes the reminder, read as one.** An input chip
-        // drawn selected announced itself as a checked checkbox, so TalkBack
-        // said "checked" and a double-tap silently took the reminder away. It
-        // now reads its label and names what a double-tap does.
-        modifier = modifier.clearAndSetSemantics {
-            text = AnnotatedString(label)
-            role = Role.Button
-            onClick(label = dismissLabel) {
-                onDismiss()
-                true
+    Box(modifier = modifier) {
+        InputChip(
+            selected = at != null,
+            enabled = enabled,
+            onClick = onOpen,
+            label = { Text(label) },
+            leadingIcon = {
+                Icon(
+                    painter = painterResource(R.drawable.ic_alarm),
+                    contentDescription = null,
+                    modifier = Modifier.size(InputChipDefaults.IconSize)
+                )
+            },
+            trailingIcon = if (at == null) null else {
+                {
+                    // Drawn here, taken by the target laid over it below.
+                    Icon(
+                        painter = painterResource(R.drawable.ic_close),
+                        contentDescription = null,
+                        modifier = Modifier.size(InputChipDefaults.IconSize)
+                    )
+                }
+            },
+            // **A button, read as one, never a checked control.** An input chip
+            // drawn selected announced itself as a checked checkbox, so TalkBack
+            // said "checked" and a double-tap silently took the reminder away.
+            // It reads its words and names what a double-tap does.
+            modifier = Modifier.clearAndSetSemantics {
+                text = AnnotatedString(spoken)
+                role = Role.Button
+                liveRegion = LiveRegionMode.Polite
+                if (enabled) {
+                    onClick(label = openLabel) {
+                        onOpen()
+                        true
+                    }
+                } else {
+                    disabled()
+                }
             }
+        )
+
+        // **The cross is its own target**, so a tap on the chip changes the
+        // reminder and a tap on the cross removes it. A full 48dp square laid
+        // over the chip's end, because the cross is drawn at 18dp and the
+        // touch target rule is 48.
+        if (at != null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .size(TellcatDimensions.TouchTargetMin)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = ripple(bounded = false, radius = TellcatDimensions.TouchTargetMin / 2),
+                        role = Role.Button,
+                        onClickLabel = dismissLabel,
+                        onClick = onDismiss
+                    )
+                    .semantics { contentDescription = dismissLabel }
+            )
         }
-    )
+    }
 }
 
 /**

@@ -753,7 +753,11 @@ internal fun ReminderSheet(
     // Whether "Snooze…" is offered: the reminder has rung and waits for an
     // answer, or is snoozed. D-109.
     canSnooze: Boolean = false,
-    onSnooze: (LocalDateTime) -> Unit = {}
+    onSnooze: (LocalDateTime) -> Unit = {},
+    // Whether "Ring like an alarm" is offered. Off when Quick Add opens the
+    // sheet, D-112: what is chosen there is written into the field as words,
+    // and there are no words for ringing like an alarm.
+    offersAlarm: Boolean = true
 ) {
     var ringsAsAlarm by rememberSaveable { mutableStateOf(ringsLikeAlarm) }
 
@@ -849,10 +853,12 @@ internal fun ReminderSheet(
                         )
                     }
 
-                    ReminderAlarmSwitch(
-                        ringsLikeAlarm = ringsAsAlarm,
-                        onRingsLikeAlarmChange = { on -> ringsAsAlarm = on }
-                    )
+                    if (offersAlarm) {
+                        ReminderAlarmSwitch(
+                            ringsLikeAlarm = ringsAsAlarm,
+                            onRingsLikeAlarmChange = { on -> ringsAsAlarm = on }
+                        )
+                    }
 
                     // Says why Save is dead. Reached only when the user picked
                     // the day themselves; a day this sheet worked out has
