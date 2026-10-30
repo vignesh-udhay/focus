@@ -843,9 +843,9 @@ live region so TalkBack says it when it appears. Only after "at" and only when
 no reminder was read, so it never sits under the Reminder chip.
 
 [CD] The placeholder is an example of exactly that, and it is there to teach
-it. Since D-112 it teaches a time as well, `Try "Call the plumber tomorrow at
-9am"`, written as the phone writes times, and `Try "Dentist at 9am"` where the
-long one does not fit a line. Nothing else on the sheet says a date can be typed, so without one the
+it. Since D-112 it teaches a time as well, `Try "Call Sam tomorrow at 9am"`,
+written as the phone writes times, and `Try "Gym at 9am"` where the long one
+does not fit a line. Nothing else on the sheet says a date can be typed, so without one the
 field looks like a plain text box and the feature is found by accident or never.
 The design this screen was drawn from solved the same problem with a row of
 Today / Tomorrow / No date chips; those were declined, because they would be a

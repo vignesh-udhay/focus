@@ -522,9 +522,9 @@
     <string name="quick_add_title_label">New task</string>
     <string name="quick_add_save">Add task</string>
     <!-- D-112: the example teaches a time as well as a day. %1$s is the time as this phone writes it, "9am" or "09:00". -->
-    <string name="quick_add_placeholder">Try \"Call the plumber tomorrow at %1$s\"</string>
+    <string name="quick_add_placeholder">Try \"Call Sam tomorrow at %1$s\"</string>
     <!-- When the full example does not fit one line, at large font scales. Keeps the time. -->
-    <string name="quick_add_placeholder_short">Try \"Dentist at %1$s\"</string>
+    <string name="quick_add_placeholder_short">Try \"Gym at %1$s\"</string>
     <string name="quick_add_scheduled_for">Scheduled for %1$s</string>
     <!--
       D-011's first state. The line says something even when nothing parsed,

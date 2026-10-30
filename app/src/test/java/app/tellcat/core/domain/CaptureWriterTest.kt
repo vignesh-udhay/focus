@@ -260,8 +260,9 @@ class CaptureWriterTest {
     @Test
     fun thePlaceholdersExampleReadsAsTomorrowAtNine() {
         for (twentyFourHour in listOf(false, true)) {
-            val example = "Call the plumber tomorrow at ${reminderTimeWords(LocalTime.of(9, 0), twentyFourHour)}"
-            assertReadsBack(example, "Call the plumber", today.plusDays(1).atTime(9, 0), morning)
+            val time = reminderTimeWords(LocalTime.of(9, 0), twentyFourHour)
+            assertReadsBack("Call Sam tomorrow at $time", "Call Sam", today.plusDays(1).atTime(9, 0), morning)
+            assertReadsBack("Gym at $time", "Gym", today.atTime(9, 0), today.atTime(8, 0))
         }
     }
 }

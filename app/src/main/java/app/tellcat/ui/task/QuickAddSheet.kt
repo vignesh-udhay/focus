@@ -4,8 +4,6 @@ import android.text.format.DateFormat
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.snapshotFlow
@@ -17,7 +15,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.rememberTextMeasurer
 import app.tellcat.core.design.TellcatDimensions
 import app.tellcat.core.domain.reminderTimeWords
 import app.tellcat.core.domain.writeReminder
@@ -436,22 +433,29 @@ private fun writesDayFirst(locale: Locale): Boolean {
  * Two lengths, and the longer one whenever it fits on a line. At large font
  * scales it does not, and an example cut off at "tomo…" teaches nothing, so the
  * shorter one keeps the time, which is the half that was never taught.
+ *
+ * **Decided by the line as it was laid out**, not measured in advance. Measured
+ * against the width the field offered its placeholder, the long example always
+ * appeared to fit, and on a 360dp phone at the default font size it was cut off.
  */
 @Composable
 private fun QuickAddPlaceholder(time: String) {
-    val full = stringResource(R.string.quick_add_placeholder, time)
-    val short = stringResource(R.string.quick_add_placeholder_short, time)
-    val measurer = rememberTextMeasurer()
-    val style = LocalTextStyle.current
+    val examples = listOf(
+        stringResource(R.string.quick_add_placeholder, time),
+        stringResource(R.string.quick_add_placeholder_short, time)
+    )
+    // Which example is showing. Steps to the shorter one when the longer runs
+    // off the line, and starts again when the examples change.
+    var shown by remember(examples) { mutableIntStateOf(0) }
 
-    BoxWithConstraints {
-        val fits = measurer.measure(full, style, maxLines = 1, softWrap = false).size.width <= constraints.maxWidth
-        Text(
-            text = if (fits) full else short,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-    }
+    Text(
+        text = examples[shown],
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        onTextLayout = { layout ->
+            if (layout.hasVisualOverflow && shown < examples.lastIndex) shown++
+        }
+    )
 }
 
 /**

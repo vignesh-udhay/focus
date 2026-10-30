@@ -6834,10 +6834,15 @@ Extends D-011.
 
 **Decision.** Three changes to Quick Add, on Today and Inbox.
 
-1. **The placeholder teaches a time.** `Try "Call the plumber tomorrow at 9am"`,
-   with the time written the way the phone writes times ("09:00" on a 24-hour
-   phone). Where that does not fit on one line, at large font scales, it reads
-   `Try "Dentist at 9am"`, which keeps the time: the half that was never taught.
+1. **The placeholder teaches a time.** `Try "Call Sam tomorrow at 9am"`, with
+   the time written the way the phone writes times ("09:00" on a 24-hour phone).
+   Where that does not fit on one line, at large font scales, it reads `Try "Gym
+   at 9am"`, which keeps the time: the half that was never taught. The brief's
+   `Try "Call the plumber tomorrow at 9am"` was tried first and did not fit: on
+   a 360dp phone at the default font size the field gives the placeholder 270dp
+   and it was cut off at "9a…". It fits at the owner's 0.9, by a few pixels. The
+   sheet picks between the two by the line as it was laid out, because measuring
+   against the width the field offered said the long one always fit.
 2. **The Reminder chip is always on the sheet.** Unset it reads "Reminder";
    once the field reads a reminder it names it, "Reminder Tomorrow at 9:00 AM",
    as it always has. It is live once there is a title, the same test Add uses.
