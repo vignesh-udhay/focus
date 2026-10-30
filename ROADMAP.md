@@ -54,15 +54,15 @@ Details store shot was taken, Groceries with its checklist in light and dark at
 1080 x 1920, and the owner chose to leave the store set of eight as it is. The
 merge waits for the owner's word.
 
-**Completing on Task Details is being refined on `feature/complete-in-place`,
-cut from `main` at `b59b2ad` and rebased onto `02ef416` after the follow-up
-merge, D-111.** Complete grows into the place Focus leaves
+**Completing on Task Details grows Complete into Focus's place, D-111, and is
+on `main`,** merged from `feature/complete-in-place` on 2026-10-30 as a
+fast-forward, not pushed and with no version bump. Complete grows into the place Focus leaves
 as a pill reading "Completed", Focus fades where it stands, and the title's line
 draws across on the row's spring, so nothing moves under the thumb. On the
 owner's phone on 2026-10-29, `TaskDetailsSemanticsTest` passed 49 of 49, the two
 new tapped-spot tests included, and the owner tried the motion and approved it.
-After the rebase, JVM 951 of 951 and lint with no errors; the
-instrumented suite has still to run on the combined code before the merge.
+After the rebase onto the follow-up merge, JVM 951 of 951, lint with no
+errors, and the full instrumented suite 404 of 404 on the owner's phone.
 
 **A follow-up and a fuller snooze are on `main`, D-108 to D-110,** merged from
 `feature/follow-up-snooze` on 2026-10-29 as a fast-forward to `feb63eb`, not
