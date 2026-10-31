@@ -1,7 +1,9 @@
 package app.tellcat.core.notification
 
+import app.tellcat.core.domain.EarlyReminder
 import app.tellcat.core.domain.Task
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -576,5 +578,119 @@ class ReminderSchedulerTest {
         scheduler(alarms).reconcile(emptyList(), deleted = listOf(deleted))
 
         assertTrue("gone" in alarms.cancelled)
+    }
+
+    // D-115: one early reminder, on an alarm of its own
+
+    /** Noon now; the reminder at two, an hour early at one. */
+    private fun warned(id: String, reminderAt: LocalDateTime = LocalDateTime.of(2026, 9, 5, 14, 0)) =
+        task(id, reminderAt).copy(earlyReminder = EarlyReminder.OneHour)
+
+    @Test
+    fun `an early reminder is scheduled on its own alarm beside the reminder's`() {
+        val alarms = RecordingAlarms()
+
+        scheduler(alarms).reconcile(listOf(warned("a")))
+
+        // 14:00 and 13:00 in Kolkata are 08:30 and 07:30 UTC.
+        assertEquals(Instant.parse("2026-09-05T08:30:00Z"), alarms.scheduled["a"])
+        assertEquals(Instant.parse("2026-09-05T07:30:00Z"), alarms.scheduled[earlyAlarmId("a")])
+    }
+
+    @Test
+    fun `an early reminder is reported with its reminder, and never as an alarm`() {
+        val alarms = RecordingAlarms()
+
+        val result = scheduler(alarms).reconcile(listOf(warned("a").copy(ringsLikeAlarm = true)))
+
+        val early = result.scheduled.single { it.earlyFor != null }
+        assertEquals(LocalDateTime.of(2026, 9, 5, 13, 0), early.ringsAt)
+        assertEquals(LocalDateTime.of(2026, 9, 5, 14, 0), early.earlyFor)
+        assertFalse(early.ringsLikeAlarm)
+        assertTrue(result.scheduled.single { it.earlyFor == null }.ringsLikeAlarm)
+    }
+
+    @Test
+    fun `the backstop follows the early reminder, the earliest future trigger`() {
+        val alarms = RecordingAlarms()
+
+        scheduler(alarms).reconcile(listOf(warned("a")))
+
+        assertEquals(Instant.parse("2026-09-05T07:31:00Z"), alarms.backstop)
+    }
+
+    /** The phone was off at 11:30; the reminder at 12:30 is still ahead. */
+    @Test
+    fun `a missed early reminder is told now while its reminder is ahead`() {
+        val alarms = RecordingAlarms()
+
+        scheduler(alarms).reconcile(listOf(warned("a", LocalDateTime.of(2026, 9, 5, 12, 30))))
+
+        assertEquals(now, alarms.scheduled[earlyAlarmId("a")])
+    }
+
+    @Test
+    fun `no early reminder once its reminder's moment has come`() {
+        val alarms = RecordingAlarms()
+
+        scheduler(alarms).reconcile(listOf(warned("a", LocalDateTime.of(2026, 9, 5, 11, 59))))
+
+        assertFalse(earlyAlarmId("a") in alarms.scheduled)
+        assertTrue(earlyAlarmId("a") in alarms.cancelled)
+    }
+
+    @Test
+    fun `an early reminder already told is cancelled, not scheduled`() {
+        val alarms = RecordingAlarms()
+
+        scheduler(alarms).reconcile(listOf(warned("a").copy(earlyDeliveredAt = now)))
+
+        assertFalse(earlyAlarmId("a") in alarms.scheduled)
+        assertTrue(earlyAlarmId("a") in alarms.cancelled)
+        assertTrue("a" in alarms.scheduled)
+    }
+
+    @Test
+    fun `a snoozed early reminder is scheduled at its snooze`() {
+        val alarms = RecordingAlarms()
+
+        scheduler(alarms).reconcile(
+            listOf(warned("a").copy(earlySnoozedUntil = LocalDateTime.of(2026, 9, 5, 13, 30)))
+        )
+
+        assertEquals(Instant.parse("2026-09-05T08:00:00Z"), alarms.scheduled[earlyAlarmId("a")])
+    }
+
+    @Test
+    fun `a completed task's early reminder is cancelled`() {
+        val alarms = RecordingAlarms()
+
+        scheduler(alarms).reconcile(listOf(warned("a").copy(completedAt = createdAt)))
+
+        assertTrue(alarms.scheduled.isEmpty())
+        assertTrue(earlyAlarmId("a") in alarms.cancelled)
+    }
+
+    @Test
+    fun `a deleted task's early reminder is cancelled`() {
+        val alarms = RecordingAlarms()
+
+        scheduler(alarms).reconcile(emptyList(), deleted = listOf(warned("gone").copy(deletedAt = createdAt)))
+
+        assertTrue(earlyAlarmId("gone") in alarms.cancelled)
+    }
+
+    /** It counts against the cap like any alarm: the soonest are kept. */
+    @Test
+    fun `early reminders count against the cap`() {
+        val alarms = RecordingAlarms()
+        val tasks = (1..MaxScheduledReminders).map { n ->
+            warned("t$n", LocalDateTime.of(2026, 9, 6, 12, 0).plusMinutes(n.toLong()))
+        }
+
+        val result = scheduler(alarms).reconcile(tasks)
+
+        assertEquals(MaxScheduledReminders, result.scheduled.size)
+        assertEquals(MaxScheduledReminders, alarms.scheduled.size)
     }
 }

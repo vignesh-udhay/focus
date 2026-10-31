@@ -647,4 +647,33 @@ class TaskDaoTest {
 
         assertEquals(listOf("gone"), dao.findDeletedWithReminders().map { it.id })
     }
+
+    // --- D-115: the early reminder -------------------------------------------
+
+    @Test
+    fun markEarlyDeliveredWritesOnlyThatColumn() = runBlocking {
+        dao.insert(entity("mon").copy(earlyReminderMinutes = 60))
+        val told = java.time.Instant.parse("2026-09-01T03:00:00Z")
+
+        dao.markEarlyDelivered("mon", told.toString())
+
+        val stored = dao.findTask("mon")
+        assertEquals(told, stored?.earlyDeliveredAt)
+        assertEquals(60L, stored?.earlyReminderMinutes)
+    }
+
+    @Test
+    fun snoozingTheEarlyReminderOwesItAgainAndLeavesTheReminder() = runBlocking {
+        dao.insert(entity("mon").copy(earlyReminderMinutes = 60, earlyDeliveredAt = java.time.Instant.EPOCH))
+        val before = dao.findTask("mon")
+        val until = followUp.minusMinutes(30)
+
+        dao.snoozeEarlyReminder("mon", until.toString())
+
+        val stored = dao.findTask("mon")
+        assertEquals(until, stored?.earlySnoozedUntil)
+        assertNull(stored?.earlyDeliveredAt)
+        assertEquals(before?.reminderAt, stored?.reminderAt)
+        assertEquals(before?.snoozedUntil, stored?.snoozedUntil)
+    }
 }

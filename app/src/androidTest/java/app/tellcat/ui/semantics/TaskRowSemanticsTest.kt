@@ -1,5 +1,6 @@
 package app.tellcat.ui.semantics
 
+import app.tellcat.core.domain.EarlyReminder
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.material3.ListItemDefaults
@@ -387,6 +388,28 @@ class TaskRowSemanticsTest {
 
     @Test
     fun aPendingFollowUp_isSaid_at200() = assertAPendingFollowUpIsSaid(FontScale200)
+
+    /**
+     * D-115. The row keeps the reminder's own time and says the early one
+     * beside it, drawn and read aloud the same.
+     */
+    private fun assertAnEarlyReminderIsSaid(fontScale: Float) {
+        setRow(
+            fontScale,
+            outstanding().copy(
+                reminderAt = TestToday.atTime(17, 0),
+                earlyReminder = EarlyReminder.OneHour
+            )
+        )
+
+        rule.onNode(hasContentDescription("also 1 hour before", substring = true)).assertExists()
+    }
+
+    @Test
+    fun anEarlyReminder_isSaid_at100() = assertAnEarlyReminderIsSaid(FontScale100)
+
+    @Test
+    fun anEarlyReminder_isSaid_at200() = assertAnEarlyReminderIsSaid(FontScale200)
 
     private fun assertASnoozeIsSaid(fontScale: Float) {
         setRow(

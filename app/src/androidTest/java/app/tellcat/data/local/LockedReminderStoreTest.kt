@@ -104,6 +104,40 @@ class LockedReminderStoreTest {
         assertEquals(listOf(delivery), store().lockedDeliveries())
     }
 
+    /** D-115. An early reminder in the copy keeps the reminder it warns about. */
+    @Test
+    fun anEarlyReminderStaysEarlyInTheCopy() {
+        val early = ScheduledReminder(
+            "d",
+            "Call the dentist",
+            LocalDateTime.of(2026, 10, 11, 9, 0),
+            earlyFor = LocalDateTime.of(2026, 10, 11, 10, 0)
+        )
+
+        store().replaceUpcoming(listOf(early, water))
+
+        assertEquals(listOf(early, water), store().upcoming())
+    }
+
+    @Test
+    fun aLockedDeliveryKeepsWhetherItWasEarly() {
+        val delivery = LockedDelivery(
+            taskId = "a",
+            title = "Call mom",
+            ringsAt = call.ringsAt,
+            scheduledWallAt = Instant.EPOCH,
+            scheduledElapsedAt = 0L,
+            arrivedWallAt = Instant.EPOCH,
+            arrivedElapsedAt = 0L,
+            scheduledAhead = Duration.ZERO,
+            early = true
+        )
+
+        store().recordLockedDelivery(delivery)
+
+        assertEquals(listOf(delivery), store().lockedDeliveries())
+    }
+
     @Test
     fun upcomingRemindersSurviveANewStore() {
         store().replaceUpcoming(listOf(call, water))

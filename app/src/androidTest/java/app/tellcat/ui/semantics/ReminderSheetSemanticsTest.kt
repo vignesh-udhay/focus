@@ -1,5 +1,6 @@
 package app.tellcat.ui.semantics
 
+import app.tellcat.core.domain.EarlyReminder
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
@@ -290,6 +291,77 @@ class ReminderSheetSemanticsTest {
         rule.onNodeWithText(SAVE).assertIsEnabled()
     }
 
+    // --- D-115: one early reminder -----------------------------------------
+
+    /** The sheet as Task Details opens it, and the early reminder Save writes. */
+    private fun setEarlySheet(
+        early: EarlyReminder? = null,
+        offersEarly: Boolean = true
+    ): MutableList<EarlyReminder?> {
+        val saved = mutableListOf<EarlyReminder?>()
+
+        rule.setTellcatContent(FontScale100) {
+            ReminderSheet(
+                reminderAt = null,
+                defaultDay = TODAY,
+                today = TODAY,
+                onSet = { _, _, chosen -> saved += chosen },
+                onClear = {},
+                onDismiss = {},
+                now = NOW,
+                earlyReminder = early,
+                offersEarly = offersEarly
+            )
+        }
+
+        rule.waitUntilExactlyOneExists(hasText(SAVE), TIMEOUT_MILLIS)
+        return saved
+    }
+
+    /**
+     * At six, for a reminder at seven: "15 min before" rings at 6:45, and the
+     * line under the rows says so in words before Save.
+     */
+    @Test
+    fun alsoRemindMeSaysWhenTheEarlyOneRingsAndSavesIt() {
+        val saved = setEarlySheet()
+
+        rule.onNodeWithText(EARLY).performClick()
+        rule.onNodeWithText(EARLY_FIFTEEN_MINUTES).performClick()
+
+        rule.onNodeWithText(ALSO_AT, substring = true).assertIsDisplayed()
+
+        rule.onNodeWithText(SAVE).performClick()
+        assertEquals(listOf<EarlyReminder?>(EarlyReminder.FifteenMinutes), saved)
+    }
+
+    /** "1 day before" a reminder an hour away has already gone, and the sheet says so. */
+    @Test
+    fun anEarlyMomentAlreadyGoneIsSaidBeforeSaving() {
+        setEarlySheet()
+
+        rule.onNodeWithText(EARLY).performClick()
+        rule.onNodeWithText(EARLY_ONE_DAY).performClick()
+
+        rule.onNodeWithText(ALREADY_GONE, substring = true).assertIsDisplayed()
+    }
+
+    /** The row reads the task's own choice when the sheet opens. */
+    @Test
+    fun alsoRemindMeOpensOnTheTasksChoice() {
+        setEarlySheet(early = EarlyReminder.OneHour)
+
+        rule.onNodeWithText(ONE_HOUR).assertIsDisplayed()
+    }
+
+    /** Quick Add opens the sheet without it: the field has no words for it. */
+    @Test
+    fun alsoRemindMeIsNotOfferedWhereItCannotBeKept() {
+        setEarlySheet(offersEarly = false)
+
+        rule.onAllNodesWithText(EARLY).assertCountEquals(0)
+    }
+
     // --- D-113: the time follows the day until one is picked -----------------
 
     /**
@@ -444,6 +516,12 @@ class ReminderSheetSemanticsTest {
         const val TIMEOUT_MILLIS = 5_000L
 
         const val DAY = "Day"
+        const val EARLY = "Also remind me"
+        const val EARLY_FIFTEEN_MINUTES = "15 min before"
+        const val EARLY_ONE_HOUR = "1 hour before"
+        const val EARLY_ONE_DAY = "1 day before"
+        const val ALSO_AT = "Also at "
+        const val ALREADY_GONE = "has already gone"
         const val TIME = "Time"
         const val SAVE = "Save reminder"
         const val ALARM = "Ring like an alarm"

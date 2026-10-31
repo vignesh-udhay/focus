@@ -1,5 +1,6 @@
 package app.tellcat.data.local
 
+import app.tellcat.core.domain.EarlyReminder
 import app.tellcat.core.domain.ChecklistItem
 import app.tellcat.core.domain.Task
 import app.tellcat.core.domain.Recurrence
@@ -42,6 +43,10 @@ class TaskMappersTest {
         // to the default. D-102.
         ringsLikeAlarm = true,
         followUpAt = followUpAt,
+        // Set, so a mapping that dropped any of them would fail. D-115.
+        earlyReminder = EarlyReminder.OneDay,
+        earlyDeliveredAt = deliveredAt,
+        earlySnoozedUntil = snoozedUntil,
         estimatedDurationMinutes = 45,
         recurrence = Recurrence(RecurrenceUnit.WEEKLY),
         spawnedFromId = "task-0",
@@ -71,7 +76,10 @@ class TaskMappersTest {
         completedAt = completedAt,
         deletedAt = deletedAt,
         ringsLikeAlarm = true,
-        followUpAt = followUpAt
+        followUpAt = followUpAt,
+        earlyReminderMinutes = 1440,
+        earlyDeliveredAt = deliveredAt,
+        earlySnoozedUntil = snoozedUntil
     )
 
     // 1. Task -> Entity

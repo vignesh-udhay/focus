@@ -44,6 +44,28 @@ class TellcatBackupCodecTest {
         assertEquals(backup, restored)
     }
 
+    /**
+     * D-115. The early reminder is carried; a backup written before it, which
+     * has no such key, reads as none.
+     */
+    @Test
+    fun theEarlyReminderIsCarriedAndAnOlderBackupReadsNone() {
+        val backup = TellcatBackup(
+            preferences = AppearancePreferences(),
+            tasks = listOf(completeTask().copy(earlyReminderMinutes = 60))
+        )
+        val written = ByteArrayOutputStream().also { output ->
+            TellcatBackupCodec.write(output = output, backup = backup, createdAt = Instant.parse("2026-09-08T00:00:00Z"))
+        }.toString(Charsets.UTF_8.name())
+
+        val restored = TellcatBackupCodec.read(ByteArrayInputStream(written.toByteArray()))
+        assertEquals(60L, restored.tasks.single().earlyReminderMinutes)
+
+        val older = Regex(""""earlyReminderMinutes":\\s*60,?""").replace(written, "")
+        val fromOlder = TellcatBackupCodec.read(ByteArrayInputStream(older.toByteArray()))
+        assertNull(fromOlder.tasks.single().earlyReminderMinutes)
+    }
+
     @Test
     fun foreignJsonIsRejected() {
         val bytes = """{"format":"someone-elses-file","version":1,"settings":{},"tasks":[]}"""

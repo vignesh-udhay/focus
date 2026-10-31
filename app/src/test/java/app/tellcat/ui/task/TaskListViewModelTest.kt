@@ -4533,7 +4533,89 @@ class TaskListViewModelTest {
         assertTrue(dao.updated.isEmpty())
         assertNull(model.pendingUndo.value)
     }
+
+    // D-115: one early reminder, through the edit path
+
+    @Test
+    fun anEditToAnotherFieldKeepsTheEarlyReminder() {
+        store(task(id = "a", scheduledDate = today, reminderAt = reminder).copy(earlyReminder = EarlyReminder.OneHour))
+        val model = viewModel()
+        visible(model, 1)
+
+        model.edit(id = "a", title = "Renamed")
+
+        assertEquals(EarlyReminder.OneHour, awaitEdited("a").earlyReminder)
+    }
+
+    @Test
+    fun clearingTheReminderClearsTheEarlyOne() {
+        store(task(id = "a", scheduledDate = today, reminderAt = reminder).copy(earlyReminder = EarlyReminder.OneHour))
+        val model = viewModel()
+        visible(model, 1)
+
+        model.edit(id = "a", reminderAt = null)
+
+        assertNull(awaitEdited("a").earlyReminder)
+    }
+
+    /** "1 day before" a reminder two hours away is settled at save, not told late. */
+    @Test
+    fun anEarlyMomentAlreadyGoneAtSaveIsSettled() {
+        store(task(id = "a", scheduledDate = today))
+        val model = viewModel()
+        visible(model, 1)
+
+        model.edit(
+            id = "a",
+            reminderAt = LocalDateTime.now().plusHours(2).withNano(0),
+            earlyReminder = EarlyReminder.OneDay
+        )
+
+        val stored = awaitEdited("a")
+        assertEquals(EarlyReminder.OneDay, stored.earlyReminder)
+        assertNotNull(stored.earlyDeliveredAt)
+    }
+
+    @Test
+    fun anEarlyMomentStillAheadAtSaveIsOwed() {
+        store(task(id = "a", scheduledDate = today))
+        val model = viewModel()
+        visible(model, 1)
+
+        model.edit(
+            id = "a",
+            reminderAt = LocalDateTime.now().plusDays(3).withNano(0),
+            earlyReminder = EarlyReminder.OneDay
+        )
+
+        val stored = awaitEdited("a")
+        assertEquals(EarlyReminder.OneDay, stored.earlyReminder)
+        assertNull(stored.earlyDeliveredAt)
+    }
+
+    /** A new time makes it owed again, and drops a snooze of the old one. */
+    @Test
+    fun aNewReminderTimeOwesTheEarlyOneAgain() {
+        // On the real clock, ahead of it, so the new early moment is still to come.
+        val reminder = LocalDateTime.now().plusDays(2).withNano(0)
+        store(
+            task(id = "a", scheduledDate = today, reminderAt = reminder).copy(
+                earlyReminder = EarlyReminder.OneHour,
+                earlyDeliveredAt = Instant.EPOCH,
+                earlySnoozedUntil = reminder.minusMinutes(20)
+            )
+        )
+        val model = viewModel()
+        visible(model, 1)
+
+        model.edit(id = "a", reminderAt = reminder.plusDays(1))
+
+        val stored = awaitEdited("a")
+        assertNull(stored.earlyDeliveredAt)
+        assertNull(stored.earlySnoozedUntil)
+    }
 }
+
 
 /**
  * Records what the view model asked the system to announce.

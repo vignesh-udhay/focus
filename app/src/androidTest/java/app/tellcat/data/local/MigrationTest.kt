@@ -256,7 +256,8 @@ class MigrationTest {
             MIGRATION_10_11,
             MIGRATION_11_12,
             MIGRATION_12_13,
-            MIGRATION_13_14
+            MIGRATION_13_14,
+            MIGRATION_14_15
         ).use { database ->
             database.query(
                 "SELECT notes, recurrence, spawnedFromId, reminderAt FROM tasks WHERE id = ?",
@@ -497,7 +498,8 @@ class MigrationTest {
             MIGRATION_10_11,
             MIGRATION_11_12,
             MIGRATION_12_13,
-            MIGRATION_13_14
+            MIGRATION_13_14,
+            MIGRATION_14_15
         ).use { database ->
             database.query(
                 """
@@ -618,7 +620,8 @@ class MigrationTest {
             MIGRATION_10_11,
             MIGRATION_11_12,
             MIGRATION_12_13,
-            MIGRATION_13_14
+            MIGRATION_13_14,
+            MIGRATION_14_15
         ).use { database ->
             database.query(
                 """
@@ -711,7 +714,7 @@ class MigrationTest {
         const val TEST_DB = "migration-test.db"
 
         /** The schema every migration in this test is aimed at. */
-        const val LatestVersion = 14
+        const val LatestVersion = 15
     }
 
     /**
@@ -800,5 +803,30 @@ class MigrationTest {
         }
 
         assertTrue(openAndReadTasks().none { it.followUpAt != null })
+    }
+
+    /**
+     * Version 15 adds the early reminder as none on every row. D-115. A backfill
+     * would warn about every existing reminder the moment the update landed.
+     */
+    @Test
+    fun migratedRowsHaveNoEarlyReminder() {
+        seedVersion1()
+
+        migrate().use { database ->
+            database.query("SELECT id, earlyReminderMinutes, earlyDeliveredAt, earlySnoozedUntil FROM tasks").use { cursor ->
+                var rows = 0
+                while (cursor.moveToNext()) {
+                    rows++
+                    assertTrue(cursor.getString(0) + " has an early reminder", cursor.isNull(1))
+                    assertTrue(cursor.isNull(2))
+                    assertTrue(cursor.isNull(3))
+                }
+
+                assertEquals(3, rows)
+            }
+        }
+
+        assertTrue(openAndReadTasks().none { it.earlyReminder != null })
     }
 }
