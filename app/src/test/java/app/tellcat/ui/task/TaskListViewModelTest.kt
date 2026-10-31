@@ -88,7 +88,7 @@ private class RefusingTaskDao(private val rows: List<TaskEntity>) : TaskDao {
 
     override suspend fun setFollowUp(id: String, followUpAt: String?) = refuse()
 
-    override suspend fun markEarlyDelivered(id: String, deliveredAt: String) = refuse()
+    override suspend fun markEarlyDelivered(id: String, deliveredAt: Long) = refuse()
 
     override suspend fun snoozeEarlyReminder(id: String, until: String) = refuse()
 
@@ -171,9 +171,9 @@ private class FakeTaskDao : TaskDao {
         }
     }
 
-    override suspend fun markEarlyDelivered(id: String, deliveredAt: String) {
+    override suspend fun markEarlyDelivered(id: String, deliveredAt: Long) {
         emissions.value = emissions.value.map { stored ->
-            if (stored.id == id) stored.copy(earlyDeliveredAt = Instant.parse(deliveredAt)) else stored
+            if (stored.id == id) stored.copy(earlyDeliveredAt = Instant.ofEpochMilli(deliveredAt)) else stored
         }
     }
 

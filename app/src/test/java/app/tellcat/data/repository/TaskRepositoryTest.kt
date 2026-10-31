@@ -85,10 +85,10 @@ private class FakeTaskDao : TaskDao {
         checklistsSet += id to checklist
     }
 
-    val earlyDelivered = mutableListOf<Pair<String, String>>()
+    val earlyDelivered = mutableListOf<Pair<String, Long>>()
     val earlySnoozed = mutableListOf<Pair<String, String>>()
 
-    override suspend fun markEarlyDelivered(id: String, deliveredAt: String) {
+    override suspend fun markEarlyDelivered(id: String, deliveredAt: Long) {
         earlyDelivered += id to deliveredAt
     }
 
