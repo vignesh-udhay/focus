@@ -54,6 +54,32 @@ Details store shot was taken, Groceries with its checklist in light and dark at
 1080 x 1920, and the owner chose to leave the store set of eight as it is. The
 merge waits for the owner's word.
 
+**1.3, versionCode 4, is on `main` for the coordinating thread to upload to
+the closed test.** It carries everything since 1.2: the follow-up and its
+Settings row (D-108, D-110), snoozing inside the app (D-109), Complete growing
+in place on Task Details (D-111), the Quick Add Reminder chip and a time that
+follows the day (D-112, D-113), Week preselecting the task's day (D-114), the
+early reminder (D-115), monthly repeats on the nth or last weekday (D-116) and
+the rounded checks (D-117, D-118). No new permission, service or foreground
+service type since 1.2.
+
+Before the bump, a real upgrade was checked on the owner's phone in Tellcat dev,
+on 2026-10-31. 1.2 is schema 13, not 14, so the path is 13 to 16. 1.2's code
+(`b59b2ad`) was installed fresh and given 8 tasks through its own repository:
+a plain reminder, an alarm-style one, a daily repeat with a missed occurrence,
+a monthly repeat on day 15, a snoozed reminder (snoozed through 1.2's own
+path), a checklist, an Inbox task and a completed one. `main` (`19d0eaf`) was
+installed over it without an uninstall. It launched; every field of all 8 tasks
+read back the same, and the new columns as none; the five alarms were the same
+times on the same receivers; Today, Upcoming and Inbox read the same, but for
+D-109's "Snoozed until 8:37 PM"; the monthly task's summary still says
+"Monthly" and its Repeat sheet offers "On day 15". The plain reminder rang at
+18:02 after the upgrade, recorded as delivered at 18:02:00, and its follow-up
+came at 18:12. One thing seen on the way: a fresh install of 1.2 crashed at
+first, because Android restored Tellcat dev's newer, schema 14 data from backup
+and 1.2 cannot open a newer database. Only a downgrade meets that, which Play
+does not do; the test data was removed inside the sandbox instead.
+
 **The early reminder, monthly weekday repeats and rounded checks are on
 `main`, D-114 to D-118,** merged on 2026-10-31 at the owner's word, not pushed
 and with no version bump. `feature/early-reminder` and `feature/monthly-weekday`
