@@ -7118,7 +7118,19 @@ nothing here. en-US and en-GB read the same.
    line wraps freely, so the length costs no truncation.
 2. **A task moved by hand keeps its rule.** Its next occurrence follows the
    stored weekday of the month, not the day it was moved to, which is the reason
-   the rule is stored rather than worked out from the anchor.
+   the rule is stored rather than worked out from the anchor. The coordinator
+   confirmed it the same day.
+
+**An occurrence moved past the next rule date.** Covered by "always after the
+anchor", D-098: the successor is the first rule date after the later of the
+moved day and the finish. January's last Friday dragged to Saturday 28 February,
+past February's 27th, is followed by 27 March: no duplicate February, and March
+not skipped. Moved earlier, to the 20th, it is followed by the 27th. Finished
+late, it is the next still to come, once. `MonthlyWeekdayTest`, "an occurrence
+moved past the next rule date is followed by the first rule date after it" and
+the two beside it. On-months are counted from the moved occurrence's month, as
+a day-of-the-month rule's are from its anchor, so with an interval the move also
+moves which months are on.
 
 **Stacked on `feature/early-reminder`.** Schema 15 is that branch's; this is 16,
 so the two cannot claim one version. The cost is that this branch cannot merge

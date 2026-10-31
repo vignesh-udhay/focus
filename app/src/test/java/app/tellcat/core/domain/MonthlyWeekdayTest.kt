@@ -155,6 +155,46 @@ class MonthlyWeekdayTest {
         assertEquals(lastFriday, next.recurrence?.monthlyWeekday)
     }
 
+    // --- an occurrence moved by hand -------------------------------------------
+
+    /**
+     * January's last-Friday occurrence dragged to Saturday 28 February, past
+     * February's last Friday, the 27th. The successor is the first rule date
+     * after the moved day, 27 March: no second February, and March not
+     * skipped. The rule is kept, D-116, and "always after the anchor" is what
+     * places it. Coordinator's edge, 2026-10-31.
+     */
+    @Test
+    fun `an occurrence moved past the next rule date is followed by the first rule date after it`() {
+        val moved = rent.copy(scheduledDate = date(2026, 2, 28), reminderAt = date(2026, 2, 28).atTime(9, 0))
+
+        val next = moved.nextRecurringInstance(today = date(2026, 2, 28), id = "next", createdAt = Instant.EPOCH)!!
+
+        assertEquals(date(2026, 3, 27), next.scheduledDate)
+        assertEquals(lastFriday, next.recurrence?.monthlyWeekday)
+    }
+
+    /** The same moved occurrence, finished a month late: the next still to come, once. */
+    @Test
+    fun `a moved occurrence finished late gives the next still to come`() {
+        val moved = rent.copy(scheduledDate = date(2026, 2, 28), reminderAt = date(2026, 2, 28).atTime(9, 0))
+
+        val next = moved.nextRecurringInstance(today = date(2026, 3, 30), id = "next", createdAt = Instant.EPOCH)!!
+
+        // April 2026's Fridays are the 3rd to the 24th.
+        assertEquals(date(2026, 4, 24), next.scheduledDate)
+    }
+
+    /** Moved earlier, before its own rule date: the successor is that month's, after it. */
+    @Test
+    fun `an occurrence moved earlier is followed by the rule date after it`() {
+        val moved = rent.copy(scheduledDate = date(2026, 2, 20), reminderAt = date(2026, 2, 20).atTime(9, 0))
+
+        val next = moved.nextRecurringInstance(today = date(2026, 2, 20), id = "next", createdAt = Instant.EPOCH)!!
+
+        assertEquals(date(2026, 2, 27), next.scheduledDate)
+    }
+
     @Test
     fun `a series that ends after a count stops there`() {
         val sixth = rent.copy(occurrenceNumber = 6, recurrence = monthly(lastFriday, end = RecurrenceEnd.AfterOccurrences(6)))
