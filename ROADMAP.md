@@ -58,8 +58,10 @@ merge waits for the owner's word.
 `feature/monthly-weekday`, stacked on `feature/early-reminder` so schema 16
 follows 15, D-116.** Month in the Repeat sheet offers "On day 25" or "On the
 fourth Sunday" (and "the last" where it applies); the summary names it in words.
-The main and test sources compile; the tests are written and none has run, and
-the phone has not been touched. Not merged and not pushed.
+On 2026-10-31 on the owner's phone, on top of the fixed early reminder: JVM 1030
+of 1030, lint with no errors, and the full instrumented suite 440 of 440, after
+two test fixes (version 16's columns in the migration test's list, and the
+backup test's patterns). Not merged and not pushed.
 
 **One early reminder and a weekday preselect are built on
 `feature/early-reminder`, cut from `main` at `04f7a25`, D-114 and D-115.**
