@@ -81,5 +81,10 @@ data class TaskEntity(
     // delivery and snooze. Null on every row written before it: none.
     val earlyReminderMinutes: Long? = null,
     val earlyDeliveredAt: Instant? = null,
-    val earlySnoozedUntil: LocalDateTime? = null
+    val earlySnoozedUntil: LocalDateTime? = null,
+    // Version 16, D-116: a monthly rule on a weekday of the month, as the
+    // occurrence (one to four, or -1 for last) and the weekday's name. Null
+    // on every row written before it: on the day of the month, as before.
+    val recurrenceMonthlyOrdinal: Int? = null,
+    val recurrenceMonthlyWeekday: String? = null
 )

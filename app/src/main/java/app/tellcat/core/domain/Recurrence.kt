@@ -6,6 +6,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
 import java.time.temporal.TemporalAdjusters
+import java.time.YearMonth
 
 /**
  * The period a rule steps by.
@@ -76,13 +77,22 @@ sealed interface RecurrenceEnd {
  * so clearing every chip cannot leave a rule that matches no day at all.
  * Ignored by the other three units, which have no weekday axis.
  * @param end when the series stops.
+ * @param monthlyWeekday for [RecurrenceUnit.MONTHLY] only: the nth or last
+ * weekday of the month, "the third Tuesday", rather than the day of the month.
+ * Null means the day of the month the task is anchored to, which is every
+ * monthly rule written before D-116. Ignored by the other three units.
  */
 data class Recurrence(
     val unit: RecurrenceUnit,
     val interval: Int = 1,
     val weekdays: Set<DayOfWeek> = emptySet(),
-    val end: RecurrenceEnd = RecurrenceEnd.Never
+    val end: RecurrenceEnd = RecurrenceEnd.Never,
+    val monthlyWeekday: MonthlyWeekday? = null
 ) {
+
+    /** Whether this rule falls on a weekday of the month rather than a day number. D-116. */
+    val hasMonthlyWeekday: Boolean
+        get() = unit == RecurrenceUnit.MONTHLY && monthlyWeekday != null
 
     /**
      * Whether this rule picks days inside the week rather than stepping whole
@@ -126,11 +136,83 @@ private val WeekStart = DayOfWeek.MONDAY
  * anchored years ago costs the same as one anchored yesterday.
  */
 fun Recurrence.nextOccurrence(anchor: LocalDate, after: LocalDate): LocalDate =
-    if (hasWeekdays) {
-        nextWeekdayOccurrence(anchor = anchor, after = after)
-    } else {
-        nextPeriodOccurrence(anchor = anchor, after = after)
+    when {
+        hasWeekdays -> nextWeekdayOccurrence(anchor = anchor, after = after)
+        hasMonthlyWeekday -> nextMonthlyWeekdayOccurrence(anchor = anchor, after = after)
+        else -> nextPeriodOccurrence(anchor = anchor, after = after)
     }
+
+/**
+ * The next date for a monthly rule on a weekday of the month. D-116.
+ *
+ * On-months are whole multiples of [Recurrence.interval] from the anchor's
+ * month, as the plain monthly rule counts them, and in each the rule's weekday
+ * is found afresh: the third Tuesday of that month, or the true last Friday,
+ * whichever month has four of them or five. Strictly after the later of
+ * [after] and [anchor], so a task completed early produces the next one, never
+ * one the series has not reached.
+ *
+ * Calculated, then a local scan: at most a step or two, however old the anchor.
+ */
+private fun Recurrence.nextMonthlyWeekdayOccurrence(anchor: LocalDate, after: LocalDate): LocalDate {
+    val rule = monthlyWeekday ?: return nextPeriodOccurrence(anchor, after)
+    val step = steps()
+    val floor = maxOf(after, anchor)
+    val anchorMonth = YearMonth.from(anchor)
+
+    val monthsOut = ChronoUnit.MONTHS.between(anchorMonth, YearMonth.from(floor)).coerceAtLeast(0)
+    var blocks = monthsOut / step
+
+    while (true) {
+        val candidate = rule.inMonth(anchorMonth.plusMonths(blocks * step))
+        if (candidate.isAfter(floor)) return candidate
+        blocks++
+    }
+}
+
+/**
+ * A weekday of the month: the [ordinal]th [day], one to four, or the last.
+ * `docs/decisions.md` D-116.
+ *
+ * Four and last are different rules: in a month with five Fridays the fourth is
+ * not the last. A fifth is never a rule of its own, because most months have
+ * none; a day that is a month's fifth is offered as the last.
+ */
+data class MonthlyWeekday(val ordinal: Int, val day: DayOfWeek) {
+
+    /** Whether this is the last of its weekday. Anything stored outside one to four reads as last. */
+    val isLast: Boolean
+        get() = ordinal !in 1..MaxOrdinal
+
+    /** This weekday in [month]. Always inside it: there are at least four of every weekday. */
+    fun inMonth(month: YearMonth): LocalDate =
+        if (isLast) {
+            month.atEndOfMonth().with(TemporalAdjusters.previousOrSame(day))
+        } else {
+            month.atDay(1).with(TemporalAdjusters.nextOrSame(day)).plusWeeks((ordinal - 1).toLong())
+        }
+
+    companion object {
+
+        /** What [ordinal] holds for "the last". */
+        const val Last = -1
+
+        /** The highest occurrence a rule can name by number. */
+        const val MaxOrdinal = 4
+
+        /**
+         * The weekday choices the Repeat sheet offers for [anchor]: its
+         * occurrence by number while that is one to four, and "last" when it
+         * is the last of its weekday in its month. The fifth Friday is only
+         * the last; the fourth that is also the last is both.
+         */
+        fun choicesFor(anchor: LocalDate): List<MonthlyWeekday> = buildList {
+            val ordinal = (anchor.dayOfMonth - 1) / 7 + 1
+            if (ordinal <= MaxOrdinal) add(MonthlyWeekday(ordinal, anchor.dayOfWeek))
+            if (anchor.plusWeeks(1).month != anchor.month) add(MonthlyWeekday(Last, anchor.dayOfWeek))
+        }
+    }
+}
 
 /**
  * The next date for a rule that steps whole periods.

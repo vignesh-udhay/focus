@@ -404,6 +404,20 @@
     <string name="task_repeat_on_days">%1$s on %2$s</string>
 
     <!--
+      D-116: a monthly rule on a weekday of the month. Ordinal words for the
+      closed set, so a translation can give each the agreement it needs.
+    -->
+    <string name="task_repeat_monthly_weekday">the %1$s %2$s</string>
+    <string name="task_repeat_ordinal_first">first</string>
+    <string name="task_repeat_ordinal_second">second</string>
+    <string name="task_repeat_ordinal_third">third</string>
+    <string name="task_repeat_ordinal_fourth">fourth</string>
+    <string name="task_repeat_ordinal_last">last</string>
+    <string name="task_repeat_month_on_label">On</string>
+    <string name="task_repeat_month_on_day">On day %1$d</string>
+    <string name="task_repeat_month_on_weekday">On %1$s</string>
+
+    <!--
       The rule and its horizon, for the Repeat sheet's subtitle only. The rows
       carry the shape and not when it stops; see RecurrenceStyle.
     -->

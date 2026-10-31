@@ -1,5 +1,6 @@
 package app.tellcat.core.text
 
+import app.tellcat.core.domain.MonthlyWeekday
 import android.content.Context
 import android.icu.text.ListFormatter
 import android.icu.util.Calendar
@@ -118,6 +119,11 @@ private fun ruleShape(
     style: RecurrenceStyle
 ): String {
     val period = intervalLabel(context, recurrence, style)
+
+    // "Every month on the third Tuesday", "Monthly on the last Friday". D-116.
+    recurrence.monthlyWeekday?.takeIf { recurrence.hasMonthlyWeekday }?.let { rule ->
+        return context.getString(R.string.task_repeat_on_days, period, rule.phrase(context))
+    }
 
     if (!recurrence.hasWeekdays) return period
 
@@ -339,6 +345,29 @@ fun weekdayList(context: Context, weekdays: Set<DayOfWeek>): String {
 
     return ListFormatter.getInstance(locale).format(names)
 }
+
+/**
+ * A weekday of the month in words: "the third Tuesday", "the last Friday".
+ * D-116.
+ *
+ * Ordinal words, not "3rd", because the set is closed (first to fourth, and
+ * last) and every example the app writes spells its numbers out. A closed set
+ * is a string each, which is how a translation gets the agreement its language
+ * needs, where ICU's ordinal spellout would be for arbitrary numbers.
+ */
+fun MonthlyWeekday.phrase(context: Context): String = context.getString(
+    R.string.task_repeat_monthly_weekday,
+    context.getString(
+        when {
+            isLast -> R.string.task_repeat_ordinal_last
+            ordinal == 1 -> R.string.task_repeat_ordinal_first
+            ordinal == 2 -> R.string.task_repeat_ordinal_second
+            ordinal == 3 -> R.string.task_repeat_ordinal_third
+            else -> R.string.task_repeat_ordinal_fourth
+        }
+    ),
+    day.fullName(context)
+)
 
 /** One weekday as a single letter, for the chips. */
 fun DayOfWeek.chipLabel(context: Context): String =

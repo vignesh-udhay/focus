@@ -288,6 +288,15 @@ val MIGRATION_14_15 = Migration(14, 15) { database ->
     database.execSQL("ALTER TABLE tasks ADD COLUMN earlySnoozedUntil TEXT")
 }
 
+/**
+ * Version 16, D-116: a monthly rule on a weekday of the month. Null on every
+ * existing row, which reads as the day of the month, exactly as before.
+ */
+val MIGRATION_15_16 = Migration(15, 16) { database ->
+    database.execSQL("ALTER TABLE tasks ADD COLUMN recurrenceMonthlyOrdinal INTEGER")
+    database.execSQL("ALTER TABLE tasks ADD COLUMN recurrenceMonthlyWeekday TEXT")
+}
+
 /** Every migration, in order, for the builder and the migration test. */
 val TellcatMigrations = arrayOf(
     MIGRATION_1_2,
@@ -303,5 +312,6 @@ val TellcatMigrations = arrayOf(
     MIGRATION_11_12,
     MIGRATION_12_13,
     MIGRATION_13_14,
-    MIGRATION_14_15
+    MIGRATION_14_15,
+    MIGRATION_15_16
 )

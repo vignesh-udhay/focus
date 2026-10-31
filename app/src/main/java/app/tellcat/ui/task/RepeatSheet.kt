@@ -1,5 +1,7 @@
 package app.tellcat.ui.task
 
+import app.tellcat.core.text.phrase
+import app.tellcat.core.domain.MonthlyWeekday
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -124,6 +126,7 @@ internal fun RepeatSheet(
                 RepeatPane.RULE -> RulePane(
                     draft = draft,
                     today = today,
+                    anchorDay = anchorDay,
                     canClear = selected != null,
                     onDraftChange = { draft = it },
                     onOpen = { pane = it },
@@ -165,6 +168,7 @@ private enum class RepeatPane { RULE, EVERY, ENDS }
 private fun RulePane(
     draft: RepeatDraft,
     today: LocalDate,
+    anchorDay: LocalDate,
     canClear: Boolean,
     onDraftChange: (RepeatDraft) -> Unit,
     onOpen: (RepeatPane) -> Unit,
@@ -231,6 +235,45 @@ private fun RulePane(
             },
             onlySelected = draft.onlySelectedWeekday
         )
+    }
+
+    // **A month falls on a day number or a weekday of the month.** D-116. Only
+    // a month has the choice, so only a month shows it, as only a week shows
+    // its days. The choices come from the task's own day: "On day 25", "On the
+    // fourth Sunday", and "On the last Sunday" when it is the last. A rule
+    // already on a weekday the day no longer gives stays offered, so opening
+    // the sheet never changes it.
+    if (draft.unit == RecurrenceUnit.MONTHLY) {
+        Text(
+            text = stringResource(R.string.task_repeat_month_on_label),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = TellcatSpacing.xs)
+        )
+
+        val choices = buildList<MonthlyWeekday?> {
+            add(null)
+            addAll(MonthlyWeekday.choicesFor(anchorDay))
+            draft.monthlyWeekday?.let { held -> if (held !in this) add(held) }
+        }
+        val context = LocalContext.current
+
+        PlanRowGroup {
+            choices.forEachIndexed { index, choice ->
+                ChoiceRow(
+                    label = if (choice == null) {
+                        stringResource(R.string.task_repeat_month_on_day, anchorDay.dayOfMonth)
+                    } else {
+                        stringResource(R.string.task_repeat_month_on_weekday, choice.phrase(context))
+                    },
+                    selected = draft.monthlyWeekday == choice,
+                    shapesIndex = index,
+                    shapesCount = choices.size,
+                    // Interval and Ends are left as they are. D-116.
+                    onClick = { onDraftChange(draft.copy(monthlyWeekday = choice)) }
+                )
+            }
+        }
     }
 
     PlanRowGroup(modifier = Modifier.padding(top = TellcatSpacing.xs)) {
@@ -632,7 +675,10 @@ private data class RepeatDraft(
     val weekdays: Set<DayOfWeek>,
     val endKind: EndKind,
     val endDate: LocalDate?,
-    val endCount: String
+    val endCount: String,
+    // A month on a weekday of the month, D-116, or null for its day number.
+    // Kept through a change of unit, so going to Week and back does not lose it.
+    val monthlyWeekday: MonthlyWeekday? = null
 ) {
 
     val intervalOrOne: Int
@@ -688,6 +734,7 @@ private data class RepeatDraft(
         unit = unit,
         interval = intervalOrOne,
         weekdays = if (unit == RecurrenceUnit.WEEKLY) weekdays else emptySet(),
+        monthlyWeekday = monthlyWeekday.takeIf { unit == RecurrenceUnit.MONTHLY },
         end = when (endKind) {
             EndKind.NEVER -> RecurrenceEnd.Never
             EndKind.ON_DATE -> endDate?.let(RecurrenceEnd::OnDate) ?: RecurrenceEnd.Never
@@ -718,7 +765,8 @@ private data class RepeatDraft(
             },
             endDate = (recurrence?.end as? RecurrenceEnd.OnDate)?.date,
             endCount = ((recurrence?.end as? RecurrenceEnd.AfterOccurrences)?.count ?: DefaultCount)
-                .toString()
+                .toString(),
+            monthlyWeekday = recurrence?.monthlyWeekday
         ).withAnchorDay(anchorDay)
 
         /** What the board's After occurrences field starts on. */
@@ -743,7 +791,9 @@ private val RepeatDraftSaver = listSaver<RepeatDraft, Any>(
             draft.weekdays.joinToString(",", transform = DayOfWeek::name),
             draft.endKind.name,
             draft.endDate?.toEpochDay() ?: NoDate,
-            draft.endCount
+            draft.endCount,
+            draft.monthlyWeekday?.ordinal ?: NoOrdinal,
+            draft.monthlyWeekday?.day?.name.orEmpty()
         )
     },
     restore = { saved ->
@@ -759,10 +809,16 @@ private val RepeatDraftSaver = listSaver<RepeatDraft, Any>(
                 .toSet(),
             endKind = EndKind.valueOf(saved[3] as String),
             endDate = epochDay.takeIf { it != NoDate }?.let(LocalDate::ofEpochDay),
-            endCount = saved[5] as String
+            endCount = saved[5] as String,
+            monthlyWeekday = (saved[6] as Int).takeIf { it != NoOrdinal }?.let { ordinal ->
+                MonthlyWeekday(ordinal, DayOfWeek.valueOf(saved[7] as String))
+            }
         )
     }
 )
 
 /** A sentinel epoch day, because a `listSaver` cell cannot hold null. */
 private const val NoDate = Long.MIN_VALUE
+
+/** The same, for a month on its day number rather than a weekday. */
+private const val NoOrdinal = 0

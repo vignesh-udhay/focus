@@ -165,6 +165,9 @@ object TellcatBackupCodec {
         } ?: writer.nullValue()
         writer.name("recurrenceEndDate").nullableValue(task.recurrenceEndDate?.toString())
         writer.name("recurrenceEndCount").nullableValue(task.recurrenceEndCount)
+        // D-116. Absent from older backups, which read as on the day of the month.
+        writer.name("recurrenceMonthlyOrdinal").nullableValue(task.recurrenceMonthlyOrdinal)
+        writer.name("recurrenceMonthlyWeekday").nullableValue(task.recurrenceMonthlyWeekday)
         writer.name("occurrenceNumber").value(task.occurrenceNumber.toLong())
         writer.name("spawnedFromId").nullableValue(task.spawnedFromId)
         writer.name("completedAt").nullableValue(task.completedAt?.toString())
@@ -196,6 +199,8 @@ object TellcatBackupCodec {
         var recurrenceWeekdays: Set<DayOfWeek>? = null
         var recurrenceEndDate: LocalDate? = null
         var recurrenceEndCount: Int? = null
+        var recurrenceMonthlyOrdinal: Int? = null
+        var recurrenceMonthlyWeekday: String? = null
         var occurrenceNumber: Int? = null
         var spawnedFromId: String? = null
         var completedAt: Instant? = null
@@ -225,6 +230,8 @@ object TellcatBackupCodec {
                 "recurrenceEndDate" -> recurrenceEndDate =
                     reader.nextNullableString()?.let(LocalDate::parse)
                 "recurrenceEndCount" -> recurrenceEndCount = reader.nextNullableInt()
+                "recurrenceMonthlyOrdinal" -> recurrenceMonthlyOrdinal = reader.nextNullableInt()
+                "recurrenceMonthlyWeekday" -> recurrenceMonthlyWeekday = reader.nextNullableString()
                 "occurrenceNumber" -> occurrenceNumber = reader.nextInt()
                 "spawnedFromId" -> spawnedFromId = reader.nextNullableString()
                 "completedAt" -> completedAt = reader.nextNullableString()?.let(Instant::parse)
@@ -268,7 +275,9 @@ object TellcatBackupCodec {
             completedAt = completedAt,
             deletedAt = deletedAt,
             ringsLikeAlarm = ringsLikeAlarm,
-            earlyReminderMinutes = earlyReminderMinutes
+            earlyReminderMinutes = earlyReminderMinutes,
+            recurrenceMonthlyOrdinal = recurrenceMonthlyOrdinal,
+            recurrenceMonthlyWeekday = recurrenceMonthlyWeekday
         )
     }
 

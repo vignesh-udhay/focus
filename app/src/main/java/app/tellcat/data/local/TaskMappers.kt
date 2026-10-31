@@ -1,5 +1,7 @@
 package app.tellcat.data.local
 
+import java.time.DayOfWeek
+import app.tellcat.core.domain.MonthlyWeekday
 import app.tellcat.core.domain.EarlyReminder
 import app.tellcat.core.domain.Recurrence
 import app.tellcat.core.domain.RecurrenceEnd
@@ -60,6 +62,8 @@ fun Task.toEntity(): TaskEntity = TaskEntity(
     recurrenceWeekdays = recurrence?.weekdays,
     recurrenceEndDate = (recurrence?.end as? RecurrenceEnd.OnDate)?.date,
     recurrenceEndCount = (recurrence?.end as? RecurrenceEnd.AfterOccurrences)?.count,
+    recurrenceMonthlyOrdinal = recurrence?.monthlyWeekday?.ordinal,
+    recurrenceMonthlyWeekday = recurrence?.monthlyWeekday?.day?.name,
     ringsLikeAlarm = ringsLikeAlarm,
     followUpAt = followUpAt,
     earlyReminderMinutes = earlyReminder?.minutes,
@@ -86,8 +90,22 @@ private fun TaskEntity.toRule(unit: RecurrenceUnit): Recurrence = Recurrence(
     unit = unit,
     interval = recurrenceInterval ?: 1,
     weekdays = recurrenceWeekdays.orEmpty(),
-    end = storedEnd()
+    end = storedEnd(),
+    monthlyWeekday = storedMonthlyWeekday()
 )
+
+/**
+ * The weekday of the month the two columns hold, D-116, or null for the day of
+ * the month. Both have to be there and the name has to be a day; anything else
+ * reads as the day of the month, the rule every older row has.
+ */
+private fun TaskEntity.storedMonthlyWeekday(): MonthlyWeekday? {
+    val ordinal = recurrenceMonthlyOrdinal ?: return null
+    val day = recurrenceMonthlyWeekday
+        ?.let { name -> DayOfWeek.entries.firstOrNull { it.name == name } }
+        ?: return null
+    return MonthlyWeekday(ordinal, day)
+}
 
 /**
  * The end condition the two nullable columns hold between them.
