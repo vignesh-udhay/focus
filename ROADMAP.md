@@ -54,35 +54,29 @@ Details store shot was taken, Groceries with its checklist in light and dark at
 1080 x 1920, and the owner chose to leave the store set of eight as it is. The
 merge waits for the owner's word.
 
-**A task's check is a rounded square again, and a checklist item's is the same
-drawing smaller, on `feature/rounded-check`, cut from `main` at `04f7a25`, D-117
-and D-118.** The task's is 20dp with 6dp corners, an item's 16dp with 5dp, one
-shared `CheckBoxDrawing`; taps, TalkBack and haptics are unchanged, and the
-widget keeps Android's own checkbox. On 2026-10-31 on the owner's phone: JVM 972
-of 972, lint with no errors, and the full instrumented suite 418 of 418, which
-also covers D-113 on `main` end to end. Installed on Tellcat dev for the owner
-to judge. Not merged and not pushed.
+**The early reminder, monthly weekday repeats and rounded checks are on
+`main`, D-114 to D-118,** merged on 2026-10-31 at the owner's word, not pushed
+and with no version bump. `feature/early-reminder` and `feature/monthly-weekday`
+went in as one fast-forward (they were stacked so schema 16 follows 15), then
+`feature/rounded-check` rebased onto them.
 
-**Monthly repeats on the nth or last weekday are built on
-`feature/monthly-weekday`, stacked on `feature/early-reminder` so schema 16
-follows 15, D-116.** Month in the Repeat sheet offers "On day 25" or "On the
-fourth Sunday" (and "the last" where it applies); the summary names it in words.
-On 2026-10-31 on the owner's phone, on top of the fixed early reminder: JVM 1030
-of 1030, lint with no errors, and the full instrumented suite 440 of 440, after
-two test fixes (version 16's columns in the migration test's list, and the
-backup test's patterns). Not merged and not pushed.
+- "Also remind me" in the reminder sheet (15 min, 1 hour or 1 day before) on its
+  own alarm, schema 15; and Week in the Repeat sheet lights the task's own day.
+  The first runs found two bugs, both fixed: version 15's migration added
+  `earlyDeliveredAt` as TEXT where the schema says INTEGER, so a real upgrade
+  from 14 failed Room's check at launch; and the told time was written as text,
+  which the column read back as 2 ms after 1970. Alone: JVM 1006 of 1006, the
+  instrumented suite 434 of 434.
+- Month in the Repeat sheet offers "On day 25" or "On the fourth Sunday" (and
+  "the last" where it applies), schema 16. Alone, on the early reminder: JVM
+  1030 of 1030, the instrumented suite 440 of 440.
+- A task's check is a rounded square, 20dp with 6dp corners, and a checklist
+  item's the same drawing at 16dp with 5dp; the widget keeps Android's own.
+  Alone, on `04f7a25`: the instrumented suite 418 of 418, which also covered
+  D-113 end to end.
 
-**One early reminder and a weekday preselect are built on
-`feature/early-reminder`, cut from `main` at `04f7a25`, D-114 and D-115.**
-"Also remind me" in the reminder sheet (15 min, 1 hour or 1 day before) on its
-own alarm, schema 15; and Week in the Repeat sheet now lights the task's own day.
-On 2026-10-31 on the owner's phone: JVM 1006 of 1006, lint with no errors, and
-the full instrumented suite 434 of 434. The first runs found two bugs, both
-fixed: version 15's migration added `earlyDeliveredAt` as TEXT where the schema
-says INTEGER, so a real upgrade from 14 failed Room's check at launch; and the
-told time was written as text, which the column read back as 2 ms after 1970.
-Four tests that were wrong in themselves were fixed too. Not merged and not
-pushed.
+On the combined code, on the owner's phone on 2026-10-31: JVM 1030 of 1030,
+lint with no errors, and the full instrumented suite 440 of 440.
 
 **Quick Add teaches a time and has a Reminder chip that types it, D-112 and
 D-113, and both are on `main`,** merged from `feature/quick-add-reminder` on
