@@ -7111,6 +7111,15 @@ nothing here. en-US and en-GB read the same.
   untouched.
 - **Quick Add** does not read "every last Friday". D-069 stands.
 
+**The owner's answers, 2026-10-31.** Both agreed.
+
+1. **The row says it in full**, "Monthly on the third Tuesday", spelt out like
+   every other summary, rather than a shorter "3rd Tue monthly". The metadata
+   line wraps freely, so the length costs no truncation.
+2. **A task moved by hand keeps its rule.** Its next occurrence follows the
+   stored weekday of the month, not the day it was moved to, which is the reason
+   the rule is stored rather than worked out from the anchor.
+
 **Stacked on `feature/early-reminder`.** Schema 15 is that branch's; this is 16,
 so the two cannot claim one version. The cost is that this branch cannot merge
 before that one. The alternative, cutting from `main` and renumbering at merge,
