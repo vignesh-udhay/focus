@@ -351,7 +351,7 @@ class ReminderSheetSemanticsTest {
     fun alsoRemindMeOpensOnTheTasksChoice() {
         setEarlySheet(early = EarlyReminder.OneHour)
 
-        rule.onNodeWithText(ONE_HOUR).assertIsDisplayed()
+        rule.onNodeWithText(EARLY_ONE_HOUR).assertIsDisplayed()
     }
 
     /** Quick Add opens the sheet without it: the field has no words for it. */

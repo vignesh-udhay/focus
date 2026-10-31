@@ -655,7 +655,7 @@ class TaskDaoTest {
         dao.insert(entity("mon").copy(earlyReminderMinutes = 60))
         val told = java.time.Instant.parse("2026-09-01T03:00:00Z")
 
-        dao.markEarlyDelivered("mon", told.toString())
+        dao.markEarlyDelivered("mon", told.toEpochMilli())
 
         val stored = dao.findTask("mon")
         assertEquals(told, stored?.earlyDeliveredAt)

@@ -562,7 +562,11 @@ class MigrationTest {
                         // Appended by version 13, D-102.
                         "ringsLikeAlarm",
                         // Appended by version 14, D-108.
-                        "followUpAt"
+                        "followUpAt",
+                        // Appended by version 15, D-115.
+                        "earlyReminderMinutes",
+                        "earlyDeliveredAt",
+                        "earlySnoozedUntil"
                     ),
                     columns
                 )

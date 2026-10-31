@@ -61,7 +61,7 @@ class TellcatBackupCodecTest {
         val restored = TellcatBackupCodec.read(ByteArrayInputStream(written.toByteArray()))
         assertEquals(60L, restored.tasks.single().earlyReminderMinutes)
 
-        val older = Regex(""""earlyReminderMinutes":\\s*60,?""").replace(written, "")
+        val older = Regex(""""earlyReminderMinutes":\s*60,?""").replace(written, "")
         val fromOlder = TellcatBackupCodec.read(ByteArrayInputStream(older.toByteArray()))
         assertNull(fromOlder.tasks.single().earlyReminderMinutes)
     }
