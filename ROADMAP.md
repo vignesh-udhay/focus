@@ -54,6 +54,13 @@ Details store shot was taken, Groceries with its checklist in light and dark at
 1080 x 1920, and the owner chose to leave the store set of eight as it is. The
 merge waits for the owner's word.
 
+**One early reminder and a weekday preselect are built on
+`feature/early-reminder`, cut from `main` at `04f7a25`, D-114 and D-115.**
+"Also remind me" in the reminder sheet (15 min, 1 hour or 1 day before) on its
+own alarm, schema 15; and Week in the Repeat sheet now lights the task's own day.
+The main and test sources compile; the tests are written and none has run, and
+the phone has not been touched. Not merged and not pushed.
+
 **Quick Add teaches a time and has a Reminder chip that types it, D-112 and
 D-113, and both are on `main`,** merged from `feature/quick-add-reminder` on
 2026-10-30 as a fast-forward after the owner tried them, not pushed and with no

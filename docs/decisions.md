@@ -6968,3 +6968,74 @@ and Save writes it out explicitly, which means the same thing.
 
 **What it does not change.** A weekly rule that already names days opens on
 them. The last day still cannot be deselected.
+
+## D-115. One early reminder, before the reminder itself
+
+From the competitor study (`ANALYSIS.md` item 6), approved by the owner on
+2026-10-31.
+
+**Decision.** The reminder sheet gains "Also remind me": none (the default),
+15 min before, 1 hour before or 1 day before. One early reminder per task, never
+a list. Under the rows the sheet says when it rings in words, "Also at 8:00 AM"
+or "Also tomorrow at 9:00 AM", or that it will not: "1 day before has already
+gone, so only the reminder will ring". It exists only with a reminder; clearing
+the reminder clears it. Schema 15 stores the choice and its delivery and snooze.
+
+**What changed the answer.** Bills and appointments need a warning before the
+moment. TickTick, To Do Reminder, Tasks (PB) and Todoery offer it free; Todoist
+charges for it. The owner approved it from the study.
+
+**How it rings.**
+
+- **A plain notification, always.** An alarm-style reminder rings like an alarm
+  only at its own moment (D-102); the early one is a notification on the
+  reminders channel.
+- **Never followed up.** The reminder is the follow-up (D-108).
+- **Its own words, the reminder's title.** `reminders.md` keeps the title as the
+  task's title with nothing added, so the brief's "In 1 hour: Call the dentist,
+  10:00 AM" became the title plus the line "In 1 hour, at 10:00 AM", or
+  "Tomorrow at 9:00 AM", worked out when it is posted so a late one still tells
+  the truth.
+- **Done completes the task** and so cancels the reminder; it carries the
+  reminder's moment, so it goes stale if the reminder moves.
+- **Snooze moves the early one only**, and offers only the snoozes that land
+  before the reminder. With none left, the notification offers Done alone. A
+  snooze of the reminder itself ends the early one.
+- **An early moment already gone at save is settled, not set**, and the sheet
+  says so before Save. The choice is kept, because a repeating reminder's next
+  occurrence carries it (D-098) and its early moment is still ahead.
+- **A missed one is told late while the reminder is still ahead**, as any
+  reminder is after the phone was off. Once the reminder's moment comes, the
+  reminder is told and the early one is not.
+
+**Reliability, which is principle 1.** It is a real alarm, on its own
+`PendingIntent` beside the reminder's (`tellcat://reminder/<id>/early`): exact
+with the grant, inexact without. It joins the same soonest-first list in the
+reconciliation, counts against the 400-alarm cap, and moves D-103's backstop,
+which follows the earliest future trigger. Every pass cancels it where nothing
+is owed, and for a deleted task while its reminder is ahead. The copy kept for
+the locked phone (D-079) carries it as `earlyFor`, so it rings before the first
+unlock and is settled at the unlock rather than told twice. The notification
+withdrawal that clears a reminder moved ahead (D-109) keeps it on screen, since
+it is before its reminder by design. Its choice is in the backup; older backups
+read as none.
+
+**The row.** `task-row.md` says the reminder segment says what the reminder
+will do next and never passes anything off as the time the user set. The early
+moment alone would do exactly that, for a whole day with "1 day before", so the
+row keeps the reminder's time and adds the choice in the sheet's words while it
+is still to ring: "10:00 AM, also 1 hour before", drawn and read aloud the same.
+The widget says the same.
+
+**Where it departs from the brief.**
+
+- **The notification title** stays the task's title, above.
+- **Quick Add does not offer it**, and its reminder sheet hides the row, for the
+  reason it hides "Ring like an alarm" (D-112): the field has no words for it.
+  Task Details is the one place to set it, as the brief asked.
+- **The row shows both**, the reminder's time and the early one, rather than only
+  the next thing to ring, for the reason above.
+
+**What would reverse this.** Testers wanting two or more, which would argue for a
+list and a different control; or finding the extra notification a nag, which
+would argue for a quieter channel before it argues for removing it.

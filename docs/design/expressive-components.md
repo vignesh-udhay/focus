@@ -882,6 +882,14 @@ icon that opens the time picker and fills once it holds a time, the line
 "Snoozes until 4:00 PM" once something is chosen, and a filled Snooze button.
 Task Details' Reminder row then reads "Snoozed until 5:37 PM" until it rings.
 
+**Also remind me, in the reminder sheet.** D-115. A third row under Day and
+Time, "Also remind me", reading None or the choice. It opens a pane shaped like
+the Day pane, a back arrow and four preset buttons two to a row (None, 15 min
+before, 1 hour before, 1 day before). Under the rows, while one is chosen, a
+`bodySmall` line on `onSurfaceVariant` says when it rings, "Also at 8:00 AM",
+or that it has already gone and will not; a polite live region. Not offered when
+Quick Add opens the sheet.
+
 **The priming sheet (R-013).** Opened by turning the switch on without the
 full-screen grant. A picture of the alarm screen, which is the real
 `AlarmScreen` laid out at phone size and scaled down

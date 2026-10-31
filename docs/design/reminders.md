@@ -114,6 +114,17 @@ Android's, so there is only one.
 
 ---
 
+# One early reminder
+
+D-115. "Also remind me" in the reminder sheet: none, 15 min, 1 hour or 1 day
+before, one at most. It arrives under the task's title with the line saying when
+the reminder rings, "In 1 hour, at 10:00 AM" or "Tomorrow at 9:00 AM", Done, and
+Snooze only while a snooze can still land before the reminder. Always a plain
+notification, never an alarm, never followed up, and in the task's own
+notification slot, so the reminder takes its place.
+
+---
+
 # One notification per task
 
 Keyed on the task id, so several reminders at once read as several things to do

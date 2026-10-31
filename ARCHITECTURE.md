@@ -112,7 +112,7 @@ the platform.
 
 ## Persistence
 
-Room, two entities, at schema version 12. `TaskEntity` is the task;
+Room, two entities, at schema version 15. `TaskEntity` is the task;
 `ReminderDeliveryEntity` records when each reminder was due and when it
 actually arrived, which is what Reminder health reads.
 
@@ -262,6 +262,11 @@ inside the write's transaction. Because the successor can exist while the
 occurrence before it is still open, every edit and every delete goes through
 a third, `OccurrenceEdits`, which lets an untouched successor follow in the
 same transaction.
+
+**One early reminder (D-115)** has an alarm of its own beside the reminder's,
+held under `earlyAlarmId(taskId)` and told apart in `ReminderReceiver` by
+`parseAlarmId`, because the two are owed at once. It joins the same owed list,
+cap and backstop, and the locked copy carries it as `earlyFor`.
 
 **One follow-up (D-108)** rides on the task's own alarm. A task whose reminder
 stands announced has none owed, so the reconciliation schedules its

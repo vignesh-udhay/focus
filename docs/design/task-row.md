@@ -99,7 +99,9 @@ rule: the row says what its heading does not.
 to ring reads "Snoozed until 5:37 PM" (D-109), and a pending follow-up "Reminds
 again at 9:40 AM" (D-108), drawn and read aloud the same, so a snooze or a
 follow-up is never passed off as the time the user set. `rowReminder` decides
-which, and the day rules below apply to the moment it names.
+which, and the day rules below apply to the moment it names. An early reminder
+still to ring is said beside the time rather than instead of it, "10:00 AM, also
+1 hour before" (D-115), so the warning is never passed off as the moment.
 
 **An overdue row shows no time.** Its reminder has already fired, so "6:00 PM"
 on a row from last Tuesday describes nothing that is going to happen. That also
