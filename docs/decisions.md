@@ -6948,3 +6948,23 @@ it is 7. The same three taps are saved in Task Details.
 suggestion for a day that is not today. The sheet only applied it to the day it
 opened on, not to a day chosen in it. A time the user set is never replaced:
 that would be the sheet overriding a decision rather than offering a default.
+
+## D-114. Week preselects the task's own weekday
+
+Amends D-027. From the competitor study's quick fixes, approved by the owner on
+2026-10-31.
+
+**Decision.** When the Repeat sheet is on Week and no day is chosen, the
+task's own weekday is lit: its scheduled day, else its reminder's day, else
+today for an undated task. That covers opening the sheet on a task that does
+not repeat yet (it opens on Week) and switching to Week from another unit. The
+summary line reads the day with it.
+
+**What changed the answer.** The study found the editor opening on "Every week"
+with no day lit, where Google Tasks preselects the task's day. Checked on `main`
+on 2026-10-31: it did. An empty set already meant the task's own day (D-027),
+so the rule was right and the sheet did not say so. Lighting the day says it,
+and Save writes it out explicitly, which means the same thing.
+
+**What it does not change.** A weekly rule that already names days opens on
+them. The last day still cannot be deselected.

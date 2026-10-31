@@ -520,6 +520,38 @@ class TaskDetailsSemanticsTest {
     }
 
     /**
+     * **Week opens with the task's own day lit**, D-114. It used to open on
+     * "Every week" with no day chosen. Saved untouched, it writes that day.
+     */
+    @Test
+    fun weekPreselectsTheScheduledDay() {
+        // Two days after TestToday, a Wednesday: a Friday.
+        val viewModel = setScreen(dao = withTask(scheduledDate = TestToday.plusDays(2)))
+
+        rule.onNodeWithText(REPEAT).performClick()
+        rule.waitUntilExactlyOneExists(hasText(DAYS), TIMEOUT_MILLIS)
+        rule.onNodeWithText(SAVE_REPEAT).performClick()
+
+        awaitTask(viewModel) { task ->
+            task.recurrence?.weekdays == setOf(java.time.DayOfWeek.FRIDAY)
+        }
+    }
+
+    /** An undated task takes today's weekday. */
+    @Test
+    fun weekPreselectsTodayForAnUndatedTask() {
+        val viewModel = setScreen(dao = withTask(scheduledDate = null))
+
+        rule.onNodeWithText(REPEAT).performClick()
+        rule.waitUntilExactlyOneExists(hasText(DAYS), TIMEOUT_MILLIS)
+        rule.onNodeWithText(SAVE_REPEAT).performClick()
+
+        awaitTask(viewModel) { task ->
+            task.recurrence?.weekdays == setOf(TestToday.dayOfWeek)
+        }
+    }
+
+    /**
      * **Nothing is written until Save**, which is the one place Task Details
      * departs from D-018's commit-as-you-go rule and the sheet's own KDoc says
      * why: a rule is four fields that only mean something together, so writing

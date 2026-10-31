@@ -90,10 +90,14 @@ internal fun RepeatSheet(
     selected: Recurrence?,
     today: LocalDate,
     onPick: (Recurrence?) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    // The day a weekly rule falls on when no day is chosen: the task's
+    // scheduled day, else its reminder's, else today. D-114 preselects it, so
+    // Week never opens reading "Every week" with nothing lit.
+    anchorDay: LocalDate = today
 ) {
     var draft by rememberSaveable(stateSaver = RepeatDraftSaver) {
-        mutableStateOf(RepeatDraft.of(selected))
+        mutableStateOf(RepeatDraft.of(selected, anchorDay))
     }
     var pane by rememberSaveable { mutableStateOf(RepeatPane.RULE) }
 
@@ -129,6 +133,7 @@ internal fun RepeatSheet(
 
                 RepeatPane.EVERY -> EveryPane(
                     draft = draft,
+                    anchorDay = anchorDay,
                     onDraftChange = { draft = it },
                     onDone = { pane = RepeatPane.RULE }
                 )
@@ -355,6 +360,7 @@ private fun WeekdayChips(
 @Composable
 private fun EveryPane(
     draft: RepeatDraft,
+    anchorDay: LocalDate,
     onDraftChange: (RepeatDraft) -> Unit,
     onDone: () -> Unit
 ) {
@@ -386,7 +392,8 @@ private fun EveryPane(
                 selected = unit == draft.unit,
                 shapesIndex = index,
                 shapesCount = units.size,
-                onClick = { onDraftChange(draft.copy(unit = unit)) }
+                // Week takes the anchor's day when it has none, D-114.
+                onClick = { onDraftChange(draft.withUnit(unit, anchorDay)) }
             )
         }
     }
@@ -642,6 +649,26 @@ private data class RepeatDraft(
     val onlySelectedWeekday: DayOfWeek?
         get() = weekdays.singleOrNull()
 
+    /**
+     * The draft on [unit], with the anchor's weekday lit if it becomes a week
+     * with no day chosen. D-114.
+     */
+    fun withUnit(unit: RecurrenceUnit, anchorDay: LocalDate): RepeatDraft =
+        copy(unit = unit).withAnchorDay(anchorDay)
+
+    /**
+     * A weekly draft naming no day gets [anchorDay]'s, which is the day an
+     * empty set already meant (D-027), now shown. Google Tasks preselects it;
+     * the board drew Week with nothing lit, which read "Every week" and asked
+     * the user to work out that it meant the task's own day.
+     */
+    fun withAnchorDay(anchorDay: LocalDate): RepeatDraft =
+        if (unit == RecurrenceUnit.WEEKLY && weekdays.isEmpty()) {
+            copy(weekdays = setOf(anchorDay.dayOfWeek))
+        } else {
+            this
+        }
+
     /** Whether the chosen end has the value it needs. */
     val endIsComplete: Boolean
         get() = when (endKind) {
@@ -680,7 +707,7 @@ private data class RepeatDraft(
          * rule and the one the board draws its clean slate with. It is a
          * starting point rather than a value: nothing is written until Save.
          */
-        fun of(recurrence: Recurrence?): RepeatDraft = RepeatDraft(
+        fun of(recurrence: Recurrence?, anchorDay: LocalDate): RepeatDraft = RepeatDraft(
             unit = recurrence?.unit ?: RecurrenceUnit.WEEKLY,
             interval = (recurrence?.interval ?: 1).toString(),
             weekdays = recurrence?.weekdays.orEmpty(),
@@ -692,7 +719,7 @@ private data class RepeatDraft(
             endDate = (recurrence?.end as? RecurrenceEnd.OnDate)?.date,
             endCount = ((recurrence?.end as? RecurrenceEnd.AfterOccurrences)?.count ?: DefaultCount)
                 .toString()
-        )
+        ).withAnchorDay(anchorDay)
 
         /** What the board's After occurrences field starts on. */
         private const val DefaultCount = 10

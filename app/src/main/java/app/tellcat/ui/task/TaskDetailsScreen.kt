@@ -955,6 +955,7 @@ private fun PlanSheetHost(
         PlanSheet.REPEAT -> RepeatSheet(
             selected = task.recurrence,
             today = today,
+            anchorDay = task.scheduledDate ?: task.reminderAt?.toLocalDate() ?: today,
             onPick = { recurrence -> onEdit(task.copy(recurrence = recurrence)) },
             onDismiss = onDismiss
         )
