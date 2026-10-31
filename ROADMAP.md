@@ -58,8 +58,13 @@ merge waits for the owner's word.
 `feature/early-reminder`, cut from `main` at `04f7a25`, D-114 and D-115.**
 "Also remind me" in the reminder sheet (15 min, 1 hour or 1 day before) on its
 own alarm, schema 15; and Week in the Repeat sheet now lights the task's own day.
-The main and test sources compile; the tests are written and none has run, and
-the phone has not been touched. Not merged and not pushed.
+On 2026-10-31 on the owner's phone: JVM 1006 of 1006, lint with no errors, and
+the full instrumented suite 434 of 434. The first runs found two bugs, both
+fixed: version 15's migration added `earlyDeliveredAt` as TEXT where the schema
+says INTEGER, so a real upgrade from 14 failed Room's check at launch; and the
+told time was written as text, which the column read back as 2 ms after 1970.
+Four tests that were wrong in themselves were fixed too. Not merged and not
+pushed.
 
 **Quick Add teaches a time and has a Reminder chip that types it, D-112 and
 D-113, and both are on `main`,** merged from `feature/quick-add-reminder` on
