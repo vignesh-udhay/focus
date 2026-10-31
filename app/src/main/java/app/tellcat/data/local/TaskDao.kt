@@ -241,9 +241,13 @@ interface TaskDao {
     @Query("UPDATE tasks SET followUpAt = :followUpAt WHERE id = :id")
     suspend fun setFollowUp(id: String, followUpAt: String?)
 
-    /** The early reminder was told. D-115. Only that column, so nothing else is written over. */
+    /**
+     * The early reminder was told. D-115. Only that column, so nothing else is written over.
+     *
+     * @param deliveredAt epoch milliseconds, matching the column's encoding.
+     */
     @Query("UPDATE tasks SET earlyDeliveredAt = :deliveredAt WHERE id = :id")
-    suspend fun markEarlyDelivered(id: String, deliveredAt: String)
+    suspend fun markEarlyDelivered(id: String, deliveredAt: Long)
 
     /**
      * A snooze of the early reminder, D-115: owed again at [until]. The

@@ -146,7 +146,7 @@ class TaskRepository(private val dao: TaskDao) {
 
     /** The early reminder for [id] was told at [at]. D-115. */
     suspend fun recordEarlyAnnounced(id: String, at: java.time.Instant) {
-        dao.markEarlyDelivered(id = id, deliveredAt = at.toString())
+        dao.markEarlyDelivered(id = id, deliveredAt = at.toEpochMilli())
     }
 
     /** Moves [id]'s early reminder to [until], leaving the reminder alone. D-115. */
