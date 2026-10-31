@@ -1,5 +1,7 @@
 package app.tellcat.ui.task
 
+import androidx.compose.ui.unit.dp
+import app.tellcat.ui.component.CheckBoxDrawing
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -13,7 +15,6 @@ import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.ripple
 import androidx.compose.material3.Icon
@@ -35,7 +36,6 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -203,9 +203,10 @@ private fun ChecklistRow(
         shapes = shapes,
         colors = planRowColors(),
         leadingContent = {
-            // **The box takes the tap; the checkbox inside only draws.** D-105
-            // draws it at a 16dp box rather than Material's 18dp, so an item
-            // inside a task reads lighter than the task's own 22dp round check.
+            // **The box takes the tap; the check inside only draws.** D-118:
+            // the task's own rounded square at 16dp with 5dp corners, where the
+            // task's is 20dp with 6dp, so an item reads as a smaller one of the
+            // same kind. D-105 drew it at a 16dp box for the same lightness.
             // Scaling the checkbox itself scaled its touch target too, to
             // 42.7dp, which the semantics test caught on 2026-10-27. Here the
             // box keeps Material's target, its ripple, `Role.Checkbox` and the
@@ -229,10 +230,10 @@ private fun ChecklistRow(
                     )
                     .semantics { contentDescription = item.text }
             ) {
-                Checkbox(
+                CheckBoxDrawing(
                     checked = item.done,
-                    onCheckedChange = null,
-                    modifier = Modifier.scale(ChecklistCheckScale)
+                    boxSize = ChecklistCheckSize,
+                    corner = ChecklistCheckCorner
                 )
             }
         },
@@ -395,7 +396,9 @@ private fun AddChecklistItemRow(
 }
 
 /**
- * A checklist item's checkbox: Material's 18dp box drawn at 16dp. D-105. The
- * drawing only; the box around it keeps the touch target.
+ * A checklist item's check: 16dp, as D-105 drew it, with the corner scaled from
+ * the task's 6dp on 20dp. D-118. The drawing only; the box around it keeps the
+ * touch target.
  */
-private const val ChecklistCheckScale = 16f / 18f
+private val ChecklistCheckSize = 16.dp
+private val ChecklistCheckCorner = 5.dp

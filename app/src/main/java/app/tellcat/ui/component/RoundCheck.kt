@@ -1,5 +1,6 @@
 package app.tellcat.ui.component
 
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.CornerRadius
@@ -41,13 +42,48 @@ import app.tellcat.core.design.TellcatMotion
  * tick is drawn smaller than Material's, in proportion to the circle, with
  * round ends.
  *
- * Tasks only. A checklist item is a line inside a task and keeps Material's
- * square `Checkbox`, so the two never look like the same kind of thing.
+ * The drawing is [CheckBoxDrawing], which a checklist item uses too at its own
+ * smaller size (D-118), so the two are one family told apart by size.
  */
 @Composable
 internal fun RoundCheck(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    colors: CheckboxColors = CheckboxDefaults.colors()
+) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier
+            .minimumInteractiveComponentSize()
+            .toggleable(
+                value = checked,
+                enabled = enabled,
+                role = Role.Checkbox,
+                interactionSource = remember { MutableInteractionSource() },
+                indication = ripple(bounded = false, radius = CheckboxStateLayerSize / 2),
+                onValueChange = onCheckedChange
+            )
+    ) {
+        CheckBoxDrawing(checked = checked, enabled = enabled, colors = colors, boxSize = BoxSize, corner = Corner)
+    }
+}
+
+/**
+ * The check as drawn, without the tap: a rounded square of [boxSize] with [corner]
+ * corners, Material's outline and colour roles, and the app's smaller
+ * round-ended tick, which draws in on `stateColor`. D-117, D-118.
+ *
+ * The task row's [RoundCheck] draws it at 20dp, and a checklist item at 16dp
+ * inside its own tappable box, so the two are the same family told apart by
+ * size. The corner scales with it.
+ */
+@Composable
+internal fun CheckBoxDrawing(
+    checked: Boolean,
+    boxSize: Dp,
+    corner: Dp,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     colors: CheckboxColors = CheckboxDefaults.colors()
@@ -81,49 +117,35 @@ internal fun RoundCheck(
         label = "RoundCheckMark"
     )
 
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = modifier
-            .minimumInteractiveComponentSize()
-            .toggleable(
-                value = checked,
-                enabled = enabled,
-                role = Role.Checkbox,
-                interactionSource = remember { MutableInteractionSource() },
-                indication = ripple(bounded = false, radius = CheckboxStateLayerSize / 2),
-                onValueChange = onCheckedChange
-            )
-    ) {
-        Canvas(Modifier.size(BoxSize)) {
-            val stroke = StrokeWidth.toPx()
-            val corner = Corner.toPx()
+    Canvas(modifier.size(boxSize)) {
+        val stroke = StrokeWidth.toPx()
+        val cornerPx = corner.toPx()
 
-            drawRoundRect(color = boxColor, cornerRadius = CornerRadius(corner))
-            // Inset by half the stroke so the outline sits inside the box, as
-            // Material's does, with the corner reduced to match.
-            drawRoundRect(
-                color = borderColor,
-                topLeft = Offset(stroke / 2, stroke / 2),
-                size = Size(size.width - stroke, size.height - stroke),
-                cornerRadius = CornerRadius(corner - stroke / 2),
-                style = Stroke(stroke)
-            )
+        drawRoundRect(color = boxColor, cornerRadius = CornerRadius(cornerPx))
+        // Inset by half the stroke so the outline sits inside the box, as
+        // Material's does, with the corner reduced to match.
+        drawRoundRect(
+            color = borderColor,
+            topLeft = Offset(stroke / 2, stroke / 2),
+            size = Size(size.width - stroke, size.height - stroke),
+            cornerRadius = CornerRadius(cornerPx - stroke / 2),
+            style = Stroke(stroke)
+        )
 
-            if (drawn > 0f) {
-                val path = Path().apply {
-                    moveTo(size.width * TickLeft.first, size.height * TickLeft.second)
-                    lineTo(size.width * TickVertex.first, size.height * TickVertex.second)
-                    lineTo(size.width * TickRight.first, size.height * TickRight.second)
-                }
-                val measure = PathMeasure().apply { setPath(path, false) }
-                val partial = Path()
-                measure.getSegment(0f, measure.length * drawn, partial, true)
-                drawPath(
-                    path = partial,
-                    color = checkColor,
-                    style = Stroke(width = stroke, cap = StrokeCap.Round, join = StrokeJoin.Round)
-                )
+        if (drawn > 0f) {
+            val path = Path().apply {
+                moveTo(size.width * TickLeft.first, size.height * TickLeft.second)
+                lineTo(size.width * TickVertex.first, size.height * TickVertex.second)
+                lineTo(size.width * TickRight.first, size.height * TickRight.second)
             }
+            val measure = PathMeasure().apply { setPath(path, false) }
+            val partial = Path()
+            measure.getSegment(0f, measure.length * drawn, partial, true)
+            drawPath(
+                path = partial,
+                color = checkColor,
+                style = Stroke(width = stroke, cap = StrokeCap.Round, join = StrokeJoin.Round)
+            )
         }
     }
 }

@@ -175,9 +175,10 @@ item is a line inside one task, not a task in a collection, so `listChange` does
 not reach it, and nothing reorders: ticked items stay where they are. Items are
 added in a typing run, one after another, and a row easing in under the field
 would make the field drift while the user is looking at it. Removal has the undo
-snackbar to say what happened. The checkbox keeps Material's own check
-animation and nothing more, because `completion` is the one expressive moment
-and an item ticked in a shop is not completing a task.
+snackbar to say what happened. The check keeps a plain tick drawing in on
+`stateColor`, as Material's checkbox does, and nothing more (D-118 draws it as
+the task's smaller rounded square), because `completion` is the one expressive
+moment and an item ticked in a shop is not completing a task.
 
 [IMPL] Every task collection applies it, not only Today. A task leaving Inbox
 when it is scheduled, or leaving Today when it is completed, is the same event

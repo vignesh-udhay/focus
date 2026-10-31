@@ -306,8 +306,8 @@ task and opening it. Use the `onClick` overload and keep the check in
 D-105's circle). `RoundCheck` is Material's checkbox drawn that way, with its 2dp
 outline, `CheckboxDefaults.colors()` roles,
 40dp state layer, 48dp target, `Role.Checkbox` and toggleable state, with a
-smaller round-ended tick. Checklist items in Task Details keep
-Material's square `Checkbox`. Do not create any other custom checkbox.
+smaller round-ended tick. Checklist items in Task Details draw the same check at
+16dp with 5dp corners (D-118). Do not create any other custom checkbox.
 
 ---
 

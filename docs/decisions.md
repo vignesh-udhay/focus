@@ -7160,3 +7160,28 @@ corner before it is the circle back.
 **Why 20dp, not 22.** D-105 enlarged the circle because a circle has less area
 than the square it sits in. A square needs no such correction; 20dp keeps it a
 little larger than Material's, as the owner had asked for the circle.
+
+## D-118. A checklist item's check is the task's, smaller
+
+Amends D-105 and D-117. Asked for by the owner on 2026-10-31.
+
+**Decision.** A checklist item's check is drawn as the task's rounded square,
+16dp with 5dp corners, where the task's is 20dp with 6dp. The same outline,
+colour roles and smaller round-ended tick, drawn by one shared
+`CheckBoxDrawing`. The item keeps its own tap box: Material's 48dp target, the
+ripple, `Role.Checkbox`, the item's name and the light toggle haptic. Its motion
+stays the plain tick drawing in; no spring, as `expressive-motion.md` says.
+
+**What changed the answer.** D-105 kept items on Material's square so a task and
+an item would not look like the same kind of thing. With the task's check square
+again (D-117), Material's sharper square beside it read as an older version of
+the same control rather than a different one. The owner asked for the two to
+match.
+
+**What tells them apart now.** Size, 20dp against 16dp, and place: the task's
+check leads a row on a list, an item's sits in a task's checklist under its
+title. If they are confused for one another, a lighter item outline is the next
+lever before different shapes.
+
+**Not the widget.** The widget's checkboxes are Glance's platform `CheckBox`,
+which takes colours and nothing else, so it keeps Android's own.

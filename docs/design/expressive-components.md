@@ -297,9 +297,9 @@ one more way to express one decision.
 
 [IMPL] On a task row, `RoundCheck` (D-105, D-117): Material's checkbox drawn as
 a rounded square, 20dp with 6dp corners, with Material's colour roles, state
-layer, target and semantics, and a smaller round-ended tick. Everywhere else, including checklist items,
-Material `Checkbox`, unchanged, except that a checklist item's is drawn at a
-16dp box (scaled, so its target and semantics are Material's).
+layer, target and semantics, and a smaller round-ended tick. A checklist item
+draws the same check at 16dp with 5dp corners (D-118), inside a box that keeps
+Material's target, ripple and semantics. Everywhere else, Material `Checkbox`.
 
 [CD] A task's state change is the strongest expressive moment in the app and
 uses the `completion` token. This is the only component with that privilege.
