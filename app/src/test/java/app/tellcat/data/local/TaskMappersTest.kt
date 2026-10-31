@@ -1,5 +1,6 @@
 package app.tellcat.data.local
 
+import app.tellcat.core.domain.MonthlyWeekday
 import app.tellcat.core.domain.EarlyReminder
 import app.tellcat.core.domain.ChecklistItem
 import app.tellcat.core.domain.Task
@@ -294,5 +295,28 @@ class TaskMappersTest {
     fun `no checklist is stored as null and read as empty`() {
         assertNull(fullTask().copy(checklist = emptyList()).toEntity().checklist)
         assertEquals(emptyList<ChecklistItem>(), fullEntity().copy(checklist = null).toDomain().checklist)
+    }
+
+    /** D-116. A monthly rule on a weekday of the month survives both directions. */
+    @Test
+    fun `a monthly weekday rule survives both directions`() {
+        val rule = Recurrence(
+            RecurrenceUnit.MONTHLY,
+            interval = 2,
+            monthlyWeekday = MonthlyWeekday(MonthlyWeekday.Last, java.time.DayOfWeek.FRIDAY)
+        )
+        val task = fullTask().copy(recurrence = rule)
+
+        val entity = task.toEntity()
+        assertEquals(-1, entity.recurrenceMonthlyOrdinal)
+        assertEquals("FRIDAY", entity.recurrenceMonthlyWeekday)
+        assertEquals(rule, entity.toDomain().recurrence)
+    }
+
+    /** An older row, or one with a name that is not a day, reads as the day of the month. */
+    @Test
+    fun `a row without a weekday of the month reads as the day of the month`() {
+        val entity = fullEntity().copy(recurrence = RecurrenceUnit.MONTHLY, recurrenceMonthlyOrdinal = 3, recurrenceMonthlyWeekday = "Funday")
+        assertNull(entity.toDomain().recurrence?.monthlyWeekday)
     }
 }

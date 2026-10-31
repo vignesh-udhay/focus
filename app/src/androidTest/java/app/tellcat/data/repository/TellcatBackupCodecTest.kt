@@ -66,6 +66,36 @@ class TellcatBackupCodecTest {
         assertNull(fromOlder.tasks.single().earlyReminderMinutes)
     }
 
+    /** D-116. The weekday of the month is carried; an older backup reads as the day of the month. */
+    @Test
+    fun theMonthlyWeekdayIsCarriedAndAnOlderBackupReadsTheDayOfTheMonth() {
+        val backup = TellcatBackup(
+            preferences = AppearancePreferences(),
+            tasks = listOf(
+                completeTask().copy(
+                    recurrence = RecurrenceUnit.MONTHLY,
+                    recurrenceWeekdays = emptySet(),
+                    recurrenceMonthlyOrdinal = -1,
+                    recurrenceMonthlyWeekday = "FRIDAY"
+                )
+            )
+        )
+        val written = ByteArrayOutputStream().also { output ->
+            TellcatBackupCodec.write(output = output, backup = backup, createdAt = Instant.parse("2026-09-08T00:00:00Z"))
+        }.toString(Charsets.UTF_8.name())
+
+        val restored = TellcatBackupCodec.read(ByteArrayInputStream(written.toByteArray())).tasks.single()
+        assertEquals(-1, restored.recurrenceMonthlyOrdinal)
+        assertEquals("FRIDAY", restored.recurrenceMonthlyWeekday)
+
+        val older = written
+            .replace(Regex(""""recurrenceMonthlyOrdinal":\\s*-1,?"""), "")
+            .replace(Regex(""""recurrenceMonthlyWeekday":\\s*"FRIDAY",?"""), "")
+        val fromOlder = TellcatBackupCodec.read(ByteArrayInputStream(older.toByteArray())).tasks.single()
+        assertNull(fromOlder.recurrenceMonthlyOrdinal)
+        assertNull(fromOlder.recurrenceMonthlyWeekday)
+    }
+
     @Test
     fun foreignJsonIsRejected() {
         val bytes = """{"format":"someone-elses-file","version":1,"settings":{},"tasks":[]}"""

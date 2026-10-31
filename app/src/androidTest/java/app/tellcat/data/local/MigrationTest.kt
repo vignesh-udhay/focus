@@ -257,7 +257,8 @@ class MigrationTest {
             MIGRATION_11_12,
             MIGRATION_12_13,
             MIGRATION_13_14,
-            MIGRATION_14_15
+            MIGRATION_14_15,
+            MIGRATION_15_16
         ).use { database ->
             database.query(
                 "SELECT notes, recurrence, spawnedFromId, reminderAt FROM tasks WHERE id = ?",
@@ -499,7 +500,8 @@ class MigrationTest {
             MIGRATION_11_12,
             MIGRATION_12_13,
             MIGRATION_13_14,
-            MIGRATION_14_15
+            MIGRATION_14_15,
+            MIGRATION_15_16
         ).use { database ->
             database.query(
                 """
@@ -625,7 +627,8 @@ class MigrationTest {
             MIGRATION_11_12,
             MIGRATION_12_13,
             MIGRATION_13_14,
-            MIGRATION_14_15
+            MIGRATION_14_15,
+            MIGRATION_15_16
         ).use { database ->
             database.query(
                 """
@@ -718,7 +721,7 @@ class MigrationTest {
         const val TEST_DB = "migration-test.db"
 
         /** The schema every migration in this test is aimed at. */
-        const val LatestVersion = 15
+        const val LatestVersion = 16
     }
 
     /**
@@ -832,5 +835,29 @@ class MigrationTest {
         }
 
         assertTrue(openAndReadTasks().none { it.earlyReminder != null })
+    }
+
+    /**
+     * Version 16 adds the weekday of the month as none on every row. D-116.
+     * Every existing monthly rule keeps its day number.
+     */
+    @Test
+    fun migratedRowsKeepTheirDayOfTheMonth() {
+        seedVersion1()
+
+        migrate().use { database ->
+            database.query("SELECT id, recurrenceMonthlyOrdinal, recurrenceMonthlyWeekday FROM tasks").use { cursor ->
+                var rows = 0
+                while (cursor.moveToNext()) {
+                    rows++
+                    assertTrue(cursor.getString(0) + " has a weekday of the month", cursor.isNull(1))
+                    assertTrue(cursor.isNull(2))
+                }
+
+                assertEquals(3, rows)
+            }
+        }
+
+        assertTrue(openAndReadTasks().none { it.recurrence?.monthlyWeekday != null })
     }
 }

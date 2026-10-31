@@ -1,5 +1,8 @@
 package app.tellcat.ui.semantics
 
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
+import app.tellcat.core.domain.MonthlyWeekday
 import app.tellcat.core.domain.EarlyReminder
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsNodeInteraction
@@ -547,6 +550,30 @@ class TaskDetailsSemanticsTest {
     fun theReminderRowSaysTheEarlyReminder_at200() = assertTheReminderRowSaysTheEarlyReminder(FontScale200)
 
     /**
+     * D-116. On a monthly rule the sheet offers the day number and the task's
+     * weekday of the month, read by TalkBack as selectable options, and Save
+     * writes the one chosen. TestToday, 2 September 2026, is the first
+     * Wednesday of its month.
+     */
+    @Test
+    fun aMonthOffersTheDayAndTheWeekdayOfTheMonth() {
+        val viewModel = setScreen(dao = withTask(recurrence = Recurrence(RecurrenceUnit.MONTHLY)))
+
+        rule.onNodeWithText(REPEAT_MONTHLY).performClick()
+        rule.waitUntilExactlyOneExists(hasText(ON_DAY_2), TIMEOUT_MILLIS)
+
+        rule.onNodeWithText(ON_DAY_2).assertIsSelected()
+        rule.onNodeWithText(ON_THE_FIRST_WEDNESDAY).assertIsNotSelected().performClick()
+        rule.onNodeWithText(ON_THE_FIRST_WEDNESDAY).assertIsSelected()
+
+        rule.onNodeWithText(SAVE_REPEAT).performClick()
+
+        awaitTask(viewModel) { task ->
+            task.recurrence?.monthlyWeekday == MonthlyWeekday(1, java.time.DayOfWeek.WEDNESDAY)
+        }
+    }
+
+    /**
      * **Week opens with the task's own day lit**, D-114. It used to open on
      * "Every week" with no day chosen. Saved untouched, it writes that day.
      */
@@ -1019,6 +1046,9 @@ class TaskDetailsSemanticsTest {
         /** The notes placeholder, which is also how the field is tapped. */
         const val ADD_NOTES = "Add notes"
         const val START_FOCUS = "Start focus"
+        const val REPEAT_MONTHLY = "Monthly"
+        const val ON_DAY_2 = "On day 2"
+        const val ON_THE_FIRST_WEDNESDAY = "On the first Wednesday"
         const val ALSO_ONE_HOUR_BEFORE = ", also 1 hour before"
         const val RESUME_FOCUS = "Resume focus"
 

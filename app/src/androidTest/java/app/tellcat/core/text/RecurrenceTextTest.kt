@@ -292,4 +292,42 @@ class RecurrenceTextTest {
             summary(weekly(days = setOf(DayOfWeek.WEDNESDAY)), RecurrenceStyle.Compact)
         )
     }
+
+    // --- D-116: a month on a weekday of the month --------------------------------
+
+    /** The summary in [tag]'s English. Ordinal words and full day names, the same in both. */
+    private fun monthlySummary(tag: String, rule: Recurrence, style: RecurrenceStyle): String {
+        val config = android.content.res.Configuration(context.resources.configuration)
+        config.setLocale(java.util.Locale.forLanguageTag(tag))
+        return recurrenceSummary(context.createConfigurationContext(config), rule, today, style)
+    }
+
+    @Test
+    fun aMonthOnTheThirdTuesdayIsNamedInWords() {
+        val rule = Recurrence(RecurrenceUnit.MONTHLY, monthlyWeekday = app.tellcat.core.domain.MonthlyWeekday(3, DayOfWeek.TUESDAY))
+
+        listOf("en-US", "en-GB").forEach { tag ->
+            assertEquals(tag, "Every month on the third Tuesday", monthlySummary(tag, rule, RecurrenceStyle.Full))
+            assertEquals(tag, "Monthly on the third Tuesday", monthlySummary(tag, rule, RecurrenceStyle.Compact))
+        }
+    }
+
+    @Test
+    fun everyTwoMonthsOnTheLastFridayIsNamedInWords() {
+        val rule = Recurrence(
+            RecurrenceUnit.MONTHLY,
+            interval = 2,
+            monthlyWeekday = app.tellcat.core.domain.MonthlyWeekday(app.tellcat.core.domain.MonthlyWeekday.Last, DayOfWeek.FRIDAY)
+        )
+
+        listOf("en-US", "en-GB").forEach { tag ->
+            assertEquals(tag, "Every 2 months on the last Friday", monthlySummary(tag, rule, RecurrenceStyle.Full))
+        }
+    }
+
+    /** A monthly rule from before D-116 reads exactly as it did. */
+    @Test
+    fun aMonthOnItsDayNumberReadsAsBefore() {
+        assertEquals("Monthly", summary(Recurrence(RecurrenceUnit.MONTHLY), RecurrenceStyle.Compact))
+    }
 }
