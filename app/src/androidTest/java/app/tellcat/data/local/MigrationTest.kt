@@ -568,7 +568,10 @@ class MigrationTest {
                         // Appended by version 15, D-115.
                         "earlyReminderMinutes",
                         "earlyDeliveredAt",
-                        "earlySnoozedUntil"
+                        "earlySnoozedUntil",
+                        // Appended by version 16, D-116.
+                        "recurrenceMonthlyOrdinal",
+                        "recurrenceMonthlyWeekday"
                     ),
                     columns
                 )

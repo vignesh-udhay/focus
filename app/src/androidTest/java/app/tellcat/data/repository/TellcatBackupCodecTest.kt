@@ -89,8 +89,8 @@ class TellcatBackupCodecTest {
         assertEquals("FRIDAY", restored.recurrenceMonthlyWeekday)
 
         val older = written
-            .replace(Regex(""""recurrenceMonthlyOrdinal":\\s*-1,?"""), "")
-            .replace(Regex(""""recurrenceMonthlyWeekday":\\s*"FRIDAY",?"""), "")
+            .replace(Regex(""""recurrenceMonthlyOrdinal":\s*-1,?"""), "")
+            .replace(Regex(""""recurrenceMonthlyWeekday":\s*"FRIDAY",?"""), "")
         val fromOlder = TellcatBackupCodec.read(ByteArrayInputStream(older.toByteArray())).tasks.single()
         assertNull(fromOlder.recurrenceMonthlyOrdinal)
         assertNull(fromOlder.recurrenceMonthlyWeekday)
