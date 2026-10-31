@@ -3,6 +3,7 @@ package app.tellcat.ui.widget
 import android.content.Context
 import android.text.format.DateFormat
 import app.tellcat.R
+import app.tellcat.ui.component.earlyReminderLabel
 import app.tellcat.core.domain.ReminderStage
 import app.tellcat.core.domain.Task
 import app.tellcat.core.domain.rowReminder
@@ -40,11 +41,15 @@ internal fun widgetTaskText(context: Context, task: Task, today: LocalDate): Wid
         } else {
             context.getString(R.string.task_row_reminder_on_day, context.dayLabel(at.toLocalDate(), today), time)
         }
-        when (next.stage) {
+        val words = when (next.stage) {
             ReminderStage.Set -> moment
             ReminderStage.Snoozed -> context.getString(R.string.task_row_snoozed, moment)
             ReminderStage.FollowUp -> context.getString(R.string.task_row_follow_up, moment)
         }
+        // The row's words, D-115.
+        next.alsoBefore?.let { early ->
+            context.getString(R.string.task_row_also_early, words, context.getString(earlyReminderLabel(early)))
+        } ?: words
     }
     val metadata = buildList {
         if (!overdue) reminder?.let(::add)

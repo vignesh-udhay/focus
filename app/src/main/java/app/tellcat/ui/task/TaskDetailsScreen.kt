@@ -936,9 +936,12 @@ private fun PlanSheetHost(
                 ?: task.scheduledDate?.takeIf { date -> !date.isBefore(today) }
                 ?: today,
             today = today,
-            onSet = { at, alarm -> onEdit(task.copy(reminderAt = at, ringsLikeAlarm = alarm)) },
-            // No reminder, nothing to ring. D-102.
-            onClear = { onEdit(task.copy(reminderAt = null, ringsLikeAlarm = false)) },
+            onSet = { at, alarm, early ->
+                onEdit(task.copy(reminderAt = at, ringsLikeAlarm = alarm, earlyReminder = early))
+            },
+            // No reminder, nothing to ring, and nothing to warn about. D-102, D-115.
+            onClear = { onEdit(task.copy(reminderAt = null, ringsLikeAlarm = false, earlyReminder = null)) },
+            earlyReminder = task.earlyReminder,
             onDismiss = onDismiss,
             ringsLikeAlarm = task.ringsLikeAlarm,
             // Only while it has rung and waits for an answer, or is snoozed:

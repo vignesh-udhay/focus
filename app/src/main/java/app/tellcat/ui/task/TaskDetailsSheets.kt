@@ -1,5 +1,10 @@
 package app.tellcat.ui.task
 
+import app.tellcat.core.domain.EarlyReminder
+import app.tellcat.core.domain.earlyHasPassed
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -51,6 +56,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.tellcat.R
+import app.tellcat.ui.component.earlyReminderLabel
 import app.tellcat.ui.component.tellcatFieldColors
 import app.tellcat.ui.component.TellcatFieldShape
 import app.tellcat.core.design.TellcatDimensions
@@ -736,10 +742,10 @@ internal fun ReminderSheet(
     reminderAt: LocalDateTime?,
     defaultDay: LocalDate,
     today: LocalDate,
-    // The moment, and whether it rings like an alarm. D-102: the switch is
-    // part of the reminder and saved with it, for the reason this sheet has a
-    // Save at all.
-    onSet: (LocalDateTime, Boolean) -> Unit,
+    // The moment, whether it rings like an alarm, and the early reminder. D-102,
+    // D-115: both are part of the reminder and saved with it, for the reason
+    // this sheet has a Save at all.
+    onSet: (LocalDateTime, Boolean, EarlyReminder?) -> Unit,
     onClear: () -> Unit,
     onDismiss: () -> Unit,
     // Defaulted rather than threaded from the screen, because every caller
@@ -757,8 +763,13 @@ internal fun ReminderSheet(
     // Whether "Ring like an alarm" is offered. Off when Quick Add opens the
     // sheet, D-112: what is chosen there is written into the field as words,
     // and there are no words for ringing like an alarm.
-    offersAlarm: Boolean = true
+    offersAlarm: Boolean = true,
+    // The early reminder the reminder has now, and whether "Also remind me"
+    // is offered. Off from Quick Add for the reason the alarm is. D-115.
+    earlyReminder: EarlyReminder? = null,
+    offersEarly: Boolean = true
 ) {
+    var early by rememberSaveable { mutableStateOf(earlyReminder) }
     var ringsAsAlarm by rememberSaveable { mutableStateOf(ringsLikeAlarm) }
 
     // Held as primitives so `rememberSaveable` needs no saver of its own, and
@@ -853,18 +864,45 @@ internal fun ReminderSheet(
                         style = MaterialTheme.typography.titleLarge
                     )
 
+                    val rows = if (offersEarly) 3 else 2
                     PlanRowGroup {
                         PlanRow(
                             label = stringResource(R.string.task_reminder_day),
                             value = scheduledDateLabel(at.toLocalDate(), today),
-                            shapes = ListItemDefaults.segmentedShapes(index = 0, count = 2),
+                            shapes = ListItemDefaults.segmentedShapes(index = 0, count = rows),
                             onClick = { pane = ReminderPane.DAY }
                         )
                         PlanRow(
                             label = stringResource(R.string.task_reminder_time),
                             value = time.format(rememberTimeFormat()),
-                            shapes = ListItemDefaults.segmentedShapes(index = 1, count = 2),
+                            shapes = ListItemDefaults.segmentedShapes(index = 1, count = rows),
                             onClick = { isTimeOpen = true }
+                        )
+                        // **One early reminder**, D-115: none or one of three,
+                        // never a list.
+                        if (offersEarly) {
+                            PlanRow(
+                                label = stringResource(R.string.task_reminder_early),
+                                value = earlyLabel(early),
+                                shapes = ListItemDefaults.segmentedShapes(index = 2, count = rows),
+                                onClick = { pane = ReminderPane.EARLY }
+                            )
+                        }
+                    }
+
+                    // **When it rings, in words**, or that it will not. D-115.
+                    // Under the rows rather than inside one, so the time can be
+                    // read in full at any font size.
+                    early?.takeIf { offersEarly && !hasPassed }?.let { chosen ->
+                        Text(
+                            text = if (earlyHasPassed(at, chosen, now)) {
+                                stringResource(R.string.task_reminder_early_passed, earlyLabel(chosen).lowercase())
+                            } else {
+                                earlyWhen(at.minus(chosen.before), today)
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
                         )
                     }
 
@@ -887,7 +925,7 @@ internal fun ReminderSheet(
                     }
 
                     Button(
-                        onClick = { onSet(at, ringsAsAlarm) },
+                        onClick = { onSet(at, ringsAsAlarm, early.takeIf { offersEarly }) },
                         enabled = !hasPassed,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -931,6 +969,15 @@ internal fun ReminderSheet(
                     today = today,
                     now = now,
                     onSnooze = onSnooze,
+                    onBack = { pane = ReminderPane.MAIN }
+                )
+
+                ReminderPane.EARLY -> ReminderEarlyPane(
+                    selected = early,
+                    onPick = { picked ->
+                        early = picked
+                        pane = ReminderPane.MAIN
+                    },
                     onBack = { pane = ReminderPane.MAIN }
                 )
 
@@ -979,7 +1026,66 @@ internal fun suggestedReminderTime(defaultDay: LocalDate, now: LocalDateTime): L
 }
 
 /** Which of the sheet's faces is showing. */
-private enum class ReminderPane { MAIN, DAY, SNOOZE }
+private enum class ReminderPane { MAIN, DAY, SNOOZE, EARLY }
+
+/**
+ * "Also remind me": none, or one early reminder. D-115.
+ *
+ * The Day pane's shape, a back arrow and the four choices as preset buttons
+ * two to a row, and a choice returns to the rows, where the line under them
+ * says when it rings.
+ */
+@Composable
+private fun ReminderEarlyPane(
+    selected: EarlyReminder?,
+    onPick: (EarlyReminder?) -> Unit,
+    onBack: () -> Unit
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        IconButton(onClick = onBack) {
+            Icon(
+                painter = painterResource(R.drawable.ic_arrow_back),
+                contentDescription = stringResource(R.string.task_reminder_day_back)
+            )
+        }
+        Text(
+            text = stringResource(R.string.task_reminder_early),
+            style = MaterialTheme.typography.titleLarge
+        )
+    }
+
+    listOf(listOf(null, EarlyReminder.FifteenMinutes), listOf(EarlyReminder.OneHour, EarlyReminder.OneDay))
+        .forEach { pair ->
+            Row(horizontalArrangement = Arrangement.spacedBy(TellcatSpacing.xs)) {
+                pair.forEach { choice ->
+                    PresetButton(
+                        label = earlyLabel(choice),
+                        selected = selected == choice,
+                        onClick = { onPick(choice) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+}
+
+/** "None", "15 min before", "1 hour before", "1 day before". D-115. */
+@Composable
+internal fun earlyLabel(early: EarlyReminder?): String = stringResource(earlyReminderLabel(early))
+
+/**
+ * When the early reminder rings, as the sheet says it: "Also at 8:00 AM" on the
+ * reminder's own day, "Also tomorrow at 9:00 AM", or a date. D-115.
+ */
+@Composable
+private fun earlyWhen(at: LocalDateTime, today: LocalDate): String {
+    val time = at.toLocalTime().format(rememberTimeFormat())
+    return when (at.toLocalDate()) {
+        today -> stringResource(R.string.task_reminder_early_at, time)
+        today.plusDays(1) -> stringResource(R.string.task_reminder_early_tomorrow_at, time)
+        else -> stringResource(R.string.task_reminder_early_on, scheduledDateLabel(at.toLocalDate(), today), time)
+    }
+}
 
 /**
  * Snoozing from inside the app. D-109.

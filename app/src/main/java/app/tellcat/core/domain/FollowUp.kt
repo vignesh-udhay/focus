@@ -71,8 +71,15 @@ enum class ReminderStage {
     FollowUp
 }
 
-/** The moment a row's reminder segment names, and what that moment is. */
-data class RowReminder(val at: LocalDateTime, val stage: ReminderStage)
+/**
+ * The moment a row's reminder segment names, and what that moment is. With
+ * [alsoBefore], an early reminder still to ring before it. D-115.
+ */
+data class RowReminder(
+    val at: LocalDateTime,
+    val stage: ReminderStage,
+    val alsoBefore: EarlyReminder? = null
+)
 
 /**
  * What a row says about this task's reminder: when it will next speak up, and
@@ -87,7 +94,13 @@ fun Task.rowReminder(): RowReminder? {
     snoozedUntil?.takeIf { hasLiveReminder() }?.let { at ->
         return RowReminder(at, ReminderStage.Snoozed)
     }
-    return ringsAt?.let { at -> RowReminder(at, ReminderStage.Set) }
+    // **The reminder's own time, and the early one beside it while it is still
+    // to ring.** D-115. The early moment alone would pass a warning off as the
+    // time the user set, for a whole day with "1 day before", so the row keeps
+    // the time and adds the choice in the sheet's words. A snoozed early one is
+    // not "1 hour before" any more, so it is not said.
+    val early = earlyReminder.takeIf { pendingEarlyReminder != null && earlySnoozedUntil == null }
+    return ringsAt?.let { at -> RowReminder(at, ReminderStage.Set, alsoBefore = early) }
 }
 
 /**

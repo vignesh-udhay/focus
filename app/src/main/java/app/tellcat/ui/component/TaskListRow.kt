@@ -185,11 +185,15 @@ private fun taskMetadata(
         }
     }
     val reminder = moment?.let { said ->
-        when (shown.stage) {
+        val words = when (shown.stage) {
             ReminderStage.Set -> said
             ReminderStage.Snoozed -> stringResource(R.string.task_row_snoozed, said)
             ReminderStage.FollowUp -> stringResource(R.string.task_row_follow_up, said)
         }
+        // "10:00 AM, also 1 hour before", drawn and read aloud. D-115.
+        shown.alsoBefore?.let { early ->
+            stringResource(R.string.task_row_also_early, words, stringResource(earlyReminderLabel(early)))
+        } ?: words
     }
     val overdue = task.isPastScheduled(today)
 

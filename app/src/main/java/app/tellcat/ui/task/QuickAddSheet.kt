@@ -381,7 +381,10 @@ fun QuickAddSheet(
             today = today,
             now = clock(),
             offersAlarm = false,
-            onSet = { at, _ ->
+            // Nor an early reminder, D-115: the field has no words for it, and
+            // Task Details is the one place to set it.
+            offersEarly = false,
+            onSet = { at, _, _ ->
                 writeReminder(
                     text = title.text,
                     marked = parsed.markRange,

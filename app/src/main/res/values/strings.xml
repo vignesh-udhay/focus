@@ -483,6 +483,18 @@
     <string name="task_reminder_day">Day</string>
     <string name="task_reminder_time">Time</string>
     <string name="task_reminder_save">Save reminder</string>
+    <!-- D-115: one early reminder, in the reminder sheet. -->
+    <string name="task_reminder_early">Also remind me</string>
+    <string name="task_reminder_early_none">None</string>
+    <string name="task_reminder_early_15_minutes">15 min before</string>
+    <string name="task_reminder_early_1_hour">1 hour before</string>
+    <string name="task_reminder_early_1_day">1 day before</string>
+    <string name="task_reminder_early_at">Also at %1$s</string>
+    <string name="task_reminder_early_tomorrow_at">Also tomorrow at %1$s</string>
+    <string name="task_reminder_early_on">Also %1$s at %2$s</string>
+    <!-- The row's reminder segment with an early reminder still to ring. %2$s is "1 hour before". D-115. -->
+    <string name="task_row_also_early">%1$s, also %2$s</string>
+    <string name="task_reminder_early_passed">%1$s has already gone, so only the reminder will ring</string>
     <string name="task_reminder_day_back">Back to the reminder</string>
 
     <!--
