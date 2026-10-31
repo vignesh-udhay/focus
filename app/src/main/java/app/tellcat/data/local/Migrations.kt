@@ -279,11 +279,12 @@ val MIGRATION_13_14 = Migration(13, 14) { database ->
 /**
  * Version 15, D-115: one early reminder. How long before, in minutes, when it
  * was told, and where a snooze of it moved it. Null on every existing row,
- * which reads as no early reminder.
+ * which reads as no early reminder. When it was told is an `Instant`, stored
+ * as epoch milliseconds like `reminderDeliveredAt`, so its column is INTEGER.
  */
 val MIGRATION_14_15 = Migration(14, 15) { database ->
     database.execSQL("ALTER TABLE tasks ADD COLUMN earlyReminderMinutes INTEGER")
-    database.execSQL("ALTER TABLE tasks ADD COLUMN earlyDeliveredAt TEXT")
+    database.execSQL("ALTER TABLE tasks ADD COLUMN earlyDeliveredAt INTEGER")
     database.execSQL("ALTER TABLE tasks ADD COLUMN earlySnoozedUntil TEXT")
 }
 
