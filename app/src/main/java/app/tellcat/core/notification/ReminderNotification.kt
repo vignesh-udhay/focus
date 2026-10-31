@@ -16,6 +16,7 @@ import app.tellcat.core.text.recurrenceSummary
 import app.tellcat.core.domain.SnoozeOption
 import app.tellcat.core.domain.Task
 import app.tellcat.core.domain.availableSnoozeOptions
+import app.tellcat.core.domain.earlySnoozeOptions
 import app.tellcat.core.domain.hasLiveReminder
 import java.time.Instant
 import java.time.LocalDate
@@ -124,6 +125,104 @@ internal fun Context.postFollowUp(task: Task, requireUnlockForActions: Boolean =
 }
 
 /**
+ * The early reminder, before the reminder itself. D-115.
+ *
+ * Under the task's own title, as `reminders.md` requires of every reminder,
+ * with the line saying when the real moment is: "In 1 hour, at 10:00 AM",
+ * "Tomorrow at 9:00 AM". On the reminders channel and never as an alarm, since
+ * only the reminder's own moment rings like one (D-102).
+ *
+ * Done carries the reminder's moment, so it completes the task and cancels the
+ * reminder, and goes stale if the reminder moves. Snooze is the early one's
+ * own and offered only while a snooze can still land before the reminder; with
+ * none left, Done is the only action. The same notification id, so the
+ * reminder later takes its place.
+ */
+internal fun Context.postEarlyReminder(
+    task: Task,
+    now: LocalDateTime,
+    requireUnlockForActions: Boolean = false
+): Boolean {
+    val main = task.reminderAt ?: return false
+    val summary = earlyReminderSummary(main, now)
+
+    fun action(label: Int, action: String) = NotificationCompat.Action.Builder(
+        0,
+        getString(label),
+        actionIntent(task.id, action, postedFor = task.ringsAt)
+    ).setAuthenticationRequired(requireUnlockForActions).build()
+
+    val builder = reminderBuilder(task, summary)
+        .addAction(action(R.string.reminder_action_done, ReminderActionReceiver.ACTION_DONE))
+
+    if (earlySnoozeOptions(now, main).isNotEmpty()) {
+        builder.addAction(action(R.string.reminder_action_snooze, ReminderActionReceiver.ACTION_SNOOZE_EARLY))
+    }
+
+    task.notes?.takeIf { it.isNotBlank() }?.let { notes ->
+        builder.setStyle(NotificationCompat.BigTextStyle().bigText("$summary\n$notes"))
+    }
+
+    val posted = notifyIfAllowed(task.notificationId, builder.build())
+    updateReminderGroupSummary(justPosted = task.id)
+    return posted
+}
+
+/**
+ * The early reminder's snooze choice: only the options that land before the
+ * reminder. D-115.
+ */
+internal fun Context.postEarlySnoozeOptions(task: Task, now: LocalDateTime): Boolean {
+    val main = task.reminderAt ?: return false
+    val builder = reminderBuilder(task, earlyReminderSummary(main, now))
+        .setSubText(getString(R.string.reminder_snooze_until))
+
+    earlySnoozeOptions(now, main).forEach { option ->
+        builder.addAction(
+            0,
+            snoozeLabel(option),
+            actionIntent(task.id, ReminderActionReceiver.ACTION_SNOOZE_EARLY_UNTIL, option, postedFor = task.ringsAt)
+        )
+    }
+
+    val posted = notifyIfAllowed(task.notificationId, builder.build())
+    updateReminderGroupSummary(justPosted = task.id)
+    return posted
+}
+
+/**
+ * When the reminder an early one warns about will ring, from [now]: "In 15
+ * minutes, at 9:45 AM" or "In 1 hour, at 10:00 AM" on the same day, "Tomorrow
+ * at 9:00 AM", or the date. D-115.
+ *
+ * Worked out from the moment it is posted rather than from the choice, so an
+ * early reminder told late, after the phone was off, still says the truth.
+ */
+internal fun Context.earlyReminderSummary(main: LocalDateTime, now: LocalDateTime): String {
+    val time = formatTime(main.toLocalTime())
+    val today = now.toLocalDate()
+
+    return when (main.toLocalDate()) {
+        today -> {
+            // Up to the next whole minute, so 59 minutes and some seconds is an hour.
+            val minutes = ((java.time.Duration.between(now, main).toMillis() + 59_999) / 60_000).coerceAtLeast(1)
+            when {
+                minutes < 60 -> resources.getQuantityString(
+                    R.plurals.early_reminder_in_minutes, minutes.toInt(), minutes.toInt(), time
+                )
+                minutes % 60 == 0L -> resources.getQuantityString(
+                    R.plurals.early_reminder_in_hours, (minutes / 60).toInt(), (minutes / 60).toInt(), time
+                )
+                else -> getString(R.string.early_reminder_today, time)
+            }
+        }
+
+        today.plusDays(1) -> getString(R.string.early_reminder_tomorrow, time)
+        else -> formatReminderMoment(main, today)
+    }
+}
+
+/**
  * The snooze choice, as `notify/Snooze options` draws it.
  *
  * Three actions rather than the frame's four chips, because a notification
@@ -227,7 +326,13 @@ internal fun Context.withdrawSettledReminders(
     // the task has left behind, and its actions are already stale.
     val outstanding = tasks
         .filterNot { task -> task.isCompleted }
-        .filterNot { task -> task.hasLiveReminder() && task.ringsAt?.isAfter(now) == true }
+        .filterNot { task ->
+            task.hasLiveReminder() && task.ringsAt?.isAfter(now) == true &&
+                // Except the early reminder, D-115, which is on screen before
+                // its reminder by design. Told for this moment: a new time
+                // clears that, and its notification goes like any other.
+                !(task.earlyReminder != null && task.earlyDeliveredAt != null && task.snoozedUntil == null)
+        }
         .mapTo(HashSet()) { task -> task.notificationId }
 
     val settled = manager.activeNotifications

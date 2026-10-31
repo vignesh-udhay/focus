@@ -152,6 +152,8 @@ object TellcatBackupCodec {
         writer.name("reminderDeliveredAt").nullableValue(task.reminderDeliveredAt?.toString())
         writer.name("snoozedUntil").nullableValue(task.snoozedUntil?.toString())
         writer.name("ringsLikeAlarm").value(task.ringsLikeAlarm)
+        // D-115. The choice only: when it was told is about one announcement.
+        writer.name("earlyReminderMinutes").nullableValue(task.earlyReminderMinutes?.toInt())
         writer.name("estimatedDurationMinutes").nullableValue(task.estimatedDurationMinutes)
         writer.name("recurrenceUnit").nullableValue(task.recurrence?.name)
         writer.name("recurrenceInterval").nullableValue(task.recurrenceInterval)
@@ -186,6 +188,8 @@ object TellcatBackupCodec {
         // Absent from backups written before D-102, which reads as a plain
         // reminder. An older app skips it, so the format version stays.
         var ringsLikeAlarm = false
+        // Absent before D-115, which reads as no early reminder.
+        var earlyReminderMinutes: Long? = null
         var estimatedDurationMinutes: Int? = null
         var recurrence: RecurrenceUnit? = null
         var recurrenceInterval: Int? = null
@@ -213,6 +217,7 @@ object TellcatBackupCodec {
                 "snoozedUntil" -> snoozedUntil =
                     reader.nextNullableString()?.let(LocalDateTime::parse)
                 "ringsLikeAlarm" -> ringsLikeAlarm = reader.nextBoolean()
+                "earlyReminderMinutes" -> earlyReminderMinutes = reader.nextNullableInt()?.toLong()
                 "estimatedDurationMinutes" -> estimatedDurationMinutes = reader.nextNullableInt()
                 "recurrenceUnit" -> recurrence = reader.nextNullableString()?.let(RecurrenceUnit::valueOf)
                 "recurrenceInterval" -> recurrenceInterval = reader.nextNullableInt()
@@ -262,7 +267,8 @@ object TellcatBackupCodec {
             spawnedFromId = spawnedFromId,
             completedAt = completedAt,
             deletedAt = deletedAt,
-            ringsLikeAlarm = ringsLikeAlarm
+            ringsLikeAlarm = ringsLikeAlarm,
+            earlyReminderMinutes = earlyReminderMinutes
         )
     }
 

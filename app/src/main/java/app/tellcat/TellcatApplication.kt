@@ -14,6 +14,7 @@ import app.tellcat.core.domain.ReminderDelivery
 import app.tellcat.core.domain.Task
 import app.tellcat.core.domain.hasLiveReminder
 import app.tellcat.core.domain.pendingFollowUp
+import app.tellcat.core.domain.pendingEarlyReminder
 import app.tellcat.data.local.LockedReminderStore
 import app.tellcat.data.local.SchedulingRefusals
 import app.tellcat.ui.widget.armWidgetMidnight
@@ -212,6 +213,15 @@ class TellcatApplication : Application() {
             // than post it again now. D-108.
             if (delivery.followUp) {
                 if (task.pendingFollowUp == delivery.ringsAt) taskRepository.clearFollowUp(task.id)
+                return@forEach
+            }
+
+            // An early reminder told while locked: settled, so it is not told
+            // again. D-115.
+            if (delivery.early) {
+                if (task.pendingEarlyReminder == delivery.ringsAt) {
+                    taskRepository.recordEarlyAnnounced(task.id, delivery.arrivedWallAt)
+                }
                 return@forEach
             }
 

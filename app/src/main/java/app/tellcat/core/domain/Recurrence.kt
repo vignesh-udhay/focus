@@ -316,6 +316,9 @@ fun Task.nextRecurringInstance(
         snoozedUntil = null,
         // Nor did the follow-up of the one just finished. D-108.
         followUpAt = null,
+        // The early reminder carries, D-115, owed again for the new moment.
+        earlyDeliveredAt = null,
+        earlySnoozedUntil = null,
         // The same items, all of them owed again. Next week's groceries.
         checklist = checklist.reset(),
         // And it has not been announced. Carrying the old delivery record

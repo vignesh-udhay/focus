@@ -4,6 +4,8 @@ import app.tellcat.core.domain.Task
 import app.tellcat.core.domain.FollowUpDelay
 import app.tellcat.core.domain.pendingFollowUp
 import app.tellcat.core.domain.followUpsOwed
+import app.tellcat.core.domain.earlyRemindersOwed
+import app.tellcat.core.domain.pendingEarlyReminder
 import app.tellcat.core.domain.missedReminders
 import app.tellcat.core.domain.pendingReminders
 import app.tellcat.core.domain.reminderTrigger
@@ -137,14 +139,24 @@ class ReminderScheduler(
         // by reading the task. Sorted by trigger, so a follow-up due in four
         // minutes is scheduled before a reminder due tomorrow and a missed one
         // still leads.
+        //
+        // **Early reminders too**, D-115, on an alarm of their own beside the
+        // reminder's, since the two are owed at once. In the same order and
+        // under the same cap, and so inside the backstop.
         val owed = (
             (missedReminders(tasks, localNow) + pendingReminders(tasks, localNow))
                 .mapNotNull { task -> task.ringsAt?.let { at -> Owed(task, at, followUpOf = null) } } +
                 followUpsOwed(tasks).mapNotNull { task ->
                     task.pendingFollowUp?.let { at -> Owed(task, at, followUpOf = task.ringsAt) }
+                } +
+                earlyRemindersOwed(tasks, localNow).mapNotNull { task ->
+                    task.pendingEarlyReminder?.let { at ->
+                        Owed(task, at, followUpOf = null, earlyFor = task.reminderAt)
+                    }
                 }
             ).sortedBy { due -> reminderTrigger(due.at, here, now) }
-        val owedIds = owed.mapTo(HashSet()) { due -> due.task.id }
+        val owedIds = owed.filter { due -> due.earlyFor == null }.mapTo(HashSet()) { due -> due.task.id }
+        val owedEarlyIds = owed.filter { due -> due.earlyFor != null }.mapTo(HashSet()) { due -> due.task.id }
 
         var failures = 0
         fun attempt(taskId: String, action: () -> Unit): Boolean =
@@ -161,6 +173,13 @@ class ReminderScheduler(
             .filter { task -> task.id !in owedIds }
             .forEach { task -> attempt(task.id) { alarms.cancel(task.id) } }
 
+        // An early alarm with nothing owed is cancelled the same way, but only
+        // where one was ever set, so a pass is not two cancels for every task.
+        tasks
+            .filter { task -> task.earlyReminder != null || task.earlySnoozedUntil != null }
+            .filter { task -> task.id !in owedEarlyIds }
+            .forEach { task -> attempt(task.id) { alarms.cancel(earlyAlarmId(task.id)) } }
+
         // And one announced within the follow-up window, whose follow-up alarm
         // may still be armed. D-108.
         val followUpWindow = now.minus(FollowUpDelay).minus(BackstopDelay)
@@ -171,20 +190,29 @@ class ReminderScheduler(
             }
             .forEach { task -> attempt(task.id) { alarms.cancel(task.id) } }
 
+        // And a deleted task's early alarm, while its reminder is ahead. D-115.
+        deleted
+            .filter { task -> task.earlyReminder != null && task.reminderAt?.isAfter(localNow) == true }
+            .forEach { task -> attempt(task.id) { alarms.cancel(earlyAlarmId(task.id)) } }
+
         val triggers = mutableListOf<Instant>()
         val scheduled = owed.take(MaxScheduledReminders).mapNotNull { due ->
             val task = due.task
             val ringsAt = due.at
             val trigger = reminderTrigger(ringsAt, here, now)
-            val set = attempt(task.id) { alarms.schedule(task.id, trigger) }
+            val alarmId = if (due.earlyFor != null) earlyAlarmId(task.id) else task.id
+            val set = attempt(task.id) { alarms.schedule(alarmId, trigger) }
             if (set) {
                 triggers += trigger
                 ScheduledReminder(
                     taskId = task.id,
                     title = task.title,
                     ringsAt = ringsAt,
-                    ringsLikeAlarm = task.ringsLikeAlarm && due.followUpOf == null,
-                    followUpOf = due.followUpOf
+                    // An early reminder is a plain one, D-115: only the
+                    // reminder's own moment rings like an alarm.
+                    ringsLikeAlarm = task.ringsLikeAlarm && due.followUpOf == null && due.earlyFor == null,
+                    followUpOf = due.followUpOf,
+                    earlyFor = due.earlyFor
                 )
             } else {
                 null
@@ -236,11 +264,38 @@ data class ScheduledReminder(
      * For a follow-up, the moment of the reminder it posts once more, and
      * [ringsAt] is when. Null for a reminder. D-108.
      */
-    val followUpOf: LocalDateTime? = null
+    val followUpOf: LocalDateTime? = null,
+    /**
+     * For an early reminder, the moment of the reminder it warns about, and
+     * [ringsAt] is when it rings. Null otherwise. D-115.
+     */
+    val earlyFor: LocalDateTime? = null
 )
 
-/** One alarm a pass owes: whose, when, and whether it is a follow-up. */
-private data class Owed(val task: Task, val at: LocalDateTime, val followUpOf: LocalDateTime?)
+/** One alarm a pass owes: whose, when, and whether it is a follow-up or an early one. */
+private data class Owed(
+    val task: Task,
+    val at: LocalDateTime,
+    val followUpOf: LocalDateTime?,
+    val earlyFor: LocalDateTime? = null
+)
+
+/**
+ * The id a task's early alarm is held under, beside the reminder's own, which
+ * is the task id. D-115. The receiver reads it back with [parseAlarmId].
+ */
+fun earlyAlarmId(taskId: String): String = taskId + EarlyAlarmSuffix
+
+/** The task an alarm id is for, and whether it is the early one. */
+fun parseAlarmId(alarmId: String): Pair<String, Boolean> =
+    if (alarmId.endsWith(EarlyAlarmSuffix)) {
+        alarmId.removeSuffix(EarlyAlarmSuffix) to true
+    } else {
+        alarmId to false
+    }
+
+/** Task ids are UUIDs, so no id ends in this. */
+private const val EarlyAlarmSuffix = "/early"
 
 /**
  * The most reminder alarms one pass asks the system to hold.

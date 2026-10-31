@@ -29,6 +29,7 @@ import app.tellcat.core.domain.ReminderDelivery
 import app.tellcat.core.domain.hasLiveReminder
 import java.time.LocalDateTime
 import app.tellcat.core.domain.pendingFollowUp
+import app.tellcat.core.domain.pendingEarlyReminder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -217,7 +218,10 @@ internal fun reminderAlarmClockInfo(
 class ReminderReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
-        val taskId = intent.getStringExtra(EXTRA_TASK_ID) ?: return
+        val alarmId = intent.getStringExtra(EXTRA_TASK_ID) ?: return
+        // The reminder's alarm carries the task id; its early one the id and a
+        // marker. D-115.
+        val (taskId, early) = parseAlarmId(alarmId)
         val application = context.applicationContext as? TellcatApplication ?: return
 
         // Read first, before anything slow. Both clocks are the measurement,
@@ -242,6 +246,7 @@ class ReminderReceiver : BroadcastReceiver() {
                 if (!UserManagerCompat.isUserUnlocked(context)) {
                     context.deliverWhileLocked(
                         taskId = taskId,
+                        early = early,
                         scheduledWallAt = scheduledWallAt,
                         scheduledElapsedAt = scheduledElapsedAt,
                         arrivedWallAt = arrivedWallAt,
@@ -255,6 +260,20 @@ class ReminderReceiver : BroadcastReceiver() {
                     .firstOrNull { it.id == taskId }
 
                 if (task == null) return@launch
+
+                // **The early reminder**, on its own alarm. D-115.
+                if (early) {
+                    context.deliverEarly(
+                        application = application,
+                        task = task,
+                        arrivedWallAt = arrivedWallAt,
+                        scheduledWallAt = scheduledWallAt,
+                        scheduledElapsedAt = scheduledElapsedAt,
+                        arrivedElapsedAt = arrivedElapsedAt,
+                        scheduledAhead = scheduledAhead
+                    )
+                    return@launch
+                }
 
                 // **The one follow-up.** D-108. A task whose reminder stands
                 // announced has no reminder owed, so the alarm on its slot is
@@ -486,6 +505,65 @@ private suspend fun Context.deliverFollowUp(
 }
 
 /**
+ * Tells the early reminder for [task], and writes it down. D-115.
+ *
+ * Checked against the task first: an alarm aimed at an early moment the task
+ * has since moved past, or that is no longer owed, is stale, and the alarms are
+ * reconciled instead. Never as an alarm and never followed up. Recorded with
+ * the other deliveries, so Reminder health measures it like any reminder.
+ */
+private suspend fun Context.deliverEarly(
+    application: TellcatApplication,
+    task: Task,
+    arrivedWallAt: Instant,
+    scheduledWallAt: Instant,
+    scheduledElapsedAt: Long,
+    arrivedElapsedAt: Long,
+    scheduledAhead: Duration
+) {
+    val at = task.pendingEarlyReminder
+    if (at == null || !isDueAt(at, ZoneId.systemDefault(), arrivedWallAt)) {
+        application.reconcileReminders()
+        return
+    }
+
+    suspend fun record(outcome: DeliveryOutcome) {
+        application.reminderDeliveryRepository.record(
+            ReminderDelivery(
+                id = UUID.randomUUID().toString(),
+                taskId = task.id,
+                taskTitle = task.title,
+                dueAt = at,
+                scheduledWallAt = scheduledWallAt,
+                scheduledElapsedAt = scheduledElapsedAt,
+                arrivedWallAt = arrivedWallAt,
+                arrivedElapsedAt = arrivedElapsedAt,
+                scheduledAhead = scheduledAhead,
+                outcome = outcome
+            )
+        )
+    }
+
+    // Left owed when it cannot be shown, as a reminder is: told later, while
+    // its reminder is still ahead, if notifications come back.
+    if (!canPostReminders()) {
+        Log.w(LogTag, "Cannot post. Early reminder for ${task.id} fired and said nothing.")
+        record(DeliveryOutcome.Suppressed)
+        return
+    }
+
+    ensureReminderChannel()
+    if (!postEarlyReminder(task, LocalDateTime.now())) {
+        record(DeliveryOutcome.Suppressed)
+        return
+    }
+
+    record(DeliveryOutcome.Announced)
+    application.taskRepository.recordEarlyAnnounced(task.id, arrivedWallAt)
+    application.reconcileReminders()
+}
+
+/**
  * Sets an alarm for every reminder in the copy kept for the locked phone.
  *
  * The same alarms, by the same identity, that the reconciliation sets, so the
@@ -498,7 +576,7 @@ private fun armFromLockedCopy(application: TellcatApplication) {
     application.lockedReminders.upcoming().forEach { reminder ->
         try {
             application.reminderAlarms.schedule(
-                reminder.taskId,
+                if (reminder.earlyFor != null) earlyAlarmId(reminder.taskId) else reminder.taskId,
                 reminderTrigger(reminder.ringsAt, zone, now)
             )
         } catch (error: Exception) {
@@ -517,6 +595,7 @@ private fun armFromLockedCopy(application: TellcatApplication) {
  */
 private fun Context.deliverWhileLocked(
     taskId: String,
+    early: Boolean,
     scheduledWallAt: Instant,
     scheduledElapsedAt: Long,
     arrivedWallAt: Instant,
@@ -524,9 +603,40 @@ private fun Context.deliverWhileLocked(
     scheduledAhead: Duration
 ) {
     val store = (applicationContext as TellcatApplication).lockedReminders
-    val reminder = store.upcoming().firstOrNull { it.taskId == taskId } ?: return
+    // A task with an early reminder has two entries; the alarm says which.
+    val reminder = store.upcoming()
+        .firstOrNull { it.taskId == taskId && (it.earlyFor != null) == early }
+        ?: return
 
     if (!isDueAt(reminder.ringsAt, ZoneId.systemDefault(), arrivedWallAt)) return
+
+    // An early reminder in the copy, D-115: posted from it, and written down so
+    // the unlock settles it rather than telling it again.
+    reminder.earlyFor?.let { main ->
+        if (!canPostReminders()) return
+        ensureReminderChannel()
+        val warned = Task(
+            id = reminder.taskId,
+            title = reminder.title,
+            createdAt = Instant.EPOCH,
+            reminderAt = main
+        )
+        if (!postEarlyReminder(warned, LocalDateTime.now(), requireUnlockForActions = true)) return
+        store.recordLockedDelivery(
+            LockedDelivery(
+                taskId = reminder.taskId,
+                title = reminder.title,
+                ringsAt = reminder.ringsAt,
+                scheduledWallAt = scheduledWallAt,
+                scheduledElapsedAt = scheduledElapsedAt,
+                arrivedWallAt = arrivedWallAt,
+                arrivedElapsedAt = arrivedElapsedAt,
+                scheduledAhead = scheduledAhead,
+                early = true
+            )
+        )
+        return
+    }
 
     // A follow-up in the copy, D-108: posted from what the copy holds, and
     // written down so the unlock clears it rather than posting it again.

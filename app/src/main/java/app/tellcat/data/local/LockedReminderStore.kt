@@ -55,6 +55,10 @@ class LockedReminderStore(context: Context) {
                     // Absent before D-108, and for every reminder: not a follow-up.
                     followUpOf = item.optString(KeyFollowUpOf, "")
                         .takeIf { it.isNotEmpty() }
+                        ?.let(LocalDateTime::parse),
+                    // Absent before D-115, and for every reminder: not an early one.
+                    earlyFor = item.optString(KeyEarlyFor, "")
+                        .takeIf { it.isNotEmpty() }
                         ?.let(LocalDateTime::parse)
                 )
             }
@@ -81,6 +85,7 @@ class LockedReminderStore(context: Context) {
                     .put(KeyArrivedElapsed, delivery.arrivedElapsedAt)
                     .put(KeyAhead, delivery.scheduledAhead.toMillis())
                     .put(KeyFollowUp, delivery.followUp)
+                    .put(KeyEarly, delivery.early)
                     .put(KeyRemindsAgain, delivery.remindsAgain)
             )
         }
@@ -107,6 +112,8 @@ class LockedReminderStore(context: Context) {
                     scheduledAhead = Duration.ofMillis(item.getLong(KeyAhead)),
                     // Both absent before D-108: a reminder, with no follow-up.
                     followUp = item.optBoolean(KeyFollowUp, false),
+                    // Absent before D-115: not an early reminder.
+                    early = item.optBoolean(KeyEarly, false),
                     remindsAgain = item.optBoolean(KeyRemindsAgain, false)
                 )
             }
@@ -127,6 +134,7 @@ class LockedReminderStore(context: Context) {
                     .put(KeyRingsLikeAlarm, reminder.ringsLikeAlarm)
                     .apply {
                         reminder.followUpOf?.let { set -> put(KeyFollowUpOf, set.toString()) }
+                        reminder.earlyFor?.let { main -> put(KeyEarlyFor, main.toString()) }
                     }
             )
         }
@@ -143,6 +151,8 @@ class LockedReminderStore(context: Context) {
         const val KeyRingsAt = "ringsAt"
         const val KeyRingsLikeAlarm = "ringsLikeAlarm"
         const val KeyFollowUpOf = "followUpOf"
+        const val KeyEarlyFor = "earlyFor"
+        const val KeyEarly = "early"
         const val KeyFollowUp = "followUp"
         const val KeyRemindsAgain = "remindsAgain"
         const val KeyScheduledWall = "scheduledWall"
@@ -168,6 +178,8 @@ data class LockedDelivery(
     val scheduledAhead: Duration,
     /** This was the reminder's one follow-up, not the reminder. D-108. */
     val followUp: Boolean = false,
+    /** This was the early reminder, not the reminder. D-115. */
+    val early: Boolean = false,
     /** Posted as a notification, with follow-ups on, so it earns one. D-108. */
     val remindsAgain: Boolean = false
 )

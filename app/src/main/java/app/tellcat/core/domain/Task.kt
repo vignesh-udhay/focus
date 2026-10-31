@@ -122,6 +122,25 @@ data class Task(
      * about one announcement, minutes long.
      */
     val followUpAt: LocalDateTime? = null,
+    /**
+     * How long before the reminder an early one rings, or null for none.
+     * `docs/decisions.md` D-115. Exists only with a reminder: clearing the
+     * reminder clears it. Carried into the next occurrence and into a backup,
+     * because it is part of how the reminder was set.
+     */
+    val earlyReminder: EarlyReminder? = null,
+    /**
+     * When the early reminder was told, or settled at save because its moment
+     * had already gone. Null while it is still owed. D-115. Like
+     * [reminderDeliveredAt], whoever writes [reminderAt] or [earlyReminder]
+     * owns it. Not carried into the next occurrence or a backup.
+     */
+    val earlyDeliveredAt: Instant? = null,
+    /**
+     * Where a snooze of the early reminder moved it, always before the
+     * reminder. D-115. A snooze of the early one never touches [snoozedUntil].
+     */
+    val earlySnoozedUntil: LocalDateTime? = null,
     val estimatedDurationMinutes: Int? = null,
     val recurrence: Recurrence? = null,
     val occurrenceNumber: Int = 1,

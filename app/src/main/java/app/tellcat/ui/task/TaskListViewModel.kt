@@ -7,6 +7,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.CreationExtras
 import app.tellcat.core.domain.CapturedTask
+import app.tellcat.core.domain.EarlyReminder
+import app.tellcat.core.domain.earlyDeliveredAtSave
 import app.tellcat.core.domain.checklistItem
 import app.tellcat.core.domain.withDone
 import app.tellcat.core.domain.withItemAt
@@ -1319,7 +1321,10 @@ class TaskListViewModel(
         reminderAt: LocalDateTime?,
         // Required for the reason [reminderAt] is: a default would turn an
         // alarm back into a notification on every edit to another field.
-        ringsLikeAlarm: Boolean
+        ringsLikeAlarm: Boolean,
+        // Required for the same reason: a default of none would drop the early
+        // reminder on every edit to another field. D-115.
+        earlyReminder: EarlyReminder?
     ) {
         val trimmed = title.trim()
         if (trimmed.isEmpty()) return
@@ -1329,6 +1334,13 @@ class TaskListViewModel(
 
         write {
             val task = edits.edit(id) { task ->
+                // **The early reminder exists only with a reminder**, D-115, and
+                // is owed again whenever the reminder's time or the choice
+                // changes. One whose moment has already gone is settled rather
+                // than owed: the sheet said so before Save.
+                val early = earlyReminder.takeIf { reminderAt != null }
+                val earlyUnchanged = reminderAt == task.reminderAt && early == task.earlyReminder
+
                 task.copy(
                     title = trimmed,
                     notes = trimmedNotes,
@@ -1357,7 +1369,14 @@ class TaskListViewModel(
                     followUpAt = if (reminderAt == task.reminderAt) task.followUpAt else null,
                     // D-102. No reminder, nothing to ring: a cleared reminder
                     // does not keep an alarm waiting for the next one.
-                    ringsLikeAlarm = ringsLikeAlarm && reminderAt != null
+                    ringsLikeAlarm = ringsLikeAlarm && reminderAt != null,
+                    earlyReminder = early,
+                    earlyDeliveredAt = if (earlyUnchanged) {
+                        task.earlyDeliveredAt
+                    } else {
+                        earlyDeliveredAtSave(reminderAt, early, LocalDateTime.now(), Instant.now())
+                    },
+                    earlySnoozedUntil = if (earlyUnchanged) task.earlySnoozedUntil else null
                 )
             } ?: return@write
 

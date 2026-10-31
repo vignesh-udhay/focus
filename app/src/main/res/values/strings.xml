@@ -682,6 +682,17 @@
     <!-- The line under a follow-up's title: the time the reminder was set for.
          Not "due", which is the due date's word. D-108. -->
     <string name="reminder_follow_up_summary">Reminder again · set for %1$s</string>
+    <!-- D-115: the early reminder's line, saying when the reminder itself rings. %2$s is its time. -->
+    <plurals name="early_reminder_in_minutes">
+        <item quantity="one">In %1$d minute, at %2$s</item>
+        <item quantity="other">In %1$d minutes, at %2$s</item>
+    </plurals>
+    <plurals name="early_reminder_in_hours">
+        <item quantity="one">In %1$d hour, at %2$s</item>
+        <item quantity="other">In %1$d hours, at %2$s</item>
+    </plurals>
+    <string name="early_reminder_today">Today at %1$s</string>
+    <string name="early_reminder_tomorrow">Tomorrow at %1$s</string>
     <!-- The line under a snoozed reminder when it rings again: the time it was
          set for, so the snooze is not passed off as the reminder. D-109. -->
     <string name="reminder_snoozed_summary">Snoozed from %1$s</string>

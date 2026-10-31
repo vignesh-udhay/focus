@@ -61,6 +61,14 @@ private class ListTaskDao : TaskDao {
     override suspend fun setFollowUp(id: String, followUpAt: String?) =
         change(id) { row -> row.copy(followUpAt = TaskConverters.textToLocalDateTime(followUpAt)) }
 
+    override suspend fun markEarlyDelivered(id: String, deliveredAt: String) =
+        change(id) { row -> row.copy(earlyDeliveredAt = Instant.parse(deliveredAt)) }
+
+    override suspend fun snoozeEarlyReminder(id: String, until: String) =
+        change(id) { row ->
+            row.copy(earlySnoozedUntil = TaskConverters.textToLocalDateTime(until), earlyDeliveredAt = null)
+        }
+
     override suspend fun markReminderDelivered(id: String, deliveredAt: Long) =
         change(id) { row -> row.copy(reminderDeliveredAt = Instant.ofEpochMilli(deliveredAt)) }
 

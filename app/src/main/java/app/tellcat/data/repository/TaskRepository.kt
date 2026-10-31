@@ -144,6 +144,16 @@ class TaskRepository(private val dao: TaskDao) {
         dao.setFollowUp(id = id, followUpAt = null)
     }
 
+    /** The early reminder for [id] was told at [at]. D-115. */
+    suspend fun recordEarlyAnnounced(id: String, at: java.time.Instant) {
+        dao.markEarlyDelivered(id = id, deliveredAt = at.toString())
+    }
+
+    /** Moves [id]'s early reminder to [until], leaving the reminder alone. D-115. */
+    suspend fun snoozeEarlyReminder(id: String, until: java.time.LocalDateTime) {
+        dao.snoozeEarlyReminder(id = id, until = until.toString())
+    }
+
     /** Deleted tasks that had a reminder, for the alarms they may hold. D-099. */
     suspend fun deletedTasksWithReminders(): List<Task> =
         dao.findDeletedWithReminders().map { entity -> entity.toDomain() }

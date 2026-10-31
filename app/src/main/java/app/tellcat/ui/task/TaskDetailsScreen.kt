@@ -237,7 +237,8 @@ fun TaskDetailsScreen(
                 estimatedDurationMinutes = edited.estimatedDurationMinutes,
                 recurrence = edited.recurrence,
                 reminderAt = edited.reminderAt,
-                ringsLikeAlarm = edited.ringsLikeAlarm
+                ringsLikeAlarm = edited.ringsLikeAlarm,
+                earlyReminder = edited.earlyReminder
             )
         },
         // **Navigation follows the answer, not the tap.** `docs/decisions.md`

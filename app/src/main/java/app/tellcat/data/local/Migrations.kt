@@ -276,6 +276,17 @@ val MIGRATION_13_14 = Migration(13, 14) { database ->
     database.execSQL("ALTER TABLE tasks ADD COLUMN followUpAt TEXT")
 }
 
+/**
+ * Version 15, D-115: one early reminder. How long before, in minutes, when it
+ * was told, and where a snooze of it moved it. Null on every existing row,
+ * which reads as no early reminder.
+ */
+val MIGRATION_14_15 = Migration(14, 15) { database ->
+    database.execSQL("ALTER TABLE tasks ADD COLUMN earlyReminderMinutes INTEGER")
+    database.execSQL("ALTER TABLE tasks ADD COLUMN earlyDeliveredAt TEXT")
+    database.execSQL("ALTER TABLE tasks ADD COLUMN earlySnoozedUntil TEXT")
+}
+
 /** Every migration, in order, for the builder and the migration test. */
 val TellcatMigrations = arrayOf(
     MIGRATION_1_2,
@@ -290,5 +301,6 @@ val TellcatMigrations = arrayOf(
     MIGRATION_10_11,
     MIGRATION_11_12,
     MIGRATION_12_13,
-    MIGRATION_13_14
+    MIGRATION_13_14,
+    MIGRATION_14_15
 )

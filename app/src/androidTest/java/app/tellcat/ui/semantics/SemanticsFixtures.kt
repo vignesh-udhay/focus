@@ -258,6 +258,22 @@ internal class FakeTaskDao(initial: List<Task> = emptyList()) : TaskDao {
         }
     }
 
+    override suspend fun markEarlyDelivered(id: String, deliveredAt: String) {
+        rows.value = rows.value.map { stored ->
+            if (stored.id == id) stored.copy(earlyDeliveredAt = java.time.Instant.parse(deliveredAt)) else stored
+        }
+    }
+
+    override suspend fun snoozeEarlyReminder(id: String, until: String) {
+        rows.value = rows.value.map { stored ->
+            if (stored.id == id) {
+                stored.copy(earlySnoozedUntil = TaskConverters.textToLocalDateTime(until), earlyDeliveredAt = null)
+            } else {
+                stored
+            }
+        }
+    }
+
     override suspend fun setFollowUp(id: String, followUpAt: String?) {
         rows.value = rows.value.map { stored ->
             if (stored.id == id) {

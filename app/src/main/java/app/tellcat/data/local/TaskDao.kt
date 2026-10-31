@@ -241,6 +241,17 @@ interface TaskDao {
     @Query("UPDATE tasks SET followUpAt = :followUpAt WHERE id = :id")
     suspend fun setFollowUp(id: String, followUpAt: String?)
 
+    /** The early reminder was told. D-115. Only that column, so nothing else is written over. */
+    @Query("UPDATE tasks SET earlyDeliveredAt = :deliveredAt WHERE id = :id")
+    suspend fun markEarlyDelivered(id: String, deliveredAt: String)
+
+    /**
+     * A snooze of the early reminder, D-115: owed again at [until]. The
+     * reminder's own time and snooze are untouched.
+     */
+    @Query("UPDATE tasks SET earlySnoozedUntil = :until, earlyDeliveredAt = NULL WHERE id = :id")
+    suspend fun snoozeEarlyReminder(id: String, until: String)
+
     /**
      * Records that a task's reminder has been announced.
      *

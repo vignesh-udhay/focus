@@ -1,5 +1,6 @@
 package app.tellcat.data.local
 
+import app.tellcat.core.domain.EarlyReminder
 import app.tellcat.core.domain.Recurrence
 import app.tellcat.core.domain.RecurrenceEnd
 import app.tellcat.core.domain.RecurrenceUnit
@@ -31,6 +32,9 @@ fun TaskEntity.toDomain(): Task = Task(
     snoozedUntil = snoozedUntil,
     ringsLikeAlarm = ringsLikeAlarm,
     followUpAt = followUpAt,
+    earlyReminder = EarlyReminder.ofMinutes(earlyReminderMinutes),
+    earlyDeliveredAt = earlyDeliveredAt,
+    earlySnoozedUntil = earlySnoozedUntil,
     estimatedDurationMinutes = estimatedDurationMinutes,
     recurrence = recurrence?.let(::toRule),
     occurrenceNumber = occurrenceNumber,
@@ -58,6 +62,9 @@ fun Task.toEntity(): TaskEntity = TaskEntity(
     recurrenceEndCount = (recurrence?.end as? RecurrenceEnd.AfterOccurrences)?.count,
     ringsLikeAlarm = ringsLikeAlarm,
     followUpAt = followUpAt,
+    earlyReminderMinutes = earlyReminder?.minutes,
+    earlyDeliveredAt = earlyDeliveredAt,
+    earlySnoozedUntil = earlySnoozedUntil,
     occurrenceNumber = occurrenceNumber,
     spawnedFromId = spawnedFromId,
     completedAt = completedAt,

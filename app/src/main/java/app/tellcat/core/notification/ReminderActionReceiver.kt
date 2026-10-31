@@ -69,6 +69,33 @@ class ReminderActionReceiver : BroadcastReceiver() {
                         context.postSnoozeOptions(task, LocalDateTime.now())
                     }
 
+                    ACTION_SNOOZE_EARLY -> {
+                        // The early reminder's own choice, D-115: only the
+                        // snoozes that land before the reminder.
+                        val task = application.taskRepository.findTask(taskId) ?: return@launch
+                        context.postEarlySnoozeOptions(task, LocalDateTime.now())
+                    }
+
+                    ACTION_SNOOZE_EARLY_UNTIL -> {
+                        val option = intent.getStringExtra(EXTRA_SNOOZE_OPTION)
+                            ?.let { name -> SnoozeOption.entries.firstOrNull { it.name == name } }
+                            ?: return@launch
+                        val main = application.taskRepository.findTask(taskId)?.reminderAt ?: return@launch
+
+                        // **Never at or after the reminder.** D-115. Only such
+                        // options were offered; one that has become so while
+                        // the notification sat there does nothing, and the
+                        // early reminder stays on screen.
+                        val until = snoozedUntil(option, LocalDateTime.now())
+                            ?.takeIf { it.isBefore(main) }
+                            ?: return@launch
+
+                        // The early one moves; the reminder does not.
+                        application.taskRepository.snoozeEarlyReminder(taskId, until)
+                        application.reconcileReminders()
+                        context.cancelReminder(taskId)
+                    }
+
                     ACTION_SNOOZE_UNTIL -> {
                         val option = intent.getStringExtra(EXTRA_SNOOZE_OPTION)
                             ?.let { name -> SnoozeOption.entries.firstOrNull { it.name == name } }
@@ -98,6 +125,8 @@ class ReminderActionReceiver : BroadcastReceiver() {
         const val ACTION_DONE = "app.tellcat.action.REMINDER_DONE"
         const val ACTION_SNOOZE = "app.tellcat.action.REMINDER_SNOOZE"
         const val ACTION_SNOOZE_UNTIL = "app.tellcat.action.REMINDER_SNOOZE_UNTIL"
+        const val ACTION_SNOOZE_EARLY = "app.tellcat.action.EARLY_REMINDER_SNOOZE"
+        const val ACTION_SNOOZE_EARLY_UNTIL = "app.tellcat.action.EARLY_REMINDER_SNOOZE_UNTIL"
 
         const val EXTRA_TASK_ID = "tellcat.extra.taskId"
         const val EXTRA_SNOOZE_OPTION = "tellcat.extra.snoozeOption"

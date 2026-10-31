@@ -3,6 +3,7 @@ package app.tellcat.ui.task
 import androidx.lifecycle.SavedStateHandle
 import app.tellcat.MainDispatcherRule
 import app.tellcat.core.notification.FocusAlarms
+import app.tellcat.core.domain.EarlyReminder
 import app.tellcat.core.domain.FocusSession
 import app.tellcat.core.domain.FocusSessionStore
 import app.tellcat.core.domain.PrimaryList
@@ -87,6 +88,10 @@ private class RefusingTaskDao(private val rows: List<TaskEntity>) : TaskDao {
 
     override suspend fun setFollowUp(id: String, followUpAt: String?) = refuse()
 
+    override suspend fun markEarlyDelivered(id: String, deliveredAt: String) = refuse()
+
+    override suspend fun snoozeEarlyReminder(id: String, until: String) = refuse()
+
     override suspend fun setChecklist(id: String, checklist: String?) = refuse()
 
     override suspend fun restore(id: String) = refuse()
@@ -160,6 +165,22 @@ private class FakeTaskDao : TaskDao {
                     reminderDeliveredAt = null,
                     followUpAt = null
                 )
+            } else {
+                stored
+            }
+        }
+    }
+
+    override suspend fun markEarlyDelivered(id: String, deliveredAt: String) {
+        emissions.value = emissions.value.map { stored ->
+            if (stored.id == id) stored.copy(earlyDeliveredAt = Instant.parse(deliveredAt)) else stored
+        }
+    }
+
+    override suspend fun snoozeEarlyReminder(id: String, until: String) {
+        emissions.value = emissions.value.map { stored ->
+            if (stored.id == id) {
+                stored.copy(earlySnoozedUntil = TaskConverters.textToLocalDateTime(until), earlyDeliveredAt = null)
             } else {
                 stored
             }
@@ -1630,7 +1651,8 @@ class TaskListViewModelTest {
         estimatedDurationMinutes: Int? = null,
         recurrence: Recurrence? = storedRecurrence(id),
         reminderAt: LocalDateTime? = storedReminder(id),
-        ringsLikeAlarm: Boolean = storedRingsLikeAlarm(id)
+        ringsLikeAlarm: Boolean = storedRingsLikeAlarm(id),
+        earlyReminder: EarlyReminder? = storedEarlyReminder(id)
     ) = editTask(
         id = id,
         title = title,
@@ -1640,12 +1662,17 @@ class TaskListViewModelTest {
         estimatedDurationMinutes = estimatedDurationMinutes,
         recurrence = recurrence,
         reminderAt = reminderAt,
-        ringsLikeAlarm = ringsLikeAlarm
+        ringsLikeAlarm = ringsLikeAlarm,
+        earlyReminder = earlyReminder
     )
 
     /** Whether the row rings like an alarm, as the open sheet would hold it. D-102. */
     private fun storedRingsLikeAlarm(id: String): Boolean =
         dao.emissions.value.firstOrNull { it.id == id }?.ringsLikeAlarm ?: false
+
+    /** The early reminder the row holds, as the open sheet would be holding it. D-115. */
+    private fun storedEarlyReminder(id: String): EarlyReminder? =
+        EarlyReminder.ofMinutes(dao.emissions.value.firstOrNull { it.id == id }?.earlyReminderMinutes)
 
     /** The note the row currently holds, as the open sheet would be holding it. */
     private fun storedNotes(id: String): String? =
@@ -3226,7 +3253,8 @@ class TaskListViewModelTest {
             estimatedDurationMinutes = stored.estimatedDurationMinutes,
             recurrence = null,
             reminderAt = stored.reminderAt,
-            ringsLikeAlarm = stored.ringsLikeAlarm
+            ringsLikeAlarm = stored.ringsLikeAlarm,
+            earlyReminder = null
         )
 
         assertEquals("Ask Priya which logo to use", awaitEdited("a").notes)
@@ -3255,7 +3283,8 @@ class TaskListViewModelTest {
             estimatedDurationMinutes = stored.estimatedDurationMinutes,
             recurrence = null,
             reminderAt = stored.reminderAt,
-            ringsLikeAlarm = stored.ringsLikeAlarm
+            ringsLikeAlarm = stored.ringsLikeAlarm,
+            earlyReminder = null
         )
 
         val edited = awaitEdited("a")
@@ -3833,7 +3862,8 @@ class TaskListViewModelTest {
             estimatedDurationMinutes = null,
             recurrence = null,
             reminderAt = null,
-            ringsLikeAlarm = false
+            ringsLikeAlarm = false,
+            earlyReminder = null
         )
 
         assertEquals("a", awaitFocusedTaskId(model, "a"))
@@ -4396,7 +4426,8 @@ class TaskListViewModelTest {
             estimatedDurationMinutes = null,
             recurrence = Recurrence(RecurrenceUnit.WEEKLY),
             reminderAt = null,
-            ringsLikeAlarm = false
+            ringsLikeAlarm = false,
+            earlyReminder = null
         )
 
         assertEquals(Recurrence(RecurrenceUnit.WEEKLY), awaitUpdate().toDomain().recurrence)
