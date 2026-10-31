@@ -93,6 +93,9 @@ then a chip for each it has not, both in one order: Scheduled, Due date,
 Reminder, Duration, Repeat. A row shows its value and opens its sheet; a chip
 names its field and opens the same sheet. D-087.
 
+**The Reminder row says an early reminder still to ring** after the reminder's
+time, in the task row's words: "Today, 10:00 AM, also 1 hour before". D-115.
+
 **Actions.** One floating toolbar, pinned bottom centre: Delete, Share,
 Complete, and Focus. D-093. Share sends any task as text, D-096. Complete is a toggle carrying
 the row checkbox's words. Focus is the one filled control, drawn with Tellcat's

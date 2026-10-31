@@ -7036,6 +7036,19 @@ The widget says the same.
 - **The row shows both**, the reminder's time and the early one, rather than only
   the next thing to ring, for the reason above.
 
+**The owner's answers, 2026-10-31.** All three departures above are accepted.
+
+1. **The row's words stay** "10:00 AM, also 1 hour before": the real time first,
+   and the widget the same.
+2. **Reminder health keeps early reminders** in its delivery log, measured like
+   any reminder.
+3. **Task Details' Reminder row says it too**, in the task row's own words and on
+   the row's own condition (while it is still to ring): "Today, 10:00 AM, also 1
+   hour before", with " · Alarm" after it for an alarm-style reminder. The
+   owner's example drew a middle dot; the row's string uses a comma, and the
+   ask was for the two screens to read the same, so the comma stands. TalkBack
+   reads it with the row.
+
 **What would reverse this.** Testers wanting two or more, which would argue for a
 list and a different control; or finding the extra notification a nag, which
 would argue for a quieter channel before it argues for removing it.

@@ -1,5 +1,6 @@
 package app.tellcat.ui.semantics
 
+import app.tellcat.core.domain.EarlyReminder
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.unit.Dp
@@ -520,6 +521,32 @@ class TaskDetailsSemanticsTest {
     }
 
     /**
+     * D-115. The Reminder row says the early reminder in the task row's words,
+     * after the reminder's own time, and TalkBack reads it with the row.
+     */
+    private fun assertTheReminderRowSaysTheEarlyReminder(fontScale: Float) {
+        setScreen(
+            fontScale,
+            dao = FakeTaskDao(
+                listOf(
+                    testTask(id = TASK_ID, title = TITLE, scheduledDate = TestToday).copy(
+                        reminderAt = TestToday.atTime(17, 0),
+                        earlyReminder = EarlyReminder.OneHour
+                    )
+                )
+            )
+        )
+
+        rule.onNode(hasText(ALSO_ONE_HOUR_BEFORE, substring = true)).performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun theReminderRowSaysTheEarlyReminder_at100() = assertTheReminderRowSaysTheEarlyReminder(FontScale100)
+
+    @Test
+    fun theReminderRowSaysTheEarlyReminder_at200() = assertTheReminderRowSaysTheEarlyReminder(FontScale200)
+
+    /**
      * **Week opens with the task's own day lit**, D-114. It used to open on
      * "Every week" with no day chosen. Saved untouched, it writes that day.
      */
@@ -992,6 +1019,7 @@ class TaskDetailsSemanticsTest {
         /** The notes placeholder, which is also how the field is tapped. */
         const val ADD_NOTES = "Add notes"
         const val START_FOCUS = "Start focus"
+        const val ALSO_ONE_HOUR_BEFORE = ", also 1 hour before"
         const val RESUME_FOCUS = "Resume focus"
 
         /** D-068's other-task case: a session that this screen must not claim. */

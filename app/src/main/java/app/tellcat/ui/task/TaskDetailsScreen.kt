@@ -1,5 +1,8 @@
 package app.tellcat.ui.task
 
+import app.tellcat.ui.component.earlyReminderLabel
+import app.tellcat.core.domain.rowReminder
+import app.tellcat.core.domain.EarlyReminder
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
@@ -840,9 +843,18 @@ internal enum class PlanSheet {
 
         // A snooze still to ring is what the reminder will do next, so the row
         // says it, in the row's own words. D-109.
+        //
+        // And an early reminder still to ring, in the task row's own words and
+        // on its own condition, so the two screens read the same. D-115.
         REMINDER -> task.reminderAt?.let { at ->
             val snoozed = task.snoozedUntil?.takeIf { task.hasLiveReminder() }
-            reminderValue(snoozed ?: at, today, task.ringsLikeAlarm, snoozed = snoozed != null)
+            reminderValue(
+                snoozed ?: at,
+                today,
+                task.ringsLikeAlarm,
+                snoozed = snoozed != null,
+                alsoBefore = task.rowReminder()?.alsoBefore
+            )
         }
 
         // Through `durationLabel`, so this reads 45m, 1h, 1h 30m like every
@@ -866,7 +878,8 @@ private fun reminderValue(
     at: LocalDateTime,
     today: LocalDate,
     ringsLikeAlarm: Boolean,
-    snoozed: Boolean = false
+    snoozed: Boolean = false,
+    alsoBefore: EarlyReminder? = null
 ): String {
     // The phone's 12 or 24 hour setting, as the notification says it. D-079.
     val time = at.toLocalTime().format(rememberTimeFormat())
@@ -877,7 +890,11 @@ private fun reminderValue(
         time
     )
 
-    val said = if (snoozed) stringResource(R.string.task_reminder_snoozed, moment) else moment
+    val stated = if (snoozed) stringResource(R.string.task_reminder_snoozed, moment) else moment
+    // "Today, 10:00 AM, also 1 hour before": the task row's string, D-115.
+    val said = alsoBefore?.let { early ->
+        stringResource(R.string.task_row_also_early, stated, stringResource(earlyReminderLabel(early)))
+    } ?: stated
     return if (ringsLikeAlarm) stringResource(R.string.task_reminder_when_alarm, said) else said
 }
 
