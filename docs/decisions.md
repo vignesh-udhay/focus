@@ -7136,3 +7136,27 @@ moves which months are on.
 so the two cannot claim one version. The cost is that this branch cannot merge
 before that one. The alternative, cutting from `main` and renumbering at merge,
 moves a migration test and an exported schema after review; stacking is cheaper.
+
+## D-117. A task's check is a rounded square
+
+Amends D-105. Asked for by the owner on 2026-10-31.
+
+**Decision.** `RoundCheck` is drawn as a rounded square again: 20dp across with
+6dp corners, where Material's checkbox is 18dp with 2dp and D-105's circle was
+22dp. Everything else D-105 kept from Material stays: the 2dp outline, the colour
+roles, the smaller round-ended tick, the `completion` motion, the 40dp state
+layer, the 48dp target, `Role.Checkbox` and its toggleable state.
+
+**What changed the answer.** The owner preferred the square as it was before the
+circle, but rounder.
+
+**The cost D-105 named, and how it is held.** D-105 kept checklist items square
+partly so a task and an item would not read as the same kind of thing. With the
+task's check square again, the two are told apart by size and corner: the task's
+is 20dp with 6dp corners, an item's Material's square scaled to 16dp with its
+2dp corners. If they are taken for one another, the answer is a rounder task
+corner before it is the circle back.
+
+**Why 20dp, not 22.** D-105 enlarged the circle because a circle has less area
+than the square it sits in. A square needs no such correction; 20dp keeps it a
+little larger than Material's, as the owner had asked for the circle.

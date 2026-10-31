@@ -1,5 +1,8 @@
 package app.tellcat.ui.component
 
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
@@ -26,9 +29,12 @@ import androidx.compose.ui.unit.dp
 import app.tellcat.core.design.TellcatMotion
 
 /**
- * The round completion check on a task row. `docs/decisions.md` D-105.
+ * The completion check on a task row. `docs/decisions.md` D-105, D-117.
  *
- * Material's checkbox in a circle, 22dp across: the 2dp outline, colour roles
+ * Material's checkbox as a rounded square, 20dp across with 6dp corners, where
+ * Material's is 18dp with 2dp: square again, as the owner asked after D-105's
+ * circle, and rounder than Material's so it is still the task's own check and
+ * not a checklist item's. The 2dp outline, colour roles
  * from [CheckboxDefaults.colors], 40dp state layer and 48dp target, and the
  * same semantics, `Role.Checkbox` with a toggleable state, so TalkBack reads it
  * exactly as it read the square one. Only the shape and the tick differ. The
@@ -90,12 +96,18 @@ internal fun RoundCheck(
     ) {
         Canvas(Modifier.size(BoxSize)) {
             val stroke = StrokeWidth.toPx()
-            val radius = size.minDimension / 2
+            val corner = Corner.toPx()
 
-            drawCircle(color = boxColor, radius = radius)
-            // Inset by half the stroke so the ring sits inside the box, as
-            // Material's outline does.
-            drawCircle(color = borderColor, radius = radius - stroke / 2, style = Stroke(stroke))
+            drawRoundRect(color = boxColor, cornerRadius = CornerRadius(corner))
+            // Inset by half the stroke so the outline sits inside the box, as
+            // Material's does, with the corner reduced to match.
+            drawRoundRect(
+                color = borderColor,
+                topLeft = Offset(stroke / 2, stroke / 2),
+                size = Size(size.width - stroke, size.height - stroke),
+                cornerRadius = CornerRadius(corner - stroke / 2),
+                style = Stroke(stroke)
+            )
 
             if (drawn > 0f) {
                 val path = Path().apply {
@@ -127,11 +139,18 @@ private val TickVertex = 0.428f to 0.644f
 private val TickRight = 0.716f to 0.356f
 
 /**
- * Across the circle. Material's box is 18dp, and a circle that size read small
- * beside the title on the owner's phone, since it has less area than the
- * square, so it is a little bigger. D-105.
+ * Across the box. Material's is 18dp; D-105's circle was 22dp because a circle
+ * that size read small. A square has more area than a circle, so it comes back
+ * to 20dp: a little larger than Material's, which keeps it ahead of a checklist
+ * item's 16dp box, without the circle's correction. D-117.
  */
-private val BoxSize = 22.dp
+private val BoxSize = 20.dp
+
+/**
+ * The corner radius. Material's checkbox is 2dp; 6dp is rounder at a glance
+ * without reading as a circle. D-117.
+ */
+private val Corner = 6.dp
 
 /** Material's checkbox outline and check mark width. */
 private val StrokeWidth = 2.dp

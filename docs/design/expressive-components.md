@@ -295,9 +295,9 @@ one more way to express one decision.
 
 # Checkbox
 
-[IMPL] On a task row, `RoundCheck` (D-105): Material's checkbox drawn as a
-circle, with Material's size, colour roles, state layer, target and semantics,
-and a tick scaled to the circle. Everywhere else, including checklist items,
+[IMPL] On a task row, `RoundCheck` (D-105, D-117): Material's checkbox drawn as
+a rounded square, 20dp with 6dp corners, with Material's colour roles, state
+layer, target and semantics, and a smaller round-ended tick. Everywhere else, including checklist items,
 Material `Checkbox`, unchanged, except that a checklist item's is drawn at a
 16dp box (scaled, so its target and semantics are Material's).
 
@@ -1506,7 +1506,7 @@ treatment, unmodified.
 | Component | Default | Pressed | Selected | Disabled | Error | Completed |
 | --- | --- | --- | --- | --- | --- | --- |
 | Task row | `surfaceContainer` | Material ripple | n/a | n/a | n/a | strikethrough + `onSurfaceVariant` |
-| Checkbox | Material roles, round on a task row (D-105) | Material | Material checked | Material | n/a | checked, with `completion` motion |
+| Checkbox | Material roles, a rounded square on a task row (D-117) | Material | Material checked | Material | n/a | checked, with `completion` motion |
 | Navigation item | Material | Material | Material + filled icon | n/a | n/a | n/a |
 | Button | Material | Material | n/a | Material | n/a | n/a |
 | Text field | Material | Material | Material focused | Material | Material + supporting text | n/a |
