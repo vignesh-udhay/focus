@@ -54,6 +54,15 @@ Details store shot was taken, Groceries with its checklist in light and dark at
 1080 x 1920, and the owner chose to leave the store set of eight as it is. The
 merge waits for the owner's word.
 
+**A task's check is a rounded square again, and a checklist item's is the same
+drawing smaller, on `feature/rounded-check`, cut from `main` at `04f7a25`, D-117
+and D-118.** The task's is 20dp with 6dp corners, an item's 16dp with 5dp, one
+shared `CheckBoxDrawing`; taps, TalkBack and haptics are unchanged, and the
+widget keeps Android's own checkbox. On 2026-10-31 on the owner's phone: JVM 972
+of 972, lint with no errors, and the full instrumented suite 418 of 418, which
+also covers D-113 on `main` end to end. Installed on Tellcat dev for the owner
+to judge. Not merged and not pushed.
+
 **Monthly repeats on the nth or last weekday are built on
 `feature/monthly-weekday`, stacked on `feature/early-reminder` so schema 16
 follows 15, D-116.** Month in the Repeat sheet offers "On day 25" or "On the
