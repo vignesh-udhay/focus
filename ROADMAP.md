@@ -54,6 +54,13 @@ Details store shot was taken, Groceries with its checklist in light and dark at
 1080 x 1920, and the owner chose to leave the store set of eight as it is. The
 merge waits for the owner's word.
 
+**Monthly repeats on the nth or last weekday are built on
+`feature/monthly-weekday`, stacked on `feature/early-reminder` so schema 16
+follows 15, D-116.** Month in the Repeat sheet offers "On day 25" or "On the
+fourth Sunday" (and "the last" where it applies); the summary names it in words.
+The main and test sources compile; the tests are written and none has run, and
+the phone has not been touched. Not merged and not pushed.
+
 **One early reminder and a weekday preselect are built on
 `feature/early-reminder`, cut from `main` at `04f7a25`, D-114 and D-115.**
 "Also remind me" in the reminder sheet (15 min, 1 hour or 1 day before) on its

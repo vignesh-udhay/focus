@@ -7052,3 +7052,66 @@ The widget says the same.
 **What would reverse this.** Testers wanting two or more, which would argue for a
 list and a different control; or finding the extra notification a nag, which
 would argue for a quieter channel before it argues for removing it.
+
+## D-116. A monthly repeat can fall on the nth or last weekday
+
+Extends D-027, which anticipated it. From the competitor study (`ANALYSIS.md`
+item 12), approved by the owner on 2026-10-31.
+
+**Decision.** In the Repeat sheet, Month gains an "On" choice under Every: "On
+day 25", the rule as it always was, and "On the fourth Sunday", the task's own
+weekday of the month. "On the last Sunday" is offered as well when the task's day
+is the last of its weekday in its month, and instead of a number when it is a
+fifth. Both come from the task's scheduled day, else its reminder's, else today,
+D-114's order. No free picker. The summary names it: "Every month on the third
+Tuesday", "Every 2 months on the last Friday", and on rows and the widget
+"Monthly on the third Tuesday", through `recurrenceSummary` as before.
+
+**What changed the answer.** TickTick, To Do Reminder, Tasks.org, Google Tasks
+and Keep all have it; Tasks (PB) is reviewed for lacking it ("can't schedule 3rd
+Friday of each month"). D-027 said a rule like this "is a new unit rather than a
+change to these, and it should be its own entry". It is its own entry; it turned
+out to be an option of Month rather than a fifth unit, because interval, Ends,
+the stored names and every existing monthly rule stay exactly as they are.
+
+**The rule stores the weekday of the month, not a flag.** The brief had it
+"prefilled from the task's day", which suggests deriving it from the anchor each
+time, as "day 25" is. Two things argue for storing which occurrence (one to four,
+or last) and which weekday, as Week stores its days: `recurrenceSummary` is given
+the rule and today, not the task, so a row could not name "the third Tuesday"
+from a flag; and a task moved by hand would silently become a different rule.
+Schema 16 adds `recurrenceMonthlyOrdinal` and `recurrenceMonthlyWeekday`; null
+in both is the day of the month, which is every rule written before this.
+
+**Four and last are different rules.** In a month with five Fridays the fourth is
+not the last, so a day that is both is offered as both. A fifth is never a rule
+of its own: most months have none. Anything stored outside one to four reads as
+last.
+
+**Words, not numerals.** "the third Tuesday", from five strings (first to fourth,
+and last) and the day's full name. The set is closed, the app's summaries spell
+things out, and a string per ordinal is how a translation gets the agreement its
+language needs; ICU's ordinal spellout is for arbitrary numbers and would add
+nothing here. en-US and en-GB read the same.
+
+**Behaviour.**
+
+- **Next occurrence** is computed from the series, never from the moment of
+  completing (D-098), and is always after the anchor: on-months are multiples of
+  the interval from the anchor's month, and in each the weekday is found afresh,
+  so "last" is the true last Friday of each month.
+- **Interval and Ends** work as they do for any rule. Switching between "day 25"
+  and "the fourth Sunday" leaves both alone; the weekday choice is kept through a
+  change of unit in the open sheet. Clearing the repeat is unchanged.
+- **A successor's reminder** keeps its time of day, and the early reminder
+  (D-115) carries, as for any repeat. Edits and deletes to the series follow
+  D-098's rules, unchanged.
+- **The backup** carries both fields; an older backup reads as the day of the
+  month. The copy kept for the locked phone (D-079) holds no recurrence, so it is
+  untouched.
+- **Quick Add** does not read "every last Friday". D-069 stands.
+
+**Stacked on `feature/early-reminder`.** Schema 15 is that branch's; this is 16,
+so the two cannot claim one version. The cost is that this branch cannot merge
+before that one. The alternative, cutting from `main` and renumbering at merge,
+moves a migration test and an exported schema after review; stacking is cheaper.

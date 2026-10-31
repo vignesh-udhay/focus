@@ -1403,6 +1403,17 @@ one-by-one fix.
 
 ---
 
+# The Month choice
+
+[CD] D-116. Under Every, when the unit is Month, a label "On" and a group of
+choice rows: "On day 25", "On the fourth Sunday", and "On the last Sunday" when
+the task's day is the last of its weekday. Built from the task's own day, never
+a free picker. The selected row carries `secondaryContainer` as the Every pane's
+rows do, and is read as selected. Only a month shows it, as only a week shows
+the weekday chips.
+
+---
+
 # Clearing a repeat
 
 [IMPL] A full-width `TextButton` reading "Doesn't repeat", beneath Save repeat in
