@@ -265,3 +265,137 @@ is a title.
 - **Priority, tags and lists** are in the row. Tellcat has none of them, by
   decision.
 - A "give us five stars" card appeared in the list after the first task.
+
+## Adding from an Upcoming view, 2026-11-02
+
+The owner asked whether Upcoming should get an add button. Todoist, TickTick
+and Any.do on the Pixel 10 emulator, each add sheet opened and closed without
+saving; Things 3 and Apple Reminders from their documentation, since neither
+runs there. Microsoft To Do skipped, as in October.
+
+![Todoist, Upcoming with today selected: the sheet says Today](competitors/todoist-upcoming-add-today.jpg)
+![Todoist, Upcoming with Thursday selected: the sheet says Thursday](competitors/todoist-upcoming-add-thursday.jpg)
+![TickTick, adding from Today: the sheet says Today](competitors/ticktick-today-add.jpg)
+![Any.do, the plus beside Upcoming: Next week is chosen](competitors/anydo-upcoming-add.jpg)
+
+| App | Add on its Upcoming view | The day a new task gets |
+|---|---|---|
+| Todoist | Yes, the same button as everywhere | The day selected in Upcoming's week strip, shown as a chip; or drag the button onto a day |
+| TickTick | Yes, on every list | From Today, a Today chip. Its Tomorrow and Next 7 Days lists were off on this account and were not turned on |
+| Any.do | A plus beside each section | Upcoming's plus chooses Next week |
+| Things 3 | Its Magic Plus, on every list | Dropped onto a day in Upcoming, that day; a plain tap is not documented |
+| Apple Reminders | A Scheduled view | Not confirmed from Apple's documentation |
+
+**What it shows.** Every one of them adds to what the user is looking at and
+says the day in the sheet before saving, as a chip that can be changed. A
+default nobody can see is the confusing kind; none of them has one. Tellcat's
+Today and Inbox follow the same rule through the line under the field.
+
+**Why Tellcat's Upcoming still has none.** Todoist's rule works because its
+Upcoming has a selected day. Tellcat's has none, so any default is a guess, and
+Any.do's "Next week" is what that guess looks like. The owner kept Upcoming
+without a button. If Upcoming is ever meant for planning, Todoist's selected
+day is the model, and that is a change to Upcoming rather than a button.
+
+Sources: [Todoist, Upcoming view](https://www.todoist.com/help/articles/plan-your-week-with-the-upcoming-view-OKOg1mR8),
+[Things, Magic Plus](https://culturedcode.com/things/features/),
+[Things, Today, Upcoming, Anytime and Someday](https://culturedcode.com/things/support/articles/4001304/).
+
+## Candidates to pick up, 2026-11-02
+
+The owner asked what Tellcat should take from these apps to be the one with no
+alternative. These are the answers, in the order to pick them up. **None is
+decided.** Each needs its own entry in `decisions.md`, and the owner's word,
+before it is built, and none is current-phase work until `ROADMAP.md` says so.
+Take them one at a time; mark each here when it is decided, built or dropped.
+
+The yardstick is Things 3: fewer features than Todoist, every one of them
+considered. Depth on the loop (capture, say when, be told, complete), not
+breadth.
+
+### 1. Move everything overdue to today, in one tap
+
+- **Seen in:** Todoist ("Reschedule" on the Overdue header), TickTick
+  ("Postpone" on the same header), both on 2026-11-02.
+- **For Tellcat:** a "Move all to today" action on Today's Overdue band, with
+  Undo. Today is meant to answer "what should I do now?" in seconds, and a pile
+  of overdue rows that can only be moved one at a time is in the way of that.
+- **To settle in the decision:** what happens to each task's reminder time,
+  and to a repeating task's series day (D-122).
+- **Status:** not decided.
+
+### 2. Reschedule from the list with a swipe
+
+- **Seen in:** TickTick (swipe left, Date, Tomorrow), Todoist (swipe left,
+  Tomorrow), October walk.
+- **For Tellcat:** today a task has to be opened to move it. Take Todoist's
+  two details with it: each choice shows its result with the task's own time
+  kept ("Tomorrow, Tue 9:00 AM"), so the user sees what happens before tapping.
+  Task Details stays the other route, so the swipe is never the only one.
+- **Touches:** D-023, which removed the row's long press and trailing button.
+  The question has waited on tester feedback since October.
+- **Status:** not decided.
+
+### 3. Show how full each day is when picking a date
+
+- **Seen in:** Todoist's calendar strip, "Sun Oct 25 · 3 tasks".
+- **For Tellcat:** a small mark under days that already hold tasks in Choose a
+  date. Picking a day without knowing it is packed is how plans fail.
+- **Status:** not decided.
+
+### 4. One-tap times in the When sheet
+
+- **Seen in:** Any.do's add box: Later today, This evening, Tomorrow morning.
+- **For Tellcat:** the same words Tellcat already uses for snooze (D-078), as
+  presets in Quick Add's When sheet (D-121), so most reminders never need the
+  time picker.
+- **Status:** not decided. Listed in October as idea 3.
+
+### 5. Add without opening the app
+
+- **Seen in:** Things' Quick Entry on the Mac; standard Android practice.
+- **For Tellcat:** a "New task" launcher shortcut on a long press of the icon,
+  and a Quick Settings tile. Tellcat has neither (checked 2026-11-02). Both are
+  Android conventions, which `PRODUCT.md` principle 5 asks for, and both serve
+  "capture should be effortless".
+- **Status:** not decided.
+
+### 6. Say it out loud
+
+- **Seen in:** Todoist's Ramble, which leads its onboarding; a mic on Any.do's
+  and To Do Reminder's add box.
+- **For Tellcat:** a mic in Quick Add using Android's own speech recognizer,
+  the later stage D-070 left open, and the literal form of "Just tell it."
+  (D-092).
+- **To settle in the decision:** whether the system recognizer falls under
+  "AI features", which `PRODUCT.md` puts out of scope.
+- **Status:** not decided. After 1.x.
+
+### 7. Remind me when I get somewhere
+
+- **Seen in:** Apple Reminders ("when I arrive home").
+- **For Tellcat:** the one feature in these apps that strengthens the promise
+  itself, since a place can be "the moment it matters". It is also hard to make
+  reliable on Android, and reliability is the bar every reminder is held to.
+- **Status:** not decided. Post-1.0, and a decision of its own.
+
+### Not to take
+
+Already decided against, or seen to make an app worse:
+
+- Priorities, tags and projects (D-003), Someday (D-002), streaks and scores
+  (`PRODUCT.md` principle 7), AI assistants, accounts and sync.
+- Surveys and paywalls before the first task (Todoist, To-Do List).
+- A permanent "Add task" notification (To-Do List, Any.do).
+- An eight-option snooze menu (TickTick), and a one-tap snooze whose time
+  cannot be seen (Todoist).
+
+### The part that is not a feature
+
+What makes an app feel like it has no alternative is mostly what no list
+names: nothing moves while the user types, one rule per behaviour, every state
+in words, 200% text that is really tested, a fast start, and a reminder that
+can be shown to have arrived. Reminder health's arrival evidence is the one
+thing no competitor here has. The proposal is a standing polish pass before
+each release: cold start and dropped frames measured, every screen at 200%,
+TalkBack listened to on a device.

@@ -76,6 +76,12 @@ early reminder (D-115), monthly repeats on the nth or last weekday (D-116) and
 the rounded checks (D-117, D-118). No new permission, service or foreground
 service type since 1.2.
 
+**Candidates from the competitor apps are listed, none decided.** Seven
+ideas in the owner's order, from moving everything overdue to today in one tap
+to location reminders, are in `docs/research/competitors.md` under "Candidates
+to pick up, 2026-11-02". Take them one at a time, each with its own decision
+and the owner's word first.
+
 **D-121 and D-123 are built on `feature/last-day`, and every suite passes.**
 Quick Add has three tools beside Add (When, Repeat, Checklist), usable before
 a title; the Repeat sheet opens on the common rules in one tap, in Task Details
