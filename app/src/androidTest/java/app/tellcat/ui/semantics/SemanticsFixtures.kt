@@ -1,9 +1,14 @@
 package app.tellcat.ui.semantics
 
 import android.content.pm.PackageManager
+import android.content.res.Configuration
+import android.content.res.Resources
 import android.os.Build
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -53,18 +58,43 @@ internal const val FontScale200 = 2f
  *
  * The scale is imposed by overriding [LocalDensity] rather than by changing the
  * device configuration, so a test needs no permissions, leaves no state behind
- * on the emulator, and cannot leak a scale into the next test.
+ * on the device, and cannot leak a scale into the next test.
+ *
+ * **A sheet gets the scale too.** A `ModalBottomSheet`, a dialog or a tooltip
+ * is a window of its own, and its density is read from the activity's
+ * resources, not from [LocalDensity]: until 2026-11-02 every sheet in an "at
+ * 200%" test was drawn at the phone's own text size, 0.9 on the owner's phone.
+ * So the activity's resources carry the scale while the content is shown, and
+ * get their own back when it goes. Those windows then scale as a real device
+ * does, which since Android 14 is nonlinear: large text grows less than twice.
  *
  * Dynamic colour is off for the same reason the previews turn it off: the
  * fallback schemes are the ones the design was measured against, and a test
  * should not depend on the wallpaper the emulator happens to have.
  */
+/** Sets [scale] on these resources and returns the scale they had. */
+@Suppress("DEPRECATION") // The one way to change an activity's scale after it is created.
+private fun Resources.withFontScale(scale: Float): Float {
+    val had = configuration.fontScale
+    val changed = Configuration(configuration).apply { fontScale = scale }
+    updateConfiguration(changed, displayMetrics)
+    return had
+}
+
 internal fun ComposeContentTestRule.setTellcatContent(
     fontScale: Float,
     content: @Composable () -> Unit
 ) {
     setContent {
         val base = LocalDensity.current
+        val resources = LocalContext.current.resources
+
+        // Before the content composes, so a sheet opened on the first frame
+        // already has it.
+        val shownAt = remember { resources.withFontScale(fontScale) }
+        DisposableEffect(resources) {
+            onDispose { resources.withFontScale(shownAt) }
+        }
 
         CompositionLocalProvider(
             LocalDensity provides Density(density = base.density, fontScale = fontScale)
