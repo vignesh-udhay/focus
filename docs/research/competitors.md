@@ -216,3 +216,52 @@ In the order I would look at them:
 3. Reminder chips in Quick Add (Later today, This evening, Tomorrow morning),
    matching the snooze presets.
 4. A Reschedule action on the notification, only if testers ask for it.
+
+## Adding a task in TickTick, 2026-11-02
+
+TickTick 8.2.2.0 on the Pixel 10 emulator, signed in by the owner, walked with
+a made-up task ("Pay rent friday at 9am"), which was deleted afterwards. The
+question was D-121's: what does its add sheet do that Tellcat should take, and
+what should it not.
+
+![TickTick's add sheet, empty](competitors/ticktick-add-empty.jpg)
+![After typing: the date words marked, the date tool showing the value](competitors/ticktick-add-typed.jpg)
+![The date tool: calendar, then Time, Reminder and Repeat](competitors/ticktick-add-date.jpg)
+![Repeat: the common rules, each labelled from the chosen day](competitors/ticktick-add-repeat.jpg)
+![The checklist, only in the full editor](competitors/ticktick-add-checklist.jpg)
+
+**The sheet.** A title field ("What would you like to do?"), a Description
+field, and one row of icons on the keyboard: date, priority, tags, list, and a
+"more" menu, with a microphone at the end that becomes a send button once there
+is a title.
+
+**Worth taking.**
+
+- **A set tool shows its value in place.** Typing "friday at 9am" marks the
+  words in the title, and the date icon in the row becomes "Fri, 9:00AM". There
+  is no separate row of chips, so nothing above the keyboard grows as tools are
+  set.
+- **One tool for when.** The date icon opens one sheet: a month calendar where
+  one tap picks the day, then Time, Reminder and Repeat rows, and a confirm
+  tick. Tellcat's reminder sheet already took the Day-row-and-Time-row shape
+  from here (see the reminder sheet decision).
+- **Repeat is a list of the common rules, labelled from the chosen day**:
+  Daily, Weekly (Fri), Monthly (the 6th), Yearly (on Nov 6), Every Weekday, and
+  Custom for the rest. Daily is one tap. In Tellcat it is Every, Day, Done, Save
+  repeat.
+- **The empty checklist line teaches itself**: its hint reads "Tap 'Enter' to
+  create an item".
+
+**Not worth taking.**
+
+- **The checklist is not in the add sheet.** It is More, Full-Screen, then the
+  list icon, which leaves the sheet for the full editor. The owner's ask, a
+  checklist in the add sheet, goes further than TickTick does.
+- **Repeat opens as a dialog over the date sheet**: two windows, two scrims,
+  which D-026 refuses for Tellcat's sheets.
+- **"Monthly (The 6 day)"**: the wording is broken.
+- **The keyboard did not come back** after the date sheet closed; the title had
+  to be tapped again. D-112 already requires Tellcat to return it.
+- **Priority, tags and lists** are in the row. Tellcat has none of them, by
+  decision.
+- A "give us five stars" card appeared in the list after the first task.
