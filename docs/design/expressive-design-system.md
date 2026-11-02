@@ -71,6 +71,7 @@ too.
 | Task title, completed | `onSurfaceVariant` |
 | Metadata, section labels, supporting text | `onSurfaceVariant` |
 | Overdue date | `tertiary` |
+| Quick Add's "No reminder set" line (D-101) | `tertiary` |
 | Destructive menu item | `error` |
 | Floating action button | `FloatingActionButton` default, `primaryContainer` |
 | Selected navigation item | `NavigationBarItem` default, the secondary family |
@@ -175,6 +176,15 @@ between the overdue date and the duration text beside it falls from about dE 65
 to about dE 24. Still clearly distinct, and about a third the shout. That trade
 was made knowingly. Contrast against the row is unaffected, 5.5:1 against
 error's 5.6:1, so both pass AA for text at this size.
+
+[CD] **One other line takes it**, D-101 as amended: Quick Add's "No reminder
+set. Add am or pm to the time." It is the same kind of message as an overdue
+date, something the user may miss with nothing broken, and a reminder the user
+believes is set and is not is the miss this product ranks above a crash. Only
+that line: Quick Add's other guidance, "Now type the task in front", stays
+`onSurfaceVariant`, because it is a next step rather than something missed, and
+a colour on every hint would stop meaning anything. The words carry it without
+the colour.
 
 [CD] The safety net is what makes the trade affordable: overdue is readable
 without colour at all, because an overdue task shows a date where a current one

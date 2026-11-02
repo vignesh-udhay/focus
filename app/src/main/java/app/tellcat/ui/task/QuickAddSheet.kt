@@ -991,10 +991,16 @@ private fun QuickAddSupportingText(
         //
         // Hidden, it is out of the semantics tree. Shown, a polite live region,
         // so TalkBack says it when it appears rather than only when the user
-        // goes looking. Not the error colour, which the design system keeps for
-        // destroying actions: nothing is wrong with the task.
+        // goes looking.
+        //
+        // **`tertiary`, the overdue date's role**, at the owner's word: a
+        // reminder the user thinks is set and is not is the miss this product
+        // ranks above a crash, and `tertiary` is attention without alarm. Not
+        // `error`, which the design system keeps for destroying actions:
+        // nothing is wrong with the task. The words say it first either way.
         Text(
             text = stringResource(R.string.quick_add_no_meridiem),
+            color = MaterialTheme.colorScheme.tertiary,
             modifier = if (noMeridiem) {
                 Modifier.semantics { liveRegion = LiveRegionMode.Polite }
             } else {

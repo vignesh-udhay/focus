@@ -847,7 +847,8 @@ there is something for it to describe.
 hour with no am or pm, which `date-parsing.md` and D-070 refuse rather than
 guess, and the sheet used to say only "Saved to Today", as if the time had been
 taken. Under the destination it now says "No reminder set. Add am or pm to the
-time." in the same supporting style, never the error colour, and as a polite
+time." in the supporting style but in `tertiary`, the overdue date's role
+(D-101 as amended), never the error colour, and as a polite
 live region so TalkBack says it when it appears. Only after "at" and only when
 no reminder was read, so it never sits under the Reminder chip. Its room is
 kept, D-101 as amended: the line is always laid out and drawn only when it has

@@ -6309,8 +6309,12 @@ What it costs is one line of empty space under the field whenever there is a
 title. A first fix, the same day, waited a second after the typing stopped and
 put the line in the destination's place; the owner turned the pause down, and
 with the room kept there is no reason to give up the destination either.
-Whether a hint like this one should look different from the line above it is
-an open question for the owner.
+The line also takes `tertiary`, the overdue date's role, at the owner's word.
+It was in the destination line's own style, which read as one more fact about
+the task rather than something to act on before Add. `error` stays reserved
+for destroying actions and there is no warning colour, so `tertiary`, which
+Material scopes to drawing attention and this app already spends on a date the
+user may have missed, is the one role that fits. Only this line takes it.
 
 ## D-102. A reminder can ring like an alarm
 
