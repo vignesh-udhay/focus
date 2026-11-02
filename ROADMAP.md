@@ -85,8 +85,9 @@ TickTick's add flow (`docs/research/competitors.md`), and amended after their
 trial: Checklist toggles, and each line has a remove. D-123 adds "on the last
 day" as a monthly rule of its own. The branch is `feature/quick-add-tools` with
 `main` (1.3.1) merged in, so it is versionCode 5. On 2026-11-02 the full
-instrumented suite passed on the owner's phone, 476 tests, 2 skipped by
-assumption; JVM 1094 of 1094; lint no errors. The phone run found that a long
+instrumented suite passed on the owner's phone, 478 tests, 2 skipped by
+assumption, with sheets drawn at a real 200% for the first time (before, the
+"at 200%" tests drew every sheet at the phone's own text size); JVM 1094 of 1094; lint no errors. The phone run found that a long
 When value (a day and a time) left the Checklist tool no width, even at the
 phone's own text size; fixed and held by a test. Not merged, not pushed; it
 waits for the owner's word.
