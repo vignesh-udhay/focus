@@ -8,7 +8,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
-import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -113,8 +112,8 @@ class RepeatListTest {
     @Test
     fun aRuleTheListDoesNotNameShowsOnCustom() {
         sheet(selected = Recurrence(RecurrenceUnit.WEEKLY, interval = 2))
-        rule.waitUntilExactlyOneExists(hasContentDescription(CUSTOM, substring = true), TIMEOUT_MILLIS)
-        rule.onNode(hasContentDescription("2 weeks", substring = true)).performScrollTo().assertIsDisplayed()
+        rule.waitUntilExactlyOneExists(hasText(CUSTOM), TIMEOUT_MILLIS)
+        rule.onNode(hasText("2 weeks", substring = true)).performScrollTo().assertIsDisplayed()
     }
 
     // --- D-123: the month's last day -------------------------------------------------------

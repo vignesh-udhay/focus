@@ -450,19 +450,23 @@ fun QuickAddSheet(
                     horizontalArrangement = Arrangement.spacedBy(TellcatSpacing.xxs),
                     modifier = Modifier.weight(1f)
                 ) {
-                    WhenTool(
-                        modifier = Modifier.weight(1f, fill = false),
-                        parsed = parsed,
-                        today = today,
-                        now = now,
-                        enabled = true,
-                        onClick = {
-                            // The keyboard goes down so the sheet has the screen, and
-                            // comes back when it closes.
-                            keyboard?.hide()
-                            isWhenOpen = true
-                        }
-                    )
+                    // The weight sits on a Box of its own: a TooltipBox does not
+                    // hand it to the Row, which then measured When first, at full
+                    // width, and left Checklist none. Found on the phone, D-121.
+                    Box(modifier = Modifier.weight(1f, fill = false)) {
+                        WhenTool(
+                            parsed = parsed,
+                            today = today,
+                            now = now,
+                            enabled = true,
+                            onClick = {
+                                // The keyboard goes down so the sheet has the screen, and
+                                // comes back when it closes.
+                                keyboard?.hide()
+                                isWhenOpen = true
+                            }
+                        )
+                    }
                     QuickAddTool(
                         icon = R.drawable.ic_repeat,
                         name = stringResource(R.string.quick_add_repeat),
@@ -533,6 +537,9 @@ fun QuickAddSheet(
             offersAlarm = false,
             offersEarly = false,
             timeOptional = true,
+            // A day the tool wrote before any title can be cleared too: there
+            // is no reminder, but there are words to take back out.
+            canClear = held != null || (!hasTitle && toolRun != null),
             onSet = { at, _, _ ->
                 writeIn(
                     writeReminder(

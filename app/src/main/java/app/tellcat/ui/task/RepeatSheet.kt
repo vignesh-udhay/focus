@@ -5,6 +5,8 @@ import app.tellcat.core.domain.MonthlyWeekday
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -126,9 +128,12 @@ internal fun RepeatSheet(
             pane = if (pane == RepeatPane.RULE) RepeatPane.LIST else RepeatPane.RULE
         }
 
+        // Scrolls, so every rule and Save stay reachable at 200% text, where
+        // the list's nine rows are taller than the screen.
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = TellcatSpacing.md)
                 .padding(bottom = TellcatSpacing.lg),
             verticalArrangement = Arrangement.spacedBy(TellcatSpacing.sm)

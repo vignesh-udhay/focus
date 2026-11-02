@@ -773,7 +773,10 @@ internal fun ReminderSheet(
     // chosen hands back the day alone through [onSetDay], which schedules the
     // task without a reminder.
     timeOptional: Boolean = false,
-    onSetDay: (LocalDate) -> Unit = {}
+    onSetDay: (LocalDate) -> Unit = {},
+    // Whether Clear is offered. Where there is a reminder, unless the caller
+    // knows of something else to clear: Quick Add's day written before a title.
+    canClear: Boolean = reminderAt != null
 ) {
     var early by rememberSaveable { mutableStateOf(earlyReminder) }
     // Whether there is a time at all. Always, except in When with nothing yet
@@ -974,7 +977,7 @@ internal fun ReminderSheet(
 
                     // Offered only where there is something to clear, so the
                     // sheet does not propose undoing a thing not done.
-                    if (reminderAt != null) {
+                    if (canClear) {
                         TextButton(
                             onClick = onClear,
                             modifier = Modifier

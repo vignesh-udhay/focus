@@ -293,7 +293,8 @@ class QuickAddSemanticsTest {
      */
     @Test
     fun typingAgainAfterClearing_bringsTheReminderBack() {
-        setSheet(FontScale100)
+        // The real day, for the reason [assertATimeIsNamedInWords] gives.
+        setSheet(FontScale100, today = LocalDate.now())
 
         field().performTextInput(TIMED_TITLE)
         rule.waitUntilExactlyOneExists(whenIsSet(), TIMEOUT_MILLIS)
@@ -302,10 +303,14 @@ class QuickAddSemanticsTest {
         rule.onNodeWithText(CLEAR).performClick()
         rule.waitUntilExactlyOneExists(hasText(SCHEDULED_FOR_TOMORROW), TIMEOUT_MILLIS)
 
-        // Retyping a trailing time, which is a fresh promise.
+        // Retyping a trailing time, which is a fresh promise. Which day it rings
+        // on depends on the hour the test runs; that it rings is the point.
         field().performTextInput(" at 4pm")
 
-        rule.waitUntilExactlyOneExists(hasText("$SCHEDULED_FOR_TOMORROW at", substring = true), TIMEOUT_MILLIS)
+        rule.waitUntilExactlyOneExists(
+            hasText("Scheduled for", substring = true) and hasText(" at ", substring = true),
+            TIMEOUT_MILLIS
+        )
     }
 
     // --- D-112 and D-121: When writes into the field ----------------------------------

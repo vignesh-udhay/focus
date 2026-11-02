@@ -3,6 +3,7 @@ package app.tellcat.ui.semantics
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -14,7 +15,6 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performKeyInput
@@ -65,7 +65,14 @@ class QuickAddToolsTest {
 
     private fun field() = rule.onNode(hasSetTextAction() and hasContentDescription(ITEM, substring = true).not())
     private fun fieldText(): String = field().fetchSemanticsNode().config[SemanticsProperties.EditableText].text
-    private fun tool(name: String) = rule.onNode(hasContentDescription(name, substring = true) and hasClickAction())
+    // The tool's name alone, or its name and value ("When, Today"), so the
+    // checklist's own lines ("Checklist item 1") are not taken for the tool.
+    private fun tool(name: String) = rule.onNode(
+        SemanticsMatcher("tool $name") { node ->
+            node.config.getOrElseNullable(SemanticsProperties.ContentDescription) { null }.orEmpty()
+                .any { it == name || it.startsWith("$name, ") }
+        } and hasClickAction()
+    )
     private fun item(number: Int) = rule.onNodeWithContentDescription("$ITEM $number")
 
     // --- Checklist ---------------------------------------------------------------------
@@ -414,9 +421,38 @@ class QuickAddToolsTest {
         rule.waitUntilExactlyOneExists(hasContentDescription("When, ", substring = true), TIMEOUT_MILLIS)
 
         val add = rule.onNodeWithText(SAVE).assertIsDisplayed().fetchSemanticsNode().boundsInRoot
-        val root = rule.onRoot().fetchSemanticsNode().boundsInRoot
+        // The sheet's own window: the sheet is a second root beside the test's.
+        var top = rule.onNodeWithText(SAVE).fetchSemanticsNode()
+        while (true) top = top.parent ?: break
+        val root = top.boundsInRoot
         assertTrue("Add ends at ${add.right}, the screen at ${root.right}", add.right <= root.right)
         assertTrue("Add is ${add.width} wide", add.width > 0f)
+    }
+
+    /**
+     * A day and a time in When, and a repeat set: Repeat and Checklist keep
+     * their size beside it. Found on the phone: When's weight never reached the
+     * row, so it took its full width and Checklist was left none.
+     */
+    @Test
+    fun aLongWhenLeavesEveryToolItsSize() {
+        sheet(fallbackDate = today)
+        val farDay = today.plusDays(40)
+        field().performTextInput("Pay the quarterly tax bill on ${farDay.dayOfMonth} ${farDay.month.name.lowercase()} at 9am")
+        rule.waitUntilExactlyOneExists(hasContentDescription("When, ", substring = true), TIMEOUT_MILLIS)
+        tool(REPEAT).performClick()
+        rule.waitUntilExactlyOneExists(hasText(DAILY), TIMEOUT_MILLIS)
+        rule.onNodeWithText(DAILY).performClick()
+        rule.waitUntilExactlyOneExists(hasContentDescription("$REPEAT, ", substring = true), TIMEOUT_MILLIS)
+
+        for (name in listOf(REPEAT, CHECKLIST)) {
+            val node = tool(name).assertIsDisplayed().fetchSemanticsNode()
+            with(node.layoutInfo.density) {
+                assertTrue("$name is ${node.boundsInRoot.width.toDp()} wide", node.boundsInRoot.width.toDp() >= 40.dp)
+            }
+        }
+        tool(CHECKLIST).performClick()
+        rule.waitUntilExactlyOneExists(hasContentDescription("$ITEM 1"), TIMEOUT_MILLIS)
     }
 
     private companion object {
