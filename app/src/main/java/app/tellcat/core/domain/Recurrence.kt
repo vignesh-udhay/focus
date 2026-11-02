@@ -4,6 +4,7 @@ import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.MonthDay
 import java.time.temporal.ChronoUnit
 import java.time.temporal.TemporalAdjusters
 import java.time.YearMonth
@@ -165,6 +166,62 @@ private fun Recurrence.nextMonthlyWeekdayOccurrence(anchor: LocalDate, after: Lo
 
     while (true) {
         val candidate = rule.inMonth(anchorMonth.plusMonths(blocks * step))
+        if (candidate.isAfter(floor)) return candidate
+        blocks++
+    }
+}
+
+/**
+ * Whether this rule falls on a date, so its series keeps a day: monthly on the
+ * day of the month, and yearly. D-122. Daily, weekly and a weekday of the month
+ * (D-116) count from each occurrence and keep nothing.
+ */
+val Recurrence.fallsOnADate: Boolean
+    get() = unit == RecurrenceUnit.YEARLY || (unit == RecurrenceUnit.MONTHLY && monthlyWeekday == null)
+
+/**
+ * The day a series of this rule keeps, read from [day]: its day of the month,
+ * and its month for a yearly rule. Null when the rule keeps none. D-122.
+ */
+fun Recurrence.anchorFor(day: LocalDate?): MonthDay? =
+    if (fallsOnADate && day != null) MonthDay.from(day) else null
+
+/**
+ * The next date of a rule on a date, on the series' own [day], strictly after
+ * the later of [after] and [from]. D-122.
+ *
+ * Periods are counted from [from], the occurrence just finished, as they always
+ * were, so which months or years are on does not change. Only the day inside
+ * the period does: the series' day, or the period's last day when it is
+ * shorter. A series on the 31st is on the 28th in February and the 31st again
+ * in March; one on the 29th of February is on the 28th in an ordinary year and
+ * the 29th again in a leap year. When [day] is [from]'s own day this is exactly
+ * [nextOccurrence].
+ */
+fun Recurrence.nextOccurrenceOn(day: MonthDay, from: LocalDate, after: LocalDate): LocalDate {
+    val step = steps()
+    val floor = maxOf(after, from)
+    val yearly = unit == RecurrenceUnit.YEARLY
+
+    // Calculated, then a local scan, as the other evaluators do. From the
+    // period [from] is in, not the one after: an occurrence moved earlier, or
+    // into the next month, is followed by the series' date in that same period
+    // when it is still to come, as D-116 follows a moved weekday rule. On its own
+    // day the period's date is [from] itself, which is never after the floor.
+    val periodsOut = if (yearly) {
+        ChronoUnit.YEARS.between(from.withDayOfYear(1), floor.withDayOfYear(1))
+    } else {
+        ChronoUnit.MONTHS.between(YearMonth.from(from), YearMonth.from(floor))
+    }
+    var blocks = (periodsOut / step).coerceAtLeast(0)
+
+    while (true) {
+        val candidate = if (yearly) {
+            day.atYear(from.year + (blocks * step).toInt())
+        } else {
+            val month = YearMonth.from(from).plusMonths(blocks * step)
+            month.atDay(minOf(day.dayOfMonth, month.lengthOfMonth()))
+        }
         if (candidate.isAfter(floor)) return candidate
         blocks++
     }
@@ -366,7 +423,16 @@ fun Task.nextRecurringInstance(
     if (!rule.hasRoomAfter(occurrenceNumber)) return null
 
     val anchor = scheduledDate ?: today
-    val nextScheduled = rule.nextOccurrence(anchor = anchor, after = today)
+    // **The series' own day, not this occurrence's.** D-122. A rule on a date
+    // keeps the day it was set for, so the 31st clamped to the 28th in
+    // February is the 31st again in March. Every other rule counts from this
+    // occurrence, exactly as before.
+    val seriesDay = if (rule.fallsOnADate) recurrenceAnchor ?: MonthDay.from(anchor) else null
+    val nextScheduled = if (seriesDay != null) {
+        rule.nextOccurrenceOn(seriesDay, from = anchor, after = today)
+    } else {
+        rule.nextOccurrence(anchor = anchor, after = today)
+    }
     if (!rule.covers(nextScheduled)) return null
 
     val shift = ChronoUnit.DAYS.between(anchor, nextScheduled)
@@ -393,6 +459,8 @@ fun Task.nextRecurringInstance(
                 shifted
             }
         },
+        // Carried, so every occurrence counts from the series' day. D-122.
+        recurrenceAnchor = seriesDay,
         // A snooze moved one announcement of the occurrence just finished. It
         // says nothing about the next one, which rings at the series' time.
         snoozedUntil = null,

@@ -21,6 +21,7 @@ import app.tellcat.core.domain.PrimaryList
 import app.tellcat.core.domain.primaryListFor
 import app.tellcat.core.domain.StoredFocusSession
 import app.tellcat.core.domain.Recurrence
+import app.tellcat.core.domain.anchorFor
 import app.tellcat.core.domain.nextRecurringInstance
 import app.tellcat.core.domain.Task
 import app.tellcat.core.domain.OccurrenceEdits
@@ -1348,6 +1349,16 @@ class TaskListViewModel(
                     dueDate = dueDate,
                     estimatedDurationMinutes = estimatedDurationMinutes,
                     recurrence = recurrence,
+                    // **A new rule counts from the task's day; a moved day keeps
+                    // the series'.** D-122. Choosing a rule in the Repeat sheet
+                    // sets the day the series keeps from the day the task is on.
+                    // Moving one occurrence by hand changes the rule's nothing,
+                    // so its series keeps its day, as D-116 keeps a weekday rule.
+                    recurrenceAnchor = if (recurrence == task.recurrence) {
+                        task.recurrenceAnchor
+                    } else {
+                        recurrence?.anchorFor(scheduledDate ?: reminderAt?.toLocalDate() ?: today.value)
+                    },
                     reminderAt = reminderAt,
                     // Moving a reminder makes it owed again. Leaving it alone
                     // does not: saving the sheet an hour after a reminder
