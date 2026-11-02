@@ -7185,3 +7185,136 @@ lever before different shapes.
 
 **Not the widget.** The widget's checkboxes are Glance's platform `CheckBox`,
 which takes colours and nothing else, so it keeps Android's own.
+
+---
+
+## D-121. Quick Add sets when, how often and a checklist from the sheet
+
+**Approved by the owner on 2026-11-02**, the Repeat list in Task Details
+included. Paper and mock only; nothing is built. Numbered after D-119 and
+D-120, which are on `feature/calendar-today` and not yet on `main`. Reverses D-069's "no recurrence in Quick Add" and the rest of
+`expressive-components.md`'s "One field and one action", which D-112 had
+already amended once. Extends D-011 and D-112, and changes D-027's Repeat
+sheet. On `feature/quick-add-tools`.
+Informed by a walk of TickTick's add flow on 2026-11-02
+(`docs/research/competitors.md`), taking only what it does well.
+
+**What changed the answer.** The owner made a repeating task from Quick Add and
+it took nine taps: Add, find the row, open it, Repeat, Every, the unit, Done,
+Save repeat, Back. It also left them on Task Details, away from the screen
+they were capturing from. A checklist is the same detour. D-069 kept recurrence
+out so capture needs almost no decisions, and that still holds for anyone who
+types: nothing here is required, and "Pay rent friday at 9am" plus Add is still
+two taps. What D-069 did not weigh is the cost when the decision has to be made
+anyway. Then it moves somewhere worse: a second screen, after the sheet has
+closed, with the task to find first.
+
+**The decision.**
+
+1. **Three tools on the keyboard, beside Add.** When (`event`), Repeat
+   (`repeat`) and Checklist (`checklist`): outlined Material Symbols icon
+   buttons, 48dp each, with their names as content descriptions and as tooltips
+   on long press. Add stays the filled button at the end of the same row. The
+   row does not scroll, so Add is always on screen.
+2. **A tool shows its value in place.** Once a day is set, the When tool reads
+   it in the row, "Fri 27, 9:00 AM", the way TickTick's date icon becomes
+   "Fri, 9:00AM". Repeat and Checklist take their toggled (tonal) container when
+   set. The words in full, "Fri 27 Nov, 9:00 AM · Every month on the last
+   Friday", are on the supporting line under the title, which already says
+   where the task goes. Nothing grows above the keyboard as tools are set, so
+   nothing jumps. Tapping a set tool opens its sheet again; each sheet has its
+   own Clear.
+3. **When is one tool for the day and the time.** It opens Tellcat's reminder
+   sheet, the Day row and Time row it already took from TickTick, with the time
+   optional when opened from here: a day alone schedules the task, a day and a
+   time also set the reminder (D-075). One tool instead of Date and Reminder,
+   because in Tellcat they are one thing: a reminder's day is the task's day.
+   This replaces D-112's Reminder chip.
+4. **When writes words; Repeat and Checklist are plain setters.** What When
+   picks is written into the title as marked words ("on 27 November", "on 27
+   November at 9am") through `CaptureWriter`, exactly as D-112's chip does now.
+   Typing and tapping stay one mechanism with one value, the text. This reverses
+   D-011's "the day gets no chip"; the day still has no setter of its own, since
+   the tool only types. Repeat and the checklist have no typed form, so the
+   sheet holds them and Add saves them with the task.
+5. **Repeat offers the common rules in one tap.** The Repeat sheet opens on a
+   list, each rule labelled from the task's day, as TickTick's does: Doesn't
+   repeat, Daily, Weekly on Friday, Monthly on the 27th, Monthly on the last
+   Friday (when the day is one, D-116), Yearly on 27 November, Every weekday, and
+   Custom. A rule from the list is one choice and one value, so it is written and
+   the sheet closes, D-018's commit-as-you-go; Custom opens today's three panes,
+   which keep their Save. This is the Repeat sheet everywhere, Task Details
+   included, because the three-tap path to Daily is the same there. In one sheet
+   with substates, not TickTick's dialog over a sheet (D-026).
+6. **The checklist is written inline.** Checklist adds an item line under the
+   title with D-118's 16dp square check, and its hint teaches the gesture, as
+   TickTick's does: "Enter for the next item". Enter on a line adds the next;
+   Backspace on an empty line removes it and goes back to the line above. Enter
+   on the title still saves. Add saves the lines as the task's checklist
+   (D-084); empty lines are dropped. TickTick keeps its checklist out of the add
+   sheet, behind More and Full-Screen; this goes further, as the owner asked.
+7. **Every tool waits for a title**, D-112's rule and the one Add uses, and
+   each sheet gives the keyboard back to the title with the cursor at the end
+   when it closes (D-112; TickTick does not, and the title has to be tapped
+   again).
+
+**A repeating task always has a day.** Tellcat makes the next occurrence when
+the last is completed, so an undated repeating task sits in Inbox, never comes
+to Today and never reminds: the series does not run. So if Repeat is set with no
+day in the title, the rule's first day on or after today is written into the
+title as words ("today", "on Friday"), visible and correctable before Add. On
+Today that changes nothing. The Repeat list is labelled from the title's day, or
+today when there is none, so a monthly "last Friday" needs a last Friday in the
+title first, and When comes before Repeat in the row. Changing the day after the
+repeat is set does not rewrite the rule; the supporting line shows both, so a
+mismatch is on screen before Add. *Follow-up, not part of this:* Task Details
+already lets a repeat sit on an undated task, with the same dead end.
+
+**Where the app's rules pushed back.**
+
+- **Duration stays in Task Details.** An estimate is a planning judgement made
+  when looking at the day, not at the moment of capture, and D-061's band reads
+  it from the row.
+- **"Add to Tellcat" from the share sheet gets no tools**, D-097. Shared text is
+  captured in another app's context; the sheet's job there is one tap to save.
+- **The permission ask does not move.** Notifications and exact alarms are still
+  asked when Add saves a task with a reminder, D-107, so the draft, repeat and
+  checklist included, survives the ask.
+- **"Ring like an alarm" and the early reminder are still not offered from Quick
+  Add**, for D-112's reason: the title has no words for them.
+- **Not taken from TickTick:** priority, tags and lists (Tellcat has none, by
+  decision), a description field, the microphone, and a rating prompt.
+
+**Tap counts, before and after.** From the FAB, typing not counted, against the
+build on `main`.
+
+| Capture | Now | Proposed |
+|---|---|---|
+| "Take pills at 8am", every day | 9: FAB, Add, open the row, Repeat, Every, Day, Done, Save repeat, Back | 4: FAB, Repeat, Daily, Add |
+| "Pay rent on 27 November at 9am", the last Friday of every month | 10: FAB, Add, open the row, Repeat, Every, Month, Done, Last Friday, Save repeat, Back | 4: FAB, Repeat, Monthly on the last Friday, Add |
+| "Groceries" with milk, eggs, bread | 8 or 9: FAB, Add, open the row, Add item, Enter after each item, Back | 5: FAB, Checklist, Enter, Enter, Add |
+| "Pay rent friday at 9am", no repeat | 2: FAB, Add | 2: FAB, Add |
+
+Most of the saving is the Repeat list, and it applies in Task Details too: a
+daily repeat there goes from four taps after opening Repeat to one.
+
+**Checked on paper.**
+
+- **Add stays on screen at 200% with every tool set.** The tool row is pinned to
+  the keyboard; the title, checklist and supporting line above it scroll. At
+  large text the When tool's value no longer fits the row, so it falls back to
+  its icon in the tonal container, and the supporting line, which wraps, carries
+  the words.
+- **No jump as tools are set.** Values appear inside the fixed row, and the
+  supporting line exists as soon as there is a title, as it does now.
+- **TalkBack order:** heading, title, supporting line, checklist lines, then
+  When ("When, Friday 27 November, 9:00 AM"), Repeat ("Repeat, every month on
+  the last Friday"), Checklist ("Checklist, 3 items"), then Add. D-112's polite
+  live region moves from the chip to the supporting line.
+- **Dark mode:** colour roles only; set tools on `secondaryContainer`.
+
+**What would reverse this.** The owner's trial with the build: the three
+captures above, timed, against 1.3. If people open tools and abandon the capture,
+or the typed path gets slower because the sheet is busier, the tools go behind a
+single "More" button. If the Repeat list confuses in Task Details, it can be
+offered from Quick Add only.
