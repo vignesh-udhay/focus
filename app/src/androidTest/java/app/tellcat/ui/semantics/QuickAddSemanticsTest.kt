@@ -11,6 +11,7 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -77,7 +78,7 @@ class QuickAddSemanticsTest {
                 // the Inbox side, where it does not.
                 fallbackDate = today,
                 onDismiss = onDismiss,
-                onSave = onSave
+                onSave = { onSave(it.parsed) }
             )
         }
 
@@ -109,8 +110,8 @@ class QuickAddSemanticsTest {
     private fun assertSaveIsRefusedWithoutATitle(fontScale: Float) {
         setSheet(fontScale)
 
-        // One field and one button: the sheet has no scroll of its own, so
-        // Save has to be on screen unaided even at 200%.
+        // Since D-121 the title scrolls above a fixed row of tools and Add, so
+        // Add has to be on screen unaided even at 200%.
         rule.onNodeWithText(SAVE).assertIsDisplayed()
         // Disabled rather than tappable-and-inert: a screen reader announces
         // "dimmed", which explains why nothing happens.
@@ -177,14 +178,20 @@ class QuickAddSemanticsTest {
         assertNull(saved.single().time)
     }
 
-    // --- D-011: the time, and the chip that can take it back -----------------
+    // --- D-011 and D-121: the time, named in words and by the When tool ------------
+
+    /** The When tool once it holds something: its name, then what it holds. */
+    private fun whenIsSet() = hasContentDescription("$WHEN, ", substring = true)
+
+    /** The When tool, set or not, found by its name and that it can be pressed. */
+    private fun whenTool() = rule.onNode(hasContentDescription(WHEN, substring = true) and hasClickAction())
 
     /**
-     * A trailing time sets a reminder, and the chip is where it is named. The
-     * chip is the reminder's only presence in text, so this is what a screen
-     * reader has to be able to read the promise from.
+     * A trailing time sets a reminder. Since D-121 there is no chip: the When
+     * tool holds it, and the line under the field says the day and the time in
+     * words, which is what a screen reader reads the promise from.
      */
-    private fun assertATimeIsNamedByAChip(fontScale: Float) {
+    private fun assertATimeIsNamedInWords(fontScale: Float) {
         // The real day, not the fixed one. Since D-075 the line names the day
         // the reminder rings, which the sheet resolves against the clock, and a
         // fixed day weeks behind it puts that on a date this test cannot name.
@@ -192,55 +199,49 @@ class QuickAddSemanticsTest {
 
         field().performTextInput(TIMED_TITLE)
 
-        rule.waitUntilExactlyOneExists(hasClickLabel(REMINDER_DISMISS), TIMEOUT_MILLIS)
-        rule.onNode(hasClickLabel(REMINDER_DISMISS)).assertIsDisplayed()
-        // The day still has its own line. The two facts are separate and the
-        // line never becomes the reminder's only description.
-        rule.onNodeWithText(SCHEDULED_FOR_TOMORROW).assertIsDisplayed()
+        rule.waitUntilExactlyOneExists(whenIsSet(), TIMEOUT_MILLIS)
+        rule.onNodeWithText("$SCHEDULED_FOR_TOMORROW at", substring = true).assertIsDisplayed()
     }
 
     @Test
-    fun aTime_isNamedByAChip_at100() = assertATimeIsNamedByAChip(FontScale100)
+    fun aTime_isNamedInWords_at100() = assertATimeIsNamedInWords(FontScale100)
 
     @Test
-    fun aTime_isNamedByAChip_at200() = assertATimeIsNamedByAChip(FontScale200)
+    fun aTime_isNamedInWords_at200() = assertATimeIsNamedInWords(FontScale200)
 
     /**
-     * Read as a button that removes the reminder, never as a checked control.
-     * Drawn selected, the input chip announced "checked", and a double-tap
-     * silently took the reminder away.
-     */
-    /**
-     * The chip keeps telling the truth while the sheet is open. Typed in the
+     * The line keeps telling the truth while the sheet is open. Typed in the
      * last seconds of 2:38, "at 2:38pm" is today's; once 2:39 starts the save
-     * would put it on tomorrow, so the chip has to say Tomorrow before anyone
-     * presses Save. It used to keep saying Today until the next keystroke.
+     * would put it on tomorrow, so the line has to say Tomorrow before anyone
+     * presses Add.
      */
     @Test
-    fun theReminderChipTurnsToTomorrowWhenItsMinuteEnds() {
+    fun theLineTurnsToTomorrowWhenItsMinuteEnds() {
         val today = LocalDate.now()
         var now = today.atTime(14, 38, 50)
         setSheet(FontScale100, today = today, clock = { now })
 
         field().performTextInput("Call mom at 2:38pm")
-        rule.onNodeWithText("Reminder Today at", substring = true).assertExists()
+        rule.onNodeWithText("Scheduled for Today at", substring = true).assertExists()
 
         now = today.atTime(14, 39, 1)
         rule.mainClock.advanceTimeBy(11_000)
 
-        rule.onNodeWithText("Reminder Tomorrow at", substring = true).assertExists()
+        rule.onNodeWithText("Scheduled for Tomorrow at", substring = true).assertExists()
     }
 
+    /** A button that opens the sheet, never a checked control. */
     @Test
-    fun theReminderChip_isAButtonNotAToggle() {
+    fun theWhenTool_isAButtonNotAToggle() {
         setSheet(FontScale100, today = LocalDate.now())
         field().performTextInput(TIMED_TITLE)
-        rule.waitUntilExactlyOneExists(hasClickLabel(REMINDER_DISMISS), TIMEOUT_MILLIS)
+        rule.waitUntilExactlyOneExists(whenIsSet(), TIMEOUT_MILLIS)
 
-        rule.onNode(hasClickLabel(REMINDER_DISMISS))
+        rule.onNode(whenIsSet())
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
             .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Selected))
             .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.ToggleableState))
+            .assertTouchTargetIsAtLeast48()
     }
 
     @Test
@@ -249,7 +250,7 @@ class QuickAddSemanticsTest {
         setSheet(FontScale100, onSave = { parsed -> saved += parsed })
 
         field().performTextInput(TIMED_TITLE)
-        rule.waitUntilExactlyOneExists(hasClickLabel(REMINDER_DISMISS), TIMEOUT_MILLIS)
+        rule.waitUntilExactlyOneExists(whenIsSet(), TIMEOUT_MILLIS)
         rule.onNodeWithText(SAVE).performClick()
 
         val captured = saved.single()
@@ -260,23 +261,22 @@ class QuickAddSemanticsTest {
     }
 
     /**
-     * **Dismissing has to drop the reminder and keep the day**, which is the
-     * asymmetry D-011 argues for: a wrong day is quiet and cheap and is
-     * corrected by typing, and a wrong reminder is a broken promise in either
-     * direction, so only the reminder gets a control.
+     * **Clearing drops the reminder and keeps the day**, D-011's asymmetry. With
+     * the chip gone (D-121) it is When's Clear that does it.
      */
     @Test
-    fun dismissingTheChip_dropsTheReminderAndKeepsTheDay() {
+    fun clearingInWhen_dropsTheReminderAndKeepsTheDay() {
         val saved = mutableListOf<CapturedTask>()
         setSheet(FontScale100, onSave = { parsed -> saved += parsed })
 
         field().performTextInput(TIMED_TITLE)
-        rule.waitUntilExactlyOneExists(hasClickLabel(REMINDER_DISMISS), TIMEOUT_MILLIS)
-        rule.onNode(hasClickLabel(REMINDER_DISMISS)).performClick()
+        rule.waitUntilExactlyOneExists(whenIsSet(), TIMEOUT_MILLIS)
+        whenTool().performClick()
+        rule.waitUntilExactlyOneExists(hasText(CLEAR), TIMEOUT_MILLIS)
+        rule.onNodeWithText(CLEAR).performClick()
 
-        // The chip goes with the reminder it named.
+        // The line names the day alone again.
         rule.waitUntilExactlyOneExists(hasText(SCHEDULED_FOR_TOMORROW), TIMEOUT_MILLIS)
-        rule.onAllNodes(hasClickLabel(REMINDER_DISMISS)).assertCountEquals(0)
 
         rule.onNodeWithText(SAVE).performClick()
 
@@ -287,55 +287,62 @@ class QuickAddSemanticsTest {
     }
 
     /**
-     * A dismissal cannot outlive the text it was about. Typing again is a new
+     * A clearing cannot outlive the text it was about. Typing again is a new
      * parse and a new promise, and suppressing it would withhold a reminder the
      * user never declined.
      */
     @Test
-    fun typingAgainAfterDismissing_bringsTheReminderBack() {
+    fun typingAgainAfterClearing_bringsTheReminderBack() {
         setSheet(FontScale100)
 
         field().performTextInput(TIMED_TITLE)
-        rule.waitUntilExactlyOneExists(hasClickLabel(REMINDER_DISMISS), TIMEOUT_MILLIS)
-        rule.onNode(hasClickLabel(REMINDER_DISMISS)).performClick()
+        rule.waitUntilExactlyOneExists(whenIsSet(), TIMEOUT_MILLIS)
+        whenTool().performClick()
+        rule.waitUntilExactlyOneExists(hasText(CLEAR), TIMEOUT_MILLIS)
+        rule.onNodeWithText(CLEAR).performClick()
         rule.waitUntilExactlyOneExists(hasText(SCHEDULED_FOR_TOMORROW), TIMEOUT_MILLIS)
 
-        // Retyping the same trailing time, which is a fresh promise.
+        // Retyping a trailing time, which is a fresh promise.
         field().performTextInput(" at 4pm")
 
-        rule.waitUntilExactlyOneExists(hasClickLabel(REMINDER_DISMISS), TIMEOUT_MILLIS)
+        rule.waitUntilExactlyOneExists(hasText("$SCHEDULED_FOR_TOMORROW at", substring = true), TIMEOUT_MILLIS)
     }
 
-    // --- D-112: the chip that writes into the field ----------------------------
+    // --- D-112 and D-121: When writes into the field ----------------------------------
 
-    /** The field's text, as typed or as the chip wrote it. */
+    /** The field's text, as typed or as a tool wrote it. */
     private fun fieldText(): String =
         field().fetchSemanticsNode().config[SemanticsProperties.EditableText].text
 
-    /** The chip, whichever state it is in, found by what a double-tap does. */
-    private fun addChip() = rule.onNode(hasClickLabel(REMINDER_ADD))
-    private fun changeChip() = rule.onNode(hasClickLabel(REMINDER_CHANGE))
-
     /**
-     * Always on the sheet, D-112, so Add no longer moves when a time is read.
-     * Live once there is a title, the same test Add uses.
+     * Always on the sheet, D-121, so Add never moves as tools are set. Live once
+     * there is a title, the same test Add uses; and the line under the field is
+     * the polite live region the chip used to be.
      */
-    private fun assertTheChipIsAlwaysThere(fontScale: Float) {
+    private fun assertTheToolsAreAlwaysThere(fontScale: Float) {
         setSheet(fontScale)
 
-        rule.onNodeWithText(REMINDER_ADD).assertIsDisplayed().assertIsNotEnabled()
+        for (tool in listOf(WHEN, REPEAT, CHECKLIST)) {
+            rule.onNode(hasContentDescription(tool) and hasClickAction()).assertIsDisplayed().assertIsNotEnabled()
+        }
 
         field().performTextInput(TITLE)
-        addChip().assertIsEnabled()
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
+        for (tool in listOf(WHEN, REPEAT, CHECKLIST)) {
+            rule.onNode(hasContentDescription(tool) and hasClickAction()).assertIsEnabled()
+                .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+        }
+        rule.waitUntilExactlyOneExists(hasText(SAVED_TO_TODAY), TIMEOUT_MILLIS)
+        assertTrue(
+            rule.onAllNodes(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
+                .fetchSemanticsNodes().isNotEmpty()
+        )
     }
 
     @Test
-    fun theChip_isAlwaysThere_at100() = assertTheChipIsAlwaysThere(FontScale100)
+    fun theTools_areAlwaysThere_at100() = assertTheToolsAreAlwaysThere(FontScale100)
 
     @Test
-    fun theChip_isAlwaysThere_at200() = assertTheChipIsAlwaysThere(FontScale200)
+    fun theTools_areAlwaysThere_at200() = assertTheToolsAreAlwaysThere(FontScale200)
 
     /** The Add button is where it was before the time was read. */
     private fun assertAddStaysPutWhenATimeIsRead(fontScale: Float) {
@@ -345,7 +352,7 @@ class QuickAddSemanticsTest {
         val before = rule.onNodeWithText(SAVE).getBoundsInRoot().top
 
         field().performTextInput(" at 3pm")
-        rule.waitUntilExactlyOneExists(hasClickLabel(REMINDER_DISMISS), TIMEOUT_MILLIS)
+        rule.waitUntilExactlyOneExists(whenIsSet(), TIMEOUT_MILLIS)
 
         assertEquals(before, rule.onNodeWithText(SAVE).getBoundsInRoot().top)
     }
@@ -357,28 +364,24 @@ class QuickAddSemanticsTest {
     fun add_staysPutWhenATimeIsRead_at200() = assertAddStaysPutWhenATimeIsRead(FontScale200)
 
     /**
-     * The whole of D-112 in one pass: the chip opens Task Details' reminder
-     * sheet, its Save writes the words into the field, the field reads them as
-     * a reminder, and Add saves that reminder. The sheet opens on the next whole
-     * hour, D-071, which at a quarter past nine is ten.
+     * When with no time chosen writes the day alone, D-121: the sheet opens on
+     * the day the task would land on, Save hands it back, the field reads it as
+     * a day with no reminder, and Add saves that. Focus comes back to the field.
      */
     @Test
-    fun theChip_writesTheChosenReminderIntoTheField() {
+    fun when_writesADayWithNoTimeIntoTheField() {
         val today = LocalDate.now()
         val saved = mutableListOf<CapturedTask>()
         setSheet(FontScale100, today = today, clock = { today.atTime(9, 15) }, onSave = { saved += it })
 
         field().performTextInput(TITLE)
-        addChip().performClick()
-        rule.waitUntilExactlyOneExists(hasText(SAVE_REMINDER), TIMEOUT_MILLIS)
+        whenTool().performClick()
+        rule.waitUntilExactlyOneExists(hasText(NO_TIME), TIMEOUT_MILLIS)
         rule.onNodeWithText(SAVE_REMINDER).performClick()
 
-        rule.waitUntilExactlyOneExists(hasClickLabel(REMINDER_CHANGE), TIMEOUT_MILLIS)
-        // "at 10am" or "at 10:00", as this phone writes times.
-        assertTrue(fieldText(), fieldText().startsWith("$TITLE at 10"))
-        rule.onNodeWithText("Reminder Today at", substring = true).assertExists()
+        rule.waitUntilExactlyOneExists(whenIsSet(), TIMEOUT_MILLIS)
+        assertEquals("$TITLE today", fieldText())
 
-        // Focus comes back to the field, with the cursor after the words.
         rule.waitUntil(TIMEOUT_MILLIS) {
             field().fetchSemanticsNode().config.getOrElse(SemanticsProperties.Focused) { false }
         }
@@ -389,22 +392,23 @@ class QuickAddSemanticsTest {
         rule.onNodeWithText(SAVE).performClick()
         val captured = saved.single()
         assertEquals(TITLE, captured.title)
-        assertEquals(today.atTime(10, 0), captured.reminderAt(today, today.atTime(9, 15)))
+        assertEquals(today, captured.date)
+        assertNull(captured.time)
     }
 
     /** Choosing again edits the day and time already there, not a second pair. */
     @Test
-    fun theChip_editsATypedReminderInPlace() {
+    fun when_editsATypedReminderInPlace() {
         val today = LocalDate.now()
         setSheet(FontScale100, today = today, clock = { today.atTime(9, 15) })
 
         field().performTextInput("$TITLE tomorrow at 3pm")
-        rule.waitUntilExactlyOneExists(hasClickLabel(REMINDER_CHANGE), TIMEOUT_MILLIS)
-        changeChip().performClick()
+        rule.waitUntilExactlyOneExists(whenIsSet(), TIMEOUT_MILLIS)
+        whenTool().performClick()
         rule.waitUntilExactlyOneExists(hasText(SAVE_REMINDER), TIMEOUT_MILLIS)
         rule.onNodeWithText(SAVE_REMINDER).performClick()
 
-        rule.waitUntilExactlyOneExists(hasClickLabel(REMINDER_CHANGE), TIMEOUT_MILLIS)
+        rule.waitUntilExactlyOneExists(whenIsSet(), TIMEOUT_MILLIS)
         // "tomorrow at 3pm" or "tomorrow at 15:00": one run, rewritten.
         assertTrue(fieldText(), fieldText().startsWith("$TITLE tomorrow at "))
         assertEquals(fieldText(), 1, Regex(" at ").findAll(fieldText()).count())
@@ -412,44 +416,30 @@ class QuickAddSemanticsTest {
 
     /** The field has no words for ringing like an alarm, so the switch is not offered. */
     @Test
-    fun theSheetFromQuickAdd_offersNoAlarmSwitch() {
+    fun whenFromQuickAdd_offersNoAlarmSwitch() {
         setSheet(FontScale100, today = LocalDate.now())
 
         field().performTextInput(TITLE)
-        addChip().performClick()
+        whenTool().performClick()
         rule.waitUntilExactlyOneExists(hasText(SAVE_REMINDER), TIMEOUT_MILLIS)
 
         rule.onAllNodesWithText(RING_LIKE_AN_ALARM).assertCountEquals(0)
     }
 
-    /** The sheet's Clear does what the chip's cross does: unmarks, keeps the words. */
+    /** When's Clear unmarks the time and keeps the words. */
     @Test
-    fun clearingInTheSheet_unmarksTheRunLikeTheCross() {
+    fun clearingInWhen_unmarksTheRun() {
         val today = LocalDate.now()
         setSheet(FontScale100, today = today, clock = { today.atTime(9, 15) })
 
         field().performTextInput("$TITLE at 3pm")
-        rule.waitUntilExactlyOneExists(hasClickLabel(REMINDER_CHANGE), TIMEOUT_MILLIS)
-        changeChip().performClick()
+        rule.waitUntilExactlyOneExists(whenIsSet(), TIMEOUT_MILLIS)
+        whenTool().performClick()
         rule.waitUntilExactlyOneExists(hasText(CLEAR), TIMEOUT_MILLIS)
         rule.onNodeWithText(CLEAR).performClick()
 
-        rule.waitUntilExactlyOneExists(hasClickLabel(REMINDER_ADD), TIMEOUT_MILLIS)
+        rule.waitUntil(TIMEOUT_MILLIS) { rule.onAllNodes(whenIsSet()).fetchSemanticsNodes().isEmpty() }
         assertEquals("$TITLE at 3pm", fieldText())
-    }
-
-    /** The chip changes the reminder; only the cross removes it. */
-    @Test
-    fun theChipChanges_andTheCrossRemoves() {
-        setSheet(FontScale100, today = LocalDate.now())
-
-        field().performTextInput(TIMED_TITLE)
-        rule.waitUntilExactlyOneExists(hasClickLabel(REMINDER_CHANGE), TIMEOUT_MILLIS)
-
-        changeChip()
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
-            .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Selected))
-        rule.onNode(hasClickLabel(REMINDER_DISMISS)).assertTouchTargetIsAtLeast48()
     }
 
     /** The example teaches a time, D-112, and still fits one line at 200%. */
@@ -488,7 +478,7 @@ class QuickAddSemanticsTest {
         field().performTextInput(TITLE)
 
         rule.waitUntilExactlyOneExists(hasText(SAVED_TO_TODAY), TIMEOUT_MILLIS)
-        rule.onAllNodes(hasClickLabel(REMINDER_DISMISS)).assertCountEquals(0)
+        rule.onAllNodes(whenIsSet()).assertCountEquals(0)
     }
 
     @Test
@@ -511,8 +501,8 @@ class QuickAddSemanticsTest {
         field().performTextInput("tomorrow at 3pm")
 
         rule.onNodeWithText(SAVE).assertIsEnabled()
-        rule.onAllNodes(hasClickLabel(REMINDER_DISMISS)).assertCountEquals(0)
-        rule.onAllNodesWithText(SCHEDULED_FOR_TOMORROW).assertCountEquals(0)
+        rule.onAllNodes(whenIsSet()).assertCountEquals(0)
+        rule.onAllNodesWithText(SCHEDULED_FOR_TOMORROW, substring = true).assertCountEquals(0)
     }
 
     // D-101: an hour Quick Add will not read, said before saving
@@ -528,7 +518,7 @@ class QuickAddSemanticsTest {
             .assertIsDisplayed()
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
         rule.onNodeWithText(SAVED_TO_TODAY).assertIsDisplayed()
-        rule.onAllNodes(hasClickLabel(REMINDER_DISMISS)).assertCountEquals(0)
+        rule.onAllNodes(whenIsSet()).assertCountEquals(0)
     }
 
     @Test
@@ -545,7 +535,7 @@ class QuickAddSemanticsTest {
 
         field().performTextInput(" pm")
 
-        rule.waitUntilExactlyOneExists(hasClickLabel(REMINDER_DISMISS), TIMEOUT_MILLIS)
+        rule.waitUntilExactlyOneExists(whenIsSet(), TIMEOUT_MILLIS)
         rule.onAllNodesWithText(NO_MERIDIEM).assertCountEquals(0)
     }
 
@@ -570,15 +560,14 @@ class QuickAddSemanticsTest {
         const val NO_MERIDIEM = "No reminder set. Add am or pm to the time."
 
         /**
-         * The chip is found by its dismiss action rather than by its label.
-         * The label names the time through the reader's own locale, so
-         * asserting it would fail on a device set to a 24-hour clock and would
-         * be testing `DateTimeFormatter` rather than this screen. What the chip
-         * promises is asserted through `onSave` instead, where it is a value.
+         * The tools, found by their names. What the When tool holds is read
+         * through the reader's own locale, so it is asserted as "When, " plus
+         * anything, and what it promises through `onSave`, where it is a value.
          */
-        const val REMINDER_DISMISS = "Remove reminder"
-        const val REMINDER_ADD = "Add reminder"
-        const val REMINDER_CHANGE = "Change reminder"
+        const val WHEN = "When"
+        const val REPEAT = "Repeat"
+        const val CHECKLIST = "Checklist"
+        const val NO_TIME = "No time"
         const val SAVE_REMINDER = "Save reminder"
         const val CLEAR = "Clear"
         const val RING_LIKE_AN_ALARM = "Ring like an alarm"

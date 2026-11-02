@@ -515,7 +515,7 @@ class TaskDetailsSemanticsTest {
     fun repeatOffersTheEditorTheBoardDraws() {
         setScreen(dao = withTask())
 
-        rule.onNodeWithText(REPEAT).performClick()
+        openRepeatRule(REPEAT)
         rule.waitUntilExactlyOneExists(hasText(EVERY), TIMEOUT_MILLIS)
 
         listOf(EVERY, DAYS, ENDS, SAVE_REPEAT).forEach { present ->
@@ -559,7 +559,7 @@ class TaskDetailsSemanticsTest {
     fun aMonthOffersTheDayAndTheWeekdayOfTheMonth() {
         val viewModel = setScreen(dao = withTask(recurrence = Recurrence(RecurrenceUnit.MONTHLY)))
 
-        rule.onNodeWithText(REPEAT_MONTHLY).performClick()
+        openRepeatRule(REPEAT_MONTHLY)
         rule.waitUntilExactlyOneExists(hasText(ON_DAY_2), TIMEOUT_MILLIS)
 
         rule.onNodeWithText(ON_DAY_2).assertIsSelected()
@@ -582,7 +582,7 @@ class TaskDetailsSemanticsTest {
         // Two days after TestToday, a Wednesday: a Friday.
         val viewModel = setScreen(dao = withTask(scheduledDate = TestToday.plusDays(2)))
 
-        rule.onNodeWithText(REPEAT).performClick()
+        openRepeatRule(REPEAT)
         rule.waitUntilExactlyOneExists(hasText(DAYS), TIMEOUT_MILLIS)
         rule.onNodeWithText(SAVE_REPEAT).performClick()
 
@@ -596,7 +596,7 @@ class TaskDetailsSemanticsTest {
     fun weekPreselectsTodayForAnUndatedTask() {
         val viewModel = setScreen(dao = withTask(scheduledDate = null))
 
-        rule.onNodeWithText(REPEAT).performClick()
+        openRepeatRule(REPEAT)
         rule.waitUntilExactlyOneExists(hasText(DAYS), TIMEOUT_MILLIS)
         rule.onNodeWithText(SAVE_REPEAT).performClick()
 
@@ -615,7 +615,7 @@ class TaskDetailsSemanticsTest {
     fun aWeekdayIsNotWrittenUntilSaveIsPressed() {
         val viewModel = setScreen(dao = withTask())
 
-        rule.onNodeWithText(REPEAT).performClick()
+        openRepeatRule(REPEAT)
         rule.waitUntilExactlyOneExists(hasText(DAYS), TIMEOUT_MILLIS)
         rule.onNodeWithContentDescription(WEDNESDAY).performClick()
 
@@ -642,7 +642,7 @@ class TaskDetailsSemanticsTest {
     fun theLastWeekdayCannotBeDeselected() {
         val viewModel = setScreen(dao = withTask())
 
-        rule.onNodeWithText(REPEAT).performClick()
+        openRepeatRule(REPEAT)
         rule.waitUntilExactlyOneExists(hasText(DAYS), TIMEOUT_MILLIS)
 
         rule.onNodeWithContentDescription(WEDNESDAY).performClick()
@@ -666,16 +666,55 @@ class TaskDetailsSemanticsTest {
             dao = withTask(recurrence = Recurrence(RecurrenceUnit.WEEKLY))
         )
 
-        rule.onNodeWithText(REPEAT).performClick()
+        openRepeatRule(REPEAT)
         rule.waitUntilExactlyOneExists(hasText(EVERY), TIMEOUT_MILLIS)
         rule.onAllNodes(clearRepeatAction).assertCountEquals(1)
 
         rule.onAllNodes(clearRepeatAction).onFirst().performClick()
         awaitTask(viewModel) { task -> task.recurrence == null }
 
-        rule.onNodeWithText(REPEAT).performClick()
+        openRepeatRule(REPEAT)
         rule.waitUntilExactlyOneExists(hasText(EVERY), TIMEOUT_MILLIS)
         rule.onAllNodes(clearRepeatAction).assertCountEquals(0)
+    }
+
+    /**
+     * The Repeat sheet's rule, reached since D-121 through Custom: the sheet
+     * opens on the common rules, and the rule these tests build is behind them.
+     */
+    private fun openRepeatRule(row: String = REPEAT) {
+        rule.onNodeWithText(row).performClick()
+        rule.waitUntilExactlyOneExists(hasText(CUSTOM), TIMEOUT_MILLIS)
+        rule.onNodeWithText(CUSTOM).performScrollTo().performClick()
+    }
+
+    /** D-121: the sheet opens on the common rules, and one tap sets one. */
+    @Test
+    fun repeatOpensOnTheCommonRules() {
+        val viewModel = setScreen(dao = withTask())
+
+        rule.onNodeWithText(REPEAT).performClick()
+        rule.waitUntilExactlyOneExists(hasText(DAILY), TIMEOUT_MILLIS)
+        rule.onNodeWithText(DAILY).performClick()
+
+        awaitTask(viewModel) { task -> task.recurrence == Recurrence(RecurrenceUnit.DAILY) }
+    }
+
+    /**
+     * **A repeating task always has a day**, D-121. Set on an undated task, a
+     * repeat gives it the rule's first day; undated, the series would never run.
+     */
+    @Test
+    fun aRepeatSetOnAnUndatedTaskGivesItADay() {
+        val viewModel = setScreen(dao = withTask(scheduledDate = null))
+
+        rule.onNodeWithText(REPEAT).performClick()
+        rule.waitUntilExactlyOneExists(hasText(DAILY), TIMEOUT_MILLIS)
+        rule.onNodeWithText(DAILY).performClick()
+
+        awaitTask(viewModel) { task ->
+            task.recurrence == Recurrence(RecurrenceUnit.DAILY) && task.scheduledDate == TestToday
+        }
     }
 
     /**
@@ -1067,6 +1106,8 @@ class TaskDetailsSemanticsTest {
         const val REMINDER = "Reminder"
         const val DURATION = "Duration"
         const val REPEAT = "Repeat"
+        const val CUSTOM = "Custom"
+        const val DAILY = "Daily"
 
         const val TODAY = "Today"
         const val TOMORROW = "Tomorrow"

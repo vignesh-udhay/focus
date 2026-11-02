@@ -1,5 +1,6 @@
 package app.tellcat.ui.task
 
+import java.time.DayOfWeek
 import androidx.lifecycle.SavedStateHandle
 import app.tellcat.MainDispatcherRule
 import app.tellcat.core.notification.FocusAlarms
@@ -760,6 +761,49 @@ class TaskListViewModelTest {
         assertEquals(PrimaryList.UPCOMING, model.capture(parse("Find a dentist tomorrow"), fallbackDate = null, now = morning()))
 
         assertTrue(awaitInserts(2).all { it.toDomain().scheduledDate == tomorrow })
+    }
+
+    // --- D-121: what Quick Add's tools hold ------------------------------------
+
+    @Test
+    fun aRepeatAndAChecklistAreSavedWithTheCapture() {
+        viewModel().capture(
+            parse("Groceries"),
+            fallbackDate = today,
+            now = morning(),
+            recurrence = Recurrence(RecurrenceUnit.WEEKLY, weekdays = setOf(DayOfWeek.MONDAY)),
+            checklist = listOf("Milk", "Eggs", "Bread")
+        )
+
+        val stored = awaitInsert().toDomain()
+        assertEquals(Recurrence(RecurrenceUnit.WEEKLY, weekdays = setOf(DayOfWeek.MONDAY)), stored.recurrence)
+        assertEquals(listOf("Milk", "Eggs", "Bread"), stored.checklist.map { it.text })
+        assertTrue(stored.checklist.none { it.done })
+        assertEquals(today, stored.scheduledDate)
+    }
+
+    /**
+     * **A repeating task always has a day**, even if the sheet wrote none: from
+     * Inbox, a weekly Thursday rule lands on the first Thursday, not undated.
+     */
+    @Test
+    fun aRepeatCapturedWithNoDayGetsItsFirstDay() {
+        val landed = viewModel().capture(
+            parse("Water the plants"),
+            fallbackDate = null,
+            now = morning(),
+            recurrence = Recurrence(RecurrenceUnit.WEEKLY, weekdays = setOf(DayOfWeek.THURSDAY))
+        )
+
+        // The 31st is a Monday; the first Thursday is the 3rd.
+        assertEquals(today.plusDays(3), awaitInsert().toDomain().scheduledDate)
+        assertEquals(PrimaryList.UPCOMING, landed)
+    }
+
+    @Test
+    fun aCaptureWithoutARepeatFromInboxStaysUndated() {
+        viewModel().capture(parse("Find a dentist"), fallbackDate = null, now = morning(), checklist = listOf("Ask Sam"))
+        assertNull(awaitInsert().toDomain().scheduledDate)
     }
 
     /** D-069's offset lands where the arithmetic does. */

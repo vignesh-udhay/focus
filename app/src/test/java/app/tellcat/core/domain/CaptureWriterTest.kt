@@ -265,4 +265,48 @@ class CaptureWriterTest {
             assertReadsBack("Gym at $time", "Gym", today.atTime(9, 0), today.atTime(8, 0))
         }
     }
+
+    // --- D-121: a day with no time, from When and from Repeat ---------------------
+
+    /** Asserts [text] reads back as [title] on [day], with no reminder. */
+    private fun assertReadsBackAsDay(text: String, title: String, day: LocalDate) {
+        val read = splitTrailingCapture(text, today)
+        assertEquals(text, title, read.title)
+        assertEquals(text, day, read.date)
+        assertEquals(text, false, read.hasReminder)
+    }
+
+    @Test
+    fun everyDayOfTheComingYearIsWrittenAndReadBack() {
+        for (offset in 0L..366L) {
+            val day = today.plusDays(offset)
+            for (dayFirst in listOf(true, false)) {
+                val written = writeDay("Pay rent", null, day, today, dayFirst)
+                assertNotNull("$day", written)
+                assertReadsBackAsDay(written!!.text, "Pay rent", day)
+            }
+        }
+    }
+
+    @Test
+    fun todayIsWrittenAsToday() {
+        assertEquals("Water the plants today", writeDay("Water the plants", null, today, today, true)?.text)
+    }
+
+    @Test
+    fun aWeekdayInTheComingWeekIsWrittenByName() {
+        assertEquals("Pay rent on Wednesday", writeDay("Pay rent", null, today.plusDays(5), today, true)?.text)
+    }
+
+    @Test
+    fun aMarkedDayIsReplacedNotRepeated() {
+        val text = "Pay rent tomorrow"
+        val written = writeDay(text, splitTrailingCapture(text, today).markRange, today.plusDays(5), today, true)
+        assertEquals("Pay rent on Wednesday", written?.text)
+    }
+
+    @Test
+    fun aDayIsNeverWrittenIntoAnEmptyTitle() {
+        assertNull(writeDay("   ", null, today.plusDays(1), today, true))
+    }
 }

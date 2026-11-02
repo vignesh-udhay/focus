@@ -1,6 +1,7 @@
 package app.tellcat.ui.semantics
 
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.waitUntilExactlyOneExists
@@ -47,7 +48,7 @@ class QuickAddCaptureTest {
                 today = today,
                 fallbackDate = fallbackDate,
                 onDismiss = {},
-                onSave = onSave
+                onSave = { onSave(it.parsed) }
             )
         }
 
@@ -115,7 +116,9 @@ class QuickAddCaptureTest {
 
         type("Call mom in 2 hours")
 
-        rule.onNodeWithText("Reminder", substring = true).assertExists()
+        // Since D-121 the When tool carries the reminder, and the line under the
+        // field says the day and the time in words.
+        rule.onNode(hasContentDescription("When, ", substring = true)).assertExists()
         rule.onNodeWithText("Scheduled for", substring = true).assertExists()
         rule.onNodeWithText("Saved to Inbox").assertDoesNotExist()
     }
