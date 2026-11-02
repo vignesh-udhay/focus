@@ -20,7 +20,6 @@ import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onParent
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.waitUntilExactlyOneExists
@@ -522,14 +521,12 @@ class QuickAddSemanticsTest {
 
         field().performTextInput("Call mom at six")
 
-        // In the destination's place, D-101 as amended, and announced as it
-        // appears: the line it stands in is the polite live region.
+        // Under the destination, not instead of it, and announced as it appears.
         rule.waitUntilExactlyOneExists(hasText(NO_MERIDIEM), TIMEOUT_MILLIS)
-        rule.onNodeWithText(NO_MERIDIEM).assertIsDisplayed()
-        rule.onNodeWithText(NO_MERIDIEM, useUnmergedTree = true)
-            .onParent()
+        rule.onNodeWithText(NO_MERIDIEM)
+            .assertIsDisplayed()
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
-        rule.onAllNodesWithText(SAVED_TO_TODAY).assertCountEquals(0)
+        rule.onNodeWithText(SAVED_TO_TODAY).assertIsDisplayed()
         rule.onAllNodes(whenIsSet()).assertCountEquals(0)
     }
 
@@ -552,28 +549,35 @@ class QuickAddSemanticsTest {
     }
 
     /**
-     * Typing "at 6pm" passes through "at 6". The line waits for the typing to
-     * stop, and when it shows it takes the destination's place, so nothing on
-     * the sheet moves. The owner's trial, 2026-11-02: it used to jump.
+     * Typing "at 6pm" passes through "at 6", so the line comes and goes as a
+     * time is typed. Its room is kept, D-101 as amended, and nothing on the
+     * sheet moves when it shows or goes. The owner's trial, 2026-11-02: it used
+     * to jump.
      */
-    @Test
-    fun theLineWaitsForAPauseAndMovesNothing() {
-        setSheet(FontScale100)
+    private fun assertTheLinesRoomIsKept(fontScale: Float) {
+        setSheet(fontScale)
         field().performTextInput("Call mom")
         rule.waitUntilExactlyOneExists(hasText(SAVED_TO_TODAY), TIMEOUT_MILLIS)
+        rule.onAllNodesWithText(NO_MERIDIEM).assertCountEquals(0)
         val addTop = rule.onNodeWithText(SAVE).fetchSemanticsNode().boundsInRoot.top
 
-        rule.mainClock.autoAdvance = false
         field().performTextInput(" at six")
-        rule.mainClock.advanceTimeBy(300)
-        rule.onAllNodesWithText(NO_MERIDIEM).assertCountEquals(0)
-        rule.onNodeWithText(SAVED_TO_TODAY).assertIsDisplayed()
-
-        rule.mainClock.advanceTimeBy(1_000)
-        rule.onNodeWithText(NO_MERIDIEM).assertIsDisplayed()
+        rule.waitUntilExactlyOneExists(hasText(NO_MERIDIEM), TIMEOUT_MILLIS)
         assertEquals(addTop, rule.onNodeWithText(SAVE).fetchSemanticsNode().boundsInRoot.top)
-        rule.mainClock.autoAdvance = true
+
+        // Gone again, and still out of a screen reader's way while its room
+        // is kept. Add is not measured here: the line above now names the time
+        // as well, which may wrap at 200%, and that is the time being set.
+        field().performTextInput(" pm")
+        rule.waitUntilExactlyOneExists(whenIsSet(), TIMEOUT_MILLIS)
+        rule.onAllNodesWithText(NO_MERIDIEM).assertCountEquals(0)
     }
+
+    @Test
+    fun theLinesRoomIsKept_at100() = assertTheLinesRoomIsKept(FontScale100)
+
+    @Test
+    fun theLinesRoomIsKept_at200() = assertTheLinesRoomIsKept(FontScale200)
 
     @Test
     fun aNumberThatIsNotAnHour_saysNothingAboutReminders() {

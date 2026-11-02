@@ -849,7 +849,9 @@ guess, and the sheet used to say only "Saved to Today", as if the time had been
 taken. Under the destination it now says "No reminder set. Add am or pm to the
 time." in the same supporting style, never the error colour, and as a polite
 live region so TalkBack says it when it appears. Only after "at" and only when
-no reminder was read, so it never sits under the Reminder chip.
+no reminder was read, so it never sits under the Reminder chip. Its room is
+kept, D-101 as amended: the line is always laid out and drawn only when it has
+something to say, so the sheet does not move as "at 6pm" passes through "at 6".
 
 [CD] The placeholder is an example of exactly that, and it is there to teach
 it. Since D-112 it teaches a time as well, `Try "Call Sam tomorrow at 9am"`,

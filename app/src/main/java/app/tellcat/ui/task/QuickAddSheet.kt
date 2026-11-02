@@ -40,6 +40,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.semantics.heading
@@ -233,19 +234,6 @@ fun QuickAddSheet(
     }
     val hasTitle = parsed.title.isNotBlank()
 
-    // **D-101's line waits for a pause**, D-101 as amended. Typing "at 6pm"
-    // passes through "at 6", and the line came and went under the user's
-    // fingers. It shows once the typing stops on an hour with no am or pm.
-    val endsBare = !parsed.hasReminder && endsInBareHour(parsed.title)
-    var noMeridiemShown by remember { mutableStateOf(false) }
-    LaunchedEffect(title.text, endsBare) {
-        noMeridiemShown = false
-        if (endsBare) {
-            delay(NoMeridiemPause)
-            noMeridiemShown = true
-        }
-    }
-
     fun save() {
         if (!hasTitle) return
         val checklist = if (checklistOn) items.map(String::trim).filter(String::isNotEmpty) else emptyList()
@@ -396,7 +384,7 @@ fun QuickAddSheet(
                                 recurrence = recurrence,
                                 // D-101: "at six" is refused, D-070, and used to
                                 // save without a word.
-                                noMeridiem = noMeridiemShown
+                                noMeridiem = !parsed.hasReminder && endsInBareHour(parsed.title)
                             )
                         }
                     },
@@ -745,9 +733,6 @@ private fun WhenTool(
     }
 }
 
-/** How long the typing stops before D-101's line says an hour has no am or pm. */
-private const val NoMeridiemPause = 1_000L
-
 /** Beyond this the When value would crowd Add off the row at 360dp. */
 private const val WhenValueMaxFontScale = 1.3f
 
@@ -962,14 +947,6 @@ private fun QuickAddSupportingText(
     Column(modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) {
         Text(
             text = when {
-                // **What did not happen, and how to make it.** D-101. An hour with
-                // no am or pm is refused rather than guessed, D-070. In this line's
-                // place rather than under it, D-101 as amended: a line added and
-                // taken away moved everything above it. Not the error colour,
-                // which the design system keeps for destroying actions: nothing
-                // is wrong with the task.
-                noMeridiem -> stringResource(R.string.quick_add_no_meridiem)
-
                 // The day and the time together, now that no chip names the
                 // reminder. D-121.
                 at != null -> stringResource(
@@ -1000,6 +977,32 @@ private fun QuickAddSupportingText(
         recurrence?.let { rule ->
             Text(text = recurrenceSummary(rule, today, RecurrenceStyle.Sentence))
         }
+
+        // **What did not happen, and how to make it.** D-101. An hour with no am or
+        // pm is refused rather than guessed, D-070, and the destination line alone
+        // read as if the time had been taken. Below it rather than instead of it,
+        // because where the task goes is still true.
+        //
+        // **Its room is kept**, D-101 as amended. Typing "at 6pm" passes through
+        // "at 6", and a line that came at "6" and went at "6p" moved the field,
+        // the tools and Add each time. So the line is always laid out, and only
+        // drawn when it has something to say: the space it holds is its own
+        // height at every font scale, so nothing moves when it shows.
+        //
+        // Hidden, it is out of the semantics tree. Shown, a polite live region,
+        // so TalkBack says it when it appears rather than only when the user
+        // goes looking. Not the error colour, which the design system keeps for
+        // destroying actions: nothing is wrong with the task.
+        Text(
+            text = stringResource(R.string.quick_add_no_meridiem),
+            modifier = if (noMeridiem) {
+                Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+            } else {
+                Modifier
+                    .alpha(0f)
+                    .clearAndSetSemantics {}
+            }
+        )
     }
 }
 
