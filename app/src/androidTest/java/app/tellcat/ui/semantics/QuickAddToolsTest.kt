@@ -270,6 +270,7 @@ class QuickAddToolsTest {
         rule.waitUntilExactlyOneExists(hasText(NO_TIME), TIMEOUT_MILLIS)
         rule.onNodeWithText(SAVE_WHEN).performClick()
         rule.waitUntil(TIMEOUT_MILLIS) { fieldText() == " today" }
+        rule.waitUntilStill(hasText(SAVE))
 
         tool(WHEN).performClick()
         rule.waitUntilExactlyOneExists(hasText(CLEAR), TIMEOUT_MILLIS)

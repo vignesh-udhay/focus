@@ -6298,6 +6298,20 @@ reminders under "Buy 6 eggs" would teach users to ignore the line.
 line, which would argue for a one-tap "6 am / 6 pm" choice on the sheet. That
 is a second control, and a decision of its own.
 
+**Amended 2026-11-02, after the owner's trial of D-121: the line waits for a
+pause and takes the destination's place.** The owner found the sheet jumping
+as they typed. Typing "at 6pm" passes through "at 6", so the line appeared at
+"6", went at "6p", and the line above it changed again at "6pm": a line added
+and taken away moves the field, the tools and Add with it. Two changes. The
+line shows once the typing has stopped for a second on a bare hour, so a time
+typed straight through never raises it; and it stands in the destination's
+line rather than under it, so when it does show nothing moves. What is given
+up: while it shows, the line no longer says where the task goes. That is the
+lesser loss. The hint lasts only until am or pm is typed, and then the line
+says the day and the time, which includes the destination. At 200% the hint
+can wrap to two lines where the destination took one, so a large-text user
+can still see a shift there. The refusal itself, D-070, is unchanged.
+
 ## D-102. A reminder can ring like an alarm
 
 **Decision.** Each reminder gets a "Ring like an alarm" switch in its editor,

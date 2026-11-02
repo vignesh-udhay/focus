@@ -20,6 +20,7 @@ import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onParent
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.waitUntilExactlyOneExists
@@ -277,6 +278,7 @@ class QuickAddSemanticsTest {
 
         // The line names the day alone again.
         rule.waitUntilExactlyOneExists(hasText(SCHEDULED_FOR_TOMORROW), TIMEOUT_MILLIS)
+        rule.waitUntilStill(hasText(SAVE))
 
         rule.onNodeWithText(SAVE).performClick()
 
@@ -302,6 +304,7 @@ class QuickAddSemanticsTest {
         rule.waitUntilExactlyOneExists(hasText(CLEAR), TIMEOUT_MILLIS)
         rule.onNodeWithText(CLEAR).performClick()
         rule.waitUntilExactlyOneExists(hasText(SCHEDULED_FOR_TOMORROW), TIMEOUT_MILLIS)
+        rule.waitUntilStill(hasText(SAVE))
 
         // Retyping a trailing time, which is a fresh promise. Which day it rings
         // on depends on the hour the test runs; that it rings is the point.
@@ -519,12 +522,14 @@ class QuickAddSemanticsTest {
 
         field().performTextInput("Call mom at six")
 
-        // Under the destination, not instead of it, and announced as it appears.
+        // In the destination's place, D-101 as amended, and announced as it
+        // appears: the line it stands in is the polite live region.
         rule.waitUntilExactlyOneExists(hasText(NO_MERIDIEM), TIMEOUT_MILLIS)
-        rule.onNodeWithText(NO_MERIDIEM)
-            .assertIsDisplayed()
+        rule.onNodeWithText(NO_MERIDIEM).assertIsDisplayed()
+        rule.onNodeWithText(NO_MERIDIEM, useUnmergedTree = true)
+            .onParent()
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
-        rule.onNodeWithText(SAVED_TO_TODAY).assertIsDisplayed()
+        rule.onAllNodesWithText(SAVED_TO_TODAY).assertCountEquals(0)
         rule.onAllNodes(whenIsSet()).assertCountEquals(0)
     }
 
@@ -544,6 +549,30 @@ class QuickAddSemanticsTest {
 
         rule.waitUntilExactlyOneExists(whenIsSet(), TIMEOUT_MILLIS)
         rule.onAllNodesWithText(NO_MERIDIEM).assertCountEquals(0)
+    }
+
+    /**
+     * Typing "at 6pm" passes through "at 6". The line waits for the typing to
+     * stop, and when it shows it takes the destination's place, so nothing on
+     * the sheet moves. The owner's trial, 2026-11-02: it used to jump.
+     */
+    @Test
+    fun theLineWaitsForAPauseAndMovesNothing() {
+        setSheet(FontScale100)
+        field().performTextInput("Call mom")
+        rule.waitUntilExactlyOneExists(hasText(SAVED_TO_TODAY), TIMEOUT_MILLIS)
+        val addTop = rule.onNodeWithText(SAVE).fetchSemanticsNode().boundsInRoot.top
+
+        rule.mainClock.autoAdvance = false
+        field().performTextInput(" at six")
+        rule.mainClock.advanceTimeBy(300)
+        rule.onAllNodesWithText(NO_MERIDIEM).assertCountEquals(0)
+        rule.onNodeWithText(SAVED_TO_TODAY).assertIsDisplayed()
+
+        rule.mainClock.advanceTimeBy(1_000)
+        rule.onNodeWithText(NO_MERIDIEM).assertIsDisplayed()
+        assertEquals(addTop, rule.onNodeWithText(SAVE).fetchSemanticsNode().boundsInRoot.top)
+        rule.mainClock.autoAdvance = true
     }
 
     @Test

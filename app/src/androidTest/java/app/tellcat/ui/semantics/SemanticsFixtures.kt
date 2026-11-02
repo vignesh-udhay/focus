@@ -1,5 +1,6 @@
 package app.tellcat.ui.semantics
 
+import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.content.res.Resources
@@ -72,6 +73,31 @@ internal const val FontScale200 = 2f
  * fallback schemes are the ones the design was measured against, and a test
  * should not depend on the wallpaper the emulator happens to have.
  */
+/**
+ * Waits until the node [matcher] finds has held still for [stillMillis].
+ *
+ * A sheet that closes gives the keyboard back, and Quick Add slides up with it
+ * over a few hundred milliseconds that Compose's clock does not count. A tap
+ * aimed in that time lands where the control was, and misses.
+ */
+internal fun ComposeContentTestRule.waitUntilStill(
+    matcher: SemanticsMatcher,
+    stillMillis: Long = 300L,
+    timeoutMillis: Long = 5_000L
+) {
+    var last: androidx.compose.ui.geometry.Rect? = null
+    var stillSince = 0L
+    waitUntil(timeoutMillis) {
+        val bounds = onNode(matcher).fetchSemanticsNode().boundsInRoot
+        val now = System.currentTimeMillis()
+        if (bounds != last) {
+            last = bounds
+            stillSince = now
+        }
+        now - stillSince >= stillMillis
+    }
+}
+
 /** Sets [scale] on these resources and returns the scale they had. */
 @Suppress("DEPRECATION") // The one way to change an activity's scale after it is created.
 private fun Resources.withFontScale(scale: Float): Float {
@@ -87,6 +113,9 @@ internal fun ComposeContentTestRule.setTellcatContent(
 ) {
     setContent {
         val base = LocalDensity.current
+        // The activity's own resources, on purpose: they are what a sheet's
+        // window reads, and the scale is set on them, not read from them.
+        @SuppressLint("LocalContextResourcesRead")
         val resources = LocalContext.current.resources
 
         // Before the content composes, so a sheet opened on the first frame
