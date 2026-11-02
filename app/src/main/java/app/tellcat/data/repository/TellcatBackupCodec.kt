@@ -18,6 +18,7 @@ import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.MonthDay
 
 /** A fully parsed backup. Parsing finishes before restore changes local data. */
 data class TellcatBackup(
@@ -168,6 +169,8 @@ object TellcatBackupCodec {
         // D-116. Absent from older backups, which read as on the day of the month.
         writer.name("recurrenceMonthlyOrdinal").nullableValue(task.recurrenceMonthlyOrdinal)
         writer.name("recurrenceMonthlyWeekday").nullableValue(task.recurrenceMonthlyWeekday)
+        // D-122. Absent from older backups, whose series count from their own day.
+        writer.name("recurrenceAnchor").nullableValue(task.recurrenceAnchor?.toString())
         writer.name("occurrenceNumber").value(task.occurrenceNumber.toLong())
         writer.name("spawnedFromId").nullableValue(task.spawnedFromId)
         writer.name("completedAt").nullableValue(task.completedAt?.toString())
@@ -201,6 +204,7 @@ object TellcatBackupCodec {
         var recurrenceEndCount: Int? = null
         var recurrenceMonthlyOrdinal: Int? = null
         var recurrenceMonthlyWeekday: String? = null
+        var recurrenceAnchor: MonthDay? = null
         var occurrenceNumber: Int? = null
         var spawnedFromId: String? = null
         var completedAt: Instant? = null
@@ -232,6 +236,8 @@ object TellcatBackupCodec {
                 "recurrenceEndCount" -> recurrenceEndCount = reader.nextNullableInt()
                 "recurrenceMonthlyOrdinal" -> recurrenceMonthlyOrdinal = reader.nextNullableInt()
                 "recurrenceMonthlyWeekday" -> recurrenceMonthlyWeekday = reader.nextNullableString()
+                "recurrenceAnchor" -> recurrenceAnchor =
+                    reader.nextNullableString()?.let { runCatching { MonthDay.parse(it) }.getOrNull() }
                 "occurrenceNumber" -> occurrenceNumber = reader.nextInt()
                 "spawnedFromId" -> spawnedFromId = reader.nextNullableString()
                 "completedAt" -> completedAt = reader.nextNullableString()?.let(Instant::parse)
@@ -277,7 +283,8 @@ object TellcatBackupCodec {
             ringsLikeAlarm = ringsLikeAlarm,
             earlyReminderMinutes = earlyReminderMinutes,
             recurrenceMonthlyOrdinal = recurrenceMonthlyOrdinal,
-            recurrenceMonthlyWeekday = recurrenceMonthlyWeekday
+            recurrenceMonthlyWeekday = recurrenceMonthlyWeekday,
+            recurrenceAnchor = recurrenceAnchor
         )
     }
 

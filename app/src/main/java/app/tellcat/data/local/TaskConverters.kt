@@ -7,6 +7,7 @@ import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.MonthDay
 
 /**
  * Storage encoding for the types Room cannot persist directly.
@@ -138,6 +139,14 @@ object TaskConverters {
      * is dropped. The same bargain as every converter here: an item losing its
      * tick is recoverable, and a task list that cannot be read is not.
      */
+    /** D-122: a series' day, "--12-31". A value that does not parse reads as none. */
+    @TypeConverter
+    fun monthDayToText(value: MonthDay?): String? = value?.toString()
+
+    @TypeConverter
+    fun textToMonthDay(value: String?): MonthDay? =
+        value?.let { runCatching { MonthDay.parse(it) }.getOrNull() }
+
     @TypeConverter
     fun linesToChecklist(value: String?): List<ChecklistItem>? =
         value?.lines()?.mapNotNull { line ->

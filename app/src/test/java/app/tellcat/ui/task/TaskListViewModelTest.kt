@@ -44,6 +44,7 @@ import org.junit.Test
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.MonthDay
 import java.time.ZoneId
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
@@ -4475,6 +4476,64 @@ class TaskListViewModelTest {
         )
 
         assertEquals(Recurrence(RecurrenceUnit.WEEKLY), awaitUpdate().toDomain().recurrence)
+    }
+
+    // --- D-122: the day a series keeps -----------------------------------------------------
+
+    /** A rule chosen counts from the day the task is on. */
+    @Test
+    fun aNewRuleOnADateKeepsTheTasksDay() {
+        store(task("rent", scheduledDate = today))
+        val model = viewModel()
+        visible(model, 1)
+
+        model.edit("rent", scheduledDate = today, recurrence = Recurrence(RecurrenceUnit.MONTHLY))
+
+        assertEquals(MonthDay.from(today), awaitUpdate().toDomain().recurrenceAnchor)
+    }
+
+    /** Moving one occurrence by hand changes no rule, so the series keeps its day. */
+    @Test
+    fun movingAnOccurrenceKeepsTheSeriesDay() {
+        store(
+            task("rent", scheduledDate = today, recurrence = Recurrence(RecurrenceUnit.MONTHLY))
+                .copy(recurrenceAnchor = MonthDay.of(12, 31))
+        )
+        val model = viewModel()
+        visible(model, 1)
+
+        model.edit("rent", scheduledDate = today.plusDays(2))
+
+        val stored = awaitUpdate().toDomain()
+        assertEquals(today.plusDays(2), stored.scheduledDate)
+        assertEquals(MonthDay.of(12, 31), stored.recurrenceAnchor)
+    }
+
+    /** A different rule is a new series: it counts from the task's day again. */
+    @Test
+    fun aDifferentRuleResetsTheSeriesDay() {
+        store(
+            task("rent", scheduledDate = today, recurrence = Recurrence(RecurrenceUnit.MONTHLY))
+                .copy(recurrenceAnchor = MonthDay.of(12, 31))
+        )
+        val model = viewModel()
+        visible(model, 1)
+
+        model.edit("rent", recurrence = Recurrence(RecurrenceUnit.MONTHLY, interval = 2))
+
+        assertEquals(MonthDay.from(today), awaitUpdate().toDomain().recurrenceAnchor)
+    }
+
+    /** A rule that does not fall on a date keeps no day. */
+    @Test
+    fun aWeeklyRuleKeepsNoDay() {
+        store(task("chore", scheduledDate = today))
+        val model = viewModel()
+        visible(model, 1)
+
+        model.edit("chore", recurrence = Recurrence(RecurrenceUnit.WEEKLY))
+
+        assertNull(awaitUpdate().toDomain().recurrenceAnchor)
     }
 
     // Rescheduling

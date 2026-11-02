@@ -41,7 +41,9 @@ fun Task.withRepeatDay(today: LocalDate): Task {
     val rule = recurrence ?: return this
     if (scheduledDate != null) return this
     val from = reminderAt?.toLocalDate()?.let { maxOf(it, today) } ?: today
-    return copy(scheduledDate = rule.firstOccurrenceFrom(from))
+    val first = rule.firstOccurrenceFrom(from)
+    // And the day the series keeps, D-122, from the day it starts.
+    return copy(scheduledDate = first, recurrenceAnchor = recurrenceAnchor ?: rule.anchorFor(first))
 }
 
 /**

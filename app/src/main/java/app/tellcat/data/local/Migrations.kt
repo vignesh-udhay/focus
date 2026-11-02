@@ -297,6 +297,22 @@ val MIGRATION_15_16 = Migration(15, 16) { database ->
     database.execSQL("ALTER TABLE tasks ADD COLUMN recurrenceMonthlyWeekday TEXT")
 }
 
+/**
+ * D-122: the day a rule on a date keeps across its series. Set from each such
+ * task's own scheduled day, which is the best the data holds: a series that
+ * already slid, from the 31st to the 28th, keeps the 28th, because nothing
+ * stored says it was ever the 31st. Daily, weekly and weekday-of-the-month
+ * rules keep nothing and stay null.
+ */
+val MIGRATION_16_17 = Migration(16, 17) { database ->
+    database.execSQL("ALTER TABLE tasks ADD COLUMN recurrenceAnchor TEXT")
+    database.execSQL(
+        "UPDATE tasks SET recurrenceAnchor = '--' || strftime('%m-%d', scheduledDate * 86400, 'unixepoch') " +
+            "WHERE scheduledDate IS NOT NULL AND (recurrence = 'YEARLY' OR " +
+            "(recurrence = 'MONTHLY' AND recurrenceMonthlyOrdinal IS NULL))"
+    )
+}
+
 /** Every migration, in order, for the builder and the migration test. */
 val TellcatMigrations = arrayOf(
     MIGRATION_1_2,
@@ -313,5 +329,6 @@ val TellcatMigrations = arrayOf(
     MIGRATION_12_13,
     MIGRATION_13_14,
     MIGRATION_14_15,
-    MIGRATION_15_16
+    MIGRATION_15_16,
+    MIGRATION_16_17
 )

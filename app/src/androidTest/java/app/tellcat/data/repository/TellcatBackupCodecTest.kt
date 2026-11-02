@@ -12,6 +12,7 @@ import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.MonthDay
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -94,6 +95,37 @@ class TellcatBackupCodecTest {
         val fromOlder = TellcatBackupCodec.read(ByteArrayInputStream(older.toByteArray())).tasks.single()
         assertNull(fromOlder.recurrenceMonthlyOrdinal)
         assertNull(fromOlder.recurrenceMonthlyWeekday)
+    }
+
+    /**
+     * D-122. The day a series keeps is carried; a backup written before it,
+     * which has no such key, reads as none, and the series counts from its own
+     * day as it did then.
+     */
+    @Test
+    fun theSeriesDayIsCarriedAndAnOlderBackupReadsNone() {
+        val backup = TellcatBackup(
+            preferences = AppearancePreferences(),
+            tasks = listOf(
+                completeTask().copy(
+                    recurrence = RecurrenceUnit.MONTHLY,
+                    recurrenceWeekdays = emptySet(),
+                    scheduledDate = LocalDate.parse("2027-02-28"),
+                    recurrenceAnchor = MonthDay.of(12, 31)
+                )
+            )
+        )
+        val written = ByteArrayOutputStream().also { output ->
+            TellcatBackupCodec.write(output = output, backup = backup, createdAt = Instant.parse("2026-09-08T00:00:00Z"))
+        }.toString(Charsets.UTF_8.name())
+
+        val restored = TellcatBackupCodec.read(ByteArrayInputStream(written.toByteArray())).tasks.single()
+        assertEquals(MonthDay.of(12, 31), restored.recurrenceAnchor)
+        assertEquals(backup.tasks.single(), restored)
+
+        val older = written.replace(Regex(""""recurrenceAnchor":\s*"--12-31",?"""), "")
+        val fromOlder = TellcatBackupCodec.read(ByteArrayInputStream(older.toByteArray())).tasks.single()
+        assertNull(fromOlder.recurrenceAnchor)
     }
 
     @Test

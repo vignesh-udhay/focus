@@ -3,6 +3,7 @@ package app.tellcat.core.domain
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.MonthDay
 
 /**
  * An actionable piece of work.
@@ -143,6 +144,17 @@ data class Task(
     val earlySnoozedUntil: LocalDateTime? = null,
     val estimatedDurationMinutes: Int? = null,
     val recurrence: Recurrence? = null,
+    /**
+     * The day of the month, and for a yearly rule the month, the series is
+     * set for, kept across occurrences. `docs/decisions.md` D-122.
+     *
+     * Only for the rules that fall on a date: monthly on the day of the month,
+     * and yearly. Each next occurrence used to count from the one just
+     * finished, so a series on the 31st, clamped to the 28th in February,
+     * stayed on the 28th from March. Null for every other rule, and on a row
+     * from before it, which counts from its own day as before.
+     */
+    val recurrenceAnchor: MonthDay? = null,
     val occurrenceNumber: Int = 1,
     /**
      * The occurrence this one was created by finishing, for a recurring task.

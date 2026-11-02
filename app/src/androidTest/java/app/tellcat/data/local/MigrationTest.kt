@@ -724,7 +724,7 @@ class MigrationTest {
         const val TEST_DB = "migration-test.db"
 
         /** The schema every migration in this test is aimed at. */
-        const val LatestVersion = 16
+        const val LatestVersion = 17
     }
 
     /**
@@ -863,4 +863,78 @@ class MigrationTest {
 
         assertTrue(openAndReadTasks().none { it.recurrence?.monthlyWeekday != null })
     }
+
+    // --- Version 17, D-122: the day a series keeps ----------------------------------------
+
+    /** A version-16 row with a repeat, by its columns. */
+    private fun SupportSQLiteDatabase.insertV16(
+        id: String,
+        scheduled: java.time.LocalDate?,
+        unit: String,
+        monthlyOrdinal: Int? = null,
+        monthlyWeekday: String? = null
+    ) {
+        execSQL(
+            "INSERT INTO tasks (id, title, createdAt, scheduledDate, recurrence, recurrenceInterval, " +
+                "recurrenceMonthlyOrdinal, recurrenceMonthlyWeekday) VALUES (?, ?, ?, ?, ?, 1, ?, ?)",
+            arrayOf<Any?>(
+                id, "Task $id", createdAt.toEpochMilli(), scheduled?.toEpochDay(), unit,
+                monthlyOrdinal, monthlyWeekday
+            )
+        )
+    }
+
+    private fun seedVersion16() {
+        helper.createDatabase(TEST_DB, 16).use { database ->
+            database.insertV16("monthly-31", java.time.LocalDate.of(2026, 12, 31), "MONTHLY")
+            database.insertV16("yearly-29", java.time.LocalDate.of(2028, 2, 29), "YEARLY")
+            database.insertV16("weekly", java.time.LocalDate.of(2026, 12, 31), "WEEKLY")
+            database.insertV16("daily", java.time.LocalDate.of(2026, 12, 31), "DAILY")
+            database.insertV16("last-friday", java.time.LocalDate.of(2026, 11, 27), "MONTHLY", -1, "FRIDAY")
+            database.insertV16("undated-monthly", null, "MONTHLY")
+            // Already slid from the 31st: nothing stored says so, so it keeps the 28th.
+            database.insertV16("slid", java.time.LocalDate.of(2027, 2, 28), "MONTHLY")
+        }
+    }
+
+    private fun anchorsAfterMigrating(): Map<String, String?> {
+        seedVersion16()
+        return helper.runMigrationsAndValidate(TEST_DB, 17, true, MIGRATION_16_17).use { database ->
+            database.query("SELECT id, recurrenceAnchor FROM tasks").use { cursor ->
+                buildMap {
+                    while (cursor.moveToNext()) {
+                        put(cursor.getString(0), if (cursor.isNull(1)) null else cursor.getString(1))
+                    }
+                }
+            }
+        }
+    }
+
+    /** Rules on a date get their own day; every other rule keeps none. */
+    @Test
+    fun version17GivesARuleOnADateItsOwnDay() {
+        val anchors = anchorsAfterMigrating()
+
+        assertEquals("--12-31", anchors["monthly-31"])
+        assertEquals("--02-29", anchors["yearly-29"])
+        assertEquals(null, anchors["weekly"])
+        assertEquals(null, anchors["daily"])
+        assertEquals(null, anchors["last-friday"])
+        assertEquals(null, anchors["undated-monthly"])
+    }
+
+    /** A series that already slid cannot be recovered: it keeps the day it is on. */
+    @Test
+    fun version17KeepsASlidSeriesOnItsDay() {
+        assertEquals("--02-28", anchorsAfterMigrating()["slid"])
+    }
+
+    /** And the domain reads it: the series on the 31st is on the 31st after February. */
+    @Test
+    fun version17IsReadAsTheSeriesDay() {
+        anchorsAfterMigrating()
+        val task = openAndReadTasks().single { it.id == "monthly-31" }
+        assertEquals(java.time.MonthDay.of(12, 31), task.recurrenceAnchor)
+    }
+
 }

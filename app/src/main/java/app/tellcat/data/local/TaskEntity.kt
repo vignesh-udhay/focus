@@ -10,6 +10,7 @@ import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.MonthDay
 
 /**
  * The stored form of a task.
@@ -86,5 +87,8 @@ data class TaskEntity(
     // occurrence (one to four, or -1 for last) and the weekday's name. Null
     // on every row written before it: on the day of the month, as before.
     val recurrenceMonthlyOrdinal: Int? = null,
-    val recurrenceMonthlyWeekday: String? = null
+    val recurrenceMonthlyWeekday: String? = null,
+    // Version 17, D-122: the day a rule on a date keeps across its series, as
+    // "--MM-DD". Set by the migration from each such task's own day.
+    val recurrenceAnchor: MonthDay? = null
 )
