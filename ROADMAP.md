@@ -54,7 +54,20 @@ Details store shot was taken, Groceries with its checklist in light and dark at
 1080 x 1920, and the owner chose to leave the store set of eight as it is. The
 merge waits for the owner's word.
 
-**1.3, versionCode 4, is on `main` for the coordinating thread to upload to
+**1.3.1, versionCode 5, is on `main`: a reliability fix, D-122.** A monthly
+task on the 29th, 30th or 31st no longer moves to an earlier day after a short
+month, nor a yearly one on 29 February; schema 17 stores the day a series keeps.
+Release note: "Fixed: a monthly task on the 29th, 30th or 31st could move to an
+earlier day after a short month." Checked by a real 1.3 to 1.3.1 upgrade in
+Tellcat dev on the owner's phone on 2026-11-02: 12 tasks seeded by 1.3's own
+code kept every field, the 9 alarms kept their times and receivers, the stored
+day was set for the 31st, the 30th, 29 February and a slid 28th and for nothing
+else, and a copy of the 31st series completed four times through the real
+database fell on 31 January, 28 February, 31 March and 30 April at 10:00. Not
+pushed; the bundle is for the coordinating thread to upload with the owner's
+word.
+
+**1.3, versionCode 4, was on `main` for the coordinating thread to upload to
 the closed test.** It carries everything since 1.2: the follow-up and its
 Settings row (D-108, D-110), snoozing inside the app (D-109), Complete growing
 in place on Task Details (D-111), the Quick Add Reminder chip and a time that
