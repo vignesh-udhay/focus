@@ -258,7 +258,8 @@ class MigrationTest {
             MIGRATION_12_13,
             MIGRATION_13_14,
             MIGRATION_14_15,
-            MIGRATION_15_16
+            MIGRATION_15_16,
+            MIGRATION_16_17
         ).use { database ->
             database.query(
                 "SELECT notes, recurrence, spawnedFromId, reminderAt FROM tasks WHERE id = ?",
@@ -501,7 +502,8 @@ class MigrationTest {
             MIGRATION_12_13,
             MIGRATION_13_14,
             MIGRATION_14_15,
-            MIGRATION_15_16
+            MIGRATION_15_16,
+            MIGRATION_16_17
         ).use { database ->
             database.query(
                 """
@@ -571,7 +573,8 @@ class MigrationTest {
                         "earlySnoozedUntil",
                         // Appended by version 16, D-116.
                         "recurrenceMonthlyOrdinal",
-                        "recurrenceMonthlyWeekday"
+                        "recurrenceMonthlyWeekday",
+                        "recurrenceAnchor"
                     ),
                     columns
                 )
@@ -631,7 +634,8 @@ class MigrationTest {
             MIGRATION_12_13,
             MIGRATION_13_14,
             MIGRATION_14_15,
-            MIGRATION_15_16
+            MIGRATION_15_16,
+            MIGRATION_16_17
         ).use { database ->
             database.query(
                 """
