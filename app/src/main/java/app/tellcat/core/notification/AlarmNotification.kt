@@ -141,7 +141,7 @@ internal fun Context.ensureAlarmChannel() {
 /**
  * The notification the ringing service runs under.
  *
- * Stop and Snooze 10 min, never Done (R-020): a half-awake "make it stop" must
+ * Stop and Snooze 10 min, never Done: a half-awake "make it stop" must
  * not complete a task or start its next occurrence. The time is the reminder's,
  * not the clock's. The full-screen intent is set only where Android allows it;
  * without it the same notification is the heads-up that rings until answered.

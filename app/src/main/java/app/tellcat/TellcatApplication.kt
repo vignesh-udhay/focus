@@ -191,7 +191,7 @@ class TellcatApplication : Application() {
             withdrawSettledReminders(current)
 
             // And so does a ringing alarm: completed, deleted, snoozed from the
-            // notification or moved, it stops. R-002, D-102.
+            // notification or moved, it stops. D-102.
             AlarmRingService.silenceIfSettled(current)
         }
     }

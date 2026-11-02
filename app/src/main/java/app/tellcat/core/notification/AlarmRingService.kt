@@ -58,7 +58,7 @@ import java.time.LocalDateTime
  * holds which alarm it is ringing and nothing else; every reconciliation asks
  * [silenceIfSettled] whether that task still wants ringing, which is how Done
  * from the notification, a snooze from either path, an edit to the time, and
- * deleting or completing the task stop it (R-002, D-099).
+ * deleting or completing the task stop it (D-099).
  */
 class AlarmRingService : Service() {
 
@@ -191,8 +191,8 @@ class AlarmRingService : Service() {
 
     /**
      * Posts [alarm]'s task as a normal reminder, with Done and Snooze: what
-     * remains after Stop, after ringing unanswered, or after being replaced
-     * (R-020). Quiet unless the alarm never got to ring.
+     * remains after Stop, after ringing unanswered, or after being replaced.
+     * Quiet unless the alarm never got to ring.
      *
      * Read from storage where it can be, so the notes and the repeat are
      * current. Before the first unlock it cannot be, and the alarm's own copy
@@ -273,7 +273,7 @@ class AlarmRingService : Service() {
         /**
          * Stops the alarm if its task no longer wants ringing: completed,
          * deleted, no longer an alarm, or due at another moment. Called by
-         * every reconciliation, with every live task. R-002, D-099.
+         * every reconciliation, with every live task. D-099.
          */
         fun silenceIfSettled(tasks: List<Task>) {
             val service = instance ?: return

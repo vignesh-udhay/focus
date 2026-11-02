@@ -31,7 +31,7 @@ import java.time.LocalDateTime
  * study saw go wrong.
  *
  * The time shown is the reminder's (Todoist showed the clock's), the answers
- * are Stop and Snooze and nothing that completes the task (R-020), and a tap
+ * are Stop and Snooze and nothing that completes the task, and a tap
  * answers neither (Todoist's and To Do Reminder's did). TalkBack's double tap
  * still answers, because that gesture is already deliberate.
  */
@@ -82,7 +82,7 @@ class AlarmScreenSemanticsTest {
     @Test
     fun theAlarmShowsTheTaskItsTimeAndTwoAnswers_at200() = assertTheAlarmReads(FontScale200)
 
-    /** R-020: a half-awake "make it stop" must never complete the task. */
+    /** A half-awake "make it stop" must never complete the task. */
     @Test
     fun nothingOnTheAlarmCompletesTheTask() {
         show()

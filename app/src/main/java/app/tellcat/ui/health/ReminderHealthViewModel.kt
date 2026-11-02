@@ -41,7 +41,7 @@ class ReminderHealthViewModel(
     private val acknowledgements: ReminderHealthAcknowledgements,
     private val now: () -> Instant = Instant::now,
     // Whether any outstanding reminder rings like an alarm, which is when the
-    // alarm row is listed. D-102, R-014. None by default, so a screen built
+    // alarm row is listed. D-102. None by default, so a screen built
     // without tasks lists the three rows it always did.
     private val alarmStyleReminders: Flow<Boolean> = flowOf(false)
 ) : ViewModel() {

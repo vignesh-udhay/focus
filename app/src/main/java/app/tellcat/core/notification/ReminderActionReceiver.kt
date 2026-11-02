@@ -39,7 +39,7 @@ class ReminderActionReceiver : BroadcastReceiver() {
 
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
-                // **A stale tap does nothing.** R-002, D-102. The task was
+                // **A stale tap does nothing.** D-102. The task was
                 // snoozed, moved, completed or deleted since this notification
                 // was posted, so what it offers no longer describes the task.
                 // Taken off screen instead, since it is out of date.
@@ -131,7 +131,7 @@ class ReminderActionReceiver : BroadcastReceiver() {
         const val EXTRA_TASK_ID = "tellcat.extra.taskId"
         const val EXTRA_SNOOZE_OPTION = "tellcat.extra.snoozeOption"
 
-        /** The moment the notification was posted for. R-002, D-102. */
+        /** The moment the notification was posted for. D-102. */
         const val EXTRA_POSTED_FOR = "tellcat.extra.postedFor"
     }
 }
