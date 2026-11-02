@@ -791,6 +791,15 @@ did not move; the top row went back to the text.
 [CD] One field and one action. Do not add a second field or a date picker.
 Capture should require almost no decisions.
 
+**Superseded by D-121 (approved 2026-11-02, not yet built).** The sheet gains
+three tools on the keyboard beside Add: When (day and time together, replacing
+D-112's Reminder chip), Repeat and Checklist. A set tool shows its value in
+place, the supporting line says it all in words, and the checklist is written
+inline under the title. When still only types into the field, so the field
+stays the one setter of a day and a reminder; Repeat and the checklist are held
+by the sheet. Typing stays the fast path: every tool is optional. D-121 has the
+tap counts and what was taken from TickTick.
+
 **Amended by D-112, narrowly.** The Reminder chip is always on the sheet and
 opens Task Details' reminder sheet, which has a day and a time picker behind it.
 It sets nothing itself: what is chosen is typed into the field as words ("
@@ -1011,6 +1020,13 @@ which is D-026's warning arriving a second time.
 one `ModalBottomSheet`, with Every and Ends behind a back arrow. This said it
 offered four periods and nothing else, which was true while D-019 held the editor
 back.
+
+**Changed by D-121 (approved 2026-11-02, not yet built).** The sheet opens on a
+list of the common rules, labelled from the task's day: Doesn't repeat, Daily,
+Weekly on Friday, Monthly on the 27th, Monthly on the last Friday (when the day
+is one), Yearly on 27 November, Every weekday, and Custom. A rule from the list
+is written at once and the sheet closes; Custom opens the three panes, which
+keep their Save. In Task Details as well as Quick Add.
 
 [IMPL] It carries a summary line under its title, in the Due date sheet's
 supporting-text treatment: `bodyMedium` on `onSurfaceVariant`, directly under the
