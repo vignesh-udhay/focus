@@ -7474,3 +7474,49 @@ weekly rule keeps none.
 
 **What would reverse this.** Nothing about the fix; it restores what D-027's
 rule always promised. A "last day of the month" rule is a separate decision.
+
+---
+
+## D-123. A month can repeat on its last day
+
+**Decided on 2026-11-02 by the owner**, through the coordinating thread, after
+asking how to be reminded on the last day of every month at 10am. On
+`feature/last-day`, cut from `feature/quick-add-tools` once D-122 was merged
+into it: the one-tap list this extends is D-121's and lives only there.
+
+**Decision.** A monthly rule can fall on each month's last day, whatever its
+number: "Every month on the last day", the 30th, the 31st, the 28th, or the 29th
+in a leap year.
+
+- **Where it is offered.** The one-tap list (D-121) stays read from the task's
+  day, so it offers "Monthly on the last day" only when that day is its month's
+  last and is not a 31st: the 30th of November, the 28th of February. There
+  "Monthly on day 30" would not keep it, and on a 31st D-122 already lands every
+  month on its last day. **Custom, under Month, always offers "On the last
+  day"**, beside "On day N" and the weekday of the month, whatever the task's
+  day, so someone thinking "every month, last day" finds it without knowing to
+  pick the date first.
+- **Choosing a rule that does not fall on the task's day moves the task to the
+  rule's first date on or after it**, D-121's "a repeating task always has a
+  day", now on its rule. "On the last day" chosen on the 2nd of November makes
+  the task the 30th; its reminder and due date move by the same days and keep
+  their times. In Task Details through `Task.onItsRule`; in Quick Add the words
+  in the title are rewritten, keeping a typed time, so the When tool and the line
+  under the field show the new day. This holds for every rule: a weekly rule on
+  days that leave out the task's moves it to the first of them.
+- **Stored in the two D-116 columns, no new schema**: "last" with no weekday is
+  the month's last day. D-116 wrote both columns or neither, so no row before
+  this holds that pair. It needs no D-122 day: it is on each month's last day by
+  definition, counted with D-122's month-end count from the 31st.
+
+**Tests.** `LastDayTest`: 30, 31 and 28-day months in one walk, a leap February,
+the reminder's time, intervals of two and three, ends by count and by date, no
+D-122 day kept and a stray one ignored, distinct from the day of the month, the
+first date, where the list offers it, and the task moved onto its rule.
+`TaskMappersTest`: both directions, and the day-of-the-month rule untouched.
+`RecurrenceTextTest`: "Every month on the last day", "Monthly on the last day".
+`RepeatListTest`: offered on the 30th of November, not on a 31st, and always
+under Custom as a radio choice for TalkBack. `TaskDetailsSemanticsTest`: chosen
+on the 2nd, the task is on the 30th. `QuickAddToolsTest`: with no day, and with
+a typed day and time.
+

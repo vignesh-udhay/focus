@@ -319,4 +319,24 @@ class TaskMappersTest {
         val entity = fullEntity().copy(recurrence = RecurrenceUnit.MONTHLY, recurrenceMonthlyOrdinal = 3, recurrenceMonthlyWeekday = "Funday")
         assertNull(entity.toDomain().recurrence?.monthlyWeekday)
     }
+
+    /** D-123. The month's last day is "last" with no weekday, in the D-116 columns. */
+    @Test
+    fun `a last day rule survives both directions`() {
+        val rule = Recurrence(RecurrenceUnit.MONTHLY, interval = 2, monthlyLastDay = true)
+        val entity = fullTask().copy(recurrence = rule).toEntity()
+
+        assertEquals(-1, entity.recurrenceMonthlyOrdinal)
+        assertNull(entity.recurrenceMonthlyWeekday)
+        assertEquals(rule, entity.toDomain().recurrence)
+    }
+
+    /** And a plain monthly rule is still on its day number, with neither column. */
+    @Test
+    fun `a day of the month rule is not read as the last day`() {
+        val entity = fullTask().copy(recurrence = Recurrence(RecurrenceUnit.MONTHLY)).toEntity()
+
+        assertNull(entity.recurrenceMonthlyOrdinal)
+        assertEquals(false, entity.toDomain().recurrence?.monthlyLastDay)
+    }
 }

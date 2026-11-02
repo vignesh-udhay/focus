@@ -88,8 +88,15 @@ data class Recurrence(
     val interval: Int = 1,
     val weekdays: Set<DayOfWeek> = emptySet(),
     val end: RecurrenceEnd = RecurrenceEnd.Never,
-    val monthlyWeekday: MonthlyWeekday? = null
+    val monthlyWeekday: MonthlyWeekday? = null,
+    // For [RecurrenceUnit.MONTHLY] only, and only without [monthlyWeekday]: on
+    // the month's last day, whatever its number. `docs/decisions.md` D-123.
+    val monthlyLastDay: Boolean = false
 ) {
+
+    /** Whether this rule falls on each month's last day. D-123. */
+    val hasMonthlyLastDay: Boolean
+        get() = unit == RecurrenceUnit.MONTHLY && monthlyWeekday == null && monthlyLastDay
 
     /** Whether this rule falls on a weekday of the month rather than a day number. D-116. */
     val hasMonthlyWeekday: Boolean
@@ -140,6 +147,8 @@ fun Recurrence.nextOccurrence(anchor: LocalDate, after: LocalDate): LocalDate =
     when {
         hasWeekdays -> nextWeekdayOccurrence(anchor = anchor, after = after)
         hasMonthlyWeekday -> nextMonthlyWeekdayOccurrence(anchor = anchor, after = after)
+        // The 31st, which D-122's count lands on each month's last day. D-123.
+        hasMonthlyLastDay -> nextOccurrenceOn(MonthDay.of(1, 31), from = anchor, after = after)
         else -> nextPeriodOccurrence(anchor = anchor, after = after)
     }
 
@@ -177,7 +186,8 @@ private fun Recurrence.nextMonthlyWeekdayOccurrence(anchor: LocalDate, after: Lo
  * (D-116) count from each occurrence and keep nothing.
  */
 val Recurrence.fallsOnADate: Boolean
-    get() = unit == RecurrenceUnit.YEARLY || (unit == RecurrenceUnit.MONTHLY && monthlyWeekday == null)
+    get() = unit == RecurrenceUnit.YEARLY ||
+        (unit == RecurrenceUnit.MONTHLY && monthlyWeekday == null && !monthlyLastDay)
 
 /**
  * The day a series of this rule keeps, read from [day]: its day of the month,

@@ -453,6 +453,10 @@
     <string name="task_repeat_common_monthly_weekday">Monthly on %1$s</string>
     <string name="task_repeat_common_yearly">Yearly on %1$s</string>
     <string name="task_repeat_common_weekdays">Every weekday</string>
+    <!-- D-123: the month's last day, in the list, under Month, and in summaries. -->
+    <string name="task_repeat_common_monthly_last_day">Monthly on the last day</string>
+    <string name="task_repeat_month_on_last_day">On the last day</string>
+    <string name="task_repeat_last_day">the last day</string>
     <string name="task_repeat_custom">Custom</string>
     <string name="task_repeat_custom_back">Back to the common repeats</string>
     <string name="task_repeat_footnote">Completing an occurrence, or its reminder ringing, creates the next one.</string>

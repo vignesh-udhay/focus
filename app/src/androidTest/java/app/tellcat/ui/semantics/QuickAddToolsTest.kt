@@ -18,6 +18,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performKeyInput
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.waitUntilDoesNotExist
@@ -279,6 +280,55 @@ class QuickAddToolsTest {
         }
     }
 
+    // --- D-123: a rule that does not fall on the day moves it ----------------------------------
+
+    /** Repeat, Custom, Month, On the last day, Save repeat. */
+    private fun chooseTheLastDayInCustom() {
+        tool(REPEAT).performClick()
+        rule.waitUntilExactlyOneExists(hasText(CUSTOM_ROW), TIMEOUT_MILLIS)
+        rule.onNodeWithText(CUSTOM_ROW).performScrollTo().performClick()
+        rule.onNode(hasText(EVERY, substring = true) and hasClickAction()).performClick()
+        rule.waitUntilExactlyOneExists(hasText(MONTH), TIMEOUT_MILLIS)
+        rule.onNodeWithText(MONTH).performClick()
+        rule.onNodeWithText(DONE).performClick()
+        rule.waitUntilExactlyOneExists(hasText(ON_THE_LAST_DAY), TIMEOUT_MILLIS)
+        rule.onNodeWithText(ON_THE_LAST_DAY).performScrollTo().performClick()
+        rule.onNodeWithText(SAVE_REPEAT).performScrollTo().performClick()
+    }
+
+    /** With no day typed, the task lands on this month's last day. */
+    @Test
+    fun theLastDayWithNoDayLandsOnThisMonthsLastDay() {
+        sheet(fallbackDate = today)
+        field().performTextInput("Pay rent")
+
+        chooseTheLastDayInCustom()
+        rule.waitUntilDoesNotExist(hasText(SAVE_REPEAT), TIMEOUT_MILLIS)
+        rule.onNodeWithText(SAVE).performClick()
+
+        val capture = saved.single()
+        assertEquals(Recurrence(RecurrenceUnit.MONTHLY, monthlyLastDay = true), capture.recurrence)
+        // Unwritten only when today is the month's last day, where Today puts it anyway.
+        assertEquals(java.time.YearMonth.from(today).atEndOfMonth(), capture.parsed.date ?: today)
+    }
+
+    /** A typed day the rule does not fall on is rewritten, keeping its time. */
+    @Test
+    fun theLastDayMovesATypedDayAndKeepsItsTime() {
+        sheet(fallbackDate = today)
+        field().performTextInput("Pay rent tomorrow at 9am")
+        rule.waitUntilExactlyOneExists(hasContentDescription("$WHEN, ", substring = true), TIMEOUT_MILLIS)
+
+        chooseTheLastDayInCustom()
+        rule.waitUntilDoesNotExist(hasText(SAVE_REPEAT), TIMEOUT_MILLIS)
+        rule.onNodeWithText(SAVE).performClick()
+
+        val monthEnd = java.time.YearMonth.from(today.plusDays(1)).atEndOfMonth()
+        val capture = saved.single()
+        assertEquals("Pay rent", capture.parsed.title)
+        assertEquals(monthEnd.atTime(9, 0), capture.parsed.reminderAt(today, today.atTime(8, 0)))
+    }
+
     // --- Repeat, and a repeating task always has a day -------------------------------------
 
     /** From Inbox, with no day typed: the rule's first day is written into the title. */
@@ -376,6 +426,12 @@ class QuickAddToolsTest {
         const val CHECKLIST = "Checklist"
         const val ITEM = "Checklist item"
         const val DAILY = "Daily"
+        const val CUSTOM_ROW = "Custom"
+        const val EVERY = "Every"
+        const val MONTH = "Month"
+        const val DONE = "Done"
+        const val ON_THE_LAST_DAY = "On the last day"
+        const val SAVE_REPEAT = "Save repeat"
         const val WHEN = "When"
         const val NO_TIME = "No time"
         const val SAVE_WHEN = "Save reminder"

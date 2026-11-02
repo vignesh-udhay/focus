@@ -330,4 +330,13 @@ class RecurrenceTextTest {
     fun aMonthOnItsDayNumberReadsAsBefore() {
         assertEquals("Monthly", summary(Recurrence(RecurrenceUnit.MONTHLY), RecurrenceStyle.Compact))
     }
+
+    /** D-123: the month's last day, in the sheet's sentence and in the row. */
+    @Test
+    fun theLastDayIsSaidAsTheLastDay() {
+        val rule = Recurrence(RecurrenceUnit.MONTHLY, monthlyLastDay = true)
+        assertEquals("Every month on the last day", summary(rule, RecurrenceStyle.Sentence))
+        assertEquals("Monthly on the last day", summary(rule, RecurrenceStyle.Compact))
+        assertEquals("Every 2 months on the last day", summary(rule.copy(interval = 2), RecurrenceStyle.Sentence))
+    }
 }

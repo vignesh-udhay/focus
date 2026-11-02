@@ -581,13 +581,32 @@ fun QuickAddSheet(
             anchorDay = dayInField ?: fallbackDate ?: today,
             onPick = { picked ->
                 recurrence = picked
-                // **A repeating task always has a day.** With none in the field
-                // the rule's first day is written in as words, unless the task
-                // lands on it anyway (Today, a rule that falls today).
-                if (picked != null && dayInField == null) {
-                    val first = picked.firstOccurrenceFrom(today)
-                    if (first != fallbackDate) {
-                        writeIn(writeDay(writeText, writeMark, first, today, writesDayFirst(locale)))
+                // **A repeating task always has a day, on its rule.** With none
+                // in the field the rule's first day is written in as words,
+                // unless the task lands on it anyway (Today, a rule that falls
+                // today). With one that the rule does not fall on, D-123, it is
+                // rewritten as the rule's first day from it, keeping any time:
+                // "On the last day" on the 2nd of November writes the 30th.
+                if (picked != null) {
+                    val first = picked.firstOccurrenceFrom(dayInField ?: today)
+                    val held = parsed.reminderAt(today, now)
+                    when {
+                        dayInField == null -> if (first != fallbackDate) {
+                            writeIn(writeDay(writeText, writeMark, first, today, writesDayFirst(locale)))
+                        }
+                        first == dayInField -> Unit
+                        held != null -> writeIn(
+                            writeReminder(
+                                text = writeText,
+                                marked = writeMark,
+                                at = first.atTime(held.toLocalTime()),
+                                today = today,
+                                now = clock(),
+                                twentyFourHour = DateFormat.is24HourFormat(context),
+                                dayFirst = writesDayFirst(locale)
+                            )
+                        )
+                        else -> writeIn(writeDay(writeText, writeMark, first, today, writesDayFirst(locale)))
                     }
                 }
                 isRepeatOpen = false

@@ -2,7 +2,7 @@ package app.tellcat.ui.task
 
 import app.tellcat.ui.component.earlyReminderLabel
 import app.tellcat.core.domain.rowReminder
-import app.tellcat.core.domain.withRepeatDay
+import app.tellcat.core.domain.onItsRule
 import app.tellcat.core.domain.EarlyReminder
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.animation.animateColorAsState
@@ -981,7 +981,9 @@ private fun PlanSheetHost(
             // **A repeating task always has a day**, D-121: set on an undated
             // task, a repeat gives it the rule's first day, which the Plan row
             // then shows. Undated, the series would never run.
-            onPick = { recurrence -> onEdit(task.copy(recurrence = recurrence).withRepeatDay(today)) },
+            // And on its rule's first date when that is not its day, D-123:
+            // "On the last day" chosen on the 2nd of November makes it the 30th.
+            onPick = { recurrence -> onEdit(task.copy(recurrence = recurrence).onItsRule(today)) },
             onDismiss = onDismiss
         )
     }

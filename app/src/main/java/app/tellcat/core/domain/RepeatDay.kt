@@ -24,6 +24,8 @@ import java.time.YearMonth
  */
 fun Recurrence.firstOccurrenceFrom(from: LocalDate): LocalDate = when {
     hasWeekdays -> if (from.dayOfWeek in weekdays) from else nextOccurrence(anchor = from, after = from)
+    // This month's last day, which is never before [from]. D-123.
+    hasMonthlyLastDay -> YearMonth.from(from).atEndOfMonth()
     hasMonthlyWeekday -> {
         val thisMonth = monthlyWeekday!!.inMonth(YearMonth.from(from))
         if (thisMonth.isBefore(from)) monthlyWeekday.inMonth(YearMonth.from(from).plusMonths(1)) else thisMonth
@@ -47,6 +49,26 @@ fun Task.withRepeatDay(today: LocalDate): Task {
 }
 
 /**
+ * This task on its rule's first date, D-123: when a rule chosen does not fall on
+ * the task's day, the task moves to the first day it does, on or after that day,
+ * and its reminder and due date move by the same days, keeping their times and
+ * gaps. "On the last day" chosen on the 2nd of November makes it the 30th. With
+ * no day yet, it is [withRepeatDay]. Unchanged when the rule falls on its day.
+ */
+fun Task.onItsRule(today: LocalDate): Task {
+    val rule = recurrence ?: return this
+    val day = scheduledDate ?: return withRepeatDay(today)
+    val first = rule.firstOccurrenceFrom(day)
+    if (first == day) return this
+    val shift = java.time.temporal.ChronoUnit.DAYS.between(day, first)
+    return copy(
+        scheduledDate = first,
+        dueDate = dueDate?.plusDays(shift),
+        reminderAt = reminderAt?.plusDays(shift)
+    )
+}
+
+/**
  * The rules the Repeat sheet offers in one tap, read from [anchor], the task's
  * day. D-121, after TickTick's list. In order: daily; weekly on the anchor's
  * weekday (D-114's preselection, so the rule the sheet would have built); monthly
@@ -58,6 +80,13 @@ fun commonRepeats(anchor: LocalDate): List<Recurrence> = buildList {
     add(Recurrence(RecurrenceUnit.WEEKLY, weekdays = setOf(anchor.dayOfWeek)))
     add(Recurrence(RecurrenceUnit.MONTHLY))
     MonthlyWeekday.choicesFor(anchor).forEach { add(Recurrence(RecurrenceUnit.MONTHLY, monthlyWeekday = it)) }
+    // **On the last day, where it differs from the day's number.** D-123: on
+    // the 30th of November or the 28th of February, which "on day 30" or "on
+    // day 28" would not keep. Not on a 31st, which D-122 already lands on every
+    // month's last day.
+    if (anchor == YearMonth.from(anchor).atEndOfMonth() && anchor.dayOfMonth < 31) {
+        add(Recurrence(RecurrenceUnit.MONTHLY, monthlyLastDay = true))
+    }
     add(Recurrence(RecurrenceUnit.YEARLY))
     add(Recurrence(RecurrenceUnit.WEEKLY, weekdays = MondayToFriday))
 }

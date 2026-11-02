@@ -718,6 +718,24 @@ class TaskDetailsSemanticsTest {
     }
 
     /**
+     * D-123. "On the last day", chosen under Month on the 2nd of September, moves
+     * the task to the 30th, the rule's first date.
+     */
+    @Test
+    fun theLastDayMovesTheTaskToItsFirstDate() {
+        val viewModel = setScreen(dao = withTask(recurrence = Recurrence(RecurrenceUnit.MONTHLY)))
+
+        openRepeatRule(REPEAT_MONTHLY)
+        rule.waitUntilExactlyOneExists(hasText(ON_THE_LAST_DAY), TIMEOUT_MILLIS)
+        rule.onNodeWithText(ON_THE_LAST_DAY).performClick()
+        rule.onNodeWithText(SAVE_REPEAT).performClick()
+
+        awaitTask(viewModel) { task ->
+            task.recurrence?.hasMonthlyLastDay == true && task.scheduledDate == TestToday.withDayOfMonth(30)
+        }
+    }
+
+    /**
      * The clear action, matched by its role as well as its words.
      *
      * The Plan row used to read "Repeat  Doesn't repeat" once the rule was gone,
@@ -1108,6 +1126,7 @@ class TaskDetailsSemanticsTest {
         const val REPEAT = "Repeat"
         const val CUSTOM = "Custom"
         const val DAILY = "Daily"
+        const val ON_THE_LAST_DAY = "On the last day"
 
         const val TODAY = "Today"
         const val TOMORROW = "Tomorrow"

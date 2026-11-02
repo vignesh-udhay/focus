@@ -86,6 +86,8 @@ data class TaskEntity(
     // Version 16, D-116: a monthly rule on a weekday of the month, as the
     // occurrence (one to four, or -1 for last) and the weekday's name. Null
     // on every row written before it: on the day of the month, as before.
+    // Since D-123, -1 with no weekday is the month's last day, with no new
+    // column: D-116 wrote both or neither, so no older row holds that pair.
     val recurrenceMonthlyOrdinal: Int? = null,
     val recurrenceMonthlyWeekday: String? = null,
     // Version 17, D-122: the day a rule on a date keeps across its series, as

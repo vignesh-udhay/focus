@@ -63,7 +63,10 @@ fun Task.toEntity(): TaskEntity = TaskEntity(
     recurrenceWeekdays = recurrence?.weekdays,
     recurrenceEndDate = (recurrence?.end as? RecurrenceEnd.OnDate)?.date,
     recurrenceEndCount = (recurrence?.end as? RecurrenceEnd.AfterOccurrences)?.count,
-    recurrenceMonthlyOrdinal = recurrence?.monthlyWeekday?.ordinal,
+    // "Last" with no weekday is the month's last day, D-123: a pair no row
+    // before it holds, since D-116 wrote both columns or neither.
+    recurrenceMonthlyOrdinal = recurrence?.monthlyWeekday?.ordinal
+        ?: MonthlyWeekday.Last.takeIf { recurrence?.hasMonthlyLastDay == true },
     recurrenceMonthlyWeekday = recurrence?.monthlyWeekday?.day?.name,
     recurrenceAnchor = recurrenceAnchor,
     ringsLikeAlarm = ringsLikeAlarm,
@@ -93,7 +96,9 @@ private fun TaskEntity.toRule(unit: RecurrenceUnit): Recurrence = Recurrence(
     interval = recurrenceInterval ?: 1,
     weekdays = recurrenceWeekdays.orEmpty(),
     end = storedEnd(),
-    monthlyWeekday = storedMonthlyWeekday()
+    monthlyWeekday = storedMonthlyWeekday(),
+    monthlyLastDay = unit == RecurrenceUnit.MONTHLY &&
+        recurrenceMonthlyOrdinal == MonthlyWeekday.Last && recurrenceMonthlyWeekday == null
 )
 
 /**

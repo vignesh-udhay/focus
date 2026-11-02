@@ -125,6 +125,11 @@ private fun ruleShape(
         return context.getString(R.string.task_repeat_on_days, period, rule.phrase(context))
     }
 
+    // "Every month on the last day", "Monthly on the last day". D-123.
+    if (recurrence.hasMonthlyLastDay) {
+        return context.getString(R.string.task_repeat_on_days, period, context.getString(R.string.task_repeat_last_day))
+    }
+
     if (!recurrence.hasWeekdays) return period
 
     // Standalone in the row, where the period is implied and dropped; part of a

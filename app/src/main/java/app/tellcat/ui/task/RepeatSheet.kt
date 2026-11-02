@@ -245,6 +245,7 @@ private fun commonRepeatLabel(rule: Recurrence, anchor: LocalDate): String {
             stringResource(R.string.task_repeat_common_weekdays)
         rule.unit == RecurrenceUnit.WEEKLY ->
             stringResource(R.string.task_repeat_common_weekly, anchor.dayOfWeek.fullName(context))
+        rule.hasMonthlyLastDay -> stringResource(R.string.task_repeat_common_monthly_last_day)
         rule.hasMonthlyWeekday ->
             stringResource(R.string.task_repeat_common_monthly_weekday, rule.monthlyWeekday!!.phrase(context))
         rule.unit == RecurrenceUnit.MONTHLY ->
@@ -345,12 +346,14 @@ private fun RulePane(
         )
     }
 
-    // **A month falls on a day number or a weekday of the month.** D-116. Only
-    // a month has the choice, so only a month shows it, as only a week shows
-    // its days. The choices come from the task's own day: "On day 25", "On the
-    // fourth Sunday", and "On the last Sunday" when it is the last. A rule
-    // already on a weekday the day no longer gives stays offered, so opening
-    // the sheet never changes it.
+    // **A month falls on a day number, a weekday of the month, or its last
+    // day.** D-116, D-123. Only a month has the choice, so only a month shows
+    // it, as only a week shows its days. The first two come from the task's own
+    // day: "On day 25", "On the fourth Sunday", and "On the last Sunday" when
+    // it is the last. **"On the last day" is always offered**, whatever the
+    // day, because someone thinking "every month, last day" should find it
+    // here without knowing to pick the date first. A rule already on a weekday
+    // the day no longer gives stays offered, so opening the sheet never changes it.
     if (draft.unit == RecurrenceUnit.MONTHLY) {
         Text(
             text = stringResource(R.string.task_repeat_month_on_label),
@@ -359,28 +362,39 @@ private fun RulePane(
             modifier = Modifier.padding(top = TellcatSpacing.xs)
         )
 
-        val choices = buildList<MonthlyWeekday?> {
-            add(null)
+        val weekdays = buildList {
             addAll(MonthlyWeekday.choicesFor(anchorDay))
             draft.monthlyWeekday?.let { held -> if (held !in this) add(held) }
         }
         val context = LocalContext.current
+        // The day number, each weekday, then the last day.
+        val count = weekdays.size + 2
 
         PlanRowGroup {
-            choices.forEachIndexed { index, choice ->
+            ChoiceRow(
+                label = stringResource(R.string.task_repeat_month_on_day, anchorDay.dayOfMonth),
+                selected = draft.monthlyWeekday == null && !draft.monthlyLastDay,
+                shapesIndex = 0,
+                shapesCount = count,
+                // Interval and Ends are left as they are. D-116.
+                onClick = { onDraftChange(draft.copy(monthlyWeekday = null, monthlyLastDay = false)) }
+            )
+            weekdays.forEachIndexed { index, choice ->
                 ChoiceRow(
-                    label = if (choice == null) {
-                        stringResource(R.string.task_repeat_month_on_day, anchorDay.dayOfMonth)
-                    } else {
-                        stringResource(R.string.task_repeat_month_on_weekday, choice.phrase(context))
-                    },
+                    label = stringResource(R.string.task_repeat_month_on_weekday, choice.phrase(context)),
                     selected = draft.monthlyWeekday == choice,
-                    shapesIndex = index,
-                    shapesCount = choices.size,
-                    // Interval and Ends are left as they are. D-116.
-                    onClick = { onDraftChange(draft.copy(monthlyWeekday = choice)) }
+                    shapesIndex = index + 1,
+                    shapesCount = count,
+                    onClick = { onDraftChange(draft.copy(monthlyWeekday = choice, monthlyLastDay = false)) }
                 )
             }
+            ChoiceRow(
+                label = stringResource(R.string.task_repeat_month_on_last_day),
+                selected = draft.monthlyLastDay && draft.monthlyWeekday == null,
+                shapesIndex = count - 1,
+                shapesCount = count,
+                onClick = { onDraftChange(draft.copy(monthlyWeekday = null, monthlyLastDay = true)) }
+            )
         }
     }
 
@@ -786,7 +800,9 @@ private data class RepeatDraft(
     val endCount: String,
     // A month on a weekday of the month, D-116, or null for its day number.
     // Kept through a change of unit, so going to Week and back does not lose it.
-    val monthlyWeekday: MonthlyWeekday? = null
+    val monthlyWeekday: MonthlyWeekday? = null,
+    // A month on its last day, D-123. Only without [monthlyWeekday].
+    val monthlyLastDay: Boolean = false
 ) {
 
     val intervalOrOne: Int
@@ -843,6 +859,7 @@ private data class RepeatDraft(
         interval = intervalOrOne,
         weekdays = if (unit == RecurrenceUnit.WEEKLY) weekdays else emptySet(),
         monthlyWeekday = monthlyWeekday.takeIf { unit == RecurrenceUnit.MONTHLY },
+        monthlyLastDay = monthlyLastDay && unit == RecurrenceUnit.MONTHLY && monthlyWeekday == null,
         end = when (endKind) {
             EndKind.NEVER -> RecurrenceEnd.Never
             EndKind.ON_DATE -> endDate?.let(RecurrenceEnd::OnDate) ?: RecurrenceEnd.Never
@@ -874,7 +891,8 @@ private data class RepeatDraft(
             endDate = (recurrence?.end as? RecurrenceEnd.OnDate)?.date,
             endCount = ((recurrence?.end as? RecurrenceEnd.AfterOccurrences)?.count ?: DefaultCount)
                 .toString(),
-            monthlyWeekday = recurrence?.monthlyWeekday
+            monthlyWeekday = recurrence?.monthlyWeekday,
+            monthlyLastDay = recurrence?.hasMonthlyLastDay == true
         ).withAnchorDay(anchorDay)
 
         /** What the board's After occurrences field starts on. */
@@ -901,7 +919,8 @@ private val RepeatDraftSaver = listSaver<RepeatDraft, Any>(
             draft.endDate?.toEpochDay() ?: NoDate,
             draft.endCount,
             draft.monthlyWeekday?.ordinal ?: NoOrdinal,
-            draft.monthlyWeekday?.day?.name.orEmpty()
+            draft.monthlyWeekday?.day?.name.orEmpty(),
+            draft.monthlyLastDay
         )
     },
     restore = { saved ->
@@ -920,7 +939,8 @@ private val RepeatDraftSaver = listSaver<RepeatDraft, Any>(
             endCount = saved[5] as String,
             monthlyWeekday = (saved[6] as Int).takeIf { it != NoOrdinal }?.let { ordinal ->
                 MonthlyWeekday(ordinal, DayOfWeek.valueOf(saved[7] as String))
-            }
+            },
+            monthlyLastDay = saved.getOrNull(8) as? Boolean ?: false
         )
     }
 )
