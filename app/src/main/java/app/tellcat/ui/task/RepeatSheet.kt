@@ -52,6 +52,8 @@ import app.tellcat.core.design.TellcatSpacing
 import app.tellcat.core.domain.Recurrence
 import app.tellcat.core.domain.RecurrenceEnd
 import app.tellcat.core.domain.RecurrenceUnit
+import app.tellcat.core.domain.MondayToFriday
+import app.tellcat.core.domain.commonRepeats
 import app.tellcat.core.text.RecurrenceStyle
 import app.tellcat.core.text.chipLabel
 import app.tellcat.core.text.fullName
@@ -85,6 +87,13 @@ import java.time.LocalDate
  *
  * Nothing is written until it is pressed, so leaving by the scrim or by back
  * needs no Cancel, exactly as the Custom duration pane argues.
+ *
+ * **It opens on the common rules, one tap each**, D-121, after TickTick's list:
+ * Doesn't repeat, Daily, Weekly on the task's weekday, Monthly on its day or its
+ * nth or last weekday, Yearly, Every weekday, then Custom. A rule from the list is
+ * one choice and one value, so it is written at once, D-018's commit-as-you-go;
+ * Custom opens the rule above, which keeps its Save. Daily went from four taps
+ * after opening the sheet to one.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -101,7 +110,7 @@ internal fun RepeatSheet(
     var draft by rememberSaveable(stateSaver = RepeatDraftSaver) {
         mutableStateOf(RepeatDraft.of(selected, anchorDay))
     }
-    var pane by rememberSaveable { mutableStateOf(RepeatPane.RULE) }
+    var pane by rememberSaveable { mutableStateOf(RepeatPane.LIST) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -110,10 +119,12 @@ internal fun RepeatSheet(
             enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)
         )
     ) {
-        // Back returns to the rule rather than closing the sheet, which is what
-        // the arrow in the corner promises. Only while a substate is showing;
-        // otherwise the sheet's own dismissal stands.
-        BackHandler(enabled = pane != RepeatPane.RULE) { pane = RepeatPane.RULE }
+        // Back goes one face back rather than closing the sheet, which is what
+        // the arrow in the corner promises: from Every or Ends to the rule, and
+        // from the rule to the list. On the list the sheet's own dismissal stands.
+        BackHandler(enabled = pane != RepeatPane.LIST) {
+            pane = if (pane == RepeatPane.RULE) RepeatPane.LIST else RepeatPane.RULE
+        }
 
         Column(
             modifier = Modifier
@@ -123,6 +134,14 @@ internal fun RepeatSheet(
             verticalArrangement = Arrangement.spacedBy(TellcatSpacing.sm)
         ) {
             when (pane) {
+                RepeatPane.LIST -> CommonRepeatsPane(
+                    selected = selected,
+                    anchorDay = anchorDay,
+                    today = today,
+                    onPick = onPick,
+                    onCustom = { pane = RepeatPane.RULE }
+                )
+
                 RepeatPane.RULE -> RulePane(
                     draft = draft,
                     today = today,
@@ -131,7 +150,8 @@ internal fun RepeatSheet(
                     onDraftChange = { draft = it },
                     onOpen = { pane = it },
                     onSave = { onPick(draft.toRecurrence()) },
-                    onClear = { onPick(null) }
+                    onClear = { onPick(null) },
+                    onBack = { pane = RepeatPane.LIST }
                 )
 
                 RepeatPane.EVERY -> EveryPane(
@@ -152,8 +172,95 @@ internal fun RepeatSheet(
     }
 }
 
-/** Which of the sheet's three faces is showing. */
-private enum class RepeatPane { RULE, EVERY, ENDS }
+/** Which of the sheet's faces is showing. */
+private enum class RepeatPane { LIST, RULE, EVERY, ENDS }
+
+/**
+ * The common rules, one tap each. D-121.
+ *
+ * Radio rows in one connected group, as the Ends substate draws its choices, with
+ * the current rule selected. Custom is a row of its own below, the way Every and
+ * Ends open their substates, and it is selected (and says the rule) when the task
+ * has a rule the list does not name.
+ */
+@Composable
+private fun CommonRepeatsPane(
+    selected: Recurrence?,
+    anchorDay: LocalDate,
+    today: LocalDate,
+    onPick: (Recurrence?) -> Unit,
+    onCustom: () -> Unit
+) {
+    Text(
+        text = stringResource(R.string.task_repeat),
+        style = MaterialTheme.typography.titleLarge
+    )
+
+    val rules = commonRepeats(anchorDay)
+    val count = rules.size + 1
+
+    PlanRowGroup {
+        ChoiceRow(
+            label = stringResource(R.string.task_repeat_clear),
+            selected = selected == null,
+            shapesIndex = 0,
+            shapesCount = count,
+            onClick = { onPick(null) }
+        )
+        rules.forEachIndexed { index, rule ->
+            ChoiceRow(
+                label = commonRepeatLabel(rule, anchorDay),
+                selected = selected == rule,
+                shapesIndex = index + 1,
+                shapesCount = count,
+                onClick = { onPick(rule) }
+            )
+        }
+    }
+
+    PlanRowGroup(modifier = Modifier.padding(top = TellcatSpacing.xs)) {
+        PlanRow(
+            label = stringResource(R.string.task_repeat_custom),
+            // The task's own rule when the list does not name it, so it is not
+            // hidden behind a row that reads as if nothing were set.
+            value = if (selected != null && selected !in rules) {
+                recurrenceSummary(selected, today, RecurrenceStyle.Compact)
+            } else {
+                ""
+            },
+            shapes = ListItemDefaults.segmentedShapes(index = 0, count = 1),
+            onClick = onCustom
+        )
+    }
+}
+
+/** What the list calls each of [commonRepeats]' rules for [anchor]. */
+@Composable
+private fun commonRepeatLabel(rule: Recurrence, anchor: LocalDate): String {
+    val context = LocalContext.current
+    return when {
+        rule.unit == RecurrenceUnit.DAILY -> stringResource(R.string.task_repeat_common_daily)
+        rule.unit == RecurrenceUnit.WEEKLY && rule.weekdays == MondayToFriday ->
+            stringResource(R.string.task_repeat_common_weekdays)
+        rule.unit == RecurrenceUnit.WEEKLY ->
+            stringResource(R.string.task_repeat_common_weekly, anchor.dayOfWeek.fullName(context))
+        rule.hasMonthlyWeekday ->
+            stringResource(R.string.task_repeat_common_monthly_weekday, rule.monthlyWeekday!!.phrase(context))
+        rule.unit == RecurrenceUnit.MONTHLY ->
+            stringResource(R.string.task_repeat_common_monthly_day, anchor.dayOfMonth)
+        else -> stringResource(
+            R.string.task_repeat_common_yearly,
+            anchor.format(
+                java.time.format.DateTimeFormatter.ofPattern(
+                    android.text.format.DateFormat.getBestDateTimePattern(
+                        context.resources.configuration.locales[0],
+                        "MMMMd"
+                    )
+                )
+            )
+        )
+    }
+}
 
 /**
  * The rule itself: how often, which days, and when it stops.
@@ -173,11 +280,14 @@ private fun RulePane(
     onDraftChange: (RepeatDraft) -> Unit,
     onOpen: (RepeatPane) -> Unit,
     onSave: () -> Unit,
-    onClear: () -> Unit
+    onClear: () -> Unit,
+    // Back to the common rules, D-121: the rule is now reached through Custom.
+    onBack: () -> Unit
 ) {
-    Text(
-        text = stringResource(R.string.task_repeat),
-        style = MaterialTheme.typography.titleLarge
+    PaneHeader(
+        title = stringResource(R.string.task_repeat_custom),
+        backDescription = stringResource(R.string.task_repeat_custom_back),
+        onBack = onBack
     )
 
     // **The rule as one sentence, above the three controls that make it.**

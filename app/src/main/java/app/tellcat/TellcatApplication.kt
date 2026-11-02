@@ -12,6 +12,7 @@ import app.tellcat.core.domain.DeliveryOutcome
 import app.tellcat.core.domain.ReminderAnnouncement
 import app.tellcat.core.domain.ReminderDelivery
 import app.tellcat.core.domain.Task
+import app.tellcat.core.domain.giveUndatedRepeatsADay
 import app.tellcat.core.domain.hasLiveReminder
 import app.tellcat.core.domain.pendingFollowUp
 import app.tellcat.core.domain.pendingEarlyReminder
@@ -58,6 +59,7 @@ import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
+import java.time.LocalDate
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
@@ -342,9 +344,25 @@ class TellcatApplication : Application() {
     /** Starts everything that reads storage only an unlocked phone can open. Once. */
     private fun startCredentialWork() {
         if (!credentialWorkStarted.compareAndSet(false, true)) return
+        giveUndatedRepeatsTheirDay()
         keepRemindersInStepWithStorage()
         keepWidgetInStepWithState()
         armWidgetMidnight(this)
+    }
+
+    /**
+     * **A repeating task always has a day**, D-121. Before it, Task Details let a
+     * repeat sit on an undated task, which never came to Today, never reminded,
+     * and whose series never ran. Each such task gets its rule's first day from
+     * today. At every start rather than as a migration: the first day is the
+     * rule's to work out, in Kotlin, and a task restored from an older backup is
+     * caught too. A no-op once there is nothing to repair.
+     */
+    private fun giveUndatedRepeatsTheirDay() {
+        applicationScope.launch {
+            val tasks = taskRepository.observeTasks().first()
+            giveUndatedRepeatsADay(tasks, LocalDate.now()).forEach { taskRepository.update(it) }
+        }
     }
 
     /**

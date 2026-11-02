@@ -88,6 +88,43 @@ fun writeReminder(
 }
 
 /**
+ * [text] with [day] written on the end, and no time, or null when no phrase the
+ * parser reads would say it. D-121.
+ *
+ * What Quick Add's When tool writes when a day is chosen without a time, and what
+ * Repeat writes when a rule is set on a title with no day, so the first day of a
+ * series is in the title where it can be read and corrected. The same rules as
+ * [writeReminder]: a marked run reaching the end is replaced, phrases are tried
+ * shortest first, and one is kept only if the parser reads it back as exactly
+ * [day], with no reminder, and leaves the title as it was.
+ */
+fun writeDay(
+    text: String,
+    marked: IntRange?,
+    day: LocalDate,
+    today: LocalDate,
+    dayFirst: Boolean
+): WrittenReminder? {
+    val end = text.trimEnd().length
+    val run = marked?.takeIf { it.last == end - 1 }
+    val base = (if (run != null) text.substring(0, run.first) else text).trimEnd()
+
+    if (base.isBlank()) return null
+
+    // "today" rather than nothing: a bare title is read as no day at all.
+    for (words in dayWords(day, today, dayFirst).filterNotNull()) {
+        val written = "$base $words"
+        val read = splitTrailingCapture(written, today)
+
+        if (read.title == base.trim() && read.date == day && !read.hasReminder) {
+            return WrittenReminder(written, words)
+        }
+    }
+
+    return null
+}
+
+/**
  * A time of day as the parser reads it: "9am", "9:30pm", "12am" on a 12-hour
  * phone, "09:00" and "21:30" on a 24-hour one.
  *
