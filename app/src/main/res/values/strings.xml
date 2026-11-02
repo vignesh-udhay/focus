@@ -528,7 +528,7 @@
     <!-- The reminder row on Task Details, with the alarm switched on. -->
     <string name="task_reminder_when_alarm">%1$s · Alarm</string>
 
-    <!-- Asking for full screen, R-013. -->
+    <!-- Asking for full screen. -->
     <string name="alarm_priming_title">Ring full screen</string>
     <string name="alarm_priming_body">When the phone is locked, the alarm fills the screen and rings until you stop or snooze it. Android asks you to allow full screen for Tellcat.</string>
     <string name="alarm_priming_allow">Allow full screen</string>
@@ -536,7 +536,7 @@
     <string name="alarm_priming_picture">The alarm screen, with the reminder time, the task, Snooze 10 min and Stop</string>
     <string name="alarm_priming_sample_title">Take the pills</string>
 
-    <!-- Reminder health's alarm row, listed while a reminder rings like an alarm. R-014, D-102. -->
+    <!-- Reminder health's alarm row, listed while a reminder rings like an alarm. D-102. -->
     <string name="reminder_health_check_alarm">Alarm-style reminders</string>
     <string name="reminder_health_alarm_full_screen">Ring full screen until answered</string>
     <string name="reminder_health_alarm_banner">Ring as a banner until answered</string>
@@ -678,8 +678,8 @@
 
     <!--
       Ring like an alarm, D-102. The channel names what it holds; the
-      notification and the full screen offer Stop and Snooze 10 min, never Done
-      (R-020). The time in the notification is the reminder's, not the clock's.
+      notification and the full screen offer Stop and Snooze 10 min, never Done.
+      The time in the notification is the reminder's, not the clock's.
     -->
     <string name="alarm_channel_name">Alarms</string>
     <string name="alarm_channel_description">Reminders you set to ring like an alarm. They ring until you answer.</string>

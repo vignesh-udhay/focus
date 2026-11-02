@@ -6190,7 +6190,7 @@ checklist items ticked on it. A monthly bill left unpaid for two months shows
 one open row, not two.
 
 **What would reverse this.** Testers wanting every missed occurrence kept,
-which turns rule 3 into stacking. Or the redesign's single row for a series
+which turns rule 3 into stacking. Or a single row for a series
 ("Missed Mon, 9:00 AM · Next Tue, 9:00 AM"), which would show the miss and the
 next occurrence together and make the second row unnecessary.
 
@@ -6304,12 +6304,11 @@ is a second control, and a decision of its own.
 off by default. When it is on, the reminder rings on the alarm stream until it
 is answered: full screen when the phone is locked or the screen is off and
 Android allows full-screen alerts, otherwise a heads-up on a separate Alarms
-channel. The alarm answers with Stop and Snooze 10 min, never Done (R-020). It
+channel. The alarm answers with Stop and Snooze 10 min, never Done. It
 reverses D-038's deferral, which named its own trigger: 1.0 shipped and the
 reminder pipeline has been observed working. Per task, as D-038 required, so the
 alarm-grade path is a choice the user made rather than a claim that every task
-reminder is an alarm. Designed in the redesign as R-002, R-013, R-014, R-020 and
-IA F2b and F5, adapted here to 1.0's design system and colours (D-091).
+reminder is an alarm. Drawn in 1.0's design system and colours (D-091).
 
 **Step 0, the platform rules, checked on 2026-10-26.**
 
@@ -6359,7 +6358,7 @@ apps ring; between them they failed every way an alarm can
    Stop re-posts the reminder quietly with Done and Snooze, and the task stays
    as reminded.
 
-**One state, two paths (R-002).** Storage is the only state, as everywhere in
+**One state, two paths.** Storage is the only state, as everywhere in
 the reminder code. Snooze from the alarm or the notification writes the same
 `snoozedUntil`; Done completes the task; every reconciliation then stops an
 alarm whose task is completed, deleted, or no longer due at the moment it is
@@ -6418,7 +6417,7 @@ time or complete a task twice.
 - **Before the first unlock after a restart** an alarm-style reminder still
   rings as an alarm, from the copy D-079 keeps. Stop works; Snooze asks for the
   unlock first, because it has to write to the database.
-- **Asking for full screen (R-013).** Turning the switch on without the
+- **Asking for full screen.** Turning the switch on without the
   permission shows a sheet with a picture of the alarm screen and "Allow full
   screen", which opens the exact settings toggle. The switch stays on either
   way; without the grant the editor's line says it will ring as a banner until
@@ -6599,7 +6598,7 @@ tappable.
 ## D-107. The exact-alarm ask is a bottom sheet, like the full-screen one
 
 **Decision.** "Allow precise reminders" is a bottom sheet over the reminder
-just saved, laid out like the full-screen alarm's ask (R-013): the title, one
+just saved, laid out like the full-screen alarm's ask: the title, one
 line ("So reminders arrive on the minute, even when Tellcat is closed."),
 "Open Android settings" filled, "Not now" a text button, and a one-line footnote
 saying Android has no popup for this one. Swipe, scrim and Back answer Not now.

@@ -861,8 +861,7 @@ A rewrite the user cannot see is one they cannot correct. See
 
 ## Ring like an alarm
 
-D-102. Three surfaces, all in 1.0's colours (D-091), none of the redesign's
-palette, fonts or cat poses.
+D-102. Three surfaces, all in 1.0's colours (D-091).
 
 **The switch, in the reminder sheet.** "Ring like an alarm" under Day and Time,
 off by default, the whole row the switch (role Switch). Under it, while on, one
@@ -890,7 +889,7 @@ before, 1 hour before, 1 day before). Under the rows, while one is chosen, a
 or that it has already gone and will not; a polite live region. Not offered when
 Quick Add opens the sheet.
 
-**The priming sheet (R-013).** Opened by turning the switch on without the
+**The priming sheet.** Opened by turning the switch on without the
 full-screen grant. A picture of the alarm screen, which is the real
 `AlarmScreen` laid out at phone size and scaled down
 (`TellcatDimensions.AlarmPreview*`), one sentence, a filled "Allow full screen"
@@ -902,7 +901,7 @@ stays on either way.
 notes, and two full-width pill controls: Snooze 10 min in `primary` and Stop in
 `secondaryContainer`. Both are press-and-hold, with a fill across the control
 for the 800ms it takes, so a half-asleep tap does nothing; TalkBack's double tap
-answers at once. Nothing on it completes the task (R-020). Back does nothing.
+answers at once. Nothing on it completes the task. Back does nothing.
 
 **Rows** draw the `ic_alarm` glyph, the text's size and colour, in front of
 the reminder time, and TalkBack reads the time as "Alarm 5:30 PM" where a

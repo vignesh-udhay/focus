@@ -56,7 +56,7 @@ data class ReminderHealth(
 
     /**
      * Whether alarm-style reminders can ring as alarms, or null when no task
-     * rings like one and the row is not listed at all. D-102, R-014.
+     * rings like one and the row is not listed at all. D-102.
      */
     val alarmStyle: CheckState? = null
 ) {

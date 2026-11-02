@@ -13,7 +13,7 @@ import java.time.LocalDateTime
  *
  * The receiver rings by [alarmMode] and the editor promises by it, so one test
  * of the function covers both. [stillRingsFor] is the whole of "one state, two
- * paths" (R-002): every way a ringing alarm should stop is a way this turns
+ * paths": every way a ringing alarm should stop is a way this turns
  * false.
  */
 class AlarmTest {
@@ -125,7 +125,7 @@ class AlarmTest {
         assertFalse(alarm.copy(ringsLikeAlarm = false).stillRingsFor(nine))
     }
 
-    // Stale actions, R-002
+    // Stale actions
 
     @Test
     fun `an action for the moment the task is due at applies`() {

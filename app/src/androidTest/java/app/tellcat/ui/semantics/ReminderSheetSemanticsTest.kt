@@ -135,7 +135,7 @@ class ReminderSheetSemanticsTest {
     }
 
     /**
-     * R-013. Only meaningful where full screen is not yet allowed, which is a
+     * Only meaningful where full screen is not yet allowed, which is a
      * fresh install on Android 14 and later; elsewhere there is nothing to ask.
      */
     @Test

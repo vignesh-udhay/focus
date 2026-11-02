@@ -71,7 +71,7 @@ val AlarmMode.ringsAsAlarm: Boolean
  */
 val AlarmRingLimit: Duration = Duration.ofMinutes(10)
 
-/** The alarm's one snooze, R-002. The notification keeps its three. */
+/** The alarm's one snooze. The notification keeps its three. */
 val AlarmSnooze: SnoozeOption = SnoozeOption.TenMinutes
 
 /**
@@ -81,7 +81,7 @@ val AlarmSnooze: SnoozeOption = SnoozeOption.TenMinutes
  * another moment, which is what a snooze from the notification or an edit to
  * the time does. Every reconciliation asks this and stops an alarm that has
  * become false, so Done from the notification, a snooze from either path and
- * deleting the task all stop a ringing alarm through one rule (R-002, D-099).
+ * deleting the task all stop a ringing alarm through one rule (D-099).
  */
 fun Task?.stillRingsFor(ringingFor: LocalDateTime): Boolean =
     this != null &&
@@ -92,7 +92,7 @@ fun Task?.stillRingsFor(ringingFor: LocalDateTime): Boolean =
 
 /**
  * Whether an action from a notification posted for [postedFor] still applies
- * to [task]. R-002.
+ * to [task].
  *
  * Every reminder and alarm action carries the moment its notification was for.
  * One that no longer matches, because the task was snoozed, moved, completed
@@ -108,7 +108,7 @@ fun isCurrentAction(task: Task?, postedFor: LocalDateTime?): Boolean =
 
 /**
  * Whether any outstanding reminder rings like an alarm. Reminder health lists
- * its alarm check only then (R-014).
+ * its alarm check only then.
  */
 fun hasAlarmStyleReminders(tasks: List<Task>): Boolean =
     tasks.any { task ->

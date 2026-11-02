@@ -62,7 +62,7 @@ import java.time.LocalDateTime
  * The line is read off the device each time the editor comes back to the
  * front, so returning from settings with the grant updates it.
  *
- * Turning it on without the full-screen grant opens [AlarmPrimingSheet] (R-013).
+ * Turning it on without the full-screen grant opens [AlarmPrimingSheet].
  * The switch stays on whatever the answer: without the grant it still rings,
  * as a banner, until answered, and the line says so.
  */
@@ -161,7 +161,7 @@ private val AlarmMode.promise: Int
     }
 
 /**
- * Asking for full screen, with a picture of what it is for. R-013, D-102.
+ * Asking for full screen, with a picture of what it is for. D-102.
  *
  * The competitor study's best ask was Todoist's: show the alarm screen, open
  * the exact settings toggle, and come back to it on. The picture is the real

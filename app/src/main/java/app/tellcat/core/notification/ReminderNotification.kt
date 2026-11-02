@@ -574,7 +574,7 @@ private fun Context.snoozeLabel(option: SnoozeOption): String = when (option) {
  * pending intent and the second would silently replace the first.
  *
  * [postedFor] is the moment the notification was for, carried so an action
- * from a notification that has since gone stale is ignored. R-002, D-102. An
+ * from a notification that has since gone stale is ignored. D-102. An
  * extra rather than part of the URI: a newer post for the same task replaces
  * this one, and `FLAG_UPDATE_CURRENT` rewrites the extra with it.
  */

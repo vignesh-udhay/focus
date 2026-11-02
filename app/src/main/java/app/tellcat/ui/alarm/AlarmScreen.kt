@@ -59,7 +59,7 @@ import java.time.LocalDateTime
  * The day is named under it, so an alarm snoozed past midnight still says so.
  *
  * **Two answers, held, never tapped.** Snooze 10 min and Stop, and nothing that
- * completes the task (R-020). Both are press-and-hold: a half-asleep tap does
+ * completes the task. Both are press-and-hold: a half-asleep tap does
  * nothing, and the fill across the control shows how long is left. TalkBack's
  * double tap answers at once, because that gesture is already deliberate.
  */
