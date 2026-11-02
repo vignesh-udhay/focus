@@ -7185,3 +7185,83 @@ lever before different shapes.
 
 **Not the widget.** The widget's checkboxes are Glance's platform `CheckBox`,
 which takes colours and nothing else, so it keeps Android's own.
+
+---
+
+## D-122. A series on a date keeps its day
+
+**Decided on 2026-11-02**, a reliability fix for 1.3.1 before the production
+opening, at the owner's go through the coordinating thread. Numbered after
+D-119 to D-121, which are on branches not yet on `main`. On
+`fix/recurrence-anchor`, from `main`.
+
+**What was wrong.** A monthly task on the 29th, 30th or 31st moved to an earlier
+day after a short month, and its reminder rang on the wrong day from then on
+with nothing said. The owner found it asking how to be reminded on the last day
+of every month. Walked through six completions, a series from 31 December went
+31 January, 28 February, then 28 March, 28 April, 28 May, 28 June. A yearly
+task on 29 February did the same: the 28th in an ordinary year, then the 28th
+for good.
+
+**Why.** `Recurrence.nextOccurrence` counts from an anchor and clamps, and was
+right when given the series' first day: from 31 January it gives 28 February
+and then 31 March. But `Task.nextRecurringInstance` passed the occurrence just
+finished as the anchor, so after February the anchor was the 28th. A task did
+not carry its series' day; it carried only its own.
+
+**Decision.** A series on a date stores the day it is set for, and each next
+occurrence falls on that day, or on the period's last day when the period is
+shorter.
+
+- **What is stored: a month and day, `MonthDay`, as "--12-31", in one new
+  column (schema 17).** Not the full first date. Only the day inside the period
+  was wrong; which months or years are on was right, and D-116 decided that an
+  occurrence moved by hand moves which months are on. A full date would have
+  changed that and brought a year nothing reads. Monthly reads the day of the
+  month; yearly reads the month too, which is what 29 February needs.
+- **Only for rules on a date**: monthly on the day of the month, and yearly.
+  Daily, weekly and a weekday of the month (D-116) keep nothing and count from
+  each occurrence exactly as before; tests prove the result is unchanged. When
+  the stored day is the occurrence's own, the new count is the old one, checked
+  over every start day of two years at three intervals.
+- **Carried by every path that makes an occurrence**, because all of them go
+  through `nextRecurringInstance`: completing, the successor made when a
+  reminder rings (D-098), the untouched successor that follows an edit or a
+  delete (D-098 rules 6 and 7, remade from the edited row), and the locked copy,
+  which holds no rule and makes nothing until the database is open.
+- **A new rule counts from the task's day; a moved occurrence keeps the
+  series' day.** Choosing a different rule in the Repeat sheet sets the day from
+  the day the task is on. Moving one occurrence by hand changes no rule, so the
+  series keeps its day, as D-116 keeps a weekday rule: the 31st moved to 2 April
+  is followed by 30 April. To move the whole series, choose its rule again.
+- **Interval and ends unchanged**: every two months from the 31st is 28
+  February, 30 April, 30 June, 31 August; an end by count or by date stops where
+  it did.
+
+**Existing data.** The migration gives each task with a rule on a date its own
+scheduled day. That is the best the data holds. A series that already slid,
+from the 31st to the 28th, keeps the 28th: nothing stored says it was ever the
+31st, and guessing (the month's last day? the 31st?) would move tasks the user
+may have set on the 28th on purpose. The owner can choose the rule again on such
+a task to set it from its day. Undated tasks keep no day until they have one. A
+backup written before this has no such field and restores as before, counting
+from each task's own day. One small edge: an untouched successor made by a ring
+before the update is no longer recognised as untouched, so an edit to the
+occurrence before it stays on that occurrence instead of following, once.
+
+**Release note:** "Fixed: a monthly task on the 29th, 30th or 31st could move to
+an earlier day after a short month."
+
+**Tests.** `RecurrenceAnchorTest`: the six-completion walk, the 29th and the
+30th, 29 February across leap years, intervals of two and three, ends by count
+and by date, a moved occurrence, finishing late and early, daily, weekly and
+weekday rules unchanged, and the old count kept on its own day. `MigrationTest`:
+version 17 sets the day for rules on a date only, keeps a slid series on its
+day, and is read back. `TellcatBackupCodecTest`: the day round-trips, and an
+older backup reads none. `TaskListViewModelTest`: a new rule takes the task's
+day, a moved occurrence keeps the series', a different rule resets it, and a
+weekly rule keeps none.
+
+**What would reverse this.** Nothing about the fix; it restores what D-027's
+rule always promised. A "last day of the month" rule is a separate decision.
+
