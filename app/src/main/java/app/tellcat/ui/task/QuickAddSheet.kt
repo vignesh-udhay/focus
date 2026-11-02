@@ -48,6 +48,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -94,6 +95,8 @@ import app.tellcat.core.domain.RecurrenceUnit
 import app.tellcat.core.domain.WrittenReminder
 import app.tellcat.core.domain.firstOccurrenceFrom
 import app.tellcat.core.domain.writeDay
+import app.tellcat.core.domain.readToolRun
+import app.tellcat.core.domain.TitleStandIn
 import app.tellcat.core.text.RecurrenceStyle
 import app.tellcat.core.text.recurrenceSummary
 import app.tellcat.ui.component.CheckBoxDrawing
@@ -202,8 +205,15 @@ fun QuickAddSheet(
     // words in the title, so they are kept here and handed over with it.
     var recurrence by rememberSaveable(stateSaver = RecurrenceSaver) { mutableStateOf<Recurrence?>(null) }
     var items by rememberSaveable(stateSaver = ItemsSaver) { mutableStateOf(emptyList<String>()) }
+    // **The Checklist tool turns the checklist on and off**, the owner's ask
+    // after trying it. Off hides the lines rather than dropping them, so a stray
+    // tap loses nothing, and only lines showing when Add is pressed are saved.
+    var checklistOn by rememberSaveable { mutableStateOf(false) }
     // The checklist line to give focus to next, or -1 for none.
     var focusItem by remember { mutableIntStateOf(-1) }
+    // **Words a tool wrote before any title was typed**, D-121 as amended: the
+    // owner picks the day or the repeat first, then types the task in front.
+    var toolRun by rememberSaveable { mutableStateOf<String?>(null) }
 
     // The sheets the tools open, and a count of the times one has closed,
     // which is what hands focus back to the field. D-112.
@@ -218,15 +228,21 @@ fun QuickAddSheet(
     // Recomputed as the user types: it decides what the field marks, what the
     // supporting line says, and what Add hands over, so the three can never
     // disagree.
-    val parsed = splitTrailingCapture(title.text, today).let { capture ->
+    val parsed = (readToolRun(title.text, toolRun, today) ?: splitTrailingCapture(title.text, today)).let { capture ->
         if (reminderDismissed) capture.withoutReminder() else capture
     }
     val hasTitle = parsed.title.isNotBlank()
 
     fun save() {
         if (!hasTitle) return
-        onSave(QuickAddCapture(parsed, recurrence, items.map(String::trim).filter(String::isNotEmpty)))
+        val checklist = if (checklistOn) items.map(String::trim).filter(String::isNotEmpty) else emptyList()
+        onSave(QuickAddCapture(parsed, recurrence, checklist))
     }
+
+    // What the tools write against: the title, or with none yet a stand-in,
+    // so the words are checked as they would be read once one is typed.
+    val writeText = if (hasTitle) title.text else TitleStandIn
+    val writeMark = if (hasTitle) parsed.markRange else null
 
     val markStyle = SpanStyle(color = MaterialTheme.colorScheme.primary)
     val markTheRun = remember(parsed.markRange, markStyle) {
@@ -251,10 +267,17 @@ fun QuickAddSheet(
     }
 
     // Words a tool writes go in as typed words would, with the cursor after
-    // them, and a reminder cleared earlier is no longer cleared.
+    // them, and a reminder cleared earlier is no longer cleared. With no title
+    // yet, the words go in alone with the cursor in front of them, so what is
+    // typed next is the title: "Call Sam| tomorrow at 9am".
     fun writeIn(written: WrittenReminder?) {
         if (written == null) return
-        title = TextFieldValue(written.text, TextRange(written.text.length))
+        if (hasTitle) {
+            title = TextFieldValue(written.text, TextRange(written.text.length))
+        } else {
+            title = TextFieldValue(" " + written.phrase, TextRange(0))
+            toolRun = written.phrase
+        }
         reminderDismissed = false
     }
 
@@ -345,7 +368,12 @@ fun QuickAddSheet(
                     visualTransformation = markTheRun,
                     // Null rather than an empty slot until there is something to
                     // describe, tied to the test Add uses. D-053.
-                    supportingText = if (!hasTitle) null else {
+                    supportingText = if (!hasTitle) {
+                        // Only a tool's words so far: say what comes next.
+                        if (parsed.isPlain) null else {
+                            { Text(stringResource(R.string.quick_add_title_first)) }
+                        }
+                    } else {
                         {
                             QuickAddSupportingText(
                                 parsed = parsed,
@@ -372,9 +400,9 @@ fun QuickAddSheet(
                 )
 
                 // **The checklist, written inline**, D-121, under the title it
-                // belongs to. Enter on a line adds the next; Backspace on an empty
-                // line removes it and goes back to the line above.
-                items.forEachIndexed { index, item ->
+                // belongs to, while the tool has it on. Enter on a line adds the
+                // next; its cross, or Backspace on an empty line, removes it.
+                if (checklistOn) items.forEachIndexed { index, item ->
                     QuickAddChecklistLine(
                         text = item,
                         number = index + 1,
@@ -389,10 +417,14 @@ fun QuickAddSheet(
                         },
                         onRemove = {
                             items = items.toMutableList().also { it.removeAt(index) }
-                            if (index > 0) {
-                                focusItem = index - 1
-                            } else {
-                                focusRequester.requestFocus()
+                            when {
+                                // The last line gone is the checklist gone.
+                                items.isEmpty() -> {
+                                    checklistOn = false
+                                    focusRequester.requestFocus()
+                                }
+                                index > 0 -> focusItem = index - 1
+                                else -> focusItem = 0
                             }
                         }
                     )
@@ -402,7 +434,8 @@ fun QuickAddSheet(
             // **The tools, on the keyboard beside Add.** D-121, after TickTick:
             // When, Repeat, Checklist. A set tool shows it in place, so nothing
             // above grows as tools are set; the supporting line says it all in
-            // words. Every tool waits for a title, as Add does.
+            // words. Every tool is live from the start, D-121 as amended: the
+            // owner picks a day or a repeat first and types the task after.
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(TellcatSpacing.xs),
@@ -422,7 +455,7 @@ fun QuickAddSheet(
                         parsed = parsed,
                         today = today,
                         now = now,
-                        enabled = hasTitle,
+                        enabled = true,
                         onClick = {
                             // The keyboard goes down so the sheet has the screen, and
                             // comes back when it closes.
@@ -434,7 +467,7 @@ fun QuickAddSheet(
                         icon = R.drawable.ic_repeat,
                         name = stringResource(R.string.quick_add_repeat),
                         value = recurrence?.let { recurrenceSummary(it, today, RecurrenceStyle.Sentence) },
-                        enabled = hasTitle,
+                        enabled = true,
                         onClick = {
                             keyboard?.hide()
                             isRepeatOpen = true
@@ -443,13 +476,30 @@ fun QuickAddSheet(
                     QuickAddTool(
                         icon = R.drawable.ic_checklist,
                         name = stringResource(R.string.quick_add_checklist),
-                        value = if (items.isEmpty()) null else stringResource(R.string.quick_add_checklist_count, items.size),
+                        value = if (!checklistOn) {
+                            null
+                        } else {
+                            val written = items.count(String::isNotBlank)
+                            if (written == 0) {
+                                stringResource(R.string.quick_add_checklist_on)
+                            } else {
+                                pluralStringResource(R.plurals.quick_add_checklist_items, written, written)
+                            }
+                        },
                         spokenValueIsWhole = true,
-                        enabled = hasTitle,
+                        enabled = true,
                         onClick = {
-                            // A new line at the end, with the keyboard on it.
-                            items = items + ""
-                            focusItem = items.lastIndex
+                            if (checklistOn) {
+                                // Off: hidden, kept, and not saved.
+                                checklistOn = false
+                                focusRequester.requestFocus()
+                            } else {
+                                // On: the lines as they were, or a first one,
+                                // with the keyboard on the first empty line.
+                                checklistOn = true
+                                if (items.isEmpty()) items = listOf("")
+                                focusItem = items.indexOfFirst(String::isBlank).takeIf { it >= 0 } ?: items.lastIndex
+                            }
                         }
                     )
                 }
@@ -486,8 +536,8 @@ fun QuickAddSheet(
             onSet = { at, _, _ ->
                 writeIn(
                     writeReminder(
-                        text = title.text,
-                        marked = parsed.markRange,
+                        text = writeText,
+                        marked = writeMark,
                         at = at,
                         today = today,
                         now = clock(),
@@ -499,12 +549,18 @@ fun QuickAddSheet(
                 sheetClosed++
             },
             onSetDay = { day ->
-                writeIn(writeDay(title.text, parsed.markRange, day, today, writesDayFirst(locale)))
+                writeIn(writeDay(writeText, writeMark, day, today, writesDayFirst(locale)))
                 isWhenOpen = false
                 sheetClosed++
             },
             onClear = {
-                reminderDismissed = true
+                if (hasTitle) {
+                    reminderDismissed = true
+                } else {
+                    // Only the tool's words were there: clearing takes them.
+                    title = TextFieldValue()
+                    toolRun = null
+                }
                 isWhenOpen = false
                 sheetClosed++
             },
@@ -531,7 +587,7 @@ fun QuickAddSheet(
                 if (picked != null && dayInField == null) {
                     val first = picked.firstOccurrenceFrom(today)
                     if (first != fallbackDate) {
-                        writeIn(writeDay(title.text, parsed.markRange, first, today, writesDayFirst(locale)))
+                        writeIn(writeDay(writeText, writeMark, first, today, writesDayFirst(locale)))
                     }
                 }
                 isRepeatOpen = false
@@ -669,6 +725,13 @@ private fun QuickAddChecklistLine(
     onRemove: () -> Unit
 ) {
     val requester = remember { FocusRequester() }
+    // Named by its words, as Task Details' checklist names it, or by its place
+    // while it has none.
+    val removeLabel = if (text.isNotBlank()) {
+        stringResource(R.string.task_checklist_remove, text.trim())
+    } else {
+        stringResource(R.string.quick_add_checklist_remove_item, number)
+    }
     LaunchedEffect(focus) {
         if (focus) {
             requester.requestFocus()
@@ -718,6 +781,15 @@ private fun QuickAddChecklistLine(
                         removes
                     }
                     .semantics { contentDescription = label }
+            )
+        }
+        // **One tap removes a line**, the owner's ask: Backspace on an empty
+        // line was the only way, and nobody would find it.
+        IconButton(onClick = onRemove) {
+            Icon(
+                painter = painterResource(R.drawable.ic_close),
+                contentDescription = removeLabel,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

@@ -315,16 +315,18 @@ class QuickAddSemanticsTest {
         field().fetchSemanticsNode().config[SemanticsProperties.EditableText].text
 
     /**
-     * Always on the sheet, D-121, so Add never moves as tools are set. Live once
-     * there is a title, the same test Add uses; and the line under the field is
-     * the polite live region the chip used to be.
+     * Always on the sheet, D-121, so Add never moves as tools are set, and live
+     * from the start: the owner picks a day or a repeat before typing the task
+     * (D-121 as amended). Add still waits for a title. The line under the field
+     * is the polite live region the chip used to be.
      */
     private fun assertTheToolsAreAlwaysThere(fontScale: Float) {
         setSheet(fontScale)
 
         for (tool in listOf(WHEN, REPEAT, CHECKLIST)) {
-            rule.onNode(hasContentDescription(tool) and hasClickAction()).assertIsDisplayed().assertIsNotEnabled()
+            rule.onNode(hasContentDescription(tool) and hasClickAction()).assertIsDisplayed().assertIsEnabled()
         }
+        rule.onNodeWithText(SAVE).assertIsNotEnabled()
 
         field().performTextInput(TITLE)
         for (tool in listOf(WHEN, REPEAT, CHECKLIST)) {

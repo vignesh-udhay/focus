@@ -309,4 +309,37 @@ class CaptureWriterTest {
     fun aDayIsNeverWrittenIntoAnEmptyTitle() {
         assertNull(writeDay("   ", null, today.plusDays(1), today, true))
     }
+
+    // --- D-121 as amended: a tool's words before any title ---------------------------
+
+    @Test
+    fun aToolsWordsAloneAreReadAsADayWithNoTitle() {
+        val written = writeDay(TitleStandIn, null, today.plusDays(1), today, true)!!
+        val field = " " + written.phrase
+        val read = readToolRun(field, written.phrase, today)!!
+
+        assertEquals("", read.title)
+        assertEquals(today.plusDays(1), read.date)
+        // Marked where the words are in the field, not in the stand-in.
+        assertEquals(field.indexOf(written.phrase), read.markRange!!.first)
+        assertEquals(field.length - 1, read.markRange!!.last)
+    }
+
+    @Test
+    fun aToolsWordsAloneCarryTheirReminder() {
+        val at = today.plusDays(1).atTime(9, 0)
+        val written = writeReminder(TitleStandIn, null, at, today, morning, false, true)!!
+        val read = readToolRun(" " + written.phrase, written.phrase, today)!!
+
+        assertEquals("", read.title)
+        assertEquals(at, read.reminderAt(today, morning))
+    }
+
+    /** Typed, the same words are a task called that, D-112. Only a tool's own words read as a day. */
+    @Test
+    fun typedOrEditedWordsAreNotReadAsAToolsWords() {
+        assertNull(readToolRun("tomorrow", null, today))
+        assertNull(readToolRun(" tomorrow at 9am", "tomorrow", today))
+        assertNull(readToolRun("Call Sam tomorrow", "tomorrow", today))
+    }
 }

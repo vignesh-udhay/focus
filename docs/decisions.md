@@ -7371,3 +7371,27 @@ Friday 4, groceries with three items 5, a typed capture 2.
 repeat), `QuickAddToolsTest`, `RepeatListTest`, `QuickAddSemanticsTest` and
 `QuickAddCaptureTest` moved from the chip to When, and `TaskDetailsSemanticsTest`
 reaching the rule through Custom, with two new tests for the list and the day.
+
+### Owner trial: tools first, and a checklist that switches, 2026-11-02
+
+**Amended by the owner after trying the build on the phone.** Three things.
+
+- **Every tool is live from the start.** Applied to all three tools, D-112's
+  "not until there is a title" left the owner unable to pick a day or a repeat
+  before typing the task, which is how they think of some tasks. Repeat and the
+  checklist never needed a title. When now writes its words into an empty
+  field with the cursor in front of them (" tomorrow at 9am"), so what is typed
+  next is the title, and the line under the field says "Now type the task in
+  front". Those words are read as a day only while they are exactly what the
+  tool wrote (`readToolRun`), so "tomorrow" typed on its own is still a task
+  called Tomorrow, D-112's reason kept. Repeat in Inbox does the same with its
+  first day. Add still waits for a title, and clearing When while only its
+  words are there empties the field.
+- **The Checklist tool switches the checklist on and off.** It added a line on
+  every tap, and the owner expected a second tap to turn the checklist off.
+  Off hides the lines and keeps them, so a stray tap loses nothing; only the
+  lines showing when Add is pressed are saved. New lines come from Enter alone.
+- **Each line has a cross that removes it**, named "Remove Milk" for TalkBack as
+  Task Details' checklist names its own. Backspace on an empty line was the only
+  way, and nobody would have found it. Removing the last line turns the
+  checklist off.

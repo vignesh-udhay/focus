@@ -125,6 +125,31 @@ fun writeDay(
 }
 
 /**
+ * What an empty title is stood in by while a tool writes into it. D-121, after
+ * the owner asked to pick a day and a repeat before typing the task: the writers
+ * check their words against a title, and there is none yet.
+ */
+const val TitleStandIn = "Task"
+
+/**
+ * A field holding nothing but [run], the words a tool wrote before any title was
+ * typed, read as what they say with an empty title. D-121.
+ *
+ * Null when the field holds anything else, so this applies only to words a tool
+ * wrote and the user has not edited. Typed on their own, "tomorrow" is still a
+ * task called Tomorrow, D-112: the parser never empties a title it was given.
+ * Once a title is typed in front, the field is read as it always is.
+ */
+fun readToolRun(text: String, run: String?, today: LocalDate): CapturedTask? {
+    if (run == null || text.trim() != run) return null
+    val read = splitTrailingCapture("$TitleStandIn $run", today)
+    if (read.title != TitleStandIn) return null
+    val shift = text.indexOf(run) - (TitleStandIn.length + 1)
+    fun IntRange.moved() = (first + shift)..(last + shift)
+    return read.copy(title = "", dateRange = read.dateRange?.moved(), timeRange = read.timeRange?.moved())
+}
+
+/**
  * A time of day as the parser reads it: "9am", "9:30pm", "12am" on a 12-hour
  * phone, "09:00" and "21:30" on a 24-hour one.
  *

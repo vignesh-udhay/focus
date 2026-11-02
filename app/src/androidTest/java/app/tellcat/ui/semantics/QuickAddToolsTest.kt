@@ -4,6 +4,9 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
@@ -117,6 +120,165 @@ class QuickAddToolsTest {
         assertEquals(emptyList<String>(), saved.single().checklist)
     }
 
+    // --- The checklist turns on and off, D-121 as amended ------------------------------------
+
+    @Test
+    fun turningTheChecklistOffHidesItsLinesAndDoesNotSaveThem() {
+        sheet(fallbackDate = today)
+        field().performTextInput("Groceries")
+        tool(CHECKLIST).performClick()
+        rule.waitUntilExactlyOneExists(hasContentDescription("$ITEM 1"), TIMEOUT_MILLIS)
+        item(1).performTextInput("Milk")
+
+        tool(CHECKLIST).performClick()
+
+        rule.waitUntilDoesNotExist(hasContentDescription("$ITEM 1"), TIMEOUT_MILLIS)
+        rule.onNodeWithText(SAVE).performClick()
+        assertEquals(emptyList<String>(), saved.single().checklist)
+    }
+
+    /** Off loses nothing: on again, the lines come back as they were. */
+    @Test
+    fun turningTheChecklistBackOnBringsItsLinesBack() {
+        sheet(fallbackDate = today)
+        field().performTextInput("Groceries")
+        tool(CHECKLIST).performClick()
+        rule.waitUntilExactlyOneExists(hasContentDescription("$ITEM 1"), TIMEOUT_MILLIS)
+        item(1).performTextInput("Milk")
+
+        tool(CHECKLIST).performClick()
+        rule.waitUntilDoesNotExist(hasContentDescription("$ITEM 1"), TIMEOUT_MILLIS)
+        tool(CHECKLIST).performClick()
+
+        rule.waitUntilExactlyOneExists(hasContentDescription("$ITEM 1"), TIMEOUT_MILLIS)
+        rule.onNodeWithText(SAVE).performClick()
+        assertEquals(listOf("Milk"), saved.single().checklist)
+    }
+
+    /** The tool no longer adds a line each tap; Enter does. */
+    @Test
+    fun theChecklistToolDoesNotAddLines() {
+        sheet(fallbackDate = today)
+        field().performTextInput("Groceries")
+        tool(CHECKLIST).performClick()
+        rule.waitUntilExactlyOneExists(hasContentDescription("$ITEM 1"), TIMEOUT_MILLIS)
+
+        tool(CHECKLIST).performClick()
+        tool(CHECKLIST).performClick()
+
+        rule.waitUntilExactlyOneExists(hasContentDescription("$ITEM 1"), TIMEOUT_MILLIS)
+        assertEquals(0, rule.onAllNodes(hasContentDescription("$ITEM 2")).fetchSemanticsNodes().size)
+    }
+
+    @Test
+    fun aLinesCrossRemovesIt() {
+        sheet(fallbackDate = today)
+        field().performTextInput("Groceries")
+        tool(CHECKLIST).performClick()
+        rule.waitUntilExactlyOneExists(hasContentDescription("$ITEM 1"), TIMEOUT_MILLIS)
+        item(1).performTextInput("Milk")
+        item(1).performImeAction()
+        rule.waitUntilExactlyOneExists(hasContentDescription("$ITEM 2"), TIMEOUT_MILLIS)
+        item(2).performTextInput("Eggs")
+
+        rule.onNodeWithContentDescription("Remove Milk").assertTouchTargetIsAtLeast48().performClick()
+
+        rule.waitUntilDoesNotExist(hasContentDescription("Remove Milk"), TIMEOUT_MILLIS)
+        rule.onNodeWithText(SAVE).performClick()
+        assertEquals(listOf("Eggs"), saved.single().checklist)
+    }
+
+    /** The last line removed is the checklist off. */
+    @Test
+    fun removingTheLastLineTurnsTheChecklistOff() {
+        sheet(fallbackDate = today)
+        field().performTextInput("Groceries")
+        tool(CHECKLIST).performClick()
+        rule.waitUntilExactlyOneExists(hasContentDescription("$ITEM 1"), TIMEOUT_MILLIS)
+
+        rule.onNodeWithContentDescription("Remove item 1").performClick()
+
+        rule.waitUntilDoesNotExist(hasContentDescription("$ITEM 1"), TIMEOUT_MILLIS)
+        rule.onNode(hasContentDescription(CHECKLIST) and hasClickAction()).assertExists()
+    }
+
+    // --- Tools before a title, D-121 as amended -------------------------------------------------
+
+    /** When first, with nothing typed: its words go in, the cursor in front, and the title is typed there. */
+    @Test
+    fun whenBeforeATitleWritesTheDayWithTheTitleToCome() {
+        sheet(fallbackDate = today)
+
+        tool(WHEN).assertIsEnabled().performClick()
+        rule.waitUntilExactlyOneExists(hasText(NO_TIME), TIMEOUT_MILLIS)
+        rule.onNodeWithText(SAVE_WHEN).performClick()
+
+        rule.waitUntil(TIMEOUT_MILLIS) { fieldText() == " today" }
+        rule.onNodeWithText(TITLE_FIRST).assertIsDisplayed()
+        rule.onNodeWithText(SAVE).assertIsNotEnabled()
+
+        field().performTextInput("Call Sam")
+
+        rule.waitUntil(TIMEOUT_MILLIS) { fieldText() == "Call Sam today" }
+        rule.onNodeWithText(SAVE).performClick()
+        assertEquals("Call Sam", saved.single().parsed.title)
+        assertEquals(today, saved.single().parsed.date)
+    }
+
+    /** Repeat first, from Inbox: the first day is written the same way. */
+    @Test
+    fun repeatBeforeATitleInInboxWritesItsFirstDay() {
+        sheet(fallbackDate = null)
+
+        tool(REPEAT).assertIsEnabled().performClick()
+        rule.waitUntilExactlyOneExists(hasText(DAILY), TIMEOUT_MILLIS)
+        rule.onNodeWithText(DAILY).performClick()
+
+        rule.waitUntil(TIMEOUT_MILLIS) { fieldText() == " today" }
+        field().performTextInput("Water the plants")
+        rule.onNodeWithText(SAVE).performClick()
+
+        val capture = saved.single()
+        assertEquals("Water the plants", capture.parsed.title)
+        assertEquals(today, capture.parsed.date)
+        assertEquals(Recurrence(RecurrenceUnit.DAILY), capture.recurrence)
+    }
+
+    /** Typed, not written by a tool, "tomorrow" is still a task called Tomorrow. */
+    @Test
+    fun aTypedDayAloneIsStillATitle() {
+        sheet(fallbackDate = today)
+        field().performTextInput("tomorrow")
+
+        rule.onNodeWithText(SAVE).assertIsEnabled().performClick()
+        assertEquals("tomorrow", saved.single().parsed.title)
+    }
+
+    /** Clearing When with only its words there takes them out. */
+    @Test
+    fun clearingWhenBeforeATitleEmptiesTheField() {
+        sheet(fallbackDate = today)
+        tool(WHEN).performClick()
+        rule.waitUntilExactlyOneExists(hasText(NO_TIME), TIMEOUT_MILLIS)
+        rule.onNodeWithText(SAVE_WHEN).performClick()
+        rule.waitUntil(TIMEOUT_MILLIS) { fieldText() == " today" }
+
+        tool(WHEN).performClick()
+        rule.waitUntilExactlyOneExists(hasText(CLEAR), TIMEOUT_MILLIS)
+        rule.onNodeWithText(CLEAR).performClick()
+
+        rule.waitUntil(TIMEOUT_MILLIS) { fieldText().isEmpty() }
+    }
+
+    /** The 48dp floor, measured where taps land. */
+    private fun androidx.compose.ui.test.SemanticsNodeInteraction.assertTouchTargetIsAtLeast48() = apply {
+        val node = fetchSemanticsNode()
+        with(node.layoutInfo.density) {
+            assertTrue(node.touchBoundsInRoot.width.toDp() >= 48.dp)
+            assertTrue(node.touchBoundsInRoot.height.toDp() >= 48.dp)
+        }
+    }
+
     // --- Repeat, and a repeating task always has a day -------------------------------------
 
     /** From Inbox, with no day typed: the rule's first day is written into the title. */
@@ -214,6 +376,11 @@ class QuickAddToolsTest {
         const val CHECKLIST = "Checklist"
         const val ITEM = "Checklist item"
         const val DAILY = "Daily"
+        const val WHEN = "When"
+        const val NO_TIME = "No time"
+        const val SAVE_WHEN = "Save reminder"
+        const val CLEAR = "Clear"
+        const val TITLE_FIRST = "Now type the task in front"
         const val TIMEOUT_MILLIS = 5_000L
     }
 }
