@@ -118,8 +118,13 @@ fun InboxScreen(
             // the task for the day it rings, so "call mom 5pm" lands on Today
             // rather than staying here with a reminder this afternoon. A blank
             // title captures nothing and leaves the sheet open.
-            onSave = { parsed ->
-                val landed = viewModel.capture(parsed, fallbackDate = null)
+            onSave = { capture ->
+                val landed = viewModel.capture(
+                    capture.parsed,
+                    fallbackDate = null,
+                    recurrence = capture.recurrence,
+                    checklist = capture.checklist
+                )
                 if (landed != null) {
                     isQuickAddVisible = false
                     announceLanding(landed)

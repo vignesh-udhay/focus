@@ -21,6 +21,7 @@ import app.tellcat.core.domain.PrimaryList
 import app.tellcat.core.domain.primaryListFor
 import app.tellcat.core.domain.StoredFocusSession
 import app.tellcat.core.domain.Recurrence
+import app.tellcat.core.domain.firstOccurrenceFrom
 import app.tellcat.core.domain.nextRecurringInstance
 import app.tellcat.core.domain.Task
 import app.tellcat.core.domain.OccurrenceEdits
@@ -1025,15 +1026,24 @@ class TaskListViewModel(
     fun capture(
         parsed: CapturedTask,
         fallbackDate: LocalDate?,
-        now: LocalDateTime = LocalDateTime.now()
+        now: LocalDateTime = LocalDateTime.now(),
+        // What Quick Add's tools hold that the title cannot say. D-121.
+        recurrence: Recurrence? = null,
+        checklist: List<String> = emptyList()
     ): PrimaryList? {
         val day = today.value
+        // **A repeating task always has a day**, D-121. The sheet writes the
+        // first day into the title when Repeat is set without one; this is the
+        // same rule held where the task is made, so no path can save one undated.
         val scheduledDate = parsed.scheduledDate(fallbackDate, day, now)
+            ?: recurrence?.firstOccurrenceFrom(day)
 
         val captured = createTask(
             title = parsed.title,
             scheduledDate = scheduledDate,
-            reminderAt = parsed.reminderAt(day, now)
+            reminderAt = parsed.reminderAt(day, now),
+            recurrence = recurrence,
+            checklist = checklist
         )
 
         return if (captured) primaryListFor(scheduledDate, day) else null
@@ -1057,7 +1067,10 @@ class TaskListViewModel(
         // A moment to be interrupted at, or null for a task that never speaks
         // up. Quick Add supplies one when the title ended in a time, per
         // `docs/decisions.md` D-011; everything else passes null.
-        reminderAt: LocalDateTime? = null
+        reminderAt: LocalDateTime? = null,
+        // Quick Add's Repeat and Checklist, D-121.
+        recurrence: Recurrence? = null,
+        checklist: List<String> = emptyList()
     ): Boolean {
         val trimmed = title.trim()
         if (trimmed.isEmpty()) return false
@@ -1069,7 +1082,9 @@ class TaskListViewModel(
                     title = trimmed,
                     createdAt = Instant.now(),
                     scheduledDate = scheduledDate,
-                    reminderAt = reminderAt
+                    reminderAt = reminderAt,
+                    recurrence = recurrence,
+                    checklist = checklist.map { ChecklistItem(it) }
                 )
             )
         }

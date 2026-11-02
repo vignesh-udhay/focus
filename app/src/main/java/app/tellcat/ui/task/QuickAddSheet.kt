@@ -1,10 +1,7 @@
 package app.tellcat.ui.task
 
 import android.text.format.DateFormat
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalConfiguration
@@ -12,7 +9,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import app.tellcat.core.design.TellcatDimensions
@@ -28,8 +24,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.InputChip
-import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.TextField
@@ -49,11 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.onClick
-import androidx.compose.ui.semantics.text
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -72,6 +62,42 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import app.tellcat.R
+import androidx.annotation.DrawableRes
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.PlainTooltip
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.rememberTooltipState
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalDensity
+import app.tellcat.core.domain.MonthlyWeekday
+import app.tellcat.core.domain.Recurrence
+import app.tellcat.core.domain.RecurrenceEnd
+import app.tellcat.core.domain.RecurrenceUnit
+import app.tellcat.core.domain.WrittenReminder
+import app.tellcat.core.domain.firstOccurrenceFrom
+import app.tellcat.core.domain.writeDay
+import app.tellcat.core.text.RecurrenceStyle
+import app.tellcat.core.text.recurrenceSummary
+import app.tellcat.ui.component.CheckBoxDrawing
+import java.time.DayOfWeek
 import app.tellcat.ui.component.tellcatFieldColors
 import app.tellcat.ui.component.TellcatFieldShape
 import app.tellcat.core.design.TellcatSpacing
@@ -122,7 +148,24 @@ import kotlinx.coroutines.delay
  * The colour is the quieter half of the signal and never the only one. The
  * supporting line carries the same fact in text, which is what a screen reader
  * announces and what survives a colour-blind reading.
+ *
+ * **Since D-121 the sheet has three tools on the keyboard beside Add**: When,
+ * Repeat and Checklist. When replaces the chip and still only types, a day or a
+ * day and a time, so the field stays the one setter of both. Repeat and the
+ * checklist have no typed form, so the sheet holds them and Add hands them over
+ * with the title. Every tool is optional; typing stays the fast path.
  */
+/**
+ * What Quick Add hands its host: the parsed title, and since D-121 the repeat
+ * and the checklist the sheet holds, which have no typed form.
+ */
+data class QuickAddCapture(
+    val parsed: CapturedTask,
+    val recurrence: Recurrence? = null,
+    // The lines as typed, blank ones already dropped.
+    val checklist: List<String> = emptyList()
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QuickAddSheet(
@@ -137,7 +180,7 @@ fun QuickAddSheet(
     // under the field used to work it out for itself and got Inbox wrong.
     fallbackDate: LocalDate?,
     onDismiss: () -> Unit,
-    onSave: (CapturedTask) -> Unit,
+    onSave: (QuickAddCapture) -> Unit,
     modifier: Modifier = Modifier,
     // A parameter for the reason `TaskDetailsSheets` takes one: the behaviour
     // worth proving happens when a minute ends, and only a test can make that
@@ -146,29 +189,43 @@ fun QuickAddSheet(
 ) {
     val now = rememberCurrentMinute(clock)
 
-    // A value rather than a string, so the chip can put the cursor after the
+    // A value rather than a string, so a tool can put the cursor after the
     // words it writes. D-112.
     var title by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue()) }
 
-    // Whether the user has dismissed the reminder for what is currently typed.
+    // Whether the user has cleared the reminder for what is currently typed.
     // Reset by typing, because the next keystroke makes a new parse and a
     // dismissal cannot outlive the text it was about.
     var reminderDismissed by rememberSaveable { mutableStateOf(false) }
 
-    // The reminder sheet the chip opens, D-112, and a count of the times it
-    // has closed, which is what hands focus back to the field.
-    var isReminderOpen by rememberSaveable { mutableStateOf(false) }
-    var reminderClosed by remember { mutableIntStateOf(0) }
+    // **What the sheet holds itself**, D-121: a repeat and a checklist have no
+    // words in the title, so they are kept here and handed over with it.
+    var recurrence by rememberSaveable(stateSaver = RecurrenceSaver) { mutableStateOf<Recurrence?>(null) }
+    var items by rememberSaveable(stateSaver = ItemsSaver) { mutableStateOf(emptyList<String>()) }
+    // The checklist line to give focus to next, or -1 for none.
+    var focusItem by remember { mutableIntStateOf(-1) }
+
+    // The sheets the tools open, and a count of the times one has closed,
+    // which is what hands focus back to the field. D-112.
+    var isWhenOpen by rememberSaveable { mutableStateOf(false) }
+    var isRepeatOpen by rememberSaveable { mutableStateOf(false) }
+    var sheetClosed by remember { mutableIntStateOf(0) }
 
     val focusRequester = remember { FocusRequester() }
     val context = LocalContext.current
     val locale = LocalConfiguration.current.locales[0]
 
     // Recomputed as the user types: it decides what the field marks, what the
-    // supporting line says, and what Save hands over, so the three can never
+    // supporting line says, and what Add hands over, so the three can never
     // disagree.
     val parsed = splitTrailingCapture(title.text, today).let { capture ->
         if (reminderDismissed) capture.withoutReminder() else capture
+    }
+    val hasTitle = parsed.title.isNotBlank()
+
+    fun save() {
+        if (!hasTitle) return
+        onSave(QuickAddCapture(parsed, recurrence, items.map(String::trim).filter(String::isNotEmpty)))
     }
 
     val markStyle = SpanStyle(color = MaterialTheme.colorScheme.primary)
@@ -193,6 +250,14 @@ fun QuickAddSheet(
         }
     }
 
+    // Words a tool writes go in as typed words would, with the cursor after
+    // them, and a reminder cleared earlier is no longer cleared.
+    fun writeIn(written: WrittenReminder?) {
+        if (written == null) return
+        title = TextFieldValue(written.text, TextRange(written.text.length))
+        reminderDismissed = false
+    }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberBottomSheetState(
@@ -210,16 +275,16 @@ fun QuickAddSheet(
         modifier = modifier
     ) {
         // This sheet's own window and keyboard, read inside it: Quick Add is a
-        // window of its own, and the reminder sheet is another over it.
+        // window of its own, and each tool's sheet is another over it.
         val keyboard = LocalSoftwareKeyboardController.current
         val windowInfo = LocalWindowInfo.current
 
-        // **Focus and the keyboard come back to the field** when the reminder
-        // sheet closes, D-112, with the cursor after the words it wrote. Once
-        // this window has focus again: asked for while the reminder sheet's
-        // window still held it, the field would take focus with no keyboard.
-        LaunchedEffect(reminderClosed) {
-            if (reminderClosed == 0) return@LaunchedEffect
+        // **Focus and the keyboard come back to the field** when a tool's sheet
+        // closes, D-112, with the cursor after any words it wrote. Once this
+        // window has focus again: asked for while the other sheet's window still
+        // held it, the field would take focus with no keyboard.
+        LaunchedEffect(sheetClosed) {
+            if (sheetClosed == 0) return@LaunchedEffect
             snapshotFlow { windowInfo.isWindowFocused }.first { it }
             focusRequester.requestFocus()
             keyboard?.show()
@@ -229,185 +294,252 @@ fun QuickAddSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = TellcatSpacing.md)
-                .padding(bottom = TellcatSpacing.lg)
+                .padding(bottom = TellcatSpacing.xs)
         ) {
-            // **The sheet's name, and the field's, per D-052.** It was the
-            // field's floating label, where it repeated what the sheet was for
-            // on every keystroke and cost a row of the input to do it. As a
-            // heading it is drawn once and the field keeps its whole container
-            // for what the user is typing.
-            //
-            // `titleLarge` and a `heading()`, which is what RepeatSheet and the
-            // Task Details sheets already use, so this reads as the same kind of
-            // sheet rather than a new one.
-            //
-            // It also names the field. A `contentDescription` on an editable
-            // node can replace the announcement of what has been typed, so the
-            // heading above it is the safer way to say what the box is.
-            Text(
-                text = stringResource(R.string.quick_add_title_label),
-                style = MaterialTheme.typography.titleLarge,
+            // **Everything above the tools scrolls; the tools and Add do not.**
+            // D-121: at 200% text with a long checklist, the row on the keyboard
+            // is what must stay reachable.
+            Column(
                 modifier = Modifier
-                    .padding(bottom = TellcatSpacing.sm)
-                    .semantics { heading() }
-            )
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                // **The sheet's name, and the field's, per D-052.** It was the
+                // field's floating label, where it repeated what the sheet was
+                // for on every keystroke and cost a row of the input to do it.
+                // As a heading it is drawn once and the field keeps its whole
+                // container for what the user is typing.
+                //
+                // It also names the field. A `contentDescription` on an editable
+                // node can replace the announcement of what has been typed, so
+                // the heading above it is the safer way to say what the box is.
+                Text(
+                    text = stringResource(R.string.quick_add_title_label),
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier
+                        .padding(bottom = TellcatSpacing.sm)
+                        .semantics { heading() }
+                )
 
-            // Filled, per D-025. Every other surface in the app is a tinted
-            // container on a plain page, and the outlined field was the one
-            // component asking to be read by its border instead.
-            //
-            // The indicator and the two-corner container are dropped in
-            // `tellcatFieldColors`, which says why.
-            TextField(
-                value = title,
-                colors = tellcatFieldColors(),
-                shape = TellcatFieldShape,
-                onValueChange = { typed ->
-                    // A new parse is a new reminder, so an old dismissal has
-                    // nothing left to be about. Without this, typing a second
-                    // time after dismissing would silently suppress a reminder
-                    // the user never declined. Only a change to the text: a
-                    // moved cursor is not a new parse.
-                    if (typed.text != title.text) reminderDismissed = false
-                    title = typed
-                },
-                // No label. The heading above carries the name, and a filled
-                // field is 56dp with or without one, so dropping it leaves the
-                // container where it was and returns the top row to the text.
-                // D-052.
-                placeholder = {
-                    // The one place the field's own trick is taught. A day and a
-                    // time written on the end of the title are taken as the
-                    // task's date and its reminder, and nothing else on this
-                    // sheet says so: without an example, capture looks like a
-                    // plain text box and the feature is found by accident or
-                    // not at all.
-                    //
-                    // Capped to one line, like every placeholder in the app. The
-                    // field is single-line but a placeholder is not held to
-                    // that, and an empty field taller than a filled one is what
-                    // happens at large font scales otherwise.
-                    //
-                    // **It teaches a time as well as a day**, D-112, written the
-                    // way this phone writes times.
-                    QuickAddPlaceholder(time = reminderTimeWords(ExampleTime, DateFormat.is24HourFormat(context)))
-                },
-                singleLine = true,
-                visualTransformation = markTheRun,
-                // Null rather than an empty slot until there is something to
-                // describe, so the field does not reserve a line for a sentence
-                // about a task that does not exist. Tied to the same test the
-                // Add button uses, so the line and the button cannot disagree
-                // about whether a capture is real. D-053.
-                supportingText = if (parsed.title.isBlank()) null else {
-                    {
-                        QuickAddSupportingText(
-                            parsed = parsed,
-                            today = today,
-                            now = now,
-                            fallbackDate = fallbackDate,
-                            // D-101: "at six" is refused, D-070, and used to
-                            // save without a word. Never alongside a reminder,
-                            // so this cannot contradict the chip.
-                            noMeridiem = !parsed.hasReminder && endsInBareHour(parsed.title)
-                        )
-                    }
-                },
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Sentences,
-                    imeAction = ImeAction.Done
-                ),
-                // **Done saves.** It declared the action and then handled none
-                // of it, so the key that looks like it commits only dismissed
-                // the keyboard, and capture ended with reaching past it for the
-                // button. Guarded by the button's own rule, so the two commit
-                // paths agree about what is saveable.
-                keyboardActions = KeyboardActions(
-                    onDone = { if (parsed.title.isNotBlank()) onSave(parsed) }
-                ),
+                // Filled, per D-025, with the indicator and the two-corner
+                // container dropped in `tellcatFieldColors`, which says why.
+                TextField(
+                    value = title,
+                    colors = tellcatFieldColors(),
+                    shape = TellcatFieldShape,
+                    onValueChange = { typed ->
+                        // A new parse is a new reminder, so an old dismissal has
+                        // nothing left to be about. Only a change to the text: a
+                        // moved cursor is not a new parse.
+                        if (typed.text != title.text) reminderDismissed = false
+                        title = typed
+                    },
+                    // No label. The heading above carries the name. D-052.
+                    placeholder = {
+                        // The one place the field's own trick is taught, D-112:
+                        // a day and a time written on the end of the title, the
+                        // time written the way this phone writes times.
+                        QuickAddPlaceholder(time = reminderTimeWords(ExampleTime, DateFormat.is24HourFormat(context)))
+                    },
+                    singleLine = true,
+                    visualTransformation = markTheRun,
+                    // Null rather than an empty slot until there is something to
+                    // describe, tied to the test Add uses. D-053.
+                    supportingText = if (!hasTitle) null else {
+                        {
+                            QuickAddSupportingText(
+                                parsed = parsed,
+                                today = today,
+                                now = now,
+                                fallbackDate = fallbackDate,
+                                recurrence = recurrence,
+                                // D-101: "at six" is refused, D-070, and used to
+                                // save without a word.
+                                noMeridiem = !parsed.hasReminder && endsInBareHour(parsed.title)
+                            )
+                        }
+                    },
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                        imeAction = ImeAction.Done
+                    ),
+                    // **Done saves**, guarded by Add's own rule, so the two
+                    // commit paths agree about what is saveable.
+                    keyboardActions = KeyboardActions(onDone = { save() }),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focusRequester)
+                )
+
+                // **The checklist, written inline**, D-121, under the title it
+                // belongs to. Enter on a line adds the next; Backspace on an empty
+                // line removes it and goes back to the line above.
+                items.forEachIndexed { index, item ->
+                    QuickAddChecklistLine(
+                        text = item,
+                        number = index + 1,
+                        focus = focusItem == index,
+                        onFocused = { if (focusItem == index) focusItem = -1 },
+                        onTextChange = { typed ->
+                            items = items.toMutableList().also { it[index] = typed }
+                        },
+                        onNext = {
+                            items = items.toMutableList().also { it.add(index + 1, "") }
+                            focusItem = index + 1
+                        },
+                        onRemove = {
+                            items = items.toMutableList().also { it.removeAt(index) }
+                            if (index > 0) {
+                                focusItem = index - 1
+                            } else {
+                                focusRequester.requestFocus()
+                            }
+                        }
+                    )
+                }
+            }
+
+            // **The tools, on the keyboard beside Add.** D-121, after TickTick:
+            // When, Repeat, Checklist. A set tool shows it in place, so nothing
+            // above grows as tools are set; the supporting line says it all in
+            // words. Every tool waits for a title, as Add does.
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(TellcatSpacing.xs),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .focusRequester(focusRequester)
-            )
-
-            // The one control on the sheet besides Save. An offset is a
-            // reminder too: keyed on the clock time alone, "in 2 hours" set a
-            // reminder this sheet never showed and could not take back. D-075.
-            //
-            // **Always drawn since D-112**, so Add no longer moves down the
-            // moment a time is read. Live only once there is a title, the test
-            // Add itself uses: a reminder about nothing is not a capture.
-            ReminderChip(
-                parsed = parsed,
-                today = today,
-                now = now,
-                enabled = parsed.title.isNotBlank(),
-                onOpen = {
-                    // The keyboard goes down so the sheet has the screen, and
-                    // comes back when it closes.
-                    keyboard?.hide()
-                    isReminderOpen = true
-                },
-                onDismiss = { reminderDismissed = true },
-                modifier = Modifier.padding(top = TellcatSpacing.xs)
-            )
-
-            Button(
-                onClick = { onSave(parsed) },
-                // The title is the one thing a task cannot do without, and it is
-                // the title left after the day and the time are taken that has
-                // to exist.
-                enabled = parsed.title.isNotBlank(),
-                modifier = Modifier
-                    .align(Alignment.End)
-                    .padding(top = TellcatSpacing.md)
+                    .padding(top = TellcatSpacing.xs)
             ) {
-                Text(stringResource(R.string.quick_add_save))
+                // The tools take what Add leaves, and When what the other two
+                // leave, so a long When value is cut short and never Add.
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(TellcatSpacing.xxs),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    WhenTool(
+                        modifier = Modifier.weight(1f, fill = false),
+                        parsed = parsed,
+                        today = today,
+                        now = now,
+                        enabled = hasTitle,
+                        onClick = {
+                            // The keyboard goes down so the sheet has the screen, and
+                            // comes back when it closes.
+                            keyboard?.hide()
+                            isWhenOpen = true
+                        }
+                    )
+                    QuickAddTool(
+                        icon = R.drawable.ic_repeat,
+                        name = stringResource(R.string.quick_add_repeat),
+                        value = recurrence?.let { recurrenceSummary(it, today, RecurrenceStyle.Sentence) },
+                        enabled = hasTitle,
+                        onClick = {
+                            keyboard?.hide()
+                            isRepeatOpen = true
+                        }
+                    )
+                    QuickAddTool(
+                        icon = R.drawable.ic_checklist,
+                        name = stringResource(R.string.quick_add_checklist),
+                        value = if (items.isEmpty()) null else stringResource(R.string.quick_add_checklist_count, items.size),
+                        spokenValueIsWhole = true,
+                        enabled = hasTitle,
+                        onClick = {
+                            // A new line at the end, with the keyboard on it.
+                            items = items + ""
+                            focusItem = items.lastIndex
+                        }
+                    )
+                }
+
+                Button(
+                    onClick = { save() },
+                    // The title is the one thing a task cannot do without, and
+                    // it is the title left after the day and the time are taken
+                    // that has to exist.
+                    enabled = hasTitle
+                ) {
+                    Text(stringResource(R.string.quick_add_save))
+                }
             }
         }
     }
 
-    // **Task Details' reminder sheet, writing into the field.** D-112. It opens
-    // on the reminder the field holds, or on the day the field names, so
-    // choosing again edits the run already there. Its Save writes the words and
-    // its Clear does what the chip's cross does, unmark the run; it sets nothing
-    // itself. No "Ring like an alarm": the field has no words for it, and the
-    // switch is a tap away in Task Details once the task exists.
-    if (isReminderOpen) {
+    // **When: Task Details' reminder sheet, writing into the field**, D-112 and
+    // D-121. It opens on the reminder the field holds, or on the day it names,
+    // with the time optional: a day alone is written as the day, a day and a
+    // time as both. Its Clear does what clearing a reminder always did, unmark
+    // the time. No "Ring like an alarm" and no early reminder: the field has no
+    // words for them, and Task Details is the place to set them.
+    if (isWhenOpen) {
         val held = parsed.reminderAt(today, now)
         ReminderSheet(
             reminderAt = held,
-            defaultDay = held?.toLocalDate() ?: parsed.date ?: today,
+            defaultDay = held?.toLocalDate() ?: parsed.date ?: fallbackDate ?: today,
             today = today,
             now = clock(),
             offersAlarm = false,
-            // Nor an early reminder, D-115: the field has no words for it, and
-            // Task Details is the one place to set it.
             offersEarly = false,
+            timeOptional = true,
             onSet = { at, _, _ ->
-                writeReminder(
-                    text = title.text,
-                    marked = parsed.markRange,
-                    at = at,
-                    today = today,
-                    now = clock(),
-                    twentyFourHour = DateFormat.is24HourFormat(context),
-                    dayFirst = writesDayFirst(locale)
-                )?.let { written ->
-                    title = TextFieldValue(written.text, TextRange(written.text.length))
-                    reminderDismissed = false
-                }
-                isReminderOpen = false
-                reminderClosed++
+                writeIn(
+                    writeReminder(
+                        text = title.text,
+                        marked = parsed.markRange,
+                        at = at,
+                        today = today,
+                        now = clock(),
+                        twentyFourHour = DateFormat.is24HourFormat(context),
+                        dayFirst = writesDayFirst(locale)
+                    )
+                )
+                isWhenOpen = false
+                sheetClosed++
+            },
+            onSetDay = { day ->
+                writeIn(writeDay(title.text, parsed.markRange, day, today, writesDayFirst(locale)))
+                isWhenOpen = false
+                sheetClosed++
             },
             onClear = {
                 reminderDismissed = true
-                isReminderOpen = false
-                reminderClosed++
+                isWhenOpen = false
+                sheetClosed++
             },
             onDismiss = {
-                isReminderOpen = false
-                reminderClosed++
+                isWhenOpen = false
+                sheetClosed++
+            }
+        )
+    }
+
+    // **Repeat: the Repeat sheet**, D-121, its common rules read from the day
+    // in the field, or the day the task would land on.
+    if (isRepeatOpen) {
+        val dayInField = parsed.reminderAt(today, now)?.toLocalDate() ?: parsed.date
+        RepeatSheet(
+            selected = recurrence,
+            today = today,
+            anchorDay = dayInField ?: fallbackDate ?: today,
+            onPick = { picked ->
+                recurrence = picked
+                // **A repeating task always has a day.** With none in the field
+                // the rule's first day is written in as words, unless the task
+                // lands on it anyway (Today, a rule that falls today).
+                if (picked != null && dayInField == null) {
+                    val first = picked.firstOccurrenceFrom(today)
+                    if (first != fallbackDate) {
+                        writeIn(writeDay(title.text, parsed.markRange, first, today, writesDayFirst(locale)))
+                    }
+                }
+                isRepeatOpen = false
+                sheetClosed++
+            },
+            onDismiss = {
+                isRepeatOpen = false
+                sheetClosed++
             }
         )
     }
@@ -416,6 +548,226 @@ fun QuickAddSheet(
         focusRequester.requestFocus()
     }
 }
+
+/**
+ * A tool in the row: its icon on the tonal container once set. D-121.
+ *
+ * One node, a button, that says the tool and, once set, what it holds:
+ * "Repeat, every month on the last Friday". Its name is also a tooltip on a
+ * long press, because an icon alone is not universal.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun QuickAddTool(
+    @DrawableRes icon: Int,
+    name: String,
+    value: String?,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    // When [value] already names the tool ("Checklist, 3 items").
+    spokenValueIsWhole: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    val spoken = when {
+        value == null -> name
+        spokenValueIsWhole -> value
+        else -> stringResource(R.string.quick_add_tool_set, name, value)
+    }
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
+        tooltip = { PlainTooltip { Text(name) } },
+        state = rememberTooltipState(),
+        modifier = modifier
+    ) {
+        IconButton(
+            onClick = onClick,
+            enabled = enabled,
+            colors = if (value != null) IconButtonDefaults.filledTonalIconButtonColors() else IconButtonDefaults.iconButtonColors(),
+            modifier = Modifier.semantics { contentDescription = spoken }
+        ) {
+            Icon(painter = painterResource(icon), contentDescription = null)
+        }
+    }
+}
+
+/**
+ * When, the one tool that shows its value in the row, D-121, the way TickTick's
+ * date tool becomes "Fri, 9:00AM": a day, or a day and a time. At large text the
+ * value no longer fits beside Add, so the tool is its icon on the tonal
+ * container and the supporting line, which wraps, carries the words.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun WhenTool(
+    parsed: CapturedTask,
+    today: LocalDate,
+    now: LocalDateTime,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val at = parsed.reminderAt(today, now)
+    val day = at?.toLocalDate() ?: parsed.date
+    val name = stringResource(R.string.quick_add_when)
+    val value = when {
+        at != null -> "${scheduledDateLabel(at.toLocalDate(), today)}, ${at.toLocalTime().format(rememberTimeFormat())}"
+        day != null -> scheduledDateLabel(day, today)
+        else -> null
+    }
+    val fits = LocalDensity.current.fontScale <= WhenValueMaxFontScale
+
+    if (value == null || !fits) {
+        QuickAddTool(icon = R.drawable.ic_event, name = name, value = value, enabled = enabled, onClick = onClick, modifier = modifier)
+        return
+    }
+
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
+        tooltip = { PlainTooltip { Text(name) } },
+        state = rememberTooltipState(),
+        modifier = modifier
+    ) {
+        FilledTonalButton(
+            onClick = onClick,
+            enabled = enabled,
+            contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+            modifier = Modifier
+                .heightIn(min = TellcatDimensions.TouchTargetMin)
+                .semantics { contentDescription = "$name, $value" }
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_event),
+                contentDescription = null,
+                modifier = Modifier.size(ButtonDefaults.IconSize)
+            )
+            Text(
+                text = value,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(start = ButtonDefaults.IconSpacing)
+            )
+        }
+    }
+}
+
+/** Beyond this the When value would crowd Add off the row at 360dp. */
+private const val WhenValueMaxFontScale = 1.3f
+
+/**
+ * A checklist line in Quick Add, D-121: D-118's 16dp square check, drawn and not
+ * pressable (nothing is done yet), and the item's text. Its hint, while empty,
+ * teaches the gesture, as TickTick's does.
+ */
+@Composable
+private fun QuickAddChecklistLine(
+    text: String,
+    number: Int,
+    focus: Boolean,
+    onFocused: () -> Unit,
+    onTextChange: (String) -> Unit,
+    onNext: () -> Unit,
+    onRemove: () -> Unit
+) {
+    val requester = remember { FocusRequester() }
+    LaunchedEffect(focus) {
+        if (focus) {
+            requester.requestFocus()
+            onFocused()
+        }
+    }
+    val label = stringResource(R.string.quick_add_checklist_item, number)
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(TellcatSpacing.md),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = TellcatDimensions.TouchTargetMin)
+            .padding(start = TellcatSpacing.md)
+    ) {
+        CheckBoxDrawing(checked = false, boxSize = ChecklistCheckSize, corner = ChecklistCheckCorner)
+        Box(modifier = Modifier.weight(1f)) {
+            if (text.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.quick_add_checklist_hint),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.clearAndSetSemantics {}
+                )
+            }
+            BasicTextField(
+                value = text,
+                onValueChange = { typed -> onTextChange(typed.replace("\n", "")) },
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = ImeAction.Next
+                ),
+                keyboardActions = KeyboardActions(onNext = { onNext() }),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(requester)
+                    .onPreviewKeyEvent { event ->
+                        val removes = event.type == KeyEventType.KeyDown &&
+                            event.key == Key.Backspace && text.isEmpty()
+                        if (removes) onRemove()
+                        removes
+                    }
+                    .semantics { contentDescription = label }
+            )
+        }
+    }
+}
+
+/** A repeat across a configuration change, as its fields. */
+private val RecurrenceSaver = listSaver<Recurrence?, Any>(
+    save = { rule ->
+        if (rule == null) {
+            emptyList()
+        } else {
+            val end = rule.end
+            listOf(
+                rule.unit.name,
+                rule.interval,
+                rule.weekdays.joinToString(",") { it.name },
+                rule.monthlyWeekday?.ordinal ?: 0,
+                rule.monthlyWeekday?.day?.name ?: "",
+                when (end) {
+                    is RecurrenceEnd.OnDate -> "date:" + end.date
+                    is RecurrenceEnd.AfterOccurrences -> "count:" + end.count
+                    else -> "never"
+                }
+            )
+        }
+    },
+    restore = { saved ->
+        if (saved.isEmpty()) {
+            null
+        } else {
+            val end = saved[5] as String
+            Recurrence(
+                unit = RecurrenceUnit.valueOf(saved[0] as String),
+                interval = saved[1] as Int,
+                weekdays = (saved[2] as String).split(",").filter(String::isNotEmpty).map(DayOfWeek::valueOf).toSet(),
+                monthlyWeekday = (saved[4] as String).takeIf(String::isNotEmpty)?.let {
+                    MonthlyWeekday(saved[3] as Int, DayOfWeek.valueOf(it))
+                },
+                end = when {
+                    end.startsWith("date:") -> RecurrenceEnd.OnDate(LocalDate.parse(end.removePrefix("date:")))
+                    end.startsWith("count:") -> RecurrenceEnd.AfterOccurrences(end.removePrefix("count:").toInt())
+                    else -> RecurrenceEnd.Never
+                }
+            )
+        }
+    }
+)
+
+/** The checklist lines across a configuration change. */
+private val ItemsSaver = listSaver<List<String>, String>(save = { it }, restore = { it })
 
 /** The time the placeholder's example is set for. */
 private val ExampleTime: LocalTime = LocalTime.of(9, 0)
@@ -477,8 +829,12 @@ private fun QuickAddSupportingText(
     today: LocalDate,
     now: LocalDateTime,
     fallbackDate: LocalDate?,
-    noMeridiem: Boolean
+    noMeridiem: Boolean,
+    // The repeat the sheet holds, said in words under the day. D-121.
+    recurrence: Recurrence? = null
 ) {
+    val at = parsed.reminderAt(today, now)
+    val timeFormat = rememberTimeFormat()
     // The day the save will use, worked out the way the save works it out. A
     // reminder schedules the task for the day it rings, D-075, so "call mom
     // 5pm" from Inbox reads "Scheduled for Today" here, and the line cannot
@@ -486,11 +842,20 @@ private fun QuickAddSupportingText(
     // the reason the chip reads it: D-030 can move the day.
     val day = if (parsed.isPlain) null else parsed.scheduledDate(fallbackDate, today, now)
 
-    // Stacked: the supporting slot does not lay out more than one child.
-    Column {
+    // Stacked: the supporting slot does not lay out more than one child. A
+    // polite live region, D-112's, moved here from the chip by D-121: this is
+    // now where the whole capture is said in words.
+    Column(modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) {
         Text(
             text = when {
-                // The reminder is named by the chip, so the line stays about the day.
+                // The day and the time together, now that no chip names the
+                // reminder. D-121.
+                at != null -> stringResource(
+                    R.string.quick_add_scheduled_for_at,
+                    scheduledDateLabel(at.toLocalDate(), today),
+                    at.toLocalTime().format(timeFormat)
+                )
+
                 //
                 // The date and not the list, even though a future day means the task
                 // appears in Upcoming. This is the value the user typed and wants
@@ -510,6 +875,10 @@ private fun QuickAddSupportingText(
             }
         )
 
+        recurrence?.let { rule ->
+            Text(text = recurrenceSummary(rule, today, RecurrenceStyle.Sentence))
+        }
+
         // **What did not happen, and how to make it.** D-101. An hour with no am or
         // pm is refused rather than guessed, D-070, and the destination line alone
         // read as if the time had been taken. Below it rather than instead of it,
@@ -522,115 +891,6 @@ private fun QuickAddSupportingText(
             Text(
                 text = stringResource(R.string.quick_add_no_meridiem),
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
-            )
-        }
-    }
-}
-
-/**
- * The Reminder chip. D-011, and since D-112 always on the sheet.
- *
- * An `InputChip` rather than an `AssistChip`, because Material's input chip is
- * the one that represents a piece of information the user supplied and offers to
- * remove it. That is exactly what this is: the time came out of what they typed,
- * or was typed for them by this chip.
- *
- * **Unset, it reads "Reminder"** and opens the reminder sheet. **Set, it names
- * the moment in words**, opens the sheet to change it, and its cross unmarks the
- * run, as it always has. The chip is the reminder's only presence in text, so a
- * screen reader has to get the whole fact from it.
- *
- * One chip in both states rather than two, so it is one node whose words change:
- * a polite live region, and TalkBack says the new reminder when the field reads
- * one, typed or written.
- */
-@Composable
-private fun ReminderChip(
-    parsed: CapturedTask,
-    today: LocalDate,
-    now: LocalDateTime,
-    enabled: Boolean,
-    onOpen: () -> Unit,
-    onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    // The clock rather than a parameter, because this label has to say where
-    // the reminder actually lands: D-030 resolves a time that has gone by to
-    // tomorrow, and a chip still reading "Today" would be the disagreement
-    // between the chip and the saved value that D-011 exists to prevent.
-    val at = parsed.reminderAt(today, now)
-    val time = at?.toLocalTime()?.format(rememberTimeFormat())
-    val label = if (at == null) {
-        stringResource(R.string.quick_add_reminder_unset)
-    } else {
-        stringResource(R.string.quick_add_reminder, scheduledDateLabel(at.toLocalDate(), today), time.orEmpty())
-    }
-    // What a screen reader hears: unset, the action; set, the reminder.
-    val spoken = if (at == null) stringResource(R.string.quick_add_reminder_add) else label
-    val openLabel = stringResource(
-        if (at == null) R.string.quick_add_reminder_add else R.string.quick_add_reminder_change
-    )
-    val dismissLabel = stringResource(R.string.quick_add_reminder_dismiss)
-
-    Box(modifier = modifier) {
-        InputChip(
-            selected = at != null,
-            enabled = enabled,
-            onClick = onOpen,
-            label = { Text(label) },
-            leadingIcon = {
-                Icon(
-                    painter = painterResource(R.drawable.ic_alarm),
-                    contentDescription = null,
-                    modifier = Modifier.size(InputChipDefaults.IconSize)
-                )
-            },
-            trailingIcon = if (at == null) null else {
-                {
-                    // Drawn here, taken by the target laid over it below.
-                    Icon(
-                        painter = painterResource(R.drawable.ic_close),
-                        contentDescription = null,
-                        modifier = Modifier.size(InputChipDefaults.IconSize)
-                    )
-                }
-            },
-            // **A button, read as one, never a checked control.** An input chip
-            // drawn selected announced itself as a checked checkbox, so TalkBack
-            // said "checked" and a double-tap silently took the reminder away.
-            // It reads its words and names what a double-tap does.
-            modifier = Modifier.clearAndSetSemantics {
-                text = AnnotatedString(spoken)
-                role = Role.Button
-                liveRegion = LiveRegionMode.Polite
-                if (enabled) {
-                    onClick(label = openLabel) {
-                        onOpen()
-                        true
-                    }
-                } else {
-                    disabled()
-                }
-            }
-        )
-
-        // **The cross is its own target**, so a tap on the chip changes the
-        // reminder and a tap on the cross removes it. A full 48dp square laid
-        // over the chip's end, because the cross is drawn at 18dp and the
-        // touch target rule is 48.
-        if (at != null) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .size(TellcatDimensions.TouchTargetMin)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = ripple(bounded = false, radius = TellcatDimensions.TouchTargetMin / 2),
-                        role = Role.Button,
-                        onClickLabel = dismissLabel,
-                        onClick = onDismiss
-                    )
-                    .semantics { contentDescription = dismissLabel }
             )
         }
     }

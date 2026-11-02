@@ -400,5 +400,5 @@ private fun AddChecklistItemRow(
  * the task's 6dp on 20dp. D-118. The drawing only; the box around it keeps the
  * touch target.
  */
-private val ChecklistCheckSize = 16.dp
-private val ChecklistCheckCorner = 5.dp
+internal val ChecklistCheckSize = 16.dp
+internal val ChecklistCheckCorner = 5.dp

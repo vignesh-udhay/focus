@@ -767,9 +767,18 @@ internal fun ReminderSheet(
     // The early reminder the reminder has now, and whether "Also remind me"
     // is offered. Off from Quick Add for the reason the alarm is. D-115.
     earlyReminder: EarlyReminder? = null,
-    offersEarly: Boolean = true
+    offersEarly: Boolean = true,
+    // **Quick Add's When tool**, D-121: the day and the time in one sheet, the
+    // time optional. Titled When rather than Reminder, and Save with no time
+    // chosen hands back the day alone through [onSetDay], which schedules the
+    // task without a reminder.
+    timeOptional: Boolean = false,
+    onSetDay: (LocalDate) -> Unit = {}
 ) {
     var early by rememberSaveable { mutableStateOf(earlyReminder) }
+    // Whether there is a time at all. Always, except in When with nothing yet
+    // chosen: there the Time row reads "No time" until one is picked.
+    var timeChosen by rememberSaveable { mutableStateOf(!timeOptional || reminderAt != null) }
     var ringsAsAlarm by rememberSaveable { mutableStateOf(ringsLikeAlarm) }
 
     // Held as primitives so `rememberSaveable` needs no saver of its own, and
@@ -810,9 +819,18 @@ internal fun ReminderSheet(
         LocalDate.ofEpochDay(chosenDay).atTime(time)
     }
 
+    // The day the rows show: the reminder's, or with no time in When, the day
+    // chosen or the one the sheet opened on.
+    val day = when {
+        timeChosen -> at.toLocalDate()
+        chosenDay != NoDayChosen -> LocalDate.ofEpochDay(chosenDay)
+        else -> defaultDay
+    }
+
     // To the minute, as `nextReminderOccurrence` counts it: the minute the user
-    // is in has not passed, and a reminder chosen for it rings at once.
-    val hasPassed = at.isBefore(now.truncatedTo(ChronoUnit.MINUTES))
+    // is in has not passed, and a reminder chosen for it rings at once. A day
+    // with no time has passed only once the day has.
+    val hasPassed = if (timeChosen) at.isBefore(now.truncatedTo(ChronoUnit.MINUTES)) else day.isBefore(today)
 
     if (isTimeOpen) {
         ReminderTimePickerDialog(
@@ -822,13 +840,14 @@ internal fun ReminderSheet(
                 isTimeOpen = false
                 timeOfDay = picked.toSecondOfDay()
                 timePicked = true
+                timeChosen = true
             }
         )
     }
 
     if (isDatePickerOpen) {
         TaskDatePickerDialog(
-            initialDate = at.toLocalDate(),
+            initialDate = day,
             onDismiss = { isDatePickerOpen = false },
             onPicked = { picked ->
                 isDatePickerOpen = false
@@ -860,7 +879,7 @@ internal fun ReminderSheet(
             when (pane) {
                 ReminderPane.MAIN -> {
                     Text(
-                        text = stringResource(R.string.task_reminder),
+                        text = stringResource(if (timeOptional) R.string.quick_add_when else R.string.task_reminder),
                         style = MaterialTheme.typography.titleLarge
                     )
 
@@ -868,13 +887,13 @@ internal fun ReminderSheet(
                     PlanRowGroup {
                         PlanRow(
                             label = stringResource(R.string.task_reminder_day),
-                            value = scheduledDateLabel(at.toLocalDate(), today),
+                            value = scheduledDateLabel(day, today),
                             shapes = ListItemDefaults.segmentedShapes(index = 0, count = rows),
                             onClick = { pane = ReminderPane.DAY }
                         )
                         PlanRow(
                             label = stringResource(R.string.task_reminder_time),
-                            value = time.format(rememberTimeFormat()),
+                            value = if (timeChosen) time.format(rememberTimeFormat()) else stringResource(R.string.quick_add_no_time),
                             shapes = ListItemDefaults.segmentedShapes(index = 1, count = rows),
                             onClick = { isTimeOpen = true }
                         )
@@ -925,7 +944,9 @@ internal fun ReminderSheet(
                     }
 
                     Button(
-                        onClick = { onSet(at, ringsAsAlarm, early.takeIf { offersEarly }) },
+                        onClick = {
+                            if (timeChosen) onSet(at, ringsAsAlarm, early.takeIf { offersEarly }) else onSetDay(day)
+                        },
                         enabled = !hasPassed,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -982,7 +1003,7 @@ internal fun ReminderSheet(
                 )
 
                 ReminderPane.DAY -> ReminderDayPane(
-                    selected = at.toLocalDate(),
+                    selected = day,
                     today = today,
                     onPick = { picked ->
                         chooseDay(picked)

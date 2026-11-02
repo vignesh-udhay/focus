@@ -198,11 +198,16 @@ fun TodayScreen(
             // Captured onto today's list unless the title named a day, or a
             // reminder that rings on another one. D-075: "call mom 5pm" typed
             // at six in the evening is tomorrow's, and lands in Upcoming.
-            onSave = { parsed ->
+            onSave = { capture ->
                 // Today read at save time, so a task captured after midnight
                 // gets the new day rather than the one the screen was built on.
                 // A blank title captures nothing and leaves the sheet open.
-                val landed = viewModel.capture(parsed, fallbackDate = viewModel.today.value)
+                val landed = viewModel.capture(
+                    capture.parsed,
+                    fallbackDate = viewModel.today.value,
+                    recurrence = capture.recurrence,
+                    checklist = capture.checklist
+                )
                 if (landed != null) {
                     isQuickAddVisible = false
                     announceLanding(landed)

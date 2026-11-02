@@ -588,12 +588,16 @@
     <string name="share_added">Added to Inbox</string>
     <string name="share_failed">Couldn\'t add the task</string>
     <string name="quick_add_view">View</string>
-    <string name="quick_add_reminder">Reminder %1$s at %2$s</string>
-    <string name="quick_add_reminder_dismiss">Remove reminder</string>
-    <!-- D-112: the chip before a reminder is read or chosen, and what a screen reader hears for it. -->
-    <string name="quick_add_reminder_unset">Reminder</string>
-    <string name="quick_add_reminder_add">Add reminder</string>
-    <string name="quick_add_reminder_change">Change reminder</string>
+    <!-- Quick Add's tools, D-121. -->
+    <string name="quick_add_when">When</string>
+    <string name="quick_add_no_time">No time</string>
+    <string name="quick_add_repeat">Repeat</string>
+    <string name="quick_add_checklist">Checklist</string>
+    <string name="quick_add_tool_set">%1$s, %2$s</string>
+    <string name="quick_add_checklist_count">Checklist, %1$d items</string>
+    <string name="quick_add_checklist_hint">Enter for the next item</string>
+    <string name="quick_add_checklist_item">Checklist item %1$d</string>
+    <string name="quick_add_scheduled_for_at">Scheduled for %1$s at %2$s</string>
 
     <plurals name="duration_spoken_minutes">
         <item quantity="one">%1$d minute</item>

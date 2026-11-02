@@ -238,6 +238,7 @@ private fun CommonRepeatsPane(
 @Composable
 private fun commonRepeatLabel(rule: Recurrence, anchor: LocalDate): String {
     val context = LocalContext.current
+    val locale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
     return when {
         rule.unit == RecurrenceUnit.DAILY -> stringResource(R.string.task_repeat_common_daily)
         rule.unit == RecurrenceUnit.WEEKLY && rule.weekdays == MondayToFriday ->
@@ -252,10 +253,7 @@ private fun commonRepeatLabel(rule: Recurrence, anchor: LocalDate): String {
             R.string.task_repeat_common_yearly,
             anchor.format(
                 java.time.format.DateTimeFormatter.ofPattern(
-                    android.text.format.DateFormat.getBestDateTimePattern(
-                        context.resources.configuration.locales[0],
-                        "MMMMd"
-                    )
+                    android.text.format.DateFormat.getBestDateTimePattern(locale, "MMMMd")
                 )
             )
         )
