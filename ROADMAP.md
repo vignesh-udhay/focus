@@ -63,12 +63,14 @@ early reminder (D-115), monthly repeats on the nth or last weekday (D-116) and
 the rounded checks (D-117, D-118). No new permission, service or foreground
 service type since 1.2.
 
-**D-121 is approved on `feature/quick-add-tools`, on paper only.** Quick Add
-gains three tools beside Add (When, Repeat, Checklist), and the Repeat sheet
-opens on the common rules in one tap, in Task Details too. Approved by the owner
-on 2026-11-02 after a walk of TickTick's add flow, recorded in
-`docs/research/competitors.md`. Nothing is built; the build waits for the
-coordinating thread to schedule it behind the calendar work.
+**D-121 is built on `feature/quick-add-tools`; its tests are written and not
+run.** Quick Add has three tools beside Add (When, Repeat, Checklist), the Repeat
+sheet opens on the common rules in one tap, in Task Details too, and a repeating
+task always has a day, with tasks saved undated before the rule repaired at
+start. Approved by the owner on 2026-11-02 after a walk of TickTick's add flow
+(`docs/research/competitors.md`). The build compiles and lint has no errors;
+the JVM and instrumented tests wait for the owner to connect the phone. Not
+merged, not pushed, no version bump; `main` is untouched.
 
 Before the bump, a real upgrade was checked on the owner's phone in Tellcat dev,
 on 2026-10-31. 1.2 is schema 13, not 14, so the path is 13 to 16. 1.2's code

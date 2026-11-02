@@ -7318,3 +7318,56 @@ captures above, timed, against 1.3. If people open tools and abandon the capture
 or the typed path gets slower because the sheet is busier, the tools go behind a
 single "More" button. If the Repeat list confuses in Task Details, it can be
 offered from Quick Add only.
+
+### As built, 2026-11-02
+
+Built on `feature/quick-add-tools` at the owner's go, with the tests written
+and not yet run.
+
+**Existing undated repeats: repaired at start, not by a migration.** The
+coordinating thread asked for the Task Details half of the rule too. Setting a
+repeat in Task Details now gives an undated task the rule's first day
+(`Task.withRepeatDay`), and `giveUndatedRepeatsADay` runs once at each start,
+in `TellcatApplication.startCredentialWork`, giving every open undated repeating
+task its first day from today. A migration was considered and not chosen: the
+first day is the rule's to work out, and the rules are evaluated in Kotlin
+(`Recurrence.firstOccurrenceFrom`), nowhere in SQL, so a migration would have
+had to copy them into SQL or run Kotlin inside Room's upgrade. A step at start
+also catches a task restored from an older backup, which a migration that ran
+once would not, and costs one read when there is nothing to repair. The capture
+path holds the same rule (`TaskListViewModel.capture`), so no route can save an
+undated repeat.
+
+**Where the build departs from the entry above.**
+
+- **The Repeat list's words are the app's own.** "Monthly on day 27", the form
+  the monthly choice already used ("On day 27"), not "the 27th"; "Weekly on
+  Friday"; "Yearly on 27 November" in the phone's date order. A day that is both
+  the fourth and the last of its weekday offers both, as D-116 does.
+- **When opens on "No time".** A day alone is When then Save; a reminder needs
+  the Time row as well, so D-112's chip, which opened on the next whole hour and
+  set it in two taps, is now When, Time, the clock, Save. Typing the time stays
+  the fast path, and none of the planned captures used the chip.
+- **Clearing a reminder is When then Clear**, two taps, where the chip's cross
+  was one. There is no cross: the tool shows the value in place and has no room
+  for one.
+- **The supporting line carries the whole capture**: "Scheduled for Fri, Nov
+  27 at 9:00 AM" and the repeat in a sentence. D-112's polite live region is on
+  it now.
+- **When shows its value in the row up to 130% text**, then only its icon on
+  the tonal container. A threshold rather than a measurement. The row gives Add
+  its space first and When what is left, cut short with an ellipsis, so a long
+  value never pushes Add off: found in review before any run.
+- **The checklist's check is drawn, not pressable**, D-118's 16dp square. A line
+  just added has nothing to tick.
+
+**Tap counts as built** are the plan's: daily pills 4, the rent on the last
+Friday 4, groceries with three items 5, a typed capture 2.
+
+**Tests, written and not run** (to run when the owner connects the phone):
+`RepeatDayTest` (the first day, the rule, the repair, the common rules),
+`CaptureWriterTest` (the day writer, every day of a year read back),
+`TaskListViewModelTest` (capture with a repeat and a checklist, the undated
+repeat), `QuickAddToolsTest`, `RepeatListTest`, `QuickAddSemanticsTest` and
+`QuickAddCaptureTest` moved from the chip to When, and `TaskDetailsSemanticsTest`
+reaching the rule through Custom, with two new tests for the list and the day.

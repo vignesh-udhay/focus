@@ -791,7 +791,7 @@ did not move; the top row went back to the text.
 [CD] One field and one action. Do not add a second field or a date picker.
 Capture should require almost no decisions.
 
-**Superseded by D-121 (approved 2026-11-02, not yet built).** The sheet gains
+**Superseded by D-121 (built 2026-11-02).** The sheet gains
 three tools on the keyboard beside Add: When (day and time together, replacing
 D-112's Reminder chip), Repeat and Checklist. A set tool shows its value in
 place, the supporting line says it all in words, and the checklist is written
@@ -1021,7 +1021,7 @@ one `ModalBottomSheet`, with Every and Ends behind a back arrow. This said it
 offered four periods and nothing else, which was true while D-019 held the editor
 back.
 
-**Changed by D-121 (approved 2026-11-02, not yet built).** The sheet opens on a
+**Changed by D-121 (built 2026-11-02).** The sheet opens on a
 list of the common rules, labelled from the task's day: Doesn't repeat, Daily,
 Weekly on Friday, Monthly on the 27th, Monthly on the last Friday (when the day
 is one), Yearly on 27 November, Every weekday, and Custom. A rule from the list

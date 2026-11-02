@@ -177,6 +177,15 @@ first one `splitTrailingCapture` reads back as exactly that moment. It sits in
 `core/domain` beside the parser because it is the parser's vocabulary, English
 on every device, not wording a screen chooses.
 
+Since D-121 the chip is Quick Add's When tool, and `writeDay` beside
+`writeReminder` writes a day with no time on the same terms. Repeat and the
+checklist have no words, so `QuickAddSheet` holds them and hands them over as a
+`QuickAddCapture`, which `TaskListViewModel.capture` saves with the task. A
+repeating task always has a day: `core/domain/RepeatDay.kt` holds the rule
+(`firstOccurrenceFrom`, `withRepeatDay`), the Repeat sheet's `commonRepeats`,
+and `giveUndatedRepeatsADay`, which `TellcatApplication` runs once at each
+start to repair tasks saved undated before the rule.
+
 Shared text enters through `ui/share/ShareActivity`, a second, see-through
 activity with its own task, so "Add to Tellcat" sits over the app shared from
 and returns to it. It parses with `sharedTask` in `core/domain` and writes
