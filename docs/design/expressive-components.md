@@ -466,6 +466,10 @@ scroll. Lists must reserve clearance beneath their last row so the button never
 covers a task; that clearance is `TellcatDimensions.FabClearance`, a dimension
 token composed from the spacing scale, not a number written into a screen.
 
+[CD] It shares its row with the snackbar, D-124: the two screens call
+`AddTaskFabWithSnackbar`, which holds this button and the snackbar to its left.
+The button is the same and lands in the same place.
+
 ---
 
 # Empty states
@@ -1172,7 +1176,21 @@ through `calculateRecommendedTimeoutMillis` with `containsControls` set, so a
 user who has asked the system for more time to act is given it regardless of
 which is named here.
 
-[CD] Material default appearance and motion. Undo is the only action.
+[CD] Material's component and motion, in Tellcat's colours, D-124. The
+container is `surfaceContainerHighest` with `onSurface` text, the action is
+`primary`, and the shape is `extraLarge`, a full pill at one line. It used to be
+Material's default, a dark `inverseSurface` bar with square corners, which read
+as something dropped onto the app from outside. The actions are Undo, and View
+on the capture notice, D-075; the write failure and the backup result carry
+none.
+
+[CD] **On Today and Inbox it sits beside the Add button, not above it.**
+`AddTaskFabWithSnackbar` puts the two in one row, the pill to the left, in
+Scaffold's floating-action-button slot at `FabPosition.Center`. Scaffold's own
+placement stacked the snackbar on the button on the navigation bar. The button
+never moves: a one-line pill is centred on it, and a pill that wraps grows
+upward. On every other screen `UndoSnackbarHost` leaves it where Scaffold puts
+it, inset by the screen margin.
 
 [CD] **Not where the control that acted stays on screen and reverses it.** Task
 Details' Complete toggle is its own undo, so completing there raises no offer,

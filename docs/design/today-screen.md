@@ -49,9 +49,10 @@ A single `Scaffold`:
 
     Scaffold
     ├── topBar                 TopAppBar, 64dp, title only, pinned
-    ├── snackbarHost           SnackbarHost, carrying the undo offer
     ├── bottomBar              NavigationBar, passed in by the caller
-    ├── floatingActionButton   FloatingActionButton
+    ├── floatingActionButton   AddTaskFabWithSnackbar, at FabPosition.Center:
+    │                          the snackbar carrying the undo offer, and the
+    │                          Add button beside it (D-124)
     └── content                LazyColumn, or the empty state,
                                either one led by the reminder health banner
 

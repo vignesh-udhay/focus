@@ -77,6 +77,7 @@ too.
 | Selected navigation item | `NavigationBarItem` default, the secondary family |
 | Navigation bar and rail container | `surfaceContainerHigh` |
 | Top app bar | `TopAppBar` default: `surface` at rest, `surfaceContainer` lifted |
+| Snackbar | `surfaceContainerHighest`, `onSurface` text, `primary` action (D-124) |
 
 [CD] The page is the ground and the collection sits on it. That is the pairing
 [M3] the colour-roles guidance describes in as many words: use `surface` for a
