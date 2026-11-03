@@ -864,19 +864,28 @@ A rewrite the user cannot see is one they cannot correct. See
 D-102. Three surfaces, all in 1.0's colours (D-091).
 
 **The switch, in the reminder sheet.** "Ring like an alarm" under Day and Time,
-off by default, the whole row the switch (role Switch). Under it, while on, one
-line saying how this reminder will actually ring on this phone, read again each
-time the sheet returns to the front: full screen, a banner until answered, or a
-normal reminder when the Alarms channel is off. An outlined "Allow full screen"
-or "Open alarm settings" follows the two lines that need one. Saved with the
+off by default: a one-row `SegmentedListItem` in `planRowColors()`, so its label
+starts where theirs do and the switch sits where their chevrons do, the whole
+row the switch (role Switch, not the list item's own toggle overload, which
+announces a checkbox). While on, the row's supporting text is one line saying how
+this reminder will actually ring on this phone, read again each time the sheet
+returns to the front: full screen, a banner until answered, or a normal reminder
+when the Alarms channel is off. An outlined "Allow full screen" or "Open alarm
+settings" follows the row for the two lines that need one, `md` in so it lines
+up with the row's text. Saved with the
 reminder by Save, like the day and the time. Task Details' Reminder row then
 reads "Today, 5:30 PM · Alarm".
 
-**The Snooze pane, in the reminder sheet.** D-109. "Snooze…", a text button
-under Save, while the reminder has rung and waits for an answer or is snoozed.
+**The Snooze pane, in the reminder sheet.** D-109. "Snooze", a
+`FilledTonalButton` with the snooze glyph beside a filled Save, the two sharing
+the row, while the reminder has rung and waits for an answer or is snoozed.
+Clear stays a text button below. Where the labels do not fit half the width each
+they stack, Save first, so neither is cut. It was a "Snooze…" text button between
+Save and Clear until the owner found the three stacked buttons and the ellipsis
+poor on 2026-11-03.
 It opens a pane shaped like the Day pane: a back arrow and "Snooze", the snooze
 presets that apply as tonal preset buttons two to a row (10 min, 1 hour, This
-evening until six, Tomorrow 9:00), a full-width "Pick a time…" with the clock
+evening until six, Tomorrow 9:00), a full-width "Pick a time" with the clock
 icon that opens the time picker and fills once it holds a time, the line
 "Snoozes until 4:00 PM" once something is chosen, and a filled Snooze button.
 Task Details' Reminder row then reads "Snoozed until 5:37 PM" until it rings.

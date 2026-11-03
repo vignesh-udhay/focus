@@ -6,8 +6,11 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -24,6 +27,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItemDefaults
@@ -50,7 +54,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.KeyboardType
@@ -756,7 +763,7 @@ internal fun ReminderSheet(
     now: LocalDateTime = LocalDateTime.now(),
     // Whether the reminder rings like an alarm now. Off for a new one. D-102.
     ringsLikeAlarm: Boolean = false,
-    // Whether "Snooze…" is offered: the reminder has rung and waits for an
+    // Whether Snooze is offered: the reminder has rung and waits for an
     // answer, or is snoozed. D-109.
     canSnooze: Boolean = false,
     onSnooze: (LocalDateTime) -> Unit = {},
@@ -924,32 +931,13 @@ internal fun ReminderSheet(
                         )
                     }
 
-                    Button(
-                        onClick = { onSet(at, ringsAsAlarm, early.takeIf { offersEarly }) },
-                        enabled = !hasPassed,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = TellcatDimensions.ActionHeight)
-                            .padding(top = TellcatSpacing.xs)
-                    ) {
-                        Text(stringResource(R.string.task_reminder_save))
-                    }
-
-                    // **A snooze, once the reminder has spoken.** D-109. A
-                    // text action like Clear, because it is a second thing the
-                    // sheet can do rather than the sheet's purpose; Save still
-                    // sets the reminder's own time, and a snooze leaves that
-                    // alone (D-078).
-                    if (canSnooze) {
-                        TextButton(
-                            onClick = { pane = ReminderPane.SNOOZE },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = TellcatDimensions.ActionHeight)
-                        ) {
-                            Text(stringResource(R.string.task_reminder_snooze))
-                        }
-                    }
+                    ReminderSheetActions(
+                        canSnooze = canSnooze,
+                        saveEnabled = !hasPassed,
+                        onSnooze = { pane = ReminderPane.SNOOZE },
+                        onSave = { onSet(at, ringsAsAlarm, early.takeIf { offersEarly }) },
+                        modifier = Modifier.padding(top = TellcatSpacing.xs)
+                    )
 
                     // Offered only where there is something to clear, so the
                     // sheet does not propose undoing a thing not done.
@@ -1029,6 +1017,100 @@ internal fun suggestedReminderTime(defaultDay: LocalDate, now: LocalDateTime): L
 private enum class ReminderPane { MAIN, DAY, SNOOZE, EARLY }
 
 /**
+ * The reminder sheet's Save, and Snooze beside it once the reminder has rung.
+ * D-109, amended at the owner's word on 2026-11-03.
+ *
+ * **Side by side, not stacked.** Snooze used to be a full-width "Snooze…" text
+ * button between Save and Clear, so a rung reminder's sheet ended in three
+ * stacked buttons. Snooze is an action, not a setting: it writes at once and
+ * leaves the reminder's own time alone (D-078), so it sits with Save rather than
+ * becoming a row among Day and Time, which Save stores. Tonal against Save's
+ * fill, because Save is the sheet's commit and Snooze the second action, as
+ * Focus pairs a tonal Complete with its filled control.
+ *
+ * **Its glyph says it opens something.** `expressive-components.md`: text alone
+ * at the foot of a sheet commits and leaves, and an icon beside the label means
+ * the button does something else. That is what the ellipsis was saying.
+ *
+ * **Stacked again where the two labels do not fit half the width each**, Save
+ * first, so neither is ever cut. Measured rather than guessed, as `AlarmSlide`
+ * measures its label.
+ */
+@Composable
+private fun ReminderSheetActions(
+    canSnooze: Boolean,
+    saveEnabled: Boolean,
+    onSnooze: () -> Unit,
+    onSave: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val saveLabel = stringResource(R.string.task_reminder_save)
+    val snoozeLabel = stringResource(R.string.task_reminder_snooze)
+
+    val save = @Composable { buttonModifier: Modifier ->
+        Button(
+            onClick = onSave,
+            enabled = saveEnabled,
+            modifier = buttonModifier.heightIn(min = TellcatDimensions.ActionHeight)
+        ) {
+            Text(saveLabel)
+        }
+    }
+
+    if (!canSnooze) {
+        save(modifier.fillMaxWidth())
+        return
+    }
+
+    val snooze = @Composable { buttonModifier: Modifier ->
+        FilledTonalButton(
+            onClick = onSnooze,
+            contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+            modifier = buttonModifier.heightIn(min = TellcatDimensions.ActionHeight)
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_snooze),
+                contentDescription = null,
+                modifier = Modifier.size(ButtonDefaults.IconSize)
+            )
+            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+            Text(snoozeLabel)
+        }
+    }
+
+    val measurer = rememberTextMeasurer()
+    val labelStyle = MaterialTheme.typography.labelLarge
+    val density = LocalDensity.current
+    val direction = LocalLayoutDirection.current
+
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        val gap = TellcatSpacing.xs
+        val half = with(density) { ((maxWidth - gap) / 2).toPx() }
+        val plain = ButtonDefaults.ContentPadding
+        val withIcon = ButtonDefaults.ButtonWithIconContentPadding
+        val saveNeeds = measurer.measure(saveLabel, labelStyle).size.width + with(density) {
+            (plain.calculateStartPadding(direction) + plain.calculateEndPadding(direction)).toPx()
+        }
+        val snoozeNeeds = measurer.measure(snoozeLabel, labelStyle).size.width + with(density) {
+            (withIcon.calculateStartPadding(direction) + withIcon.calculateEndPadding(direction) +
+                ButtonDefaults.IconSize + ButtonDefaults.IconSpacing).toPx()
+        }
+
+        if (saveNeeds <= half && snoozeNeeds <= half) {
+            Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                snooze(Modifier.weight(1f))
+                save(Modifier.weight(1f))
+            }
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(gap)) {
+                save(Modifier.fillMaxWidth())
+                snooze(Modifier.fillMaxWidth())
+            }
+        }
+    }
+}
+
+/**
  * "Also remind me": none, or one early reminder. D-115.
  *
  * The Day pane's shape, a back arrow and the four choices as preset buttons
@@ -1102,7 +1184,7 @@ private fun earlyWhen(at: LocalDateTime, today: LocalDate): String {
  * sit together until the evening has gone, and then "This evening" is not
  * offered rather than quietly meaning tomorrow (`reminders.md`).
  *
- * **"Pick a time…" lands on the next time the clock reads it**, today while it
+ * **"Pick a time" lands on the next time the clock reads it**, today while it
  * is still ahead and otherwise tomorrow, and the line says which. A snooze is
  * about the next while, not a day of the user's choosing; moving the reminder
  * to another day is what Save on the main pane is for.

@@ -473,11 +473,13 @@
     <string name="task_reminder_when">%1$s, %2$s</string>
     <string name="task_reminder_clear">Clear</string>
     <!-- D-109: the snooze inside the app, on the reminder sheet while the
-         reminder has rung and waits for an answer. -->
-    <string name="task_reminder_snooze">Snooze…</string>
+         reminder has rung and waits for an answer. No ellipsis since
+         2026-11-03, at the owner's word: the snooze glyph beside it says it
+         opens something. -->
+    <string name="task_reminder_snooze">Snooze</string>
     <string name="task_reminder_snooze_title">Snooze</string>
     <string name="task_reminder_snooze_back">Back to the reminder</string>
-    <string name="task_reminder_snooze_pick">Pick a time…</string>
+    <string name="task_reminder_snooze_pick">Pick a time</string>
     <string name="task_reminder_snooze_until">Snoozes until %1$s</string>
     <string name="task_reminder_snooze_confirm">Snooze</string>
     <!-- The Reminder row while a snooze is waiting to ring. D-109. -->
@@ -518,7 +520,7 @@
       change it.
     -->
     <string name="task_reminder_alarm">Ring like an alarm</string>
-    <string name="task_reminder_alarm_full_screen">Rings full screen until you stop or snooze it, even on Silent.</string>
+    <string name="task_reminder_alarm_full_screen">Rings full screen until you stop or snooze it.</string>
     <string name="task_reminder_alarm_banner">Rings as a banner until you answer. Full screen needs permission.</string>
     <string name="task_reminder_alarm_off">Alarms are off for Tellcat, so this arrives as a normal reminder.</string>
     <string name="task_reminder_alarm_no_exact">Alarms &amp; reminders is off for Tellcat, so this arrives as a normal reminder, and may be late.</string>
