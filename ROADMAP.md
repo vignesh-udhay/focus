@@ -9,6 +9,17 @@ scope it delivers is in `PRODUCT.md`.
 
 ## Current phase
 
+**1.3.1, versionCode 5, now carries everything but the calendar, at the
+owner's word on 2026-11-03.** `main` was fast-forwarded to `feature/last-day`
+(D-121 Quick Add tools, D-123 a month's last day, the reminder sheet's Snooze
+beside Save, the redesign study's removal) and `design/snackbar-pill` (D-124)
+was merged on top, beside D-122's monthly day fix that 1.3.1 already held.
+`feature/calendar-today` stays out until the production launch and a live
+privacy policy. The bundle built for the fix alone is set aside in
+`releases.3.1\superseded\`; the new one is built after the full instrumented
+suite passes on the phone and the 1.3 to 1.3.1 upgrade is checked again, now
+that an undated repeating task is given a day at start (D-121). Not pushed.
+
 **Phase 5, shipping, has started, and the app is now Tellcat, D-081.** The
 product was renamed from Catimo, and the `applicationId` moved to `app.tellcat`
 before the first Play upload, the last moment that was free. The internals went
