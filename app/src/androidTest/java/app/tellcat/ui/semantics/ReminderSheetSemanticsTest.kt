@@ -25,6 +25,9 @@ import androidx.compose.ui.test.waitUntilExactlyOneExists
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.tellcat.ui.task.ReminderSheet
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -86,11 +89,12 @@ class ReminderSheetSemanticsTest {
     /** The sheet as Task Details opens it with the alarm switch, and what Save writes. D-102. */
     private fun setAlarmSheet(
         reminderAt: LocalDateTime? = null,
-        ringsLikeAlarm: Boolean = false
+        ringsLikeAlarm: Boolean = false,
+        fontScale: Float = FontScale100
     ): MutableList<Pair<LocalDateTime, Boolean>> {
         val saved = mutableListOf<Pair<LocalDateTime, Boolean>>()
 
-        rule.setTellcatContent(FontScale100) {
+        rule.setTellcatContent(fontScale) {
             ReminderSheet(
                 reminderAt = reminderAt,
                 defaultDay = TODAY,
@@ -133,6 +137,31 @@ class ReminderSheetSemanticsTest {
         rule.onNodeWithText(SAVE).performClick()
         assertEquals(listOf(TODAY.atTime(21, 0) to true), saved)
     }
+
+    /**
+     * The switch is a list row like Day and Time, at the owner's word on
+     * 2026-11-03: its label starts where theirs do, and the line saying how it
+     * will ring sits inside the row, beside the switch, rather than under it.
+     */
+    private fun assertTheAlarmRowLinesUpWithTheRows(fontScale: Float) {
+        setAlarmSheet(reminderAt = TODAY.atTime(21, 0), ringsLikeAlarm = true, fontScale = fontScale)
+
+        val day = rule.onNode(hasText(DAY), useUnmergedTree = true).getUnclippedBoundsInRoot()
+        val alarm = rule.onNode(hasText(ALARM), useUnmergedTree = true).getUnclippedBoundsInRoot()
+        assertEquals(day.left.value, alarm.left.value, 0.5f)
+
+        val row = rule.onNode(isToggleable() and hasText(ALARM)).getUnclippedBoundsInRoot()
+        val anyPromise = ALARM_PROMISES.map { hasText(it) }.reduce { either, or -> either or or }
+        val promise = rule.onNode(anyPromise, useUnmergedTree = true).getUnclippedBoundsInRoot()
+        assertTrue("The line is not inside the alarm row", promise.top >= row.top && promise.bottom <= row.bottom)
+        assertEquals(day.left.value, promise.left.value, 0.5f)
+    }
+
+    @Test
+    fun theAlarmRowLinesUpWithTheRows_at100() = assertTheAlarmRowLinesUpWithTheRows(FontScale100)
+
+    @Test
+    fun theAlarmRowLinesUpWithTheRows_at200() = assertTheAlarmRowLinesUpWithTheRows(FontScale200)
 
     /**
      * Only meaningful where full screen is not yet allowed, which is a
@@ -443,6 +472,38 @@ class ReminderSheetSemanticsTest {
         rule.onNodeWithText(SNOOZE_ENTRY).assertIsDisplayed()
     }
 
+    private fun saveButton() = rule.onNode(hasText(SAVE) and hasClickAction())
+    private fun snoozeEntry() = rule.onNode(hasText(SNOOZE_ENTRY) and hasClickAction())
+
+    /**
+     * Snooze sits beside Save rather than under it, so a rung reminder's sheet
+     * does not end in three stacked buttons. D-109, amended 2026-11-03.
+     */
+    @Test
+    fun snoozeSitsBesideSave_at100() {
+        setSnoozeSheet(FontScale100)
+
+        val snooze = snoozeEntry().getUnclippedBoundsInRoot()
+        val save = saveButton().getUnclippedBoundsInRoot()
+        assertEquals(save.top.value, snooze.top.value, 0.5f)
+        assertTrue("Snooze is not before Save", snooze.right <= save.left)
+        assertTrue((save.bottom - save.top) >= 56.dp)
+    }
+
+    /** Where the two labels do not fit half the width each, they stack, Save first, and neither is cut. */
+    @Test
+    fun snoozeAndSaveStackWhenTheyDoNotFit_at200() {
+        setSnoozeSheet(FontScale200)
+
+        val snooze = snoozeEntry().assertIsDisplayed().getUnclippedBoundsInRoot()
+        val save = saveButton().assertIsDisplayed().getUnclippedBoundsInRoot()
+        if (snooze.top != save.top) {
+            assertTrue("Save is not above Snooze", save.bottom <= snooze.top)
+        }
+        assertTrue((save.bottom - save.top) >= 56.dp)
+        assertTrue((snooze.bottom - snooze.top) >= 56.dp)
+    }
+
     @Test
     fun snoozeIsNotOfferedBeforeTheReminderHasRung() {
         setSnoozeSheet(canSnooze = false)
@@ -495,13 +556,13 @@ class ReminderSheetSemanticsTest {
 
     private companion object {
 
-        const val SNOOZE_ENTRY = "Snooze…"
+        const val SNOOZE_ENTRY = "Snooze"
         const val SNOOZE_CONFIRM = "Snooze"
         const val TEN_MINUTES = "10 min"
         const val ONE_HOUR = "1 hour"
         const val THIS_EVENING = "This evening"
         const val TOMORROW_PRESET = "Tomorrow "
-        const val PICK_A_TIME = "Pick a time…"
+        const val PICK_A_TIME = "Pick a time"
         const val SNOOZES_UNTIL = "Snoozes until"
 
         /** A Tuesday, matching `RemindersTest`. */
@@ -526,7 +587,7 @@ class ReminderSheetSemanticsTest {
         const val SAVE = "Save reminder"
         const val ALARM = "Ring like an alarm"
         val ALARM_PROMISES = listOf(
-            "Rings full screen until you stop or snooze it, even on Silent.",
+            "Rings full screen until you stop or snooze it.",
             "Rings as a banner until you answer. Full screen needs permission.",
             "Alarms are off for Tellcat, so this arrives as a normal reminder.",
             "Alarms & reminders is off for Tellcat, so this arrives as a normal reminder, and may be late."

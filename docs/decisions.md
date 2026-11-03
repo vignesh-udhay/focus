@@ -6468,6 +6468,17 @@ being woken by tasks they meant as quiet, which would argue for a stronger
 warning on the switch, not for removing it.
 
 
+**Amended 2026-11-03, at the owner's word: the switch is a list row, and the
+line says nothing about Silent.** The switch was a bare row flush with the
+sheet's edge, so its label started further left and the switch sat further
+right than the Day and Time rows above it, and the line saying how it rings sat
+loose under it. It is now a one-row segmented list item in the Plan rows'
+colours, and the line is that row's supporting text, beside the switch. The
+full-screen line read "Rings full screen until you stop or snooze it, even on
+Silent." The Silent claim was never tested on a phone, and the owner chose to
+drop it rather than test it before the public release. It now reads "Rings full
+screen until you stop or snooze it."
+
 ## D-103. A backstop survives a revoked exact-alarm grant
 
 **Decision.** While reminders are scheduled exactly, one more alarm stands a
@@ -6765,6 +6776,20 @@ the snooze time off as the time it was set for.
 **What would reverse this.** People snoozing from the app and expecting the
 notification to come back at once, which would show as reports of a missing
 reminder; the answer then is a clearer line, not a different place.
+
+**Amended 2026-11-03, at the owner's word: Snooze sits beside Save.** The
+sheet of a reminder that had rung ended in three full-width buttons, Save,
+"Snooze…" and Clear, stacked one on another, and the owner did not like the
+ellipsis. Making Snooze a row with a chevron among Day, Time and Also remind me
+was considered and dropped: those are settings that Save stores, and a snooze
+is an action that writes at once and leaves the reminder's own time alone, so a
+row would have read as one more thing to save. Snooze is now a tonal button with
+the snooze glyph, beside a filled Save, with Clear as text below. The glyph says
+the button opens something rather than committing, which is the rule the
+components doc gives for worded buttons, and it replaces the ellipsis. Where
+the two labels do not fit half the width each, at large text, they stack with
+Save first. The pane's "Pick a time…" lost its ellipsis too; its clock glyph
+already says it opens the picker.
 
 ## D-110. Settings has a way to the follow-up's switch, under Reminders
 

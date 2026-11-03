@@ -9,7 +9,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -18,9 +17,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -51,12 +52,13 @@ import app.tellcat.core.domain.AlarmMode
 import app.tellcat.core.notification.AlarmChannelId
 import app.tellcat.core.notification.currentAlarmMode
 import app.tellcat.ui.alarm.AlarmScreen
+import app.tellcat.ui.component.planRowColors
 import java.time.LocalDateTime
 
 /**
  * "Ring like an alarm", in the reminder editor. `docs/decisions.md` D-102.
  *
- * A switch, off by default, and under it one line saying how this reminder will
+ * A switch row, off by default, and in it one line saying how this reminder will
  * actually ring on this phone right now, before the user relies on it: full
  * screen, as a banner, or as a normal reminder when the Alarms channel is off.
  * The line is read off the device each time the editor comes back to the
@@ -83,14 +85,34 @@ internal fun ReminderAlarmSwitch(
 
     val label = stringResource(R.string.task_reminder_alarm)
 
-    Column(modifier = modifier.fillMaxWidth()) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
+    // **A list row like Day and Time above it**, at the owner's word on
+    // 2026-11-03: the same container, inset and corners, so its label starts
+    // where theirs do and the switch sits where their chevrons do. It was a bare
+    // Row, flush with the sheet's edge, with the line below it on its own.
+    val shapes = ListItemDefaults.segmentedShapes(index = 0, count = 1)
+
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(TellcatSpacing.xs)
+    ) {
+        SegmentedListItem(
+            shapes = shapes,
+            colors = planRowColors(),
+            // The line saying how it will ring is the row's supporting text,
+            // beside the switch rather than under it.
+            supportingContent = if (ringsLikeAlarm) {
+                { Text(stringResource(mode.promise)) }
+            } else {
+                null
+            },
+            // Drawn only; the row carries the interaction and the semantics.
+            trailingContent = { Switch(checked = ringsLikeAlarm, onCheckedChange = null) },
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = TellcatDimensions.TouchTargetMin)
+                .clip(shapes.shape)
                 // The whole row is the switch, as Material's list-item switch
-                // is, and TalkBack reads it as one.
+                // is, and TalkBack reads it as one. Not the list item's own
+                // toggle overload, which announces a checkbox.
                 .toggleable(
                     value = ringsLikeAlarm,
                     role = Role.Switch,
@@ -100,40 +122,28 @@ internal fun ReminderAlarmSwitch(
                     }
                 )
         ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.weight(1f)
-            )
-            // Drawn only; the row carries the interaction and the semantics.
-            Switch(checked = ringsLikeAlarm, onCheckedChange = null)
+            Text(text = label)
         }
 
         if (ringsLikeAlarm) {
-            Text(
-                text = stringResource(mode.promise),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
             when (mode) {
                 AlarmMode.Banner -> OutlinedButton(
                     onClick = { isPrimingOpen = true },
-                    modifier = Modifier.padding(top = TellcatSpacing.xs)
+                    modifier = Modifier.padding(start = TellcatSpacing.md)
                 ) {
                     Text(stringResource(R.string.task_reminder_alarm_allow))
                 }
 
                 AlarmMode.NoExactAlarms -> OutlinedButton(
                     onClick = { context.openExactAlarmSettings() },
-                    modifier = Modifier.padding(top = TellcatSpacing.xs)
+                    modifier = Modifier.padding(start = TellcatSpacing.md)
                 ) {
                     Text(stringResource(R.string.task_reminder_alarm_exact_allow))
                 }
 
                 AlarmMode.PlainReminder -> OutlinedButton(
                     onClick = { context.openAlarmChannelSettings() },
-                    modifier = Modifier.padding(top = TellcatSpacing.xs)
+                    modifier = Modifier.padding(start = TellcatSpacing.md)
                 ) {
                     Text(stringResource(R.string.task_reminder_alarm_channel_open))
                 }

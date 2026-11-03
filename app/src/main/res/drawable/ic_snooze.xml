@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Material Symbols "snooze", outlined, as the other icons are. D-109, amended
+     2026-11-03: beside Snooze in the reminder sheet, the glyph that says the
+     button opens something rather than committing the sheet. Drawn in the
+     symbol's own coordinates, which run upwards from the bottom edge. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="960"
+    android:viewportHeight="960">
+    <group android:translateY="960">
+        <path
+            android:fillColor="@android:color/white"
+            android:pathData="M360,-320h240v-60H452l148,-180v-60H360v60h148L360,-380v60ZM480,-80q-75,0 -140.5,-28.5t-114,-77q-48.5,-48.5 -77,-114T120,-440q0,-75 28.5,-140.5t77,-114q48.5,-48.5 114,-77T480,-800q75,0 140.5,28.5t114,77q48.5,48.5 77,114T840,-440q0,75 -28.5,140.5t-77,114q-48.5,48.5 -114,77T480,-80ZM224,-866l56,56 -170,170 -56,-56 170,-170ZM736,-866l170,170 -56,56 -170,-170 56,-56ZM480,-160q117,0 198.5,-81.5T760,-440q0,-117 -81.5,-198.5T480,-720q-117,0 -198.5,81.5T200,-440q0,117 81.5,198.5T480,-160Z" />
+    </group>
+</vector>
