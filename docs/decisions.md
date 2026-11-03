@@ -7627,6 +7627,83 @@ is too quiet, in which case the container moves before the position does.
 
 ---
 
+## D-125. A restart puts unanswered reminders back in the shade, quietly
+
+**Proposed 2026-11-04, waiting for the owner's approval.** Nothing is built.
+Touches D-108 (an unanswered reminder is posted once more) and D-079 (a
+reminder rings before the first unlock). Schema 18.
+
+**What changed the answer.** Android clears every notification when the phone
+restarts. Tellcat sets its alarms again on boot (D-078, D-079), and D-108 posts
+a follow-up that falls due while the phone is off. But a reminder that was
+announced, followed up, and still not answered when the phone restarted is
+gone from the shade after the restart, and nothing brings it back. The task is
+still open in the app, but the one thing that was telling the user about it
+has quietly disappeared. A TickTick teardown on 2026-11-04
+(`C:\Users\vigne\.codex\research\ticktick\report.md`) showed TickTick restores
+fired reminders from storage on boot. Tellcat did not.
+
+**The decision.**
+
+1. **After a restart, every reminder that was still in the shade is posted
+   again, silently.** No sound, no vibration, no heads-up, no full-screen alarm.
+   The shade looks as it did before the restart. This restores what was there;
+   it is not a new reminder, so it does not count against D-108's "late is
+   still once".
+2. **The same notification, with the day named when it was not today.** The
+   task's title, Done and Snooze, and the line D-108 already writes:
+   "Reminder again · set for Oct 28, 9:30 PM", or the reminder's own line if
+   it had not been followed up yet.
+3. **What counts as still in the shade.** A reminder or follow-up notification
+   that Tellcat posted and that nobody answered or swiped away. Answered keeps
+   D-108's list: Done, Snooze, opening the task, a new time, completing,
+   deleting. **Swiping it away is new here**: it counts as dismissed for this
+   entry, so a notification the user cleared stays cleared. It does not change
+   D-108, where a swipe still leaves the follow-up owed.
+4. **Only after a restart.** Not after an app update or a clock or time zone
+   change, which do not clear the shade.
+5. **No age limit.** If it was in the shade before the restart, it comes back,
+   however old. That is what "as it was" means, and the user can still swipe it
+   away.
+6. **A reminder that rang like an alarm** (D-102) comes back as the quiet
+   notification its Stop left behind, never as a ringing alarm.
+
+**How it is kept, which is principle 1.**
+
+- **Storage is the state.** Schema 18 adds one nullable column, `inShadeSince`,
+  written in the same transaction that records an announcement or a follow-up,
+  and cleared by every answer in the same statement D-108's `followUpAt` is
+  cleared by. A swipe reaches the app through the notification's delete intent,
+  which clears it too. Tellcat's own cancels (a repeat's next occurrence retiring
+  the old one, D-098) clear it in the same write.
+- **Posted from the recovery receiver.** `ReminderRecoveryReceiver` already runs
+  on `BOOT_COMPLETED`; after its reconcile it posts every open task with
+  `inShadeSince` set, through the existing `setSilent` path. Before the first
+  unlock the database cannot be read, so the restore waits for the unlock, as
+  D-079's reconcile does. A follow-up that fell due while the phone was off is
+  still posted once, with sound, by D-108, and the restore does not post it a
+  second time.
+- **Not in the backup**, like `followUpAt`: restoring an old file must not fill
+  the shade with old reminders.
+- **Reminder health is unchanged.** A restore that cannot be shown (notifications
+  off) is the failure the Notifications row already reports.
+
+**What it costs.** One column and its migration, a delete intent on two
+notification kinds, and a short loop in the recovery receiver. No new setting.
+
+**Tests to write.** JVM: which tasks are restored (answered, swiped, completed,
+deleted, snoozed, retired by a repeat, none of them), and the day named on the
+line. `MigrationTest` for version 18, and the backup codec ignoring the column.
+Instrumented: the delete intent clears the column. On the phone, on the
+owner's word: a throwaway reminder left unanswered, a restart, and the shade
+checked after unlock; then the same with the notification swiped away first.
+
+**What would reverse this.** Restored notifications that the owner or testers
+find stale rather than useful, in which case an age limit (today and yesterday)
+comes before removing it.
+
+---
+
 ## D-127. Overdue can be moved to today in one tap
 
 **Decided on 2026-11-05, at the owner's word, after competitor research and
