@@ -16,7 +16,7 @@ beside Save, the redesign study's removal) and `design/snackbar-pill` (D-124)
 was merged on top, beside D-122's monthly day fix that 1.3.1 already held.
 `feature/calendar-today` stays out until the production launch and a live
 privacy policy. The bundle built for the fix alone is set aside in
-`releases.3.1\superseded\`; the new one is built after the full instrumented
+`releases\1.3.1\superseded\`; the new one is built after the full instrumented
 suite passes on the phone and the 1.3 to 1.3.1 upgrade is checked again, now
 that an undated repeating task is given a day at start (D-121). Not pushed.
 
