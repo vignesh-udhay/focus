@@ -10,6 +10,7 @@ import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasContentDescriptionExactly
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -440,6 +441,42 @@ class TodayScreenSemanticsTest {
     @Test
     fun completion_announcesItselfPolitely_at200() =
         assertCompletionAnnouncesItselfPolitely(FontScale200)
+
+    /**
+     * D-124. The snackbar shares a row with the Add button: beside it, never
+     * stacked on it and never under it, and the button does not move when it
+     * arrives.
+     *
+     * "Beside" is asserted as the message and Undo both ending before the
+     * button starts, and Undo reaching below the button's top. Stacked above
+     * the button, as Scaffold places a snackbar, Undo would end above it. At
+     * 200% the pill may wrap and grow upwards, which is allowed; the button
+     * holding still is the part that is not.
+     */
+    private fun assertTheSnackbarSitsBesideAdd(fontScale: Float) {
+        setToday(fontScale, withOneTask())
+
+        rule.waitUntilExactlyOneExists(hasText(TITLE), TIMEOUT_MILLIS)
+        val addBefore = rule.onNodeWithContentDescription(ADD_TASK).getUnclippedBoundsInRoot()
+
+        rule.onNodeWithContentDescription(MARK_COMPLETE).performClick()
+        rule.waitUntilExactlyOneExists(hasText(UNDO), TIMEOUT_MILLIS)
+
+        val add = rule.onNodeWithContentDescription(ADD_TASK).getUnclippedBoundsInRoot()
+        val message = rule.onNodeWithText(COMPLETED_MESSAGE).getUnclippedBoundsInRoot()
+        val undo = rule.onNodeWithText(UNDO).getUnclippedBoundsInRoot()
+
+        assertEquals("the Add button moved when the snackbar arrived", addBefore, add)
+        assertTrue("the message ends at ${message.right}, Add starts at ${add.left}", message.right <= add.left)
+        assertTrue("Undo ends at ${undo.right}, Add starts at ${add.left}", undo.right <= add.left)
+        assertTrue("Undo ends at ${undo.bottom}, above Add's top at ${add.top}", undo.bottom > add.top)
+    }
+
+    @Test
+    fun theSnackbarSitsBesideAdd_at100() = assertTheSnackbarSitsBesideAdd(FontScale100)
+
+    @Test
+    fun theSnackbarSitsBesideAdd_at200() = assertTheSnackbarSitsBesideAdd(FontScale200)
 
     /**
      * Completing and taking it back.

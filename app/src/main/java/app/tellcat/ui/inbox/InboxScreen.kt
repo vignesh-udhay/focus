@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.FabPosition
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
@@ -30,13 +31,12 @@ import app.tellcat.core.design.TellcatSpacing
 import app.tellcat.core.design.tellcatContentGutter
 import app.tellcat.core.domain.Task
 import app.tellcat.core.domain.inboxTasks
-import app.tellcat.ui.component.AddTaskFab
+import app.tellcat.ui.component.AddTaskFabWithSnackbar
 import app.tellcat.ui.component.TellcatTopAppBar
 import app.tellcat.ui.component.InboxMascot
 import app.tellcat.ui.component.TaskListEmptyState
 import app.tellcat.ui.component.TaskListErrorState
 import app.tellcat.ui.component.TaskListRow
-import app.tellcat.ui.component.UndoSnackbarHost
 import app.tellcat.core.domain.PrimaryList
 import app.tellcat.ui.task.QuickAddSheet
 import app.tellcat.ui.task.TaskListViewModel
@@ -164,7 +164,6 @@ private fun InboxContent(
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface,
-        snackbarHost = { UndoSnackbarHost(snackbarHostState) },
         bottomBar = bottomBar,
         topBar = {
             TellcatTopAppBar(
@@ -177,13 +176,15 @@ private fun InboxContent(
                 // decision. The list below says how much is waiting.
             )
         },
+        // The Add button with the snackbar beside it, as on Today, D-124.
         floatingActionButton = {
-            AddTaskFab(
-                onClick = onAddTask,
-                // Follows the content column in on a wide window, as on Today.
-                modifier = Modifier.padding(end = gutter)
+            AddTaskFabWithSnackbar(
+                hostState = snackbarHostState,
+                onAddTask = onAddTask,
+                modifier = Modifier.padding(horizontal = gutter)
             )
-        }
+        },
+        floatingActionButtonPosition = FabPosition.Center
     ) { innerPadding ->
         if (readFailed) {
             TaskListErrorState(

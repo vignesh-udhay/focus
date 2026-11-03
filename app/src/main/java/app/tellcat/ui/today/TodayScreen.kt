@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.FabPosition
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
@@ -46,7 +47,7 @@ import app.tellcat.core.domain.TodayBand
 import app.tellcat.core.domain.TodaySection
 import app.tellcat.core.domain.todaySections
 import app.tellcat.core.domain.todayTasks
-import app.tellcat.ui.component.AddTaskFab
+import app.tellcat.ui.component.AddTaskFabWithSnackbar
 import app.tellcat.ui.component.DurationLabel
 import app.tellcat.ui.component.TellcatTopAppBar
 import app.tellcat.ui.component.TaskListEmptyState
@@ -55,7 +56,6 @@ import app.tellcat.ui.component.SectionLabel
 import app.tellcat.ui.component.TaskListRow
 import app.tellcat.ui.component.TodayMascot
 import app.tellcat.ui.component.durationLabel
-import app.tellcat.ui.component.UndoSnackbarHost
 import app.tellcat.core.domain.PrimaryList
 import app.tellcat.ui.task.QuickAddSheet
 import app.tellcat.ui.task.TaskListViewModel
@@ -286,7 +286,6 @@ private fun TodayContent(
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface,
-        snackbarHost = { UndoSnackbarHost(snackbarHostState) },
         bottomBar = bottomBar,
         topBar = {
             TellcatTopAppBar(
@@ -294,15 +293,18 @@ private fun TodayContent(
                 title = stringResource(R.string.today_title)
             )
         },
+        // The Add button and the snackbar share one row, D-124, so the
+        // snackbar is not stacked on the button. Centred and full width, with
+        // the content gutter either side: on a wide screen the row stays with
+        // the list it adds to rather than against the window edge.
         floatingActionButton = {
-            AddTaskFab(
-                onClick = onAddTask,
-                // Follows the content column in rather than sitting against
-                // the window edge, so on a wide screen the button stays with
-                // the list it adds to.
-                modifier = Modifier.padding(end = gutter)
+            AddTaskFabWithSnackbar(
+                hostState = snackbarHostState,
+                onAddTask = onAddTask,
+                modifier = Modifier.padding(horizontal = gutter)
             )
-        }
+        },
+        floatingActionButtonPosition = FabPosition.Center
     ) { innerPadding ->
         // Empty means nothing at all, card included. A screen holding a Focus
         // now card and nothing else is not empty, and telling the user there is

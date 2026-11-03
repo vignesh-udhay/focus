@@ -7264,3 +7264,65 @@ weekly rule keeps none.
 **What would reverse this.** Nothing about the fix; it restores what D-027's
 rule always promised. A "last day of the month" rule is a separate decision.
 
+
+---
+
+## D-124. The snackbar is a Tellcat pill, and on Today and Inbox it sits beside the Add button
+
+**Decision.** Two changes to the one snackbar every screen hosts, at the owner's
+word, 2026-11-03, after comparing a mockup of three options.
+
+1. It keeps Material's `Snackbar`, its layout, motion, live region and timing,
+   and changes three values: the container is `surfaceContainerHighest` with
+   `onSurface` text, the action is `primary`, and the shape is `extraLarge`, a
+   full pill at one line.
+2. On Today and Inbox, the two screens with the Add button, it shares the
+   button's row, to its left, instead of stacking above it. Elsewhere it sits
+   where Scaffold puts it, inset by the screen margin.
+
+**What changed the answer.** `expressive-components.md` said "Material default
+appearance and motion" and gave no reason beyond it being the default. The
+owner found the result old-fashioned, and named what put them off: the thing
+above the Add button. Material's default is `inverseSurface`, a dark square bar
+on a light screen, and Scaffold places a snackbar above the floating action
+button, so after nearly every tick the bottom of a list held three layers: the
+bar, the button, the navigation bar. It also covered the rows above the
+button's clearance, the ones `FabClearance` exists to keep free.
+
+**Why a restyle and not a new component.** `expressive-components.md` lists
+`Snackbar` under keep and refine, never replace. Every value changed is a
+parameter the component takes, so this is refinement.
+
+**Why the colours.** The pill sits over the task collection,
+`surfaceContainer`, beside the navigation bar, `surfaceContainerHigh`, and
+`surfaceContainerHighest` is the one surface tone that clears both. The action
+takes the base role so Undo and View stay the strongest thing in the pill in
+either theme, as `inversePrimary` was on the dark bar.
+
+**Why beside the button.** Undo lasts four seconds and View is the reason the
+capture notice exists, D-075. Both now sit in the thumb's zone and in the band
+the list already leaves clear for the button. The row takes Scaffold's
+floating-action-button slot at `FabPosition.Center`, full width, which Scaffold
+measures against the content width and lifts above the navigation bar by the
+same distance as before, so the button lands exactly where it was. A
+one-line pill is centred on the button; a pill that wraps, at 200%, grows upward
+and the button does not move.
+
+**Considered and not done.** Showing the message in the top app bar, the
+owner's first idea: the title says where the user is, and the capture notice
+only appears when the task went somewhere else, so the title would name the
+wrong place at the moment it matters most; it would also split the message (top)
+from its action (bottom) and put Undo at the farthest reach. Lighting the
+Upcoming tab with a badge in place of View: two lit tabs read as being on
+Upcoming, and the indicator is a marker, not a notice. Kept in reserve if the
+pill proves too easy to miss.
+
+**Tests.** `TodayScreenSemanticsTest.theSnackbarSitsBesideAdd` at 100% and 200%:
+the message and Undo end before the Add button starts, Undo reaches below the
+button's top (a stacked snackbar would end above it), and the button's bounds
+are unchanged by the snackbar arriving. `UndoSnackbarSemanticsTest` and the
+existing live-region tests are unchanged and still apply. Motion is Material's
+and was observed on the phone, not tested.
+
+**What would reverse this.** A user who misses an undo offer because the pill
+is too quiet, in which case the container moves before the position does.
