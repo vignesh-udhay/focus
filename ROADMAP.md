@@ -16,9 +16,17 @@ beside Save, the redesign study's removal) and `design/snackbar-pill` (D-124)
 was merged on top, beside D-122's monthly day fix that 1.3.1 already held.
 `feature/calendar-today` stays out until the production launch and a live
 privacy policy. The bundle built for the fix alone is set aside in
-`releases\1.3.1\superseded\`; the new one is built after the full instrumented
-suite passes on the phone and the 1.3 to 1.3.1 upgrade is checked again, now
-that an undated repeating task is given a day at start (D-121). Not pushed.
+`releases\1.3.1\superseded\`. On 2026-11-03 the full instrumented suite passed
+on the phone (486 run, 0 failed, 2 skipped), the upgrade from a schema 16
+install kept every task and alarm and gave an undated weekly repeat a day
+(D-121), and the new bundle went to the Alpha closed test as release 5 (1.3.1),
+full rollout, published the same day. `main` is pushed.
+
+**Production access applied for on 2026-11-04**, the day the closed test
+reached 14 days, at the owner's word. Android vitals showed no crashes or ANRs
+from Oct 7 to Nov 4. Testers gave feedback by phone rather than through Play.
+Google's review usually takes 7 days or less. Once approved, 1.3.1 goes to
+production on the owner's word.
 
 **Phase 5, shipping, has started, and the app is now Tellcat, D-081.** The
 product was renamed from Catimo, and the `applicationId` moved to `app.tellcat`
