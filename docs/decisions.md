@@ -7624,3 +7624,97 @@ and was observed on the phone, not tested.
 
 **What would reverse this.** A user who misses an undo offer because the pill
 is too quiet, in which case the container moves before the position does.
+
+---
+
+## D-127. Overdue can be moved to today in one tap
+
+**Proposed on 2026-11-05, not built.** Candidate 1 in
+`docs/research/competitors.md`, "Candidates to pick up, 2026-11-02", taken up at
+the owner's word. Numbered after D-125 and D-126, which are on branches not yet
+on `main`. On `design/move-overdue-to-today`, from `main`. It ships after 1.3.1,
+not in it.
+
+**What is wrong now.** Overdue is first on Today because it "needs a decision"
+(D-012), and today the only way to make that decision is one task at a time:
+open it, pick a day, go back. D-023 removed the row's menu, so there is no
+shorter route. Four tasks left over from yesterday cost twelve taps before
+Today answers "what should I do now?". Todoist puts "Reschedule" on its Overdue
+header and TickTick puts "Postpone" there, both seen on 2026-11-02.
+
+**Decision.** Overdue's label carries one action, **Move to today**. It moves
+every task in the band to today in one write and offers Undo.
+
+- **Where.** At the end of the Overdue label's line, as a text button, the
+  label on the left. Only Overdue gets it: the other bands are already today.
+  It shows whenever the band holds a task it would move, one task included,
+  since there is no swipe yet (candidate 2) and a single task is the most
+  common case.
+- **What it says after.** The snackbar reads "Moved 4 tasks to today", or
+  "Moved 1 task to today", with Undo, in the pill D-124 placed. Not "Task
+  moved", which `PendingUndo.Reschedule` uses: a number is the only way to
+  know the tap did what was expected.
+- **Undo puts each task back exactly as it was**, its day and its reminder
+  both, read fresh and restoring only what the move wrote, the way
+  `undoReschedule` does.
+
+**Each task keeps its reminder's time, on today.** This is the question
+competitors.md left open.
+
+- A reminder still ahead today **rings again** at that time. A 6 PM reminder
+  missed yesterday and moved at 10 AM rings at 6 PM. Its delivery, snooze and
+  follow-up are cleared, as `editTask` clears them for a new time (D-078,
+  D-108).
+- A reminder whose time has **already gone** today does not ring again. Its
+  delivery stays as it was, so the task sits in Later today exactly like a
+  reminder that rang this morning and was not done. No new state. Without this
+  rule, moving five tasks at 8 PM would ring five notifications at once,
+  because `reminderTrigger` maps a past time to now.
+- A reminder that was never delivered stays owed either way. It was already
+  owed before the move.
+- An early reminder (D-115) is settled or owed by `earlyDeliveredAtSave`, the
+  same rule Save uses.
+- Tasks without a reminder only change day, and land in No reminder set.
+
+So a moved task lands in the band its reminder puts it in, and the bands
+already explain themselves.
+
+**A repeating task moves like any other, with one exception.**
+
+- Moving an occurrence by hand keeps the series' day (D-122) and changes no
+  rule, so `recurrenceAnchor` is untouched. The move goes through
+  `OccurrenceEdits.edit`, so an untouched successor follows as it does for any
+  edit (D-098). A weekly task missed on Monday and moved to Thursday is still
+  followed by next Monday.
+- **The exception: an occurrence whose next one is already on today or
+  earlier stays where it is.** A daily task missed yesterday already has
+  today's occurrence. Moving yesterday's would put the same task on Today
+  twice, and only one of them is the user's. It stays in Overdue for the user
+  to tick or delete, and the count in the snackbar does not include it. If
+  every task in the band is one of these, the button does not show.
+
+**What it does not touch.**
+
+- No count on the Overdue label. D-048 cut one, and this adds an action, not a
+  count.
+- The widget (D-049) gets no button. It has nowhere to put an undo.
+- `rescheduleTask`, used by no screen since D-023, is left as it is.
+- **Task Details does not move a reminder with its day.** Picking a new date
+  there changes `scheduledDate` only, so a task moved from yesterday keeps a
+  reminder on yesterday. That is a separate question, noted here rather than
+  changed, because this entry should not change the single-task route without
+  its own reasoning.
+
+**To build.** `TaskListViewModel.moveOverdueToToday()`, the edit for each task
+in one transaction, and a new `PendingUndo.OverdueMove` holding each task's
+before-state. The button and two plurals in `TodayScreen`. Tests in
+`TaskListViewModelTest`: a time ahead rings again, a time gone does not, a
+never-delivered reminder stays owed, the daily exception, the weekly successor
+stays on its weekday, undo restores every field, an edit in between survives
+undo. A Compose test that the button shows only on Overdue and not when every
+task is excepted.
+
+**What would reverse this.** Users moving overdue work forward every morning
+without doing it, which would make the button a way to never decide. The sign
+would be the same tasks moved day after day. If that shows up, the answer is
+to show how many times a task has been moved, not to remove the button.
