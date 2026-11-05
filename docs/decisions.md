@@ -7629,8 +7629,8 @@ is too quiet, in which case the container moves before the position does.
 
 ## D-127. Overdue can be moved to today in one tap
 
-**Proposed on 2026-11-05, revised the same day after competitor research, not
-built.** Candidate 1 in `docs/research/competitors.md`, "Candidates to pick up,
+**Decided on 2026-11-05, at the owner's word, after competitor research and
+built the same day.** Candidate 1 in `docs/research/competitors.md`, "Candidates to pick up,
 2026-11-02", taken up at the owner's word. Numbered after D-125 and D-126,
 which are on branches not yet on `main`. On `design/move-overdue-to-today`,
 from `main`. It ships after 1.3.1, not in it.
@@ -7691,10 +7691,9 @@ moves every task in the band it can to today in one write and offers Undo.
   says "Moved 0": a band where nothing would move has no button.
 - **Undo puts each task back exactly as it was**: its day, reminder, alarm
   style, delivery, snooze, follow-up and early reminder, read fresh and
-  restoring only what the move wrote, the way `undoReschedule` does. It goes through
-  `OccurrenceEdits.edit` as the move did, so an untouched successor follows
-  back. Restoring a reminder that had rung restores its delivery too, so it
-  does not ring again.
+  restoring only what the move wrote, the way `undoReschedule` does, in one
+  transaction as the move was. Restoring a reminder that had rung restores its
+  delivery too, so it does not ring again.
 
 **A moved task keeps a reminder only if it will still ring today.** Decided
 with the owner on 2026-11-05. Later today means "it will announce itself"
@@ -7738,10 +7737,14 @@ entry.
 Tellcat differs from TickTick, Todoist and Tasks.org, on purpose.
 
 - Moving an occurrence by hand keeps the series' day (D-122) and changes no
-  rule, so `recurrenceAnchor` is untouched. An untouched successor follows as
-  it does for any edit (D-098). A weekly Wednesday task missed and moved to
-  Thursday is still followed by next Wednesday, and is still a Wednesday task.
-  Those three apps would have made it a Thursday task without saying so.
+  rule, so `recurrenceAnchor` is untouched. **The next occurrence does not
+  follow the move**, unlike an edit in Task Details (D-098): the move changes
+  this occurrence's day and its own reminder, not the series. Found while
+  building it: letting an untouched successor follow would copy a cleared
+  reminder onto next week's occurrence, a reminder silently lost. A weekly
+  Wednesday task missed and moved to Thursday is still followed by next
+  Wednesday at its time, and is still a Wednesday task. Those three apps would
+  have made it a Thursday task without saying so.
 - **An occurrence whose next one is already on today or earlier stays where it
   is.** A daily task missed yesterday already has today's occurrence. Moving
   yesterday's would put the same task on Today twice. It stays in Overdue for
@@ -7778,18 +7781,24 @@ Tellcat differs from TickTick, Todoist and Tasks.org, on purpose.
   reminder on yesterday. That is a separate question, noted here rather than
   changed.
 
-**To build.** `TaskListViewModel.moveOverdueToToday()`, the edits in one
-transaction, and `PendingUndo.OverdueMove` holding each moved task's
-before-state. The button, its spoken label and the snackbar's plurals in
-`TodayScreen`. Tests in `TaskListViewModelTest`: a time ahead rings again and
+**Built.** The rules are pure, in `core/domain/OverdueMove.kt`:
+`overdueMovePlan` splits the band into what moves and what stays, and
+`movedToToday` and `restoredFromMove` say what a task becomes. The view model's
+`moveOverdueToToday` writes them through `TaskDao.editAll`, one transaction,
+and raises `PendingUndo.OverdueMove` holding each moved task's before-state;
+`overdueToMove` is the count the button shows and speaks. The button is a
+Material `TextButton` at the end of Overdue's `SectionLabel`, on its baseline,
+in `TodayScreen`. Tests in `OverdueMoveTest` and `TaskListViewModelTest`: a time ahead rings again and
 lands in Later today, a time gone is cleared with its early reminder and alarm
 style and lands in No reminder set, a never-delivered time gone is cleared too,
 a snooze still to ring is kept, a follow-up is cleared, an early reminder gone
-does not ring, nothing moved rings at once, the daily exception and its count, the weekly successor keeps its weekday, undo
-restores every field and does not ring a rung reminder, an edit in between
-survives undo, a task completed before the write is not moved, a second tap
-during a move does nothing. Compose tests that the button shows only on
-Overdue, with one task, not when every task stays, and is 48dp.
+does not ring, nothing moved rings at once, the daily exception and its count,
+the weekly successor left as it was, undo restores every field and does not
+ring a rung reminder, an edit in between survives undo, a completed task is not
+moved, a second tap during a move does nothing. `OverdueMoveSemanticsTest`
+(instrumented, written and not yet run): the button shows with one task, not
+without overdue work, not when every task stays, is 48dp, says how many it
+moves, and the snackbar counts.
 
 **What would reverse this.** Users moving overdue work forward every morning
 without doing it, which would make the button a way to never decide. The sign

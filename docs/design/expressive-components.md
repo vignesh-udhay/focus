@@ -745,6 +745,11 @@ word the user is not reading is the one worth losing.
 [CD] A label is a label and nothing more: no divider, no background, no
 container, no chevron, no count badge, not collapsible.
 
+[CD] One exception, D-127: Overdue's label carries a single `TextButton`, Move
+all to today, at the end of its line and on its baseline. The label itself is
+still the shared `SectionLabel` and still a heading; the button sits beside it,
+not inside it.
+
 [CD] Where a heading names a day, the rows beneath it do not. Upcoming groups by
 date, so its rows drop the date from their metadata and show the duration and
 the recurrence instead; repeating the day on every row would say the same thing

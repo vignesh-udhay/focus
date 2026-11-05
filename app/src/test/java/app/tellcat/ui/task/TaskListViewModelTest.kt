@@ -4717,6 +4717,197 @@ class TaskListViewModelTest {
         assertNull(stored.earlyDeliveredAt)
         assertNull(stored.earlySnoozedUntil)
     }
+
+    // D-127: Move all to today
+
+    private val yesterday: LocalDate = today.minusDays(1)
+    private val noon: LocalDateTime = today.atTime(12, 0)
+
+    /** A view model standing at noon on the fixture day, for Move all to today. */
+    private fun viewModelAtNoon() =
+        TaskListViewModel(repository, currentDay, SavedStateHandle(), alarms, now = { noon })
+
+    private fun storedTask(id: String): Task =
+        dao.emissions.value.single { it.id == id }.toDomain()
+
+    private fun awaitMoveOffer(model: TaskListViewModel): PendingUndo.OverdueMove = runBlocking {
+        model.pendingUndo.first { it is PendingUndo.OverdueMove } as PendingUndo.OverdueMove
+    }
+
+    @Test
+    fun movingOverdueTakesEachTaskToTodayAndKeepsOnlyRemindersStillToRing() {
+        store(
+            task("bank", scheduledDate = yesterday, reminderAt = yesterday.atTime(18, 0), reminderDeliveredAt = completedAt),
+            task("rent", scheduledDate = yesterday, reminderAt = yesterday.atTime(9, 0), reminderDeliveredAt = completedAt),
+            task("passport", scheduledDate = today.minusDays(3))
+        )
+        val model = viewModelAtNoon()
+        visible(model, 3)
+
+        model.moveOverdueToToday()
+        val offer = awaitMoveOffer(model)
+
+        assertEquals(3, offer.moved)
+        assertEquals(0, offer.stayed)
+        assertEquals(today.atTime(18, 0), storedTask("bank").reminderAt)
+        assertNull(storedTask("bank").reminderDeliveredAt)
+        assertNull(storedTask("rent").reminderAt)
+        assertEquals(listOf(today, today, today), listOf("bank", "rent", "passport").map { storedTask(it).scheduledDate })
+    }
+
+    @Test
+    fun aReminderThatWillRingAgainRaisesThePermissionGate() {
+        store(task("bank", scheduledDate = yesterday, reminderAt = yesterday.atTime(18, 0), reminderDeliveredAt = completedAt))
+        val model = viewModelAtNoon()
+        visible(model, 1)
+
+        model.moveOverdueToToday()
+
+        assertTrue(awaitReminderSignal(model))
+    }
+
+    @Test
+    fun aMoveWithNoReminderStillToRingDoesNotRaiseIt() {
+        store(task("rent", scheduledDate = yesterday, reminderAt = yesterday.atTime(9, 0), reminderDeliveredAt = completedAt))
+        val model = viewModelAtNoon()
+        visible(model, 1)
+
+        model.moveOverdueToToday()
+        awaitMoveOffer(model)
+
+        assertFalse(model.reminderJustSet.value)
+    }
+
+    @Test
+    fun aDailyOccurrenceWhoseNextIsOnTodayStaysAndIsCounted() {
+        val daily = Recurrence(RecurrenceUnit.DAILY)
+        store(
+            task("missed", scheduledDate = yesterday, recurrence = daily),
+            task("todays", scheduledDate = today, recurrence = daily).copy(spawnedFromId = "missed"),
+            task("passport", scheduledDate = yesterday)
+        )
+        val model = viewModelAtNoon()
+        visible(model, 3)
+
+        model.moveOverdueToToday()
+        val offer = awaitMoveOffer(model)
+
+        assertEquals(1, offer.moved)
+        assertEquals(1, offer.stayed)
+        assertEquals(yesterday, storedTask("missed").scheduledDate)
+    }
+
+    @Test
+    fun theButtonCountsOnlyWhatWouldMove() {
+        val daily = Recurrence(RecurrenceUnit.DAILY)
+        store(
+            task("missed", scheduledDate = yesterday, recurrence = daily),
+            task("todays", scheduledDate = today, recurrence = daily).copy(spawnedFromId = "missed"),
+            task("a", scheduledDate = yesterday),
+            task("b", scheduledDate = today.minusDays(4))
+        )
+        val model = viewModelAtNoon()
+
+        val count = runBlocking {
+            withTimeoutOrNull(TIMEOUT_MILLIS) { model.overdueToMove.first { it > 0 } }
+        }
+        assertEquals(2, count)
+    }
+
+    @Test
+    fun aBandWhereEveryTaskWouldStayCountsNone() {
+        val daily = Recurrence(RecurrenceUnit.DAILY)
+        store(
+            task("missed", scheduledDate = yesterday, recurrence = daily),
+            task("todays", scheduledDate = today, recurrence = daily).copy(spawnedFromId = "missed")
+        )
+        val model = viewModelAtNoon()
+        visible(model, 2)
+
+        val counted = runBlocking { withTimeoutOrNull(300) { model.overdueToMove.first { it > 0 } } }
+        assertNull(counted)
+    }
+
+    @Test
+    fun aWeeklyOccurrencesNextIsLeftOnItsDay() {
+        val weekly = Recurrence(RecurrenceUnit.WEEKLY, weekdays = setOf(yesterday.dayOfWeek))
+        val next = task("next", scheduledDate = yesterday.plusWeeks(1), recurrence = weekly, reminderAt = yesterday.plusWeeks(1).atTime(9, 0))
+            .copy(spawnedFromId = "missed")
+        store(
+            task("missed", scheduledDate = yesterday, recurrence = weekly, reminderAt = yesterday.atTime(9, 0), reminderDeliveredAt = completedAt),
+            next
+        )
+        val model = viewModelAtNoon()
+        visible(model, 1)
+
+        model.moveOverdueToToday()
+        awaitMoveOffer(model)
+
+        assertEquals(today, storedTask("missed").scheduledDate)
+        assertEquals(next, storedTask("next"))
+    }
+
+    @Test
+    fun undoPutsEveryTaskBackAsItWas() {
+        val bank = task("bank", scheduledDate = yesterday, reminderAt = yesterday.atTime(18, 0), reminderDeliveredAt = completedAt)
+            .copy(earlyReminder = EarlyReminder.OneHour, earlyDeliveredAt = completedAt)
+        val rent = task("rent", scheduledDate = yesterday, reminderAt = yesterday.atTime(9, 0), reminderDeliveredAt = completedAt)
+            .copy(ringsLikeAlarm = true)
+        store(bank, rent)
+        val model = viewModelAtNoon()
+        visible(model, 2)
+
+        model.moveOverdueToToday()
+        awaitMoveOffer(model)
+        model.undoOverdueMove()
+
+        eventually("undo never put the tasks back") {
+            storedTask("bank") == bank && storedTask("rent") == rent
+        }
+        assertNull(model.pendingUndo.value)
+    }
+
+    @Test
+    fun anEditMadeAfterTheMoveSurvivesUndo() {
+        store(task("passport", scheduledDate = yesterday))
+        val model = viewModelAtNoon()
+        visible(model, 1)
+
+        model.moveOverdueToToday()
+        awaitMoveOffer(model)
+        runBlocking { repository.update(storedTask("passport").copy(title = "Renew the passport")) }
+        model.undoOverdueMove()
+
+        eventually("undo never ran") { storedTask("passport").scheduledDate == yesterday }
+        assertEquals("Renew the passport", storedTask("passport").title)
+    }
+
+    @Test
+    fun aSecondTapDuringAMoveMovesNothingMore() {
+        store(task("a", scheduledDate = yesterday), task("b", scheduledDate = yesterday))
+        val model = viewModelAtNoon()
+        visible(model, 2)
+
+        model.moveOverdueToToday()
+        model.moveOverdueToToday()
+        awaitMoveOffer(model)
+        Thread.sleep(100)
+
+        assertEquals(2, dao.updated.size)
+    }
+
+    @Test
+    fun nothingOverdueMovesNothingAndOffersNothing() {
+        store(task("a", scheduledDate = today))
+        val model = viewModelAtNoon()
+        visible(model, 1)
+
+        model.moveOverdueToToday()
+        Thread.sleep(100)
+
+        assertTrue(dao.updated.isEmpty())
+        assertNull(model.pendingUndo.value)
+    }
 }
 
 

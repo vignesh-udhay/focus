@@ -196,6 +196,21 @@ interface TaskDao {
         return successors
     }
 
+    /**
+     * Applies [edit] to each of [ids] in one transaction, and returns the rows
+     * as they were before for those it changed. A row with no live task, or for
+     * which [edit] returns null, is left alone. D-127's Move all to today and
+     * its undo: all of them or none.
+     */
+    @Transaction
+    suspend fun editAll(ids: List<String>, edit: (TaskEntity) -> TaskEntity?): List<TaskEntity> =
+        ids.mapNotNull { id ->
+            val before = findTask(id) ?: return@mapNotNull null
+            val after = edit(before) ?: return@mapNotNull null
+            update(after)
+            before
+        }
+
     /** Undoes the soft delete of every one of [ids], or of none. */
     @Transaction
     suspend fun restoreAll(ids: List<String>) {

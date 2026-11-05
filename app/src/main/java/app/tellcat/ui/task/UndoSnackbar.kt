@@ -6,6 +6,7 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.tellcat.R
@@ -55,6 +56,8 @@ fun UndoSnackbarEffect(
     val rescheduledMessage = stringResource(R.string.task_rescheduled)
     val itemRemovedMessage = stringResource(R.string.task_checklist_item_removed)
     val undoLabel = stringResource(R.string.undo)
+    // Read inside the effect, because the count is the offer's. D-127.
+    val resources = LocalContext.current.resources
 
     LaunchedEffect(pendingUndo) {
         val offer = pendingUndo ?: return@LaunchedEffect
@@ -65,6 +68,22 @@ fun UndoSnackbarEffect(
                 is PendingUndo.Deletion -> deletedMessage
                 is PendingUndo.Reschedule -> rescheduledMessage
                 is PendingUndo.ChecklistRemoval -> itemRemovedMessage
+                is PendingUndo.OverdueMove -> {
+                    val moved = resources.getQuantityString(
+                        R.plurals.today_overdue_moved, offer.moved, offer.moved
+                    )
+                    if (offer.stayed == 0) {
+                        moved
+                    } else {
+                        resources.getString(
+                            R.string.today_overdue_moved_and_stayed,
+                            moved,
+                            resources.getQuantityString(
+                                R.plurals.today_overdue_stayed, offer.stayed, offer.stayed
+                            )
+                        )
+                    }
+                }
             },
             actionLabel = undoLabel,
             // Short, which is four seconds against the long form's ten.
@@ -89,6 +108,7 @@ fun UndoSnackbarEffect(
                 is PendingUndo.Deletion -> viewModel.undoDelete(offer.taskId)
                 is PendingUndo.Reschedule -> viewModel.undoReschedule(offer.taskId)
                 is PendingUndo.ChecklistRemoval -> viewModel.undoChecklistRemoval(offer.taskId)
+                is PendingUndo.OverdueMove -> viewModel.undoOverdueMove()
             }
             // Let it pass and the action simply stands.
             SnackbarResult.Dismissed -> viewModel.dismissUndo(offer.taskId)

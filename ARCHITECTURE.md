@@ -129,6 +129,13 @@ a write inside one transaction (`TaskDao.changeChecklist`), which Room runs one
 at a time. Task Details' general edit never carries the checklist for the same
 reason.
 
+Overdue's Move all to today (D-127) edits several tasks at once, so it writes
+them in one transaction through `TaskDao.editAll`, as does its undo. Its rules,
+which tasks move and what each becomes, are pure functions in
+`core/domain/OverdueMove.kt`. Unlike an edit in Task Details it does not go
+through `OccurrenceEdits`: it moves one occurrence and its own reminder, so the
+next occurrence is left as it was.
+
 Migrations are explicit in `TellcatMigrations`. There is no destructive
 fallback: a missing migration fails loudly rather than quietly emptying
 someone's task list. Schema JSON is exported and committed, and

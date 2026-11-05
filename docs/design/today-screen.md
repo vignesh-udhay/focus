@@ -466,6 +466,7 @@ The move is not animated: the row simply appears in its new position.
 | Tap checkbox | Toggles completion immediately |
 | Tap row body | Opens task details |
 | Tap the card's own button | Resumes the paused session |
+| Tap Move all to today on Overdue's label | Moves the band to today, with Undo (D-127) |
 | Long press | Nothing, since D-023 |
 | Swipe | Nothing |
 
@@ -621,6 +622,16 @@ set" do not repeat the band's own words in their supporting line.
 Completed is the exception to "nothing else": it carries a count and it
 collapses, because a plain completed list grows through the day and pushes live
 work down the screen.
+
+Overdue is the other exception, since D-127: its label carries one text button
+at the end of its line, **Move all to today**, on the label's baseline. It
+shows while the band holds a task it would move, one included, and TalkBack
+hears "Move 3 overdue tasks to today". One tap moves them in one write and the
+undo snackbar says "Moved 3 tasks to today", adding "1 repeating task stayed."
+when an occurrence stayed because its next one is already on Today. A reminder
+still ahead today rings again at its time; one whose time has gone is cleared,
+so the task lands in No reminder set rather than under Later today. D-127 has
+the rules, and `core/domain/OverdueMove.kt` holds them.
 
 **This replaces an earlier rule.** This section previously described three
 bands — scheduled for today, overdue, completed — with the first carrying no
