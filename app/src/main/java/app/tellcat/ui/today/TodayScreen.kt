@@ -462,7 +462,7 @@ private fun TodayContent(
                             ),
                             colors = taskColors,
                             // The heading already fixes the day for every band
-                            // but this one: No reminder set and Later today are
+                            // but this one: No reminder set and With a reminder are
                             // both today, and Completed is whenever it was.
                             // Overdue is the exception, because its tasks come
                             // from various past days and the date is the whole
@@ -575,7 +575,7 @@ private val TodaySection.labelRes: Int
     get() = when (band) {
         TodayBand.OVERDUE -> R.string.today_section_overdue
         TodayBand.NO_REMINDER -> R.string.today_section_no_reminder
-        TodayBand.LATER_TODAY -> R.string.today_section_later_today
+        TodayBand.WITH_REMINDER -> R.string.today_section_with_reminder
         // Drawn by CompletedDisclosure, which never asks for this. Named rather
         // than thrown, so a future band added above cannot crash the screen.
         TodayBand.COMPLETED -> R.string.today_section_completed

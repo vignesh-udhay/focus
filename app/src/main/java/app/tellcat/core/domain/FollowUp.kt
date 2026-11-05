@@ -68,7 +68,10 @@ enum class ReminderStage {
     Snoozed,
 
     /** Announced, unanswered, and to be posted once more. D-108. */
-    FollowUp
+    FollowUp,
+
+    /** Rung, not done, and nothing still to ring. D-128. */
+    Rang
 }
 
 /**
@@ -86,13 +89,17 @@ data class RowReminder(
  * why. Null for a task with no reminder.
  *
  * A follow-up wins, because it is the next thing the phone will do. A snooze
- * comes next while it is still to ring; once it has rung it is simply the time
- * the reminder spoke, as any other.
+ * comes next while it is still to ring. Once the reminder has rung and nothing
+ * is left to ring, it is [ReminderStage.Rang] at the time it was set for, its
+ * snooze's when snoozed, not the moment it was delivered. D-128.
  */
 fun Task.rowReminder(): RowReminder? {
     pendingFollowUp?.let { at -> return RowReminder(at, ReminderStage.FollowUp) }
     snoozedUntil?.takeIf { hasLiveReminder() }?.let { at ->
         return RowReminder(at, ReminderStage.Snoozed)
+    }
+    if (reminderDeliveredAt != null && !isCompleted && !isDeleted) {
+        ringsAt?.let { at -> return RowReminder(at, ReminderStage.Rang) }
     }
     // **The reminder's own time, and the early one beside it while it is still
     // to ring.** D-115. The early moment alone would pass a warning off as the

@@ -86,7 +86,7 @@ all, because an overdue task shows a date where a current one reads "Today".
 
 **The reminder time comes first, and the date often does not come at all.**
 `PRODUCT.md` principle 1 makes the reminder the product, and `TodayBand`
-promises a task under Later today "will announce itself" without saying when.
+promises a task under With a reminder "will announce itself" without saying when.
 The row is where that gets answered, so it leads. The board had drawn a time on
 thirteen rows and the code rendered none.
 
@@ -101,7 +101,12 @@ again at 9:40 AM" (D-108), drawn and read aloud the same, so a snooze or a
 follow-up is never passed off as the time the user set. `rowReminder` decides
 which, and the day rules below apply to the moment it names. An early reminder
 still to ring is said beside the time rather than instead of it, "10:00 AM, also
-1 hour before" (D-115), so the warning is never passed off as the moment.
+1 hour before" (D-115), so the warning is never passed off as the moment. A
+reminder that has rung, with nothing still to ring and the task not done, reads
+"Rang at 9:00 AM" (D-128), at the time it was set for, or its snooze's, so a
+time already past is never passed off as one still to come. It carries no alarm
+glyph, which marks a ring still ahead. One that never arrived keeps its plain
+time; Reminder health says why.
 
 **An overdue row shows no time.** Its reminder has already fired, so "6:00 PM"
 on a row from last Tuesday describes nothing that is going to happen. That also

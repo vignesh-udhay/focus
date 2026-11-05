@@ -76,4 +76,16 @@ class WidgetTaskTextTest {
 
         assertTrue(text, text.startsWith("Reminds again at "))
     }
+
+    /** D-128: and one that has rung says it rang, as the app's row does. */
+    @Test
+    fun aRungReminderSaysSo() {
+        val rung = task(today.atTime(9, 0)).copy(
+            reminderDeliveredAt = Instant.parse("2026-09-02T09:00:04Z")
+        )
+
+        val text = widgetTaskText(context, rung, today).metadata!!
+
+        assertTrue(text, text.startsWith("Rang at "))
+    }
 }

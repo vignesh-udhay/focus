@@ -25,7 +25,7 @@
          screen arguing with itself. "Any time today" was refused again, on
          D-012's reasoning that D-002 removed Anytime as vocabulary. -->
     <string name="today_section_no_reminder">No reminder set</string>
-    <string name="today_section_later_today">Later today</string>
+    <string name="today_section_with_reminder">With a reminder</string>
     <!-- The Completed disclosure carries its count: "Completed \u00b7 2". -->
     <string name="today_section_completed_count">Completed \u00b7 %1$d</string>
     <string name="today_completed_expand">Show completed tasks</string>
@@ -77,6 +77,9 @@
     <string name="task_row_snoozed">Snoozed until %1$s</string>
     <!-- The reminder segment while the one follow-up is pending, drawn and read. D-108. -->
     <string name="task_row_follow_up">Reminds again at %1$s</string>
+    <!-- The reminder segment once it has rung, the task is not done and nothing
+         is still to ring, drawn and read. Always today's, so no day. D-128. -->
+    <string name="task_row_rang">Rang at %1$s</string>
     <!-- The reminder segment as TalkBack reads it when it rings like an alarm:
          "Alarm Tomorrow, 5:00 PM". The word stands in for the glyph drawn in
          front of the time. D-102. -->
