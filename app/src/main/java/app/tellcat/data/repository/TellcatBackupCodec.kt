@@ -284,7 +284,10 @@ object TellcatBackupCodec {
             earlyReminderMinutes = earlyReminderMinutes,
             recurrenceMonthlyOrdinal = recurrenceMonthlyOrdinal,
             recurrenceMonthlyWeekday = recurrenceMonthlyWeekday,
-            recurrenceAnchor = recurrenceAnchor
+            recurrenceAnchor = recurrenceAnchor,
+            // Never written and never read, D-125, like the follow-up: restoring
+            // an old file must not fill the shade with old reminders.
+            inShadeSince = null
         )
     }
 

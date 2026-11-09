@@ -474,8 +474,10 @@ fun Task.nextRecurringInstance(
         // A snooze moved one announcement of the occurrence just finished. It
         // says nothing about the next one, which rings at the series' time.
         snoozedUntil = null,
-        // Nor did the follow-up of the one just finished. D-108.
+        // Nor did the follow-up of the one just finished, D-108, or its place
+        // in the shade, D-125.
         followUpAt = null,
+        inShadeSince = null,
         // The early reminder carries, D-115, owed again for the new moment.
         earlyDeliveredAt = null,
         earlySnoozedUntil = null,

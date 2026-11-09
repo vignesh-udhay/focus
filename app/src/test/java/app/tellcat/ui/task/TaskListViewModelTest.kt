@@ -90,6 +90,12 @@ private class RefusingTaskDao(private val rows: List<TaskEntity>) : TaskDao {
 
     override suspend fun setFollowUp(id: String, followUpAt: String?) = refuse()
 
+    override suspend fun setInShade(id: String, since: Long?) = refuse()
+
+    override suspend fun answerReminder(id: String) = refuse()
+
+    override suspend fun recordFollowUpPosted(id: String, postedAt: Long) = refuse()
+
     override suspend fun markEarlyDelivered(id: String, deliveredAt: Long) = refuse()
 
     override suspend fun snoozeEarlyReminder(id: String, until: String) = refuse()
@@ -165,7 +171,8 @@ private class FakeTaskDao : TaskDao {
                 stored.copy(
                     snoozedUntil = TaskConverters.textToLocalDateTime(snoozedUntil),
                     reminderDeliveredAt = null,
-                    followUpAt = null
+                    followUpAt = null,
+                    inShadeSince = null
                 )
             } else {
                 stored
@@ -193,6 +200,28 @@ private class FakeTaskDao : TaskDao {
         emissions.value = emissions.value.map { stored ->
             if (stored.id == id) {
                 stored.copy(followUpAt = TaskConverters.textToLocalDateTime(followUpAt))
+            } else {
+                stored
+            }
+        }
+    }
+
+    override suspend fun setInShade(id: String, since: Long?) {
+        emissions.value = emissions.value.map { stored ->
+            if (stored.id == id) stored.copy(inShadeSince = since?.let(Instant::ofEpochMilli)) else stored
+        }
+    }
+
+    override suspend fun answerReminder(id: String) {
+        emissions.value = emissions.value.map { stored ->
+            if (stored.id == id) stored.copy(followUpAt = null, inShadeSince = null) else stored
+        }
+    }
+
+    override suspend fun recordFollowUpPosted(id: String, postedAt: Long) {
+        emissions.value = emissions.value.map { stored ->
+            if (stored.id == id) {
+                stored.copy(followUpAt = null, inShadeSince = Instant.ofEpochMilli(postedAt))
             } else {
                 stored
             }

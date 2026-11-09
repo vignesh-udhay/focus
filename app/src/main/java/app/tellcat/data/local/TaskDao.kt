@@ -123,6 +123,9 @@ interface TaskDao {
      * [id] already has a successor. [retireId] is the earlier occurrence still
      * open, deleted at [deliveredAt], or null.
      *
+     * The announcement is what now sits in the shade, so [id] is marked in
+     * the shade from [deliveredAt]. D-125.
+     *
      * @param deliveredAt epoch milliseconds, matching the column's encoding.
      */
     @Transaction
@@ -136,6 +139,7 @@ interface TaskDao {
     ) {
         markReminderDelivered(id, deliveredAt)
         setFollowUp(id, followUpAt)
+        setInShade(id, deliveredAt)
         if (next != null && countSpawnsOf(id) == 0) insert(next)
         retireId?.let { retired -> softDelete(retired, deliveredAt) }
     }
@@ -240,7 +244,7 @@ interface TaskDao {
      *
      * @param deletedAt epoch milliseconds, matching the column's encoding.
      */
-    @Query("UPDATE tasks SET deletedAt = :deletedAt, followUpAt = NULL WHERE id = :id")
+    @Query("UPDATE tasks SET deletedAt = :deletedAt, followUpAt = NULL, inShadeSince = NULL WHERE id = :id")
     suspend fun softDelete(id: String, deletedAt: Long)
 
     /**
@@ -255,6 +259,33 @@ interface TaskDao {
      */
     @Query("UPDATE tasks SET followUpAt = :followUpAt WHERE id = :id")
     suspend fun setFollowUp(id: String, followUpAt: String?)
+
+    /**
+     * Sets since when [id]'s reminder has sat in the shade, or clears it
+     * because the notification was swiped away. D-125. A swipe leaves the
+     * follow-up owed, D-108, so this touches nothing else.
+     *
+     * @param since epoch milliseconds, matching the column's encoding, or null.
+     */
+    @Query("UPDATE tasks SET inShadeSince = :since WHERE id = :id")
+    suspend fun setInShade(id: String, since: Long?)
+
+    /**
+     * [id]'s reminder was answered by opening the task: nothing follows it up,
+     * and a restart does not put it back. D-108, D-125. One statement, so the
+     * two cannot disagree.
+     */
+    @Query("UPDATE tasks SET followUpAt = NULL, inShadeSince = NULL WHERE id = :id")
+    suspend fun answerReminder(id: String)
+
+    /**
+     * [id]'s follow-up was posted at [postedAt]: it is no longer owed, and it is
+     * what now sits in the shade. D-108, D-125.
+     *
+     * @param postedAt epoch milliseconds, matching the column's encoding.
+     */
+    @Query("UPDATE tasks SET followUpAt = NULL, inShadeSince = :postedAt WHERE id = :id")
+    suspend fun recordFollowUpPosted(id: String, postedAt: Long)
 
     /**
      * The early reminder was told. D-115. Only that column, so nothing else is written over.
@@ -295,14 +326,15 @@ interface TaskDao {
      *
      * `reminderAt` is left alone. D-078: it is the time the user chose, and for
      * a recurring task the series' time, which a snooze must not move. A
-     * pending follow-up goes with the old announcement, D-108.
+     * pending follow-up goes with the old announcement, D-108, and so does its
+     * place in the shade, D-125.
      *
      * @param snoozedUntil ISO-8601 local date and time, matching the column's
      * encoding.
      */
     @Query(
         "UPDATE tasks SET snoozedUntil = :snoozedUntil, reminderDeliveredAt = NULL, " +
-            "followUpAt = NULL WHERE id = :id"
+            "followUpAt = NULL, inShadeSince = NULL WHERE id = :id"
     )
     suspend fun snoozeReminder(id: String, snoozedUntil: String)
 

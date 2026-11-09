@@ -29,6 +29,9 @@ class TaskMappersTest {
     /** D-108: set, so a mapping that dropped it would fail. */
     private val followUpAt: LocalDateTime = LocalDateTime.of(2026, 9, 5, 14, 10)
 
+    /** D-125: set, so a mapping that dropped it would fail. */
+    private val inShadeSince: Instant = Instant.parse("2026-09-05T14:00:03Z")
+
     private fun fullTask() = Task(
         id = "task-1",
         title = "Finish the landing page",
@@ -44,6 +47,7 @@ class TaskMappersTest {
         // to the default. D-102.
         ringsLikeAlarm = true,
         followUpAt = followUpAt,
+        inShadeSince = inShadeSince,
         // Set, so a mapping that dropped any of them would fail. D-115.
         earlyReminder = EarlyReminder.OneDay,
         earlyDeliveredAt = deliveredAt,
@@ -78,6 +82,7 @@ class TaskMappersTest {
         deletedAt = deletedAt,
         ringsLikeAlarm = true,
         followUpAt = followUpAt,
+        inShadeSince = inShadeSince,
         earlyReminderMinutes = 1440,
         earlyDeliveredAt = deliveredAt,
         earlySnoozedUntil = snoozedUntil
@@ -119,6 +124,7 @@ class TaskMappersTest {
         assertEquals(deletedAt, entity.deletedAt)
         assertTrue(entity.ringsLikeAlarm)
         assertEquals(followUpAt, entity.followUpAt)
+        assertEquals(inShadeSince, entity.inShadeSince)
     }
 
     @Test
@@ -148,6 +154,7 @@ class TaskMappersTest {
         assertEquals(deletedAt, task.deletedAt)
         assertTrue(task.ringsLikeAlarm)
         assertEquals(followUpAt, task.followUpAt)
+        assertEquals(inShadeSince, task.inShadeSince)
     }
 
     @Test

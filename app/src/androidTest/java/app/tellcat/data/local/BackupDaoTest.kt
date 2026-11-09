@@ -83,7 +83,8 @@ class BackupDaoTest {
         occurrenceNumber = 1,
         spawnedFromId = null,
         completedAt = null,
-        deletedAt = deletedAt
+        deletedAt = deletedAt,
+        inShadeSince = null
     )
 }
 

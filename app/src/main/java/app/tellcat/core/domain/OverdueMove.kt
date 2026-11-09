@@ -47,10 +47,11 @@ private fun Task.hasNextOccurrenceBy(today: LocalDate, tasks: List<Task>): Boole
  * still ahead of [now], or a snooze still to ring. Otherwise it is cleared, so
  * the task lands in No reminder set rather than under a band that promises a
  * ring. Nothing moved is left owed in the past, so nothing rings at once.
- * Moving is an answer, so a follow-up goes either way (D-108).
+ * Moving is an answer, so a follow-up goes either way (D-108), and so does
+ * the reminder's place in the shade (D-125).
  */
 fun Task.movedToToday(today: LocalDate, now: LocalDateTime, nowInstant: Instant): Task {
-    val at = reminderAt ?: return copy(scheduledDate = today, followUpAt = null)
+    val at = reminderAt ?: return copy(scheduledDate = today, followUpAt = null, inShadeSince = null)
     val onToday = today.atTime(at.toLocalTime())
     val snoozeAhead = snoozedUntil?.takeIf { until ->
         reminderDeliveredAt == null && until.isAfter(now)
@@ -64,6 +65,7 @@ fun Task.movedToToday(today: LocalDate, now: LocalDateTime, nowInstant: Instant)
             reminderDeliveredAt = null,
             snoozedUntil = null,
             followUpAt = null,
+            inShadeSince = null,
             earlyDeliveredAt = earlyDeliveredAtSave(onToday, earlyReminder, now, nowInstant),
             earlySnoozedUntil = null
         )
@@ -73,6 +75,7 @@ fun Task.movedToToday(today: LocalDate, now: LocalDateTime, nowInstant: Instant)
             scheduledDate = today,
             reminderAt = onToday,
             followUpAt = null,
+            inShadeSince = null,
             earlyDeliveredAt = earlyDeliveredAtSave(onToday, earlyReminder, now, nowInstant),
             earlySnoozedUntil = null
         )
@@ -83,6 +86,7 @@ fun Task.movedToToday(today: LocalDate, now: LocalDateTime, nowInstant: Instant)
             reminderDeliveredAt = null,
             snoozedUntil = null,
             followUpAt = null,
+            inShadeSince = null,
             ringsLikeAlarm = false,
             earlyReminder = null,
             earlyDeliveredAt = null,
@@ -101,6 +105,7 @@ fun restoredFromMove(current: Task, before: Task): Task = current.copy(
     reminderDeliveredAt = before.reminderDeliveredAt,
     snoozedUntil = before.snoozedUntil,
     followUpAt = before.followUpAt,
+    inShadeSince = before.inShadeSince,
     ringsLikeAlarm = before.ringsLikeAlarm,
     earlyReminder = before.earlyReminder,
     earlyDeliveredAt = before.earlyDeliveredAt,

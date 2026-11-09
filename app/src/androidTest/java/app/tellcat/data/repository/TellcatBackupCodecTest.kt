@@ -46,6 +46,37 @@ class TellcatBackupCodecTest {
     }
 
     /**
+     * D-125. Where a reminder sits in the shade is not written, and a file that
+     * somehow holds it reads as nothing there: restoring must not fill the shade
+     * with old reminders. The follow-up is left out on the same terms, D-108.
+     */
+    @Test
+    fun theShadeIsNotCarried() {
+        val backup = TellcatBackup(
+            preferences = AppearancePreferences(),
+            tasks = listOf(
+                completeTask().copy(
+                    inShadeSince = Instant.parse("2026-09-09T04:00:03Z"),
+                    followUpAt = LocalDateTime.parse("2026-09-09T09:40:00")
+                )
+            )
+        )
+        val written = ByteArrayOutputStream().also { output ->
+            TellcatBackupCodec.write(output = output, backup = backup, createdAt = Instant.parse("2026-09-08T00:00:00Z"))
+        }.toString(Charsets.UTF_8.name())
+
+        assertFalse(written.contains("inShadeSince"))
+        val read = TellcatBackupCodec.read(ByteArrayInputStream(written.toByteArray())).tasks.single()
+        assertNull(read.inShadeSince)
+        assertNull(read.followUpAt)
+
+        // An older or edited file holding the key anyway: it is skipped.
+        val planted = written.replace("\"title\":", "\"inShadeSince\": 1788926403000, \"title\":")
+        assertTrue(planted.contains("inShadeSince"))
+        assertNull(TellcatBackupCodec.read(ByteArrayInputStream(planted.toByteArray())).tasks.single().inShadeSince)
+    }
+
+    /**
      * D-115. The early reminder is carried; a backup written before it, which
      * has no such key, reads as none.
      */
@@ -258,7 +289,9 @@ class TellcatBackupCodecTest {
         deletedAt = Instant.parse("2026-09-09T05:05:00Z"),
         // True, the value that is not the default, so a codec that dropped the
         // field fails the round trip. D-102.
-        ringsLikeAlarm = true
+        ringsLikeAlarm = true,
+        // Null, because a backup never carries it. D-125.
+        inShadeSince = null
     )
 }
 

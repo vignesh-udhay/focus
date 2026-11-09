@@ -7629,9 +7629,12 @@ is too quiet, in which case the container moves before the position does.
 
 ## D-125. A restart puts unanswered reminders back in the shade, quietly
 
-**Proposed 2026-11-04, waiting for the owner's approval.** Nothing is built.
-Touches D-108 (an unanswered reminder is posted once more) and D-079 (a
-reminder rings before the first unlock). Schema 18.
+**Proposed 2026-11-04. Decided on 2026-11-09, at the owner's word, and built
+the same day** on `fix/restore-after-restart`, from `main`. Touches D-108 (an
+unanswered reminder is posted once more) and D-079 (a reminder rings before the
+first unlock). Schema 18. Where the build had to say more than this entry, it
+is listed under "Where the build departs from the entry above", after the
+tests.
 
 **What changed the answer.** Android clears every notification when the phone
 restarts. Tellcat sets its alarms again on boot (D-078, D-079), and D-108 posts
@@ -7697,6 +7700,71 @@ line. `MigrationTest` for version 18, and the backup codec ignoring the column.
 Instrumented: the delete intent clears the column. On the phone, on the
 owner's word: a throwaway reminder left unanswered, a restart, and the shade
 checked after unlock; then the same with the notification swiped away first.
+
+**Where the build departs from the entry above.**
+
+- **Only what was posted before the restart comes back.** A reminder told
+  before the first unlock (D-079), or a follow-up D-108 posts after the restart,
+  is already on screen when the restore runs. Posting it again would bring back
+  one the user swiped away on the lock screen, because a swipe before the first
+  unlock cannot reach the app: the receiver that hears it is not direct-boot
+  aware, and the database is closed. So the restore takes only rows whose
+  `inShadeSince` is earlier than the moment the phone started. The cost: a
+  reminder told before the unlock and swiped away before it is still marked in
+  the shade, and the restart after that one puts it back.
+- **Which notification was there is read from the same column.** The entry
+  allowed one column. `inShadeSince` is the announcement's moment, the same as
+  `reminderDeliveredAt`, and moves on to the follow-up's moment when the
+  follow-up is posted. Later than the announcement means the follow-up was in
+  the shade, and it comes back with its "Reminder again · set for" line; equal
+  means the reminder, with its own line.
+- **A follow-up already owed is left to D-108.** When the restore runs, a task
+  whose follow-up has come due is not put back: the reconcile has just set that
+  follow-up's alarm, and it posts once, with sound, on the reminder's slot. One
+  whose follow-up is still ahead (a restart inside the ten minutes) comes back
+  quietly as the reminder, and the follow-up follows at its time.
+- **It shows the time it was first posted.** The restored notification carries
+  its first post's moment as its time, so the shade reads as it did.
+- **Swiping the snooze choice away is a swipe too.** Tapping Snooze swaps the
+  reminder for the choice in place; swiping that away clears the reminder's
+  place in the shade. The early reminder (D-115) gets no delete intent: it is
+  not restored, and its reminder's own post replaces it.
+- **Opening the task answers it even with no follow-up pending.** D-108 wrote
+  the open-the-task answer only while a follow-up was owed; once the follow-up
+  had been posted, opening the task left nothing to clear. Task Details now
+  clears the shade marker on open as well.
+- **Moving overdue work to today (D-127) answers it,** as a new time does, and
+  its undo puts the marker back with the rest.
+- **The reminder's own line names the day** through the follow-up's formatter
+  (`formatReminderMoment`), so the two lines agree and no new strings were
+  needed. A snoozed reminder already said "Snoozed from Oct 28, 9:30 PM".
+- **Not run on a device yet.** `MigrationTest`'s version 18 tests and the
+  codec's are instrumented, because they need SQLite and Android's JSON writer,
+  as are `ReminderDismissTest` (the delete intent) and the new `TaskDaoTest`
+  cases. They are written and compile, and wait for the owner's word with the
+  phone checks above.
+
+**Built.** The rule is pure, in `core/domain/ShadeRestore.kt`:
+`remindersToRestore` takes the live tasks, the moment the phone started and
+now, and returns each reminder to put back and whether it was the follow-up.
+`TaskDao` writes the column in `recordAnnounced` (`setInShade`), moves it in
+`recordFollowUpPosted`, clears it in the snooze and delete statements and in
+`answerReminder` (opening the task), and `setInShade(id, null)` is the swipe.
+`TaskCompletion`, the reminder sheet's new time, `movedToToday` and
+`nextRecurringInstance` clear it on the row, beside `followUpAt`. The reminder,
+follow-up and snooze-choice notifications carry a delete intent to
+`ReminderActionReceiver.ACTION_DISMISSED`, which clears it only while the
+notification is for the task's current moment. `ReminderRecoveryReceiver`, on
+`BOOT_COMPLETED` after its reconcile, posts each through `postReminder` or
+`postFollowUp` with `restoredFrom`, which makes them silent, through the same
+`setSilent` path an alarm's Stop uses, and never rings one. The backup codec
+writes nothing for it and reads it as null. Tests in `ShadeRestoreTest` (JVM,
+over the real writes): announced and unanswered, followed up, an alarm that
+rang, no age limit, the order, nothing announced, no tasks, opened, swiped,
+followed up after a swipe, completed, deleted and undone, snoozed and rung
+again, moved to today, retired by a repeat, posted since the restart, a
+follow-up owed, and the day the line names. `TaskMappersTest` carries the
+field.
 
 **What would reverse this.** Restored notifications that the owner or testers
 find stale rather than useful, in which case an age limit (today and yesterday)

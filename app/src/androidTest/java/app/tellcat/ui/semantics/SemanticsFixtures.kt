@@ -289,7 +289,8 @@ internal class FakeTaskDao(initial: List<Task> = emptyList()) : TaskDao {
                 stored.copy(
                     snoozedUntil = TaskConverters.textToLocalDateTime(snoozedUntil),
                     reminderDeliveredAt = null,
-                    followUpAt = null
+                    followUpAt = null,
+                    inShadeSince = null
                 )
             } else {
                 stored
@@ -310,7 +311,7 @@ internal class FakeTaskDao(initial: List<Task> = emptyList()) : TaskDao {
     override suspend fun softDelete(id: String, deletedAt: Long) {
         rows.value = rows.value.map { stored ->
             if (stored.id == id) {
-                stored.copy(deletedAt = Instant.ofEpochMilli(deletedAt), followUpAt = null)
+                stored.copy(deletedAt = Instant.ofEpochMilli(deletedAt), followUpAt = null, inShadeSince = null)
             } else {
                 stored
             }
@@ -337,6 +338,28 @@ internal class FakeTaskDao(initial: List<Task> = emptyList()) : TaskDao {
         rows.value = rows.value.map { stored ->
             if (stored.id == id) {
                 stored.copy(followUpAt = TaskConverters.textToLocalDateTime(followUpAt))
+            } else {
+                stored
+            }
+        }
+    }
+
+    override suspend fun setInShade(id: String, since: Long?) {
+        rows.value = rows.value.map { stored ->
+            if (stored.id == id) stored.copy(inShadeSince = since?.let(java.time.Instant::ofEpochMilli)) else stored
+        }
+    }
+
+    override suspend fun answerReminder(id: String) {
+        rows.value = rows.value.map { stored ->
+            if (stored.id == id) stored.copy(followUpAt = null, inShadeSince = null) else stored
+        }
+    }
+
+    override suspend fun recordFollowUpPosted(id: String, postedAt: Long) {
+        rows.value = rows.value.map { stored ->
+            if (stored.id == id) {
+                stored.copy(followUpAt = null, inShadeSince = java.time.Instant.ofEpochMilli(postedAt))
             } else {
                 stored
             }

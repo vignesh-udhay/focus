@@ -81,6 +81,22 @@ private class FakeTaskDao : TaskDao {
         followUpsSet += id to followUpAt
     }
 
+    val inShadeSet = mutableListOf<Pair<String, Long?>>()
+    val answered = mutableListOf<String>()
+    val followUpsPosted = mutableListOf<Pair<String, Long>>()
+
+    override suspend fun setInShade(id: String, since: Long?) {
+        inShadeSet += id to since
+    }
+
+    override suspend fun answerReminder(id: String) {
+        answered += id
+    }
+
+    override suspend fun recordFollowUpPosted(id: String, postedAt: Long) {
+        followUpsPosted += id to postedAt
+    }
+
     override suspend fun setChecklist(id: String, checklist: String?) {
         checklistsSet += id to checklist
     }
@@ -148,7 +164,8 @@ class TaskRepositoryTest {
         occurrenceNumber = 1,
         spawnedFromId = null,
         completedAt = completedAt,
-        deletedAt = deletedAt
+        deletedAt = deletedAt,
+        inShadeSince = null
     )
 
     private fun task(

@@ -69,7 +69,8 @@ class TaskDaoTest {
         spawnedFromId: String? = null,
         completedAt: Instant? = null,
         deletedAt: Instant? = null,
-        createdAt: Instant = this@TaskDaoTest.createdAt
+        createdAt: Instant = this@TaskDaoTest.createdAt,
+        inShadeSince: Instant? = null
     ) = TaskEntity(
         id = id,
         title = title,
@@ -90,7 +91,8 @@ class TaskDaoTest {
         occurrenceNumber = 1,
         spawnedFromId = spawnedFromId,
         completedAt = completedAt,
-        deletedAt = deletedAt
+        deletedAt = deletedAt,
+        inShadeSince = inShadeSince
     )
 
     private suspend fun observed(): List<TaskEntity> =
@@ -548,6 +550,68 @@ class TaskDaoTest {
         dao.restore("mon")
 
         assertNull("Undoing the delete brought the follow-up back", dao.findTask("mon")?.followUpAt)
+    }
+
+    // D-125: in the shade from the announcement, until an answer or a swipe
+
+    private val shown: Instant = Instant.parse("2026-09-01T09:00:04Z")
+
+    @Test
+    fun recordAnnouncedPutsTheReminderInTheShade() = runBlocking {
+        dao.insert(entity("mon"))
+
+        dao.recordAnnounced(id = "mon", deliveredAt = shown.toEpochMilli(), next = null, retireId = null)
+
+        assertEquals(shown, dao.findTask("mon")?.inShadeSince)
+    }
+
+    @Test
+    fun theFollowUpPostedTakesTheReminderPlaceInTheShade() = runBlocking {
+        dao.insert(entity("mon", inShadeSince = shown))
+        dao.setFollowUp("mon", followUp.toString())
+
+        dao.recordFollowUpPosted("mon", shown.plusSeconds(600).toEpochMilli())
+
+        val stored = dao.findTask("mon")
+        assertNull(stored?.followUpAt)
+        assertEquals(shown.plusSeconds(600), stored?.inShadeSince)
+    }
+
+    @Test
+    fun aSwipeClearsTheShadeAndLeavesTheFollowUpOwed() = runBlocking {
+        dao.insert(entity("mon", inShadeSince = shown))
+        dao.setFollowUp("mon", followUp.toString())
+
+        dao.setInShade("mon", null)
+
+        val stored = dao.findTask("mon")
+        assertNull(stored?.inShadeSince)
+        assertEquals(followUp, stored?.followUpAt)
+    }
+
+    @Test
+    fun openingTheTaskAnswersBoth() = runBlocking {
+        dao.insert(entity("mon", inShadeSince = shown))
+        dao.setFollowUp("mon", followUp.toString())
+
+        dao.answerReminder("mon")
+
+        val stored = dao.findTask("mon")
+        assertNull(stored?.inShadeSince)
+        assertNull(stored?.followUpAt)
+    }
+
+    @Test
+    fun snoozingAndDeletingClearTheShade() = runBlocking {
+        dao.insert(entity("snoozed", inShadeSince = shown))
+        dao.insert(entity("deleted", inShadeSince = shown))
+
+        dao.snoozeReminder("snoozed", followUp.plusHours(1).toString())
+        dao.softDelete("deleted", deletedAt.toEpochMilli())
+        dao.restore("deleted")
+
+        assertNull(dao.findTask("snoozed")?.inShadeSince)
+        assertNull("Undoing the delete put it back in the shade", dao.findTask("deleted")?.inShadeSince)
     }
 
     @Test

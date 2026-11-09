@@ -124,6 +124,20 @@ data class Task(
      */
     val followUpAt: LocalDateTime? = null,
     /**
+     * When the notification now standing for this reminder was posted, while
+     * nobody has answered it or swiped it away, or null. `docs/decisions.md`
+     * D-125: after a restart, which clears the shade, every open task with this
+     * set is posted again, quietly.
+     *
+     * Set when the reminder is announced, to the same moment as
+     * [reminderDeliveredAt], and moved on when its follow-up is posted, so a
+     * value later than the announcement means the follow-up is what was there.
+     * Cleared by every answer that clears [followUpAt], and by a swipe, which
+     * leaves [followUpAt] alone. Not carried into the next occurrence and not
+     * written to a backup.
+     */
+    val inShadeSince: Instant? = null,
+    /**
      * How long before the reminder an early one rings, or null for none.
      * `docs/decisions.md` D-115. Exists only with a reminder: clearing the
      * reminder clears it. Carried into the next occurrence and into a backup,

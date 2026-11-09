@@ -92,5 +92,8 @@ data class TaskEntity(
     val recurrenceMonthlyWeekday: String? = null,
     // Version 17, D-122: the day a rule on a date keeps across its series, as
     // "--MM-DD". Set by the migration from each such task's own day.
-    val recurrenceAnchor: MonthDay? = null
+    val recurrenceAnchor: MonthDay? = null,
+    // Version 18, D-125: since when a reminder or its follow-up has sat in the
+    // shade unanswered, or null. No default, so every writer says what it means.
+    val inShadeSince: Instant?
 )

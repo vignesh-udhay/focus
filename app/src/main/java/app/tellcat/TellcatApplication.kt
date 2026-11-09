@@ -212,9 +212,11 @@ class TellcatApplication : Application() {
             val task = taskRepository.findTask(delivery.taskId) ?: return@forEach
 
             // A follow-up posted while locked: it is done, so forget it rather
-            // than post it again now. D-108.
+            // than post it again now. D-108. It is what the shade holds. D-125.
             if (delivery.followUp) {
-                if (task.pendingFollowUp == delivery.ringsAt) taskRepository.clearFollowUp(task.id)
+                if (task.pendingFollowUp == delivery.ringsAt) {
+                    taskRepository.recordFollowUpPosted(task.id, delivery.arrivedWallAt)
+                }
                 return@forEach
             }
 

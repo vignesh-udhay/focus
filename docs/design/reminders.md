@@ -114,6 +114,21 @@ Android's, so there is only one.
 
 ---
 
+# After a restart
+
+D-125. Android clears the shade when the phone restarts. After the first unlock,
+every reminder or follow-up that was in it, unanswered and not swiped away, is
+posted again with no sound, no vibration and no heads-up, showing the time it was
+first posted. Same title, same Done and Snooze, and the same line, with the day
+named when it was not today: "9:30 PM" becomes "Oct 28, 9:30 PM", and a
+follow-up keeps "Reminder again · set for Oct 28, 9:30 PM". A reminder that rang
+like an alarm comes back as the quiet notification its Stop leaves, never
+ringing. Swiping a reminder away, or its snooze choice, means it stays away;
+it does not change the follow-up, which is still owed. Only a restart does this:
+an app update or a clock change leaves the shade as it was.
+
+---
+
 # One early reminder
 
 D-115. "Also remind me" in the reminder sheet: none, 15 min, 1 hour or 1 day

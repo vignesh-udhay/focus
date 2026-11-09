@@ -71,8 +71,8 @@ class TaskCompletion(
         // occurrence produces the next one.
         val started = repository.completeWithNext(
             // Done answers the reminder, so nothing follows it up, even
-            // after a reopen. D-108.
-            completed = task.copy(completedAt = completedAt, followUpAt = null),
+            // after a reopen, and a restart does not put it back. D-108, D-125.
+            completed = task.copy(completedAt = completedAt, followUpAt = null, inShadeSince = null),
             next = next
         )
 

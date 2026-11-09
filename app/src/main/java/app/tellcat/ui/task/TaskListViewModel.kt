@@ -1419,6 +1419,8 @@ class TaskListViewModel(
                     // A new time is an answer too: the follow-up was about the
                     // old one. D-108.
                     followUpAt = if (reminderAt == task.reminderAt) task.followUpAt else null,
+                    // And a restart does not put the old one back. D-125.
+                    inShadeSince = if (reminderAt == task.reminderAt) task.inShadeSince else null,
                     // D-102. No reminder, nothing to ring: a cleared reminder
                     // does not keep an alarm waiting for the next one.
                     ringsLikeAlarm = ringsLikeAlarm && reminderAt != null,
@@ -1573,10 +1575,11 @@ class TaskListViewModel(
      * Forgets [id]'s pending follow-up, because the task has been opened.
      * `docs/decisions.md` D-108: looking at the task is an answer, as Done and
      * Snooze are, and posting the reminder again after it would be the app not
-     * noticing the user had already come.
+     * noticing the user had already come. For the same reason a restart does
+     * not put its notification back, D-125.
      */
     fun acknowledgeFollowUp(id: String) {
-        write { repository.clearFollowUp(id) }
+        write { repository.answerReminder(id) }
     }
 
     /**
