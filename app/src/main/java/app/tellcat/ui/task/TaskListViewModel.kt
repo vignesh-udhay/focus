@@ -27,6 +27,11 @@ import app.tellcat.core.domain.nextRecurringInstance
 import app.tellcat.core.domain.Task
 import app.tellcat.core.domain.OccurrenceEdits
 import app.tellcat.core.domain.TaskCompletion
+import app.tellcat.core.domain.hasLiveReminder
+import app.tellcat.core.domain.isMovableOverdue
+import app.tellcat.core.domain.movedToToday
+import app.tellcat.core.domain.overdueMovePlan
+import app.tellcat.core.domain.restoredFromMove
 import app.tellcat.core.time.CurrentDay
 import app.tellcat.core.time.SystemCurrentDay
 import app.tellcat.core.domain.completedTasks as queryCompletedTasks
@@ -56,6 +61,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Duration
+import java.util.concurrent.atomic.AtomicBoolean
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -68,6 +74,9 @@ import java.util.UUID
  * from may no longer be on screen, and the task's current state has to be read
  * fresh when the undo is actually pressed.
  */
+/** The name Move all to today's undo offer stands under. D-127. */
+const val OVERDUE_MOVE_ID = "overdue-move"
+
 sealed interface PendingUndo {
 
     val taskId: String
@@ -106,6 +115,19 @@ sealed interface PendingUndo {
         override val taskId: String,
         val previousDate: LocalDate?
     ) : PendingUndo
+
+    /**
+     * Overdue's tasks just moved to today, each as it was before, and how many
+     * repeating tasks stayed behind. D-127. Not one task, so [taskId] is a
+     * fixed name for the offer.
+     */
+    data class OverdueMove(
+        val before: List<Task>,
+        val stayed: Int
+    ) : PendingUndo {
+        override val taskId: String = OVERDUE_MOVE_ID
+        val moved: Int get() = before.size
+    }
 
     /**
      * An item just removed from a task's checklist, and where it was.
@@ -186,7 +208,9 @@ class TaskListViewModel(
     private val currentDay: CurrentDay,
     private val savedState: SavedStateHandle,
     private val alarms: FocusAlarms,
-    private val focusSessionStore: FocusSessionStore? = null
+    private val focusSessionStore: FocusSessionStore? = null,
+    // The clock Move all to today reads, D-127, so a test can stand at noon.
+    private val now: () -> LocalDateTime = LocalDateTime::now
 ) : ViewModel() {
 
     private val storedFocus = focusSessionStore?.current
@@ -1458,6 +1482,90 @@ class TaskListViewModel(
 
         write {
             edits.edit(id) { task -> task.copy(scheduledDate = offer.previousDate) }
+        }
+    }
+
+    /**
+     * How many overdue tasks Move all to today would move: zero hides the
+     * button, and the number is what TalkBack hears. D-127.
+     */
+    val overdueToMove: StateFlow<Int> =
+        combine(storedTasks, currentDay.today) { read, day ->
+            overdueMovePlan(read.tasks, day).move.size
+        }
+            .distinctUntilChanged()
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
+                initialValue = 0
+            )
+
+    /** True while a move is being written, so a second tap does nothing. */
+    private val isMovingOverdue = AtomicBoolean(false)
+
+    /**
+     * Moves every overdue task it can to today, in one transaction, and offers
+     * Undo. D-127.
+     *
+     * Today and the clock are read once, at the tap. The plan comes from the
+     * list on screen; inside the write each task is read again and moved only
+     * if it is still open and still before today, so one completed or moved
+     * elsewhere meanwhile is neither moved nor counted.
+     *
+     * The successor of a repeating task is left as it is: the move changes this
+     * occurrence's day and its own reminder, not the series. Letting an
+     * untouched successor follow would copy a cleared reminder onto the next
+     * occurrence.
+     */
+    fun moveOverdueToToday() {
+        if (!isMovingOverdue.compareAndSet(false, true)) return
+        val day = today.value
+        val moment = now()
+        val momentInstant = Instant.now()
+        val plan = overdueMovePlan(storedTasks.value.tasks, day)
+        if (plan.isEmpty) {
+            isMovingOverdue.set(false)
+            return
+        }
+
+        write {
+            try {
+                val before = repository.editAll(plan.move.map(Task::id)) { task ->
+                    if (!task.isMovableOverdue(day)) null else task.movedToToday(day, moment, momentInstant)
+                }
+                if (before.isEmpty()) return@write
+
+                // A reminder that will ring again asks for its permissions,
+                // as any new reminder does. D-090.
+                val ringsAgain = before.any { task ->
+                    val moved = task.movedToToday(day, moment, momentInstant)
+                    moved.reminderAt != null && moved.hasLiveReminder()
+                }
+                if (ringsAgain) _reminderJustSet.value = true
+
+                _pendingUndo.value = PendingUndo.OverdueMove(before = before, stayed = plan.stay.size)
+            } finally {
+                isMovingOverdue.set(false)
+            }
+        }
+    }
+
+    /**
+     * Puts every task the standing move took back as it was: its day and its
+     * reminder, read fresh, so an edit made since survives. D-127.
+     *
+     * A reminder that had rung gets its delivery back with it, so it does not
+     * ring again.
+     */
+    fun undoOverdueMove() {
+        val offer = _pendingUndo.value as? PendingUndo.OverdueMove ?: return
+        if (!_pendingUndo.compareAndSet(expect = offer, update = null)) return
+
+        val befores = offer.before.associateBy(Task::id)
+        write {
+            repository.editAll(befores.keys.toList()) { task ->
+                befores[task.id]?.let { before -> restoredFromMove(task, before) }
+            }
         }
     }
 

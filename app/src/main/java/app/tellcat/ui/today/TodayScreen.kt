@@ -19,6 +19,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,6 +30,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -108,6 +110,7 @@ fun TodayScreen(
     val focusSession by viewModel.focusSession.collectAsStateWithLifecycle()
     val readFailed by viewModel.readFailed.collectAsStateWithLifecycle()
     val tasksLoaded by viewModel.tasksLoaded.collectAsStateWithLifecycle()
+    val overdueToMove by viewModel.overdueToMove.collectAsStateWithLifecycle()
 
     // Screen state, not app state: opening Quick Add here says nothing about
     // whether Inbox has its own sheet open.
@@ -171,6 +174,8 @@ fun TodayScreen(
         // card is not an exit. It does not navigate: there is nothing to go to.
         onEndSession = viewModel::endFocus,
         onAddTask = { isQuickAddVisible = true },
+        overdueToMove = overdueToMove,
+        onMoveOverdue = viewModel::moveOverdueToToday,
         readFailed = readFailed,
         // D-065. Until this is true, an empty list means the read has not
         // answered rather than that the day is clear.
@@ -242,6 +247,10 @@ private fun TodayContent(
     onResumeFocus: () -> Unit = {},
     onEndSession: () -> Unit = {},
     onAddTask: () -> Unit,
+    // How many overdue tasks Move all to today would move; zero draws no
+    // button. D-127.
+    overdueToMove: Int = 0,
+    onMoveOverdue: () -> Unit = {},
     readFailed: Boolean = false,
     // Defaults to true, so a preview or a test handing in a list is showing a
     // list that has been read. Only the live screen can be in the other state.
@@ -435,6 +444,16 @@ private fun TodayContent(
                         // rows arriving and leaving, and everything below moves
                         // on `listChange` as it always does.
                         if (!isCompletedExpanded) return@forEach
+                    } else if (section.band == TodayBand.OVERDUE && overdueToMove > 0) {
+                        item(key = "label-" + section.band.name) {
+                            OverdueLabel(
+                                count = overdueToMove,
+                                onMoveAll = onMoveOverdue,
+                                modifier = Modifier.animateItem(
+                                    placementSpec = TellcatMotion.listChange()
+                                )
+                            )
+                        }
                     } else {
                         item(key = "label-" + section.band.name) {
                             SectionLabel(
@@ -556,6 +575,35 @@ private fun LazyListState.HoldViewportAcross(
         previousOrder.value = order
         previouslyHadPausedSessionCard.value = hasPausedSessionCard
         previouslyHadReminderHealthBanner.value = hasReminderHealthBanner
+    }
+}
+
+/**
+ * Overdue's label with its one action, Move all to today. D-127.
+ *
+ * The label stays the shared [SectionLabel], heading and all, and the button
+ * sits at the end of its line on the same baseline. The button is Material's
+ * own text button, so its touch target is the 48dp minimum, and TalkBack hears
+ * how many tasks it moves rather than "all".
+ */
+@Composable
+private fun OverdueLabel(count: Int, onMoveAll: () -> Unit, modifier: Modifier = Modifier) {
+    val spoken = pluralStringResource(R.plurals.today_overdue_move_all_spoken, count, count)
+    Row(modifier = modifier.fillMaxWidth()) {
+        SectionLabel(
+            text = stringResource(R.string.today_section_overdue),
+            modifier = Modifier
+                .weight(1f)
+                .alignByBaseline()
+        )
+        TextButton(
+            onClick = onMoveAll,
+            modifier = Modifier
+                .alignByBaseline()
+                .semantics { contentDescription = spoken }
+        ) {
+            Text(stringResource(R.string.today_overdue_move_all))
+        }
     }
 }
 

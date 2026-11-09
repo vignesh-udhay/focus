@@ -7624,3 +7624,183 @@ and was observed on the phone, not tested.
 
 **What would reverse this.** A user who misses an undo offer because the pill
 is too quiet, in which case the container moves before the position does.
+
+---
+
+## D-127. Overdue can be moved to today in one tap
+
+**Decided on 2026-11-05, at the owner's word, after competitor research and
+built the same day.** Candidate 1 in `docs/research/competitors.md`, "Candidates to pick up,
+2026-11-02", taken up at the owner's word. Numbered after D-125 and D-126,
+which are on branches not yet on `main`. On `design/move-overdue-to-today`,
+from `main`. It ships after 1.3.1, not in it.
+
+**What is wrong now.** Overdue is first on Today because it "needs a decision"
+(D-012), and today the only way to make that decision is one task at a time:
+open it, pick a day, go back. D-023 removed the row's menu, so there is no
+shorter route. Four tasks left over from yesterday cost twelve taps before
+Today answers "what should I do now?".
+
+**What competitors do**, from a study of eleven apps on 2026-11-05: nine on an
+emulator with synthetic tasks and their code, Things 3 and Apple Reminders from
+their docs. The full report is outside the repo, in the research folder.
+
+- TickTick puts "Postpone" on its Overdue header, with a confirmation dialog,
+  two taps, shown even for one task. Todoist puts "Reschedule" there, opening a
+  date sheet, two taps. Apple Reminders on the Mac has "Set all overdue
+  reminders as due today". To-Do List and Tasks.org need multi-select, four or
+  five taps. Google Tasks, Pocket Brilliance and To Do Reminder have nothing.
+- Every app tested kept each task's clock time on the new day, and none rang a
+  burst for times already gone.
+- In TickTick, Todoist and Tasks.org a moved repeating task drags its whole
+  series to the new day: a Wednesday weekly becomes a Thursday weekly, and only
+  the rule text says so.
+- No bulk route showed Undo, and none said how many tasks moved.
+- TickTick still lists a reminder whose time has gone as "On time" after the
+  move, although it will not ring.
+- No user research was gathered. These are the designs, not what people do
+  with them.
+
+**Decision.** Overdue's label carries one action, **Move all to today**. It
+moves every task in the band it can to today in one write and offers Undo.
+
+- **Where.** At the end of the Overdue label's line, as a text button, the
+  label on the left. Only Overdue gets it: the other bands are already today.
+  It shows whenever the band holds a task it would move, one task included,
+  since there is no swipe yet (candidate 2). Its touch target is 48dp;
+  TickTick's is 24dp tall.
+- **What it says.** "Move all to today" rather than "Move to today", so it is
+  plain the button acts on the band and not on one row; "Postpone" and
+  "Reschedule" name neither the scope nor the day. TalkBack hears the count:
+  "Move 3 overdue tasks to today".
+- **The band is the review.** Overdue holds tasks still meant for doing, tasks
+  done but not ticked, tasks that no longer matter, and missed occurrences of a
+  repeating task, and one verb suits only the first. The titles are already on
+  screen, so the user ticks or opens what needs it and the button moves the
+  rest. A separate review sheet, one task at a time as To-Do List and Any.do
+  have, was considered and not taken: it repeats the list already showing and
+  puts a step in front of the common case.
+- **No per-row route is added with it.** Swipe to reschedule (candidate 2) was
+  considered as the other half, for "this one to tomorrow", and set aside: the
+  owner does not use swipe gestures. Task Details stays the per-task route.
+- **No confirmation.** Undo makes the move reversible, so asking first, as
+  TickTick does, would cost a tap for nothing.
+- **What it says after.** The snackbar counts only what moved: "Moved 4 tasks
+  to today", or "Moved 1 task to today". When repeating tasks stayed (below),
+  it adds them: "Moved 4 tasks to today. 1 repeating task stayed." It never
+  says "Moved 0": a band where nothing would move has no button.
+- **Undo puts each task back exactly as it was**: its day, reminder, alarm
+  style, delivery, snooze, follow-up and early reminder, read fresh and
+  restoring only what the move wrote, the way `undoReschedule` does, in one
+  transaction as the move was. Restoring a reminder that had rung restores its
+  delivery too, so it does not ring again.
+
+**A moved task keeps a reminder only if it will still ring today.** Decided
+with the owner on 2026-11-05. Later today means "it will announce itself"
+(D-012), so a task lands there only when that is true.
+
+- **A time still ahead today rings again** at that time. A 6 PM reminder
+  missed yesterday and moved at 10 AM rings at 6 PM, in Later today. Its
+  delivery and any snooze are cleared, as `editTask` clears them for a new time
+  (D-078), and, as for any new reminder, the permission gate is raised (D-090).
+- **A time already gone is cleared**, with its early reminder and alarm style,
+  and the task lands in No reminder set. A 9 AM reminder moved at 2 PM has
+  nothing left to say today. Keeping it would put the task in Later today with
+  a time that will not ring, which is the failure the research found in
+  TickTick ("On time" on a reminder that will not fire), told here by the
+  band's own name. Nothing is missed by clearing it: the reminder rang on its
+  day, or was owed and the user has now seen the task in Overdue and acted on
+  it. Undo brings the time back. Every competitor keeps the time; Tellcat does
+  not, because its bands make a promise theirs do not.
+- **A snooze still to ring counts as a time still ahead.** The task keeps its
+  reminder and snooze, and lands in Later today reading "Snoozed until 5:37 PM"
+  (D-109). The user asked for that ring, and dropping it would be a missed
+  reminder. TickTick's code clears every snooze on a move; Tellcat does not.
+- **Never a burst.** Nothing moved can ring the moment it is moved, because
+  no moved reminder is left in the past. Without this, moving five tasks at
+  8 PM would ring five notifications at once, because `reminderTrigger` maps a
+  past time to now.
+- **A follow-up (D-108) is cleared on every moved task.** Moving a task is an
+  answer, as opening it is.
+- **An early reminder (D-115)** on a time still ahead is settled when its
+  moment has gone and owed when it is still ahead, by `earlyDeliveredAtSave`,
+  the rule Save uses.
+- Tasks without a reminder only change day, and land in No reminder set.
+
+**A reminder that rang earlier today is not changed here.** A task scheduled
+for today whose reminder rang this morning still sits in Later today with that
+time. It is the same mismatch this entry avoids for moved tasks, but it is a
+question for every row on Today, not for this button, and is left for its own
+entry.
+
+**A repeating task moves its occurrence, not its series.** This is where
+Tellcat differs from TickTick, Todoist and Tasks.org, on purpose.
+
+- Moving an occurrence by hand keeps the series' day (D-122) and changes no
+  rule, so `recurrenceAnchor` is untouched. **The next occurrence does not
+  follow the move**, unlike an edit in Task Details (D-098): the move changes
+  this occurrence's day and its own reminder, not the series. Found while
+  building it: letting an untouched successor follow would copy a cleared
+  reminder onto next week's occurrence, a reminder silently lost. A weekly
+  Wednesday task missed and moved to Thursday is still followed by next
+  Wednesday at its time, and is still a Wednesday task. Those three apps would
+  have made it a Thursday task without saying so.
+- **An occurrence whose next one is already on today or earlier stays where it
+  is.** A daily task missed yesterday already has today's occurrence. Moving
+  yesterday's would put the same task on Today twice. It stays in Overdue for
+  the user to tick or delete, and the snackbar says it stayed. The other apps
+  cannot meet this case, because they keep one row per series.
+- If every task in the band is one of these, the button does not show.
+
+**Edges.**
+
+- **Today is read once**, at the tap. A move just before midnight moves
+  everything to the day the user saw.
+- **One move at a time.** A tap while a move is being written does nothing. A
+  later tap moves whatever is overdue then and replaces the standing Undo.
+- **One transaction**, reading each task inside it. A task completed, deleted
+  or moved elsewhere in the meantime (the widget, a notification action) is not
+  moved, and is not counted.
+- **Alarms are reconciled as for any edit.** A reminder the phone refuses to
+  schedule exactly is already reported by Reminder health; the move does not
+  add a second message.
+
+**What it does not touch.**
+
+- No count on the Overdue label. D-048 cut one, and this adds an action, not a
+  count.
+- The widget (D-049) gets no button. It has nowhere to put an undo.
+- No other target. Every bulk route seen offers Today first, and the button
+  sits on Today. Tomorrow and a date picker wait for Tellcat's own testers to
+  ask.
+- No one-at-a-time review, as To-Do List and Any.do have. That is the overdue
+  triage idea already on the later list.
+- `rescheduleTask`, used by no screen since D-023, is left as it is.
+- **Task Details does not move a reminder with its day.** Picking a new date
+  there changes `scheduledDate` only, so a task moved from yesterday keeps a
+  reminder on yesterday. That is a separate question, noted here rather than
+  changed.
+
+**Built.** The rules are pure, in `core/domain/OverdueMove.kt`:
+`overdueMovePlan` splits the band into what moves and what stays, and
+`movedToToday` and `restoredFromMove` say what a task becomes. The view model's
+`moveOverdueToToday` writes them through `TaskDao.editAll`, one transaction,
+and raises `PendingUndo.OverdueMove` holding each moved task's before-state;
+`overdueToMove` is the count the button shows and speaks. The button is a
+Material `TextButton` at the end of Overdue's `SectionLabel`, on its baseline,
+in `TodayScreen`. Tests in `OverdueMoveTest` and `TaskListViewModelTest`: a time ahead rings again and
+lands in Later today, a time gone is cleared with its early reminder and alarm
+style and lands in No reminder set, a never-delivered time gone is cleared too,
+a snooze still to ring is kept, a follow-up is cleared, an early reminder gone
+does not ring, nothing moved rings at once, the daily exception and its count,
+the weekly successor left as it was, undo restores every field and does not
+ring a rung reminder, an edit in between survives undo, a completed task is not
+moved, a second tap during a move does nothing. `OverdueMoveSemanticsTest`
+(instrumented, written and not yet run): the button shows with one task, not
+without overdue work, not when every task stays, is 48dp, says how many it
+moves, and the snackbar counts.
+
+**What would reverse this.** Users moving overdue work forward every morning
+without doing it, which would make the button a way to never decide. The sign
+would be the same tasks moved day after day. If that shows up, the answer is
+to show how many times a task has been moved, not to remove the button.

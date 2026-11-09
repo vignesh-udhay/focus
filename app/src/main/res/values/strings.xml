@@ -19,6 +19,25 @@
     <string name="widget_all_done">All done for today</string>
     <string name="widget_add_task">Add a task</string>
     <string name="today_section_overdue">Overdue</string>
+    <!-- D-127. The one action on a band label: it moves the whole band, so it
+         says "all". TalkBack hears the count instead. -->
+    <string name="today_overdue_move_all">Move all to today</string>
+    <plurals name="today_overdue_move_all_spoken">
+        <item quantity="one">Move %1$d overdue task to today</item>
+        <item quantity="other">Move %1$d overdue tasks to today</item>
+    </plurals>
+    <!-- After the move, with Undo. Counts only what moved, D-127. -->
+    <plurals name="today_overdue_moved">
+        <item quantity="one">Moved %1$d task to today</item>
+        <item quantity="other">Moved %1$d tasks to today</item>
+    </plurals>
+    <!-- Added when an occurrence stayed because its next one is already on
+         Today, so the row left behind does not look like a miss. -->
+    <plurals name="today_overdue_stayed">
+        <item quantity="one">%1$d repeating task stayed.</item>
+        <item quantity="other">%1$d repeating tasks stayed.</item>
+    </plurals>
+    <string name="today_overdue_moved_and_stayed">%1$s. %2$s</string>
     <!-- D-061 renamed this from "No time set". The band holds tasks with no
          reminder, and the rows in it show their estimate at the end: a band
          headed "No time set" above three rows reading 45m, 20m and 15m is a

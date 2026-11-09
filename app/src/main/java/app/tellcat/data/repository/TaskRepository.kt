@@ -204,6 +204,14 @@ class TaskRepository(private val dao: TaskDao) {
     }
 
     /** Restores every one of [ids] together, or none. */
+    /**
+     * Applies [edit] to each of [ids] in one transaction, and returns those it
+     * changed as they were before. See `TaskDao.editAll`. D-127.
+     */
+    suspend fun editAll(ids: List<String>, edit: (Task) -> Task?): List<Task> =
+        dao.editAll(ids) { entity -> edit(entity.toDomain())?.toEntity() }
+            .map { entity -> entity.toDomain() }
+
     suspend fun restoreAll(ids: List<String>) {
         dao.restoreAll(ids)
     }

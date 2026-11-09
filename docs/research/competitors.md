@@ -322,7 +322,8 @@ breadth.
   of overdue rows that can only be moved one at a time is in the way of that.
 - **To settle in the decision:** what happens to each task's reminder time,
   and to a repeating task's series day (D-122).
-- **Status:** not decided.
+- **Status:** proposed as D-127, 2026-11-05, after an eleven-app study of bulk
+  overdue moves. Not built.
 
 ### 2. Reschedule from the list with a swipe
 
@@ -334,7 +335,8 @@ breadth.
   Task Details stays the other route, so the swipe is never the only one.
 - **Touches:** D-023, which removed the row's long press and trailing button.
   The question has waited on tester feedback since October.
-- **Status:** not decided.
+- **Status:** set aside, 2026-11-05: the owner does not use swipe gestures.
+  D-127 leaves Task Details as the per-task route.
 
 ### 3. Show how full each day is when picking a date
 
