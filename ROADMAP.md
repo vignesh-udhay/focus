@@ -9,6 +9,21 @@ scope it delivers is in `PRODUCT.md`.
 
 ## Current phase
 
+**Production access was refused on 2026-11-06** ("More testing required";
+reviewed 4:25 AM): run the closed test with at least 12 testers for 14 more
+days from the review date, so reapply from about Nov 20. The plan is in
+`workspace\drafts\production-retry-plan.md`: testers use the app daily and
+give feedback in Play's own "Private feedback to developer", and two updates
+go out in the 14 days. **1.4 is being prepared, at the owner's word on
+2026-11-09:** `main` merged D-127 Move all to today and D-128 Rang at
+(7b24ae2); 1127 JVM tests pass. Not yet done: the full instrumented suite, the
+version bump to versionCode 6, the bundle, the push and the upload, each on
+the owner's word. **D-125 was approved on 2026-11-09** and is built on
+`fix/restore-after-restart` (a4c2880, schema 18, 1146 JVM tests pass), for
+1.4.1; it needs the restart check on the phone before it merges.
+`feature/calendar-today` stays out: the live privacy policy still says the app
+does not read the calendar.
+
 **1.3.1, versionCode 5, now carries everything but the calendar, at the
 owner's word on 2026-11-03.** `main` was fast-forwarded to `feature/last-day`
 (D-121 Quick Add tools, D-123 a month's last day, the reminder sheet's Snooze
