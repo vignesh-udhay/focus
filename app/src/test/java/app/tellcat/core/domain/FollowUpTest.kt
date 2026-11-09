@@ -9,8 +9,9 @@ import java.time.Instant
 import java.time.LocalDateTime
 
 /**
- * `docs/decisions.md` D-108 and D-109: when a follow-up is owed, and what a
- * row says about a reminder that was snoozed or is waiting to be posted again.
+ * `docs/decisions.md` D-108, D-109 and D-128: when a follow-up is owed, and
+ * what a row says about a reminder that was snoozed, is waiting to be posted
+ * again, or has rung.
  */
 class FollowUpTest {
 
@@ -116,11 +117,56 @@ class FollowUpTest {
         assertEquals(RowReminder(nine.plusHours(1), ReminderStage.Snoozed), snoozed.rowReminder())
     }
 
-    /** Once it has rung at the snooze, it is simply the time it spoke. */
+    // D-128: a reminder that has rung says so
+
     @Test
-    fun `a snooze that has rung is said as a set time`() {
+    fun `a reminder that has rung reads rang at its time`() {
+        val rung = dentist.copy(reminderDeliveredAt = told)
+        assertEquals(RowReminder(nine, ReminderStage.Rang), rung.rowReminder())
+    }
+
+    /** Named for the snooze it rang at, not the reminder's first time. */
+    @Test
+    fun `a snooze that has rung reads rang at the snooze`() {
         val rung = dentist.copy(snoozedUntil = nine.plusHours(1), reminderDeliveredAt = told)
-        assertEquals(RowReminder(nine.plusHours(1), ReminderStage.Set), rung.rowReminder())
+        assertEquals(RowReminder(nine.plusHours(1), ReminderStage.Rang), rung.rowReminder())
+    }
+
+    /** The time it was set for, not a delivery a minute late. */
+    @Test
+    fun `a late delivery still reads the time it was set for`() {
+        val late = dentist.copy(reminderDeliveredAt = Instant.parse("2026-10-29T04:07:00Z"))
+        assertEquals(nine, late.rowReminder()?.at)
+    }
+
+    @Test
+    fun `a pending follow-up wins over rang`() {
+        assertEquals(ReminderStage.FollowUp, waiting.rowReminder()?.stage)
+    }
+
+    @Test
+    fun `a snooze still to ring wins over rang`() {
+        // Snoozing makes the reminder owed again, which clears its delivery.
+        val snoozed = dentist.copy(snoozedUntil = nine.plusHours(1), reminderDeliveredAt = null)
+        assertEquals(ReminderStage.Snoozed, snoozed.rowReminder()?.stage)
+    }
+
+    /** It never arrived, so it did not ring; Reminder health says why. */
+    @Test
+    fun `a reminder never delivered keeps its plain time`() {
+        assertEquals(RowReminder(nine, ReminderStage.Set), dentist.rowReminder())
+    }
+
+    @Test
+    fun `a completed task's rung reminder is not rang`() {
+        val done = dentist.copy(reminderDeliveredAt = told, completedAt = told.plusSeconds(60))
+        assertEquals(ReminderStage.Set, done.rowReminder()?.stage)
+    }
+
+    @Test
+    fun `a rung reminder says nothing of an early one`() {
+        val rung = dentist.copy(reminderDeliveredAt = told, earlyReminder = EarlyReminder.OneHour)
+        assertNull(rung.rowReminder()?.alsoBefore)
     }
 
     @Test

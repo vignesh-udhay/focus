@@ -576,7 +576,7 @@ class TodayScreenSemanticsTest {
     /**
      * The band labels are headings, and until now they only said so in
      * `SectionLabel`'s own comment. Without this a TalkBack user cannot jump
-     * between Overdue, No reminder set and Later today at all: they meet three
+     * between Overdue, No reminder set and With a reminder at all: they meet three
      * unmarked lines of text and have to swipe through every row between them.
      */
     @Test

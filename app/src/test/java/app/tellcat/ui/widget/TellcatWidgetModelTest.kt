@@ -52,7 +52,7 @@ class TellcatWidgetModelTest {
         ).body as WidgetBody.Sections
 
         assertEquals(
-            listOf(TodayBand.OVERDUE, TodayBand.NO_REMINDER, TodayBand.LATER_TODAY),
+            listOf(TodayBand.OVERDUE, TodayBand.NO_REMINDER, TodayBand.WITH_REMINDER),
             body.sections.map { it.band }
         )
         assertEquals(

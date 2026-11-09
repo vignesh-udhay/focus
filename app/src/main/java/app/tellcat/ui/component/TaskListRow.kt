@@ -141,7 +141,7 @@ private fun taskMetadata(
     val spoken = mutableListOf<String>()
 
     // **First, because it is the one that will interrupt you.** `PRODUCT.md`
-    // principle 1 makes the reminder the product, and `TodayBand.LATER_TODAY`
+    // principle 1 makes the reminder the product, and `TodayBand.WITH_REMINDER`
     // promises a task there "will announce itself" without saying when. The row
     // is where that gets answered.
     //
@@ -168,13 +168,15 @@ private fun taskMetadata(
     // **What the reminder will do next, in words.** A snooze still to ring
     // reads "Snoozed until 5:37 PM" (D-109), and a pending follow-up "Reminds
     // again at 9:40 AM" (D-108), so the time on the row is never a snooze or a
-    // follow-up passed off as the time the user set. `rowReminder` decides
-    // which; the day rule above applies to the moment it names.
+    // follow-up passed off as the time the user set. One that has rung reads
+    // "Rang at 9:00 AM" (D-128). `rowReminder` decides which; the day rule above
+    // applies to the moment it names.
     val shown = task.rowReminder()?.takeUnless { next -> next.at.toLocalDate().isBefore(today) }
     val moment = shown?.let { next ->
         val at = next.at
         val time = at.toLocalTime().format(rememberTimeFormat())
-        if (at.toLocalDate() == task.scheduledDate) {
+        // A ring shown is today's, since a day gone is dropped above. D-128.
+        if (at.toLocalDate() == task.scheduledDate || next.stage == ReminderStage.Rang) {
             time
         } else {
             stringResource(
@@ -189,6 +191,7 @@ private fun taskMetadata(
             ReminderStage.Set -> said
             ReminderStage.Snoozed -> stringResource(R.string.task_row_snoozed, said)
             ReminderStage.FollowUp -> stringResource(R.string.task_row_follow_up, said)
+            ReminderStage.Rang -> stringResource(R.string.task_row_rang, said)
         }
         // "10:00 AM, also 1 hour before", drawn and read aloud. D-115.
         shown.alsoBefore?.let { early ->
@@ -199,9 +202,10 @@ private fun taskMetadata(
 
     // **An alarm glyph in front of the time, and "Alarm" for TalkBack in its
     // place.** D-102. Only beside a reminder still to come, which is the one
-    // that will ring. A follow-up is never an alarm's, D-108.
-    val ringsLikeAlarm =
-        task.ringsLikeAlarm && reminder != null && shown.stage != ReminderStage.FollowUp
+    // that will ring. A follow-up is never an alarm's, D-108, and a ring that
+    // has happened is not one still to come, D-128.
+    val ringsLikeAlarm = task.ringsLikeAlarm && reminder != null &&
+        shown.stage != ReminderStage.FollowUp && shown.stage != ReminderStage.Rang
     val reminderSpoken = reminder?.let {
         when {
             // The drawn words already say what it is; TalkBack reads them.

@@ -19,7 +19,7 @@ class TaskQueriesTest {
         completedAt: Instant? = null,
         deletedAt: Instant? = null,
         createdAt: Instant = timestamp,
-        // What tells No reminder set from Later today. A task with a time will
+        // What tells No reminder set from With a reminder. A task with a time will
         // announce itself; a task without one is only ever done because the
         // user looked.
         reminderAt: LocalDateTime? = null
@@ -577,7 +577,7 @@ class TaskQueriesTest {
             listOf(
                 TodayBand.OVERDUE,
                 TodayBand.NO_REMINDER,
-                TodayBand.LATER_TODAY,
+                TodayBand.WITH_REMINDER,
                 TodayBand.COMPLETED
             ),
             sections.map { it.band }
@@ -588,7 +588,7 @@ class TaskQueriesTest {
         assertEquals(listOf("done"), ids(sections[3].tasks))
     }
 
-    /** An overdue task carrying a reminder is still overdue, not Later today. */
+    /** An overdue task carrying a reminder is still overdue, not With a reminder. */
     @Test
     fun `an overdue task with a reminder stays overdue`() {
         val tasks = listOf(
@@ -670,7 +670,7 @@ class TaskQueriesTest {
             todayBandOf(task(id = "a", scheduledDate = today), today)
         )
         assertEquals(
-            TodayBand.LATER_TODAY,
+            TodayBand.WITH_REMINDER,
             todayBandOf(
                 task(id = "a", scheduledDate = today, reminderAt = todayAt(18, 0)),
                 today
@@ -741,7 +741,7 @@ class TaskQueriesTest {
         val done = task("a", scheduledDate = today, reminderAt = todayAt(18, 0), completedAt = timestamp)
 
         assertEquals(TodayBand.COMPLETED, todayBandOf(done, today))
-        assertEquals(TodayBand.LATER_TODAY, todayBandOf(done, today, settling = setOf("a")))
+        assertEquals(TodayBand.WITH_REMINDER, todayBandOf(done, today, settling = setOf("a")))
     }
 
     @Test
@@ -773,10 +773,10 @@ class TaskQueriesTest {
         assertEquals(todayBandOf(open, today), todayBandOf(open, today, settling = setOf("a")))
     }
 
-    // D-088: Later today runs in the order it will ring
+    // D-088: With a reminder runs in the order it will ring
 
     @Test
-    fun `later today is ordered by reminder time, not by creation`() {
+    fun `with a reminder is ordered by reminder time, not by creation`() {
         val evening = task("a", scheduledDate = today, reminderAt = todayAt(18, 0))
         val afternoon = task("b", scheduledDate = today, reminderAt = todayAt(16, 0))
         val morning = task("c", scheduledDate = today, reminderAt = todayAt(9, 30))
@@ -815,7 +815,7 @@ class TaskQueriesTest {
     }
 
     @Test
-    fun `a settling task keeps its reminder time's place in Later today`() {
+    fun `a settling task keeps its reminder time's place in With a reminder`() {
         val done = task("a", scheduledDate = today, reminderAt = todayAt(18, 0), completedAt = timestamp)
         val afternoon = task("b", scheduledDate = today, reminderAt = todayAt(16, 0))
 

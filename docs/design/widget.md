@@ -81,7 +81,7 @@ line of text.
 # The bands
 
 The widget draws Today's bands, labelled with Today's own strings: Overdue, No
-time set, Later today. Completed is excluded. D-049.
+reminder set, With a reminder. Completed is excluded. D-049.
 
 **They are here because D-048 took away the thing that explained the list.** The
 lead card named one task and gave a reason, and the rows below it read as

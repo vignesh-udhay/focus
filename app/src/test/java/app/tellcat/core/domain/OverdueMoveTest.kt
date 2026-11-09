@@ -166,7 +166,7 @@ class OverdueMoveTest {
         assertEquals(today.atTime(17, 0), moved.ringsAt)
         assertNull(moved.followUpAt)
         assertTrue(moved.hasLiveReminder())
-        assertEquals(TodayBand.LATER_TODAY, todayBandOf(moved, today))
+        assertEquals(TodayBand.WITH_REMINDER, todayBandOf(moved, today))
     }
 
     @Test

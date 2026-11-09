@@ -429,9 +429,9 @@ class TaskRowSemanticsTest {
     @Test
     fun aSnooze_isSaid_at200() = assertASnoozeIsSaid(FontScale200)
 
-    /** Once the snooze has rung it is the time the reminder spoke, as any other. */
+    /** Once the snooze has rung, the row says it rang, at the snooze. D-128. */
     @Test
-    fun aSnoozeThatHasRung_isReadAsAReminder() {
+    fun aSnoozeThatHasRung_isReadAsRang() {
         setRow(
             FontScale100,
             outstanding().copy(
@@ -441,8 +441,46 @@ class TaskRowSemanticsTest {
             )
         )
 
-        rule.onNode(hasContentDescription("Reminder ", substring = true)).assertExists()
+        rule.onNode(hasContentDescription("Rang at ", substring = true)).assertExists()
         rule.onAllNodes(hasContentDescription("Snoozed until ", substring = true)).assertCountEquals(0)
+    }
+
+    // --- D-128: a reminder that has rung says so, drawn and read ------------
+
+    private fun assertARungReminderSaysSo(fontScale: Float) {
+        setRow(
+            fontScale,
+            outstanding().copy(
+                reminderAt = TestToday.atTime(9, 0),
+                reminderDeliveredAt = Instant.parse("2026-09-02T09:00:04Z")
+            )
+        )
+
+        rule.onNode(hasText("Rang at ", substring = true)).assertExists()
+        rule.onNode(hasContentDescription("Rang at ", substring = true)).assertExists()
+        rule.onAllNodes(hasContentDescription("Reminder ", substring = true)).assertCountEquals(0)
+    }
+
+    @Test
+    fun aRungReminder_saysSo_at100() = assertARungReminderSaysSo(FontScale100)
+
+    @Test
+    fun aRungReminder_saysSo_at200() = assertARungReminderSaysSo(FontScale200)
+
+    /** The alarm glyph marks a ring still to come, and this one has happened. */
+    @Test
+    fun aRungAlarm_isNotReadAsAnAlarm() {
+        setRow(
+            FontScale100,
+            outstanding().copy(
+                reminderAt = TestToday.atTime(7, 0),
+                ringsLikeAlarm = true,
+                reminderDeliveredAt = Instant.parse("2026-09-02T07:00:04Z")
+            )
+        )
+
+        rule.onNode(hasContentDescription("Rang at ", substring = true)).assertExists()
+        rule.onAllNodes(hasContentDescription("Alarm ", substring = true)).assertCountEquals(0)
     }
 
     // --- D-102: a reminder that rings like an alarm is read as an alarm ------

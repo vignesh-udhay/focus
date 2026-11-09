@@ -29,14 +29,16 @@ internal fun widgetTaskText(context: Context, task: Task, today: LocalDate): Wid
     //
     // And it says what the reminder will do next, as the app's row does: a
     // snooze still to ring is "Snoozed until 5:37 PM" (D-109), a pending
-    // follow-up "Reminds again at 9:40 AM" (D-108). The same decision,
+    // follow-up "Reminds again at 9:40 AM" (D-108), one that has rung "Rang at
+    // 9:00 AM" (D-128). The same decision,
     // `rowReminder`, and the same words, so the widget cannot pass a snooze off
     // as the time the user set.
     val shown = task.rowReminder()?.takeUnless { it.at.toLocalDate().isBefore(today) }
     val reminder = shown?.let { next ->
         val at = next.at
         val time = at.toLocalTime().format(context.timeFormatter())
-        val moment = if (at.toLocalDate() == task.scheduledDate) {
+        // A ring shown is today's, so it needs no day. D-128.
+        val moment = if (at.toLocalDate() == task.scheduledDate || next.stage == ReminderStage.Rang) {
             time
         } else {
             context.getString(R.string.task_row_reminder_on_day, context.dayLabel(at.toLocalDate(), today), time)
@@ -45,6 +47,7 @@ internal fun widgetTaskText(context: Context, task: Task, today: LocalDate): Wid
             ReminderStage.Set -> moment
             ReminderStage.Snoozed -> context.getString(R.string.task_row_snoozed, moment)
             ReminderStage.FollowUp -> context.getString(R.string.task_row_follow_up, moment)
+            ReminderStage.Rang -> context.getString(R.string.task_row_rang, moment)
         }
         // The row's words, D-115.
         next.alsoBefore?.let { early ->

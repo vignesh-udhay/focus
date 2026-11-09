@@ -24,7 +24,7 @@ import java.time.LocalDate
  * timed work, then what is already done. That is a timeline, read the way a
  * timeline reads.
  *
- * Later today runs in the order it will ring, snoozes included, D-088.
+ * With a reminder runs in the order it will ring, snoozes included, D-088.
  * Elsewhere, and between equal times, the caller's order is preserved.
  *
  * **[settling] holds tasks just completed, which keep their place for a
@@ -45,11 +45,11 @@ fun todayTasks(
             !task.isDeleted && scheduled != null && !scheduled.isAfter(today)
         }
         // Stable, which is what preserves input order within a group. The
-        // second key is null outside Later today, so it orders nothing there.
+        // second key is null outside With a reminder, so it orders nothing there.
         .sortedWith(
             compareBy<Task> { task -> todayGroup(task, today, settling) }
                 .thenBy { task ->
-                    task.ringsAt.takeIf { todayGroup(task, today, settling) == LATER_TODAY }
+                    task.ringsAt.takeIf { todayGroup(task, today, settling) == WITH_REMINDER }
                 }
         )
 
@@ -60,7 +60,7 @@ private const val OVERDUE = 0
 private const val NO_REMINDER = 1
 
 /** Today, with a time. It will announce itself. */
-private const val LATER_TODAY = 2
+private const val WITH_REMINDER = 2
 
 /** Done, whenever it was scheduled. */
 private const val COMPLETED = 3
@@ -69,7 +69,7 @@ private const val COMPLETED = 3
  * Which band of the Today list a task belongs to.
  *
  * Four bands since `docs/decisions.md` D-012, and in this order: Overdue, No
- * time set, Later today, Completed.
+ * time set, With a reminder, Completed.
  *
  * **Overdue is first because the bands are a timeline**, and past, present,
  * future is the order a timeline reads in. More than that: an overdue task is
@@ -95,7 +95,7 @@ private fun todayGroup(task: Task, today: LocalDate, settling: Set<String>): Int
     task.isCompleted && task.id !in settling -> COMPLETED
     task.scheduledDate != today -> OVERDUE
     task.reminderAt == null -> NO_REMINDER
-    else -> LATER_TODAY
+    else -> WITH_REMINDER
 }
 
 /**
@@ -120,7 +120,7 @@ enum class TodayBand {
     NO_REMINDER,
 
     /** Today, with a time. It will announce itself. */
-    LATER_TODAY,
+    WITH_REMINDER,
 
     /** Done, whenever it was scheduled. */
     COMPLETED
@@ -175,7 +175,7 @@ fun todayBandOf(
 ): TodayBand = when (todayGroup(task, today, settling)) {
     OVERDUE -> TodayBand.OVERDUE
     NO_REMINDER -> TodayBand.NO_REMINDER
-    LATER_TODAY -> TodayBand.LATER_TODAY
+    WITH_REMINDER -> TodayBand.WITH_REMINDER
     else -> TodayBand.COMPLETED
 }
 

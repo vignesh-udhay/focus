@@ -396,7 +396,7 @@ private val TodayBand.labelRes: Int
     get() = when (this) {
         TodayBand.OVERDUE -> R.string.today_section_overdue
         TodayBand.NO_REMINDER -> R.string.today_section_no_reminder
-        TodayBand.LATER_TODAY -> R.string.today_section_later_today
+        TodayBand.WITH_REMINDER -> R.string.today_section_with_reminder
         TodayBand.COMPLETED -> R.string.today_section_completed
     }
 

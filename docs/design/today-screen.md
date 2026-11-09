@@ -144,8 +144,8 @@ together or not at all.
 ## Where the date went
 
 Nowhere. D-020 records why: nothing on Today needs it. The bands are relative,
-Overdue and No reminder set and Later today, and so is the paused session card, so
-no row, band or card is harder to read for its absence. It was pleasant rather than
+Overdue and No reminder set and With a reminder, and so is the paused session
+card, so no row, band or card is harder to read for its absence. It was pleasant rather than
 load-bearing.
 
 If that turns out to be wrong, the answer is the date as the title in the
@@ -432,7 +432,7 @@ When a task is completed:
 - the title takes the completed treatment defined in `task-row.md`
 - the row moves to the bottom of the list
 
-Today reads in the four bands under Sections below. Later today runs in the
+Today reads in the four bands under Sections below. With a reminder runs in the
 order its reminders will ring, a snooze included, D-088; every other band keeps
 the order the query was handed, which is creation order. This ordering lives in
 `TaskQueries.todayTasks`, not in SQL and not in the screen.
@@ -611,7 +611,7 @@ Four bands, in this order, per D-012:
 
     Overdue          past, and needs a decision
     No reminder set  today, nothing will announce it
-    Later today      today, it will announce itself
+    With a reminder  today, it will announce itself, or rang already
     Completed · N    a disclosure, collapsed by default
 
 Every band carries a label. Each is a line of text above its group, and nothing
@@ -642,6 +642,10 @@ announcement, and the argument retires with the position. D-012 has the
 reasoning, including why the label is not "Anytime today", and D-061 has why the
 second band reads "No reminder set" rather than "No time set": the rows in it
 show their estimate, so the old label was contradicted by the screen under it.
+D-128 renamed the third band from "Later today" to "With a reminder": a
+reminder that rang this morning and was not done sat under "Later today" as if
+it would ring again. It stays in the band, at the top because the band runs in
+ring order, and its row reads "Rang at 9:00 AM".
 
 The grouping is read from `TaskQueries.todaySections`, which cuts the list
 `todayTasks` already ordered at the points where the band changes. Concatenating

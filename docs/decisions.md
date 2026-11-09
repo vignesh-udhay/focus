@@ -7804,3 +7804,86 @@ moves, and the snackbar counts.
 without doing it, which would make the button a way to never decide. The sign
 would be the same tasks moved day after day. If that shows up, the answer is
 to show how many times a task has been moved, not to remove the button.
+
+---
+
+## D-128. A reminder that has rung says so, and Later today becomes With a reminder
+
+**Decided on 2026-11-05**, at the owner's word, after D-127's research showed
+the same failure in TickTick. Numbered after D-125 to D-127, which are on
+branches not yet on `main`. On `design/rang-at`, from `main`. It ships after
+1.3.1, not in it.
+
+**What is wrong now.** Take vitamins is set for today at 9:00 AM. It rings, the
+notification is dismissed and the task is not ticked. At 2 PM Today shows it
+under **Later today**, reading **9:00 AM**, exactly like Call the bank at
+6:00 PM, which will ring. Later today means "it will announce itself"
+(D-012, D-061), and this one will not. Two things on screen promise a ring that
+is not coming: the band's name and the row's time. TickTick does the same with
+"On time" on a reminder that will not fire, which the D-127 study named as the
+failure to avoid.
+
+**What the user needs at that moment.** That the task's moment has come, so it
+is among the first things to do; that it will not ring again, so waiting for
+the phone is a mistake; and that it is not a failure yet, because a reminder
+time is when the user wanted to be told, not a deadline.
+
+**Decision.** Two changes, nothing moves.
+
+1. **The row says "Rang at 9:00 AM"** once the reminder has rung, the task is
+   not done, and nothing about it is still to ring. A new `ReminderStage.Rang`
+   in `rowReminder`, named for the time the reminder was set for (its snooze
+   when it was snoozed), not the moment it was delivered, so a ring a minute
+   late still reads as the time the user chose. The alarm glyph goes, since
+   D-102 keeps it for a ring still to come. TalkBack reads the words as drawn.
+   - A pending follow-up still reads "Reminds again at 9:10 AM" (D-108), and a
+     snooze still to ring "Snoozed until 5:00 PM" (D-109). Those will ring, so
+     they win.
+   - A reminder whose time has passed but which was never delivered (the app
+     could not post) keeps its plain time. It did not ring, and Reminder health
+     already says why.
+   - Only on today. A row on another day already names that day.
+   - The widget says the same, because it reads the same `rowReminder`.
+2. **The band is renamed With a reminder.** It pairs with No reminder set, the
+   split the bands already make (D-061), and it is true of every row in it,
+   the ones that rang and the ones still to come. `TodayBand.LATER_TODAY`
+   becomes `TodayBand.WITH_REMINDER` and the string key moves with it, as D-061
+   moved the other band's, so the code says what the label says. The widget's
+   band label follows (D-049).
+
+**Why nothing moves.** The band still runs in the order it rings (D-088), so a
+reminder that rang sits at its top, above the ones still to come: "told you
+already", then "will tell you". That is where the eye lands after Overdue, and
+it is the right place for the most current task on the screen.
+
+**Considered and not taken.**
+
+- **Into Overdue.** It makes Today a strict past, present and future, and D-012
+  calls Overdue "a reminder that fired and was not acted on". But the vitamins
+  would turn overdue, in the overdue colour, one minute after ringing. A ring
+  says "now", not "late". It would also mix today's tasks into the band D-127's
+  Move all to today acts on.
+- **Into No reminder set.** The label would be false, since a reminder was set
+  and did its job, and the task would sink among untimed work.
+- **A colour on "Rang at".** The words carry it. A task five hours old should
+  not wear the colour of one five days old.
+
+**How it meets D-127.** D-127 clears a moved task's reminder when its time has
+gone. That stays: Pay rent's reminder rang yesterday, so "Rang at 9:00 AM" on
+today would say it rang today. No reminder set is the true place for it.
+
+**What it supersedes.** D-012's and D-061's label "Later today", and only the
+label. Which tasks go in which band, and the order, are unchanged.
+`docs/design/today-screen.md`, `task-row.md` and `widget.md` are updated to the
+new name and the new line.
+
+**Tests.** `RowReminderTest` or the nearest existing suite: rang reads Rang at
+the reminder's time, at a rung snooze's time, not while a follow-up is pending,
+not while a snooze is still to ring, not when never delivered, not for a
+completed task. `TaskQueriesTest` and the widget model tests follow the enum's
+new name. The row and widget text tests: "Rang at 9:00 AM" drawn and read, and
+no alarm glyph beside it.
+
+**What would reverse this.** Users missing rung tasks because they sit in a
+band with ones still to come, which would argue for their own band, or for
+Overdue, before it argues for the old label.
