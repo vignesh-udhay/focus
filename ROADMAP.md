@@ -14,11 +14,13 @@ reviewed 4:25 AM): run the closed test with at least 12 testers for 14 more
 days from the review date, so reapply from about Nov 20. The plan is in
 `workspace\drafts\production-retry-plan.md`: testers use the app daily and
 give feedback in Play's own "Private feedback to developer", and two updates
-go out in the 14 days. **1.4 is being prepared, at the owner's word on
-2026-11-09:** `main` merged D-127 Move all to today and D-128 Rang at
-(7b24ae2); 1127 JVM tests pass. Not yet done: the full instrumented suite, the
-version bump to versionCode 6, the bundle, the push and the upload, each on
-the owner's word. **D-125 was approved on 2026-11-09** and is built on
+go out in the 14 days. **1.4 went to review on the closed test on
+2026-11-09, at the owner's word:** `main` merged D-127 Move all to today and D-128 Rang at
+(7b24ae2); 1127 JVM tests pass. Full instrumented suite on the emulator: 489 passed, 1
+skipped, 5 failed while the emulator was stuck on system dialogs, and all 5
+passed alone after a cold boot. Bumped to 1.4, versionCode 6 (9f8f4c4), same
+upload key, `main` pushed, and sent to the Alpha closed test as release 6
+(1.4), full rollout, on 2026-11-09, at the owner's word. **D-125 was approved on 2026-11-09** and is built on
 `fix/restore-after-restart` (a4c2880, schema 18, 1146 JVM tests pass), for
 1.4.1; it needs the restart check on the phone before it merges.
 `feature/calendar-today` stays out: the live privacy policy still says the app
