@@ -1054,7 +1054,10 @@ class TaskListViewModel(
         now: LocalDateTime = LocalDateTime.now(),
         // What Quick Add's tools hold that the title cannot say. D-121.
         recurrence: Recurrence? = null,
-        checklist: List<String> = emptyList()
+        checklist: List<String> = emptyList(),
+        // What When holds beside the time it wrote. D-129.
+        ringsLikeAlarm: Boolean = false,
+        earlyReminder: EarlyReminder? = null
     ): PrimaryList? {
         val day = today.value
         // **A repeating task always has a day**, D-121. The sheet writes the
@@ -1068,7 +1071,10 @@ class TaskListViewModel(
             scheduledDate = scheduledDate,
             reminderAt = parsed.reminderAt(day, now),
             recurrence = recurrence,
-            checklist = checklist
+            checklist = checklist,
+            ringsLikeAlarm = ringsLikeAlarm,
+            earlyReminder = earlyReminder,
+            now = now
         )
 
         return if (captured) primaryListFor(scheduledDate, day) else null
@@ -1095,10 +1101,19 @@ class TaskListViewModel(
         reminderAt: LocalDateTime? = null,
         // Quick Add's Repeat and Checklist, D-121.
         recurrence: Recurrence? = null,
-        checklist: List<String> = emptyList()
+        checklist: List<String> = emptyList(),
+        // Quick Add's alarm and early reminder, D-129. Both belong to the
+        // reminder and are dropped without one, as [editTask] drops them.
+        ringsLikeAlarm: Boolean = false,
+        earlyReminder: EarlyReminder? = null,
+        // Read for the early reminder: one whose moment has already gone is
+        // settled at save, as the sheet said before Save. D-115.
+        now: LocalDateTime = LocalDateTime.now()
     ): Boolean {
         val trimmed = title.trim()
         if (trimmed.isEmpty()) return false
+
+        val early = earlyReminder.takeIf { reminderAt != null }
 
         write {
             repository.insert(
@@ -1111,7 +1126,10 @@ class TaskListViewModel(
                     recurrence = recurrence,
                     // The day the series keeps, D-122, from the day it starts.
                     recurrenceAnchor = recurrence?.anchorFor(scheduledDate),
-                    checklist = checklist.map { ChecklistItem(it) }
+                    checklist = checklist.map { ChecklistItem(it) },
+                    ringsLikeAlarm = ringsLikeAlarm && reminderAt != null,
+                    earlyReminder = early,
+                    earlyDeliveredAt = earlyDeliveredAtSave(reminderAt, early, now, Instant.now())
                 )
             )
         }

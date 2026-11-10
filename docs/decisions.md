@@ -7887,3 +7887,57 @@ no alarm glyph beside it.
 **What would reverse this.** Users missing rung tasks because they sit in a
 band with ones still to come, which would argue for their own band, or for
 Overdue, before it argues for the old label.
+
+---
+
+## D-129. Quick Add's When can ring like an alarm and remind early
+
+**Decided on 2026-11-10**, at the owner's word, after a tester asked for it in
+Play's testing feedback on 1.4: "it would be good if the quick add task also
+showed the option for ring like a alarm". Amends D-112 and D-121, which kept
+both out of Quick Add. Numbered after D-125 to D-128; D-125 and D-126 are on
+branches not yet on `main`. On `feature/quick-add-alarm`, from `main`, for
+1.4.1.
+
+**What changed the answer.** D-112 left "Ring like an alarm" out of Quick Add
+because When only types, and the title has no words for it; D-121 kept that
+for the alarm and the early reminder. The reason was about the mechanism, and
+D-121 itself had already answered it for Repeat and the checklist: what has no
+words is held by the sheet and handed over with the title. Meanwhile the path
+for an alarm from capture is Add, find the row, open it, Reminder, the switch,
+Save, Back, after the sheet has closed and the moment of capture has passed.
+
+**The decision.**
+
+1. **When's sheet offers both, once it holds a time.** The "Also remind me" row
+   under Day and Time and the "Ring like an alarm" switch under them, exactly as
+   Task Details has them, the priming sheet included (D-102). With "No time"
+   neither is shown: both are part of a reminder, D-102 and D-115.
+2. **They are held, not written.** The day and the time are still written into
+   the title as words, so the field stays the one setter of those (D-112). The
+   alarm and the early reminder are held by Quick Add, as Repeat is, and Add
+   saves them with the task.
+3. **They belong to the reminder in the title.** When the title no longer has a
+   reminder (the time deleted, the reminder cleared, or When saved with a day
+   and no time), both are dropped, so no task is saved with an alarm and no
+   reminder. Typing a time back does not bring them back; When does.
+4. **The supporting line says them in words**, under the day and the time:
+   "Rings like an alarm", "Also 15 min before". The When tool still shows only
+   the day and the time. The line is already a polite live region (D-121).
+5. **Saved as Task Details saves them.** An early reminder whose moment has
+   already gone is settled at save and only the reminder rings (D-115), and the
+   sheet says so before Save, as it does in Task Details.
+
+**Not changed.** Typing stays the fast path and nothing here is required. There
+are still no words for either: "alarm at 9am" would be a parser vocabulary
+change and a decision of its own. "Add to Tellcat" from the share sheet gets no
+tools, D-097.
+
+**Tests.** `TaskListViewModelTest`: both saved with a capture's reminder, both
+dropped without one, and an early reminder already gone settled at capture.
+`QuickAddToolsTest`: the switch and the row appear in When once it has a time,
+the line says "Rings like an alarm" after Save, and deleting the time from the
+title takes it away.
+
+**What would reverse this.** Alarms switched on by accident from Quick Add, or
+When getting slower for the common case of a day and a time.

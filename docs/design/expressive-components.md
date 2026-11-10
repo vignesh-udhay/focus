@@ -809,6 +809,12 @@ stays the one setter of a day and a reminder; Repeat and the checklist are held
 by the sheet. Typing stays the fast path: every tool is optional. D-121 has the
 tap counts and what was taken from TickTick.
 
+**Amended by D-129 (2026-11-10).** When's sheet offers "Also remind me" and
+"Ring like an alarm" too, once it holds a time; with "No time" neither shows.
+They are held by the sheet like Repeat, never written into the title, and go
+when the title stops having a reminder. The supporting line says them in words
+under the day and time: "Rings like an alarm", "Also 15 min before".
+
 **Amended by D-112, narrowly.** The Reminder chip is always on the sheet and
 opens Task Details' reminder sheet, which has a day and a time picker behind it.
 It sets nothing itself: what is chosen is typed into the field as words ("
@@ -816,7 +822,7 @@ tomorrow at 9am") and marked as typed words are, so the field is still the only
 setter and the sheet still has one field. Unset, the chip reads "Reminder" and
 is live once there is a title. Its cross unmarks the run, as before; the
 reminder sheet's Clear does the same, and its "Ring like an alarm" switch is not
-offered from here, because the field has no words for it.
+offered from here, because the field has no words for it (until D-129, above).
 
 [CD] The field reads a day off the end of the title and marks it: the matched
 words take `primary`, and a supporting line under the field names the resolved
@@ -916,8 +922,8 @@ Time, "Also remind me", reading None or the choice. It opens a pane shaped like
 the Day pane, a back arrow and four preset buttons two to a row (None, 15 min
 before, 1 hour before, 1 day before). Under the rows, while one is chosen, a
 `bodySmall` line on `onSurfaceVariant` says when it rings, "Also at 8:00 AM",
-or that it has already gone and will not; a polite live region. Not offered when
-Quick Add opens the sheet.
+or that it has already gone and will not; a polite live region. Offered when
+Quick Add opens the sheet since D-129, once it has a time.
 
 **The priming sheet.** Opened by turning the switch on without the
 full-screen grant. A picture of the alarm screen, which is the real

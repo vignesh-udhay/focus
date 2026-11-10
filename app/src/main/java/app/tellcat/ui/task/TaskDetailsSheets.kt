@@ -767,12 +767,11 @@ internal fun ReminderSheet(
     // answer, or is snoozed. D-109.
     canSnooze: Boolean = false,
     onSnooze: (LocalDateTime) -> Unit = {},
-    // Whether "Ring like an alarm" is offered. Off when Quick Add opens the
-    // sheet, D-112: what is chosen there is written into the field as words,
-    // and there are no words for ringing like an alarm.
+    // Whether "Ring like an alarm" is offered. Quick Add offers it too since
+    // D-129, holding it beside the words it writes; D-112 had left it out.
     offersAlarm: Boolean = true,
     // The early reminder the reminder has now, and whether "Also remind me"
-    // is offered. Off from Quick Add for the reason the alarm is. D-115.
+    // is offered. D-115; from Quick Add as well since D-129.
     earlyReminder: EarlyReminder? = null,
     offersEarly: Boolean = true,
     // **Quick Add's When tool**, D-121: the day and the time in one sheet, the
@@ -893,7 +892,12 @@ internal fun ReminderSheet(
                         style = MaterialTheme.typography.titleLarge
                     )
 
-                    val rows = if (offersEarly) 3 else 2
+                    // **Both belong to a time**, D-129: in When with "No time"
+                    // there is no reminder for them to be part of, so neither
+                    // is shown. Task Details always has a time.
+                    val showsEarly = offersEarly && timeChosen
+                    val showsAlarm = offersAlarm && timeChosen
+                    val rows = if (showsEarly) 3 else 2
                     PlanRowGroup {
                         PlanRow(
                             label = stringResource(R.string.task_reminder_day),
@@ -909,7 +913,7 @@ internal fun ReminderSheet(
                         )
                         // **One early reminder**, D-115: none or one of three,
                         // never a list.
-                        if (offersEarly) {
+                        if (showsEarly) {
                             PlanRow(
                                 label = stringResource(R.string.task_reminder_early),
                                 value = earlyLabel(early),
@@ -922,7 +926,7 @@ internal fun ReminderSheet(
                     // **When it rings, in words**, or that it will not. D-115.
                     // Under the rows rather than inside one, so the time can be
                     // read in full at any font size.
-                    early?.takeIf { offersEarly && !hasPassed }?.let { chosen ->
+                    early?.takeIf { showsEarly && !hasPassed }?.let { chosen ->
                         Text(
                             text = if (earlyHasPassed(at, chosen, now)) {
                                 stringResource(R.string.task_reminder_early_passed, earlyLabel(chosen).lowercase())
@@ -935,7 +939,7 @@ internal fun ReminderSheet(
                         )
                     }
 
-                    if (offersAlarm) {
+                    if (showsAlarm) {
                         ReminderAlarmSwitch(
                             ringsLikeAlarm = ringsAsAlarm,
                             onRingsLikeAlarmChange = { on -> ringsAsAlarm = on }

@@ -211,7 +211,9 @@ fun TodayScreen(
                     capture.parsed,
                     fallbackDate = viewModel.today.value,
                     recurrence = capture.recurrence,
-                    checklist = capture.checklist
+                    checklist = capture.checklist,
+                    ringsLikeAlarm = capture.ringsLikeAlarm,
+                    earlyReminder = capture.earlyReminder
                 )
                 if (landed != null) {
                     isQuickAddVisible = false

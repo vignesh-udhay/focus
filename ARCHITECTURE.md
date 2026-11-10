@@ -187,7 +187,10 @@ on every device, not wording a screen chooses.
 Since D-121 the chip is Quick Add's When tool, and `writeDay` beside
 `writeReminder` writes a day with no time on the same terms. Repeat and the
 checklist have no words, so `QuickAddSheet` holds them and hands them over as a
-`QuickAddCapture`, which `TaskListViewModel.capture` saves with the task. A
+`QuickAddCapture`, which `TaskListViewModel.capture` saves with the task.
+Since D-129 the same goes for the alarm and the early reminder When offers:
+held beside the words it writes, dropped when the title has no reminder, and
+saved by `createTask` on the terms `editTask` uses. A
 repeating task always has a day: `core/domain/RepeatDay.kt` holds the rule
 (`firstOccurrenceFrom`, `withRepeatDay`), the Repeat sheet's `commonRepeats`,
 and `giveUndatedRepeatsADay`, which `TellcatApplication` runs once at each

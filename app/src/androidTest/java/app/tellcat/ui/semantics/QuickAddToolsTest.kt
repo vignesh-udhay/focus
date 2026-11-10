@@ -20,15 +20,18 @@ import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.waitUntilDoesNotExist
 import androidx.compose.ui.test.waitUntilExactlyOneExists
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import app.tellcat.core.domain.EarlyReminder
 import app.tellcat.core.domain.Recurrence
 import app.tellcat.core.domain.RecurrenceUnit
 import app.tellcat.ui.task.QuickAddCapture
 import app.tellcat.ui.task.QuickAddSheet
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -279,6 +282,91 @@ class QuickAddToolsTest {
         rule.waitUntil(TIMEOUT_MILLIS) { fieldText().isEmpty() }
     }
 
+    // --- D-129: the alarm and the early reminder from When ----------------------------------
+
+    /** With "No time" there is no reminder, so neither is offered. */
+    @Test
+    fun whenWithNoTimeOffersNoAlarmOrEarlyReminder() {
+        sheet(fallbackDate = today)
+        field().performTextInput("Call Sam")
+
+        tool(WHEN).performClick()
+        rule.waitUntilExactlyOneExists(hasText(NO_TIME), TIMEOUT_MILLIS)
+
+        rule.onNodeWithText(ALARM).assertDoesNotExist()
+        rule.onNodeWithText(EARLY).assertDoesNotExist()
+    }
+
+    /** Switched on in When, said on the line, saved with the capture, never written. */
+    @Test
+    fun anAlarmSetInWhenIsSavedAndNotWrittenIntoTheTitle() {
+        sheet(fallbackDate = today)
+        field().performTextInput("Call the bank tomorrow at 9am")
+
+        turnTheAlarmOnInWhen()
+
+        rule.waitUntilExactlyOneExists(hasText(RINGS_LIKE_ALARM), TIMEOUT_MILLIS)
+        assertEquals("Call the bank tomorrow at 9am", fieldText())
+        rule.onNodeWithText(SAVE).performClick()
+
+        val capture = saved.single()
+        assertEquals("Call the bank", capture.parsed.title)
+        assertTrue(capture.ringsLikeAlarm)
+    }
+
+    @Test
+    fun anEarlyReminderSetInWhenIsSavedWithTheCapture() {
+        sheet(fallbackDate = today)
+        field().performTextInput("Call the bank tomorrow at 9am")
+
+        tool(WHEN).performClick()
+        rule.waitUntilExactlyOneExists(hasText(EARLY), TIMEOUT_MILLIS)
+        rule.onNodeWithText(EARLY).performClick()
+        rule.waitUntilExactlyOneExists(hasText(FIFTEEN_MINUTES), TIMEOUT_MILLIS)
+        rule.onNodeWithText(FIFTEEN_MINUTES).performClick()
+        rule.waitUntilExactlyOneExists(hasText(SAVE_WHEN), TIMEOUT_MILLIS)
+        rule.onNodeWithText(SAVE_WHEN).performClick()
+
+        rule.waitUntilExactlyOneExists(hasText("Also $FIFTEEN_MINUTES"), TIMEOUT_MILLIS)
+        rule.onNodeWithText(SAVE).performClick()
+        assertEquals(EarlyReminder.FifteenMinutes, saved.single().earlyReminder)
+    }
+
+    /** The time deleted from the title takes the alarm with it, and a time typed back does not return it. */
+    @Test
+    fun deletingTheTimeDropsTheAlarm() {
+        sheet(fallbackDate = today)
+        field().performTextInput("Call the bank tomorrow at 9am")
+        turnTheAlarmOnInWhen()
+        rule.waitUntilExactlyOneExists(hasText(RINGS_LIKE_ALARM), TIMEOUT_MILLIS)
+
+        field().performTextReplacement("Call the bank")
+        rule.waitUntilDoesNotExist(hasText(RINGS_LIKE_ALARM), TIMEOUT_MILLIS)
+
+        field().performTextReplacement("Call the bank tomorrow at 9am")
+        rule.waitForIdle()
+        rule.onNodeWithText(RINGS_LIKE_ALARM).assertDoesNotExist()
+
+        rule.onNodeWithText(SAVE).performClick()
+        assertFalse(saved.single().ringsLikeAlarm)
+    }
+
+    /**
+     * When, the switch, and Save. Without the full-screen grant the switch opens
+     * the priming sheet, D-102, and stays on whatever the answer, so Not now.
+     */
+    private fun turnTheAlarmOnInWhen() {
+        tool(WHEN).performClick()
+        rule.waitUntilExactlyOneExists(hasText(ALARM), TIMEOUT_MILLIS)
+        rule.onNodeWithText(ALARM).performScrollTo().performClick()
+        rule.waitForIdle()
+        if (rule.onAllNodes(hasText(PRIMING_NOT_NOW)).fetchSemanticsNodes().isNotEmpty()) {
+            rule.onNodeWithText(PRIMING_NOT_NOW).performClick()
+            rule.waitUntilDoesNotExist(hasText(PRIMING_NOT_NOW), TIMEOUT_MILLIS)
+        }
+        rule.onNodeWithText(SAVE_WHEN).performScrollTo().performClick()
+    }
+
     /** The 48dp floor, measured where taps land. */
     private fun androidx.compose.ui.test.SemanticsNodeInteraction.assertTouchTargetIsAtLeast48() = apply {
         val node = fetchSemanticsNode()
@@ -474,6 +562,11 @@ class QuickAddToolsTest {
         const val SAVE_WHEN = "Save reminder"
         const val CLEAR = "Clear"
         const val TITLE_FIRST = "Now type the task in front"
+        const val ALARM = "Ring like an alarm"
+        const val EARLY = "Also remind me"
+        const val FIFTEEN_MINUTES = "15 min before"
+        const val RINGS_LIKE_ALARM = "Rings like an alarm"
+        const val PRIMING_NOT_NOW = "Not now"
         const val TIMEOUT_MILLIS = 5_000L
     }
 }
