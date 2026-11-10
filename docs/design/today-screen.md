@@ -616,7 +616,7 @@ Four bands, in this order, per D-012:
     Overdue          past, and needs a decision
     No reminder set  today, nothing will announce it
     With a reminder  today, it will announce itself, or rang already
-    Completed · N    a disclosure, collapsed by default
+    Completed (N)    a disclosure, collapsed by default
 
 Every band carries a label. Each is a line of text above its group, and nothing
 else: no divider, no container. Each band rounds its own corners, so it reads
@@ -625,7 +625,9 @@ set" do not repeat the band's own words in their supporting line.
 
 Completed is the exception to "nothing else": it carries a count and it
 collapses, because a plain completed list grows through the day and pushes live
-work down the screen. It holds the day's finished work only, D-131.
+work down the screen. It holds the day's finished work only, D-131. The count
+is in brackets, "Completed (3)", at the owner's word on 2026-11-10; it was
+"Completed · 3".
 
 Overdue is the other exception, since D-127: its label carries one text button
 at the end of its line, **Move all to today**, on the label's baseline. It

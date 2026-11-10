@@ -7949,3 +7949,8 @@ emulator run.
 **What would reverse this.** Users going to Today to find something they
 finished yesterday, which would argue for a way into the Logbook from the
 band, not for keeping old tasks in it.
+
+**Amended 2026-11-10, at the owner's word: the count is in brackets.** The
+band's header reads "Completed (3)", not "Completed · 3". Only the format
+changes: the count, the collapse and what TalkBack is told stay as D-012 set
+them. Earlier entries that quote "Completed · N" are history and keep it.

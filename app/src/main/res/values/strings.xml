@@ -45,8 +45,9 @@
          D-012's reasoning that D-002 removed Anytime as vocabulary. -->
     <string name="today_section_no_reminder">No reminder set</string>
     <string name="today_section_with_reminder">With a reminder</string>
-    <!-- The Completed disclosure carries its count: "Completed \u00b7 2". -->
-    <string name="today_section_completed_count">Completed \u00b7 %1$d</string>
+    <!-- The Completed disclosure carries its count in brackets, "Completed (2)",
+         at the owner's word on 2026-11-10 (D-131); it was "Completed \u00b7 2". -->
+    <string name="today_section_completed_count">Completed (%1$d)</string>
     <string name="today_completed_expand">Show completed tasks</string>
     <string name="today_completed_collapse">Hide completed tasks</string>
     <!-- The paused session card, per D-048. Three strings, where D-012's Focus

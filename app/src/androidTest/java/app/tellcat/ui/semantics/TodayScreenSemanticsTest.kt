@@ -837,7 +837,7 @@ class TodayScreenSemanticsTest {
         const val NO_REMINDER_BAND = "No reminder set"
 
         /** D-012's Completed disclosure, which carries a count and collapses. */
-        const val COMPLETED_ONE = "Completed · 1"
+        const val COMPLETED_ONE = "Completed (1)"
 
         /** A task finished a week ago, D-131. */
         const val OLD_TITLE = "Renew the library card"
