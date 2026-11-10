@@ -302,6 +302,12 @@ class TaskListViewModelTest {
     /** A reminder on the fixture day, at an hour nothing else in here uses. */
     private val reminder: LocalDateTime = today.atTime(9, 0)
     private val completedAt: Instant = Instant.parse("2026-01-02T17:30:00Z")
+
+    /**
+     * Completed on the test's own day, on the phone's clock. An overdue task is
+     * on Today once completed only if it was completed today, D-131.
+     */
+    private val completedToday: Instant = today.atTime(17, 30).atZone(ZoneId.systemDefault()).toInstant()
     private val deletedAt: Instant = Instant.parse("2026-01-03T08:15:00Z")
 
     private val dao = FakeTaskDao()
@@ -1030,7 +1036,7 @@ class TaskListViewModelTest {
             scheduledDate = today.minusDays(2),
             dueDate = today.plusDays(1),
             estimatedDurationMinutes = 15,
-            completedAt = completedAt
+            completedAt = completedToday
         )
         store(task(id = "a", scheduledDate = today), untouched)
         val model = viewModel()
@@ -1479,12 +1485,15 @@ class TaskListViewModelTest {
 
     @Test
     fun undoingACompletionReturnsAnOverdueTaskToTheOverdueBand() {
+        // On the real date: completing stamps the real clock, and an overdue
+        // task stays on Today once completed only if that was today, D-131.
+        val realToday = LocalDate.now()
         store(
-            task(id = "today", scheduledDate = today),
-            task(id = "done", scheduledDate = today, completedAt = completedAt),
-            task(id = "a", scheduledDate = today.minusDays(4))
+            task(id = "today", scheduledDate = realToday),
+            task(id = "done", scheduledDate = realToday, completedAt = completedAt),
+            task(id = "a", scheduledDate = realToday.minusDays(4))
         )
-        val model = viewModel()
+        val model = TaskListViewModel(repository, FakeCurrentDay(realToday), SavedStateHandle(), alarms)
         assertEquals(listOf("a", "today", "done"), visible(model, 3).map { it.id })
 
         model.toggleComplete("a")
@@ -1984,7 +1993,7 @@ class TaskListViewModelTest {
             scheduledDate = today.minusDays(2),
             dueDate = today.plusDays(3),
             estimatedDurationMinutes = 15,
-            completedAt = completedAt
+            completedAt = completedToday
         )
         store(original)
         val model = viewModel()

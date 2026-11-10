@@ -5,6 +5,8 @@ import org.junit.Test
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.ZoneOffset
 
 class TaskQueriesTest {
 
@@ -69,6 +71,92 @@ class TaskQueriesTest {
         val completed = task(id = "a", scheduledDate = today, completedAt = timestamp)
 
         assertEquals(listOf("a"), ids(todayTasks(listOf(completed), today)))
+    }
+
+    // --- D-131: Completed on Today holds today's finished work ----------------
+
+    @Test
+    fun `a task scheduled and completed on an earlier day is not on today`() {
+        val old = task(id = "old", scheduledDate = yesterday, completedAt = timestamp.minusSeconds(DAY_SECONDS))
+
+        assertEquals(emptyList<String>(), ids(todayTasks(listOf(old), today, zone = UTC)))
+    }
+
+    @Test
+    fun `a task completed weeks ago is not on today`() {
+        val old = task(
+            id = "old",
+            scheduledDate = today.minusWeeks(3),
+            completedAt = timestamp.minusSeconds(DAY_SECONDS * 21)
+        )
+
+        assertEquals(emptyList<String>(), ids(todayTasks(listOf(old), today, zone = UTC)))
+    }
+
+    @Test
+    fun `an overdue task completed today is on today`() {
+        val done = task(id = "done", scheduledDate = today.minusWeeks(1), completedAt = timestamp)
+
+        assertEquals(listOf("done"), ids(todayTasks(listOf(done), today, zone = UTC)))
+    }
+
+    @Test
+    fun `a task scheduled for today and completed ahead of it is on today`() {
+        val early = task(id = "early", scheduledDate = today, completedAt = timestamp.minusSeconds(DAY_SECONDS))
+
+        assertEquals(listOf("early"), ids(todayTasks(listOf(early), today, zone = UTC)))
+    }
+
+    @Test
+    fun `a task completed today leaves today at midnight`() {
+        val done = task(id = "done", scheduledDate = today, completedAt = timestamp)
+
+        assertEquals(emptyList<String>(), ids(todayTasks(listOf(done), today.plusDays(1), zone = UTC)))
+    }
+
+    @Test
+    fun `an outstanding overdue task stays however old it is`() {
+        val overdue = task(id = "overdue", scheduledDate = today.minusYears(1))
+
+        assertEquals(listOf("overdue"), ids(todayTasks(listOf(overdue), today, zone = UTC)))
+    }
+
+    /** 20:00 UTC on the 30th is 01:30 on the 31st in India, so it was today there. */
+    @Test
+    fun `the day of completion is read on the phone's clock`() {
+        val lateNight = task(
+            id = "late",
+            scheduledDate = yesterday,
+            completedAt = Instant.parse("2026-08-30T20:00:00Z")
+        )
+
+        assertEquals(listOf("late"), ids(todayTasks(listOf(lateNight), today, zone = ZoneId.of("Asia/Kolkata"))))
+        assertEquals(emptyList<String>(), ids(todayTasks(listOf(lateNight), today, zone = UTC)))
+    }
+
+    @Test
+    fun `a task still settling after its tick stays until it settles`() {
+        val ticked = task(id = "ticked", scheduledDate = yesterday, completedAt = timestamp.minusSeconds(DAY_SECONDS))
+
+        assertEquals(
+            listOf("ticked"),
+            ids(todayTasks(listOf(ticked), today, settling = setOf("ticked"), zone = UTC))
+        )
+    }
+
+    @Test
+    fun `completed counts only today's finished work`() {
+        val tasks = listOf(
+            task(id = "doneToday", scheduledDate = today, completedAt = timestamp),
+            task(id = "overdueDoneToday", scheduledDate = yesterday, completedAt = timestamp),
+            task(id = "doneLastWeek", scheduledDate = today.minusWeeks(1), completedAt = timestamp.minusSeconds(DAY_SECONDS * 7)),
+            task(id = "open", scheduledDate = today)
+        )
+
+        val completed = todaySections(tasks, today, zone = UTC)
+            .single { section -> section.band == TodayBand.COMPLETED }
+
+        assertEquals(listOf("doneToday", "overdueDoneToday"), completed.tasks.map { it.id })
     }
 
     @Test
@@ -820,5 +908,10 @@ class TaskQueriesTest {
         val afternoon = task("b", scheduledDate = today, reminderAt = todayAt(16, 0))
 
         assertEquals(listOf("b", "a"), ids(todayTasks(listOf(done, afternoon), today, settling = setOf("a"))))
+    }
+
+    private companion object {
+        const val DAY_SECONDS = 24L * 60 * 60
+        val UTC: ZoneId = ZoneOffset.UTC
     }
 }

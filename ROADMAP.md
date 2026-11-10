@@ -23,6 +23,10 @@ upload key, `main` pushed, and sent to the Alpha closed test as release 6
 (1.4), full rollout, on 2026-11-09, at the owner's word. **D-125 was approved on 2026-11-09** and is built on
 `fix/restore-after-restart` (a4c2880, schema 18, 1146 JVM tests pass), for
 1.4.1; it needs the restart check on the phone before it merges.
+**D-131 was approved on 2026-11-10** from a tester's report: Today's Completed
+kept every task ever finished, and now holds only what was completed today or
+scheduled for today. Built on `fix/today-completed-today` for 1.4.1; its
+instrumented test is written and compiled, not run.
 `feature/calendar-today` stays out: the live privacy policy still says the app
 does not read the calendar.
 

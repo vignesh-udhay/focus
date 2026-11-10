@@ -1,6 +1,7 @@
 package app.tellcat.core.domain
 
 import java.time.LocalDate
+import java.time.ZoneId
 
 /**
  * The derived task views.
@@ -16,8 +17,14 @@ import java.time.LocalDate
  * Tasks to work on now: everything scheduled for today or earlier, so nothing
  * overdue can quietly disappear.
  *
- * Completed tasks stay in the result. Today shows what was finished alongside
- * what is left.
+ * Completed tasks stay in the result when they belong to today: completed
+ * today, or scheduled for today. Today shows what was finished alongside what
+ * is left, and the day starts clean. A task finished on an earlier day is in
+ * the Logbook, not here. `docs/decisions.md` D-131; until then a task
+ * completed last week stayed under Completed for good.
+ *
+ * The day a task was completed is read in [zone], the phone's own, because
+ * [Task.completedAt] is an instant and "today" is a date on the user's clock.
  *
  * The result is ordered so the list reads as a deliberate plan rather than a
  * database result: what has slipped, then today's untimed work, then today's
@@ -37,12 +44,14 @@ import java.time.LocalDate
 fun todayTasks(
     tasks: List<Task>,
     today: LocalDate,
-    settling: Set<String> = emptySet()
+    settling: Set<String> = emptySet(),
+    zone: ZoneId = ZoneId.systemDefault()
 ): List<Task> =
     tasks
         .filter { task ->
             val scheduled = task.scheduledDate
-            !task.isDeleted && scheduled != null && !scheduled.isAfter(today)
+            !task.isDeleted && scheduled != null && !scheduled.isAfter(today) &&
+                belongsToToday(task, today, settling, zone)
         }
         // Stable, which is what preserves input order within a group. The
         // second key is null outside With a reminder, so it orders nothing there.
@@ -52,6 +61,26 @@ fun todayTasks(
                     task.ringsAt.takeIf { todayGroup(task, today, settling) == WITH_REMINDER }
                 }
         )
+
+/**
+ * Whether a task on or before today is still Today's to show. D-131.
+ *
+ * Outstanding work always is: an overdue task must never quietly disappear. A
+ * completed task is when it was completed today, or is scheduled for today, or
+ * is still settling after its tick (D-086), so a tick a moment before midnight
+ * is still seen before the row goes. The widget's "everything done" reads the
+ * same two dates.
+ */
+private fun belongsToToday(
+    task: Task,
+    today: LocalDate,
+    settling: Set<String>,
+    zone: ZoneId
+): Boolean =
+    !task.isCompleted ||
+        task.id in settling ||
+        task.scheduledDate == today ||
+        task.completedAt?.atZone(zone)?.toLocalDate() == today
 
 /** Scheduled before today, still outstanding, and needing a decision. */
 private const val OVERDUE = 0
@@ -122,7 +151,7 @@ enum class TodayBand {
     /** Today, with a time. It will announce itself. */
     WITH_REMINDER,
 
-    /** Done, whenever it was scheduled. */
+    /** Done today, or scheduled for today and done. D-131. */
     COMPLETED
 }
 
@@ -150,9 +179,10 @@ data class TodaySection(val band: TodayBand, val tasks: List<Task>)
 fun todaySections(
     tasks: List<Task>,
     today: LocalDate,
-    settling: Set<String> = emptySet()
+    settling: Set<String> = emptySet(),
+    zone: ZoneId = ZoneId.systemDefault()
 ): List<TodaySection> =
-    todayTasks(tasks, today, settling)
+    todayTasks(tasks, today, settling, zone)
         .fold(mutableListOf<Pair<TodayBand, MutableList<Task>>>()) { sections, task ->
             val band = todayBandOf(task, today, settling)
             val current = sections.lastOrNull()
