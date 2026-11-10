@@ -311,7 +311,7 @@ alarm stream and vibrates until Stop, Snooze or ten minutes, and its
 notification, on the separate Alarms channel, carries those two answers and the
 full-screen intent to `AlarmActivity`. The activity sits beside `MainActivity`
 because `core/notification` opens it; what it draws, `AlarmScreen`, is in
-`ui/alarm`. The rules (how it rings, when it stops, which taps are stale) are
+`ui/alarm`, with `AlarmSlide`, the slide that stops it (D-130). The rules (how it rings, when it stops, which taps are stale) are
 pure functions in `core/domain/Alarm.kt`. The service holds which alarm it is
 ringing and nothing else: every reconciliation calls
 `AlarmRingService.silenceIfSettled`, so storage stays the one state. Anything

@@ -38,4 +38,13 @@ object TellcatHaptics {
             if (done) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff
         )
     }
+
+    /**
+     * The alarm slide's handle crossing the line past which letting go stops
+     * the alarm. D-102 as amended by D-130: the one buzz the slide makes, so
+     * the user feels the moment it will act before they lift.
+     */
+    fun alarmSlideThreshold(haptics: HapticFeedback) {
+        haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+    }
 }
