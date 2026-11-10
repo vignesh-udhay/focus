@@ -358,13 +358,13 @@ class QuickAddToolsTest {
     private fun turnTheAlarmOnInWhen() {
         tool(WHEN).performClick()
         rule.waitUntilExactlyOneExists(hasText(ALARM), TIMEOUT_MILLIS)
-        rule.onNodeWithText(ALARM).performScrollTo().performClick()
+        rule.onNodeWithText(ALARM).performClick()
         rule.waitForIdle()
         if (rule.onAllNodes(hasText(PRIMING_NOT_NOW)).fetchSemanticsNodes().isNotEmpty()) {
             rule.onNodeWithText(PRIMING_NOT_NOW).performClick()
             rule.waitUntilDoesNotExist(hasText(PRIMING_NOT_NOW), TIMEOUT_MILLIS)
         }
-        rule.onNodeWithText(SAVE_WHEN).performScrollTo().performClick()
+        rule.onNodeWithText(SAVE_WHEN).performClick()
     }
 
     /** The 48dp floor, measured where taps land. */
