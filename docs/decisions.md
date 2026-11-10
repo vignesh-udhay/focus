@@ -7750,7 +7750,8 @@ checked after unlock; then the same with the notification swiped away first.
   and were followed up at 11:31; one was swiped away, then the phone was
   restarted and unlocked. The one left came back as its follow-up, "Reminder
   again · set for 11:21 PM", showing its 11:31 time; the swiped one did not
-  come back, and its `inShadeSince` was clear. Both were removed after.
+  come back, and its `inShadeSince` was clear. The owner did not notice it
+  arrive: no sound, no vibration, no heads-up. Both were removed after.
 
 **Built.** The rule is pure, in `core/domain/ShadeRestore.kt`:
 `remindersToRestore` takes the live tasks, the moment the phone started and
