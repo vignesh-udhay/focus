@@ -576,7 +576,9 @@ class MigrationTest {
                         // Appended by version 16, D-116.
                         "recurrenceMonthlyOrdinal",
                         "recurrenceMonthlyWeekday",
-                        "recurrenceAnchor"
+                        "recurrenceAnchor",
+                        // Appended by version 18, D-125.
+                        "inShadeSince"
                     ),
                     columns
                 )

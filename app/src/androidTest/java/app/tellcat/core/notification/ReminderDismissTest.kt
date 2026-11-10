@@ -60,6 +60,11 @@ class ReminderDismissTest {
         context.ensureReminderChannel()
         context.ensureFollowUpChannel()
         runBlocking { repository.insert(task) }
+        // The write starts the app's own reconcile, which takes off the shade
+        // every reminder whose task it did not read (D-099). One that read the
+        // tasks a moment before this insert would take this test's reminder
+        // off as soon as it is posted, so the pass is given time to finish.
+        SystemClock.sleep(SettleMillis)
     }
 
     @After
