@@ -259,7 +259,8 @@ class MigrationTest {
             MIGRATION_13_14,
             MIGRATION_14_15,
             MIGRATION_15_16,
-            MIGRATION_16_17
+            MIGRATION_16_17,
+            MIGRATION_17_18
         ).use { database ->
             database.query(
                 "SELECT notes, recurrence, spawnedFromId, reminderAt FROM tasks WHERE id = ?",
@@ -503,7 +504,8 @@ class MigrationTest {
             MIGRATION_13_14,
             MIGRATION_14_15,
             MIGRATION_15_16,
-            MIGRATION_16_17
+            MIGRATION_16_17,
+            MIGRATION_17_18
         ).use { database ->
             database.query(
                 """
@@ -574,7 +576,9 @@ class MigrationTest {
                         // Appended by version 16, D-116.
                         "recurrenceMonthlyOrdinal",
                         "recurrenceMonthlyWeekday",
-                        "recurrenceAnchor"
+                        "recurrenceAnchor",
+                        // Appended by version 18, D-125.
+                        "inShadeSince"
                     ),
                     columns
                 )
@@ -635,7 +639,8 @@ class MigrationTest {
             MIGRATION_13_14,
             MIGRATION_14_15,
             MIGRATION_15_16,
-            MIGRATION_16_17
+            MIGRATION_16_17,
+            MIGRATION_17_18
         ).use { database ->
             database.query(
                 """
@@ -728,7 +733,7 @@ class MigrationTest {
         const val TEST_DB = "migration-test.db"
 
         /** The schema every migration in this test is aimed at. */
-        const val LatestVersion = 17
+        const val LatestVersion = 18
     }
 
     /**
@@ -939,6 +944,53 @@ class MigrationTest {
         anchorsAfterMigrating()
         val task = openAndReadTasks().single { it.id == "monthly-31" }
         assertEquals(java.time.MonthDay.of(12, 31), task.recurrenceAnchor)
+    }
+
+    // --- Version 18, D-125: what sits in the shade --------------------------------------------
+
+    /**
+     * Version 18 adds the column as null on every row. A backfill would put old
+     * reminders back in the shade at the first restart after the update.
+     */
+    @Test
+    fun migratedRowsAreNotInTheShade() {
+        seedVersion1()
+
+        migrate().use { database ->
+            database.query("SELECT id, inShadeSince FROM tasks").use { cursor ->
+                var rows = 0
+                while (cursor.moveToNext()) {
+                    rows++
+                    assertTrue(cursor.getString(0) + " is in the shade", cursor.isNull(1))
+                }
+
+                assertEquals(3, rows)
+            }
+        }
+
+        assertTrue(openAndReadTasks().none { it.inShadeSince != null })
+    }
+
+    /** A version-17 row announced and unanswered keeps all it had, and is not in the shade. */
+    @Test
+    fun version18KeepsAnAnnouncedReminderAndLeavesTheShadeEmpty() {
+        helper.createDatabase(TEST_DB, 17).use { database ->
+            database.execSQL(
+                "INSERT INTO tasks (id, title, createdAt, reminderAt, reminderDeliveredAt, followUpAt) " +
+                    "VALUES (?, ?, ?, ?, ?, ?)",
+                arrayOf<Any?>(
+                    "told", "Call the dentist", createdAt.toEpochMilli(), "2026-11-08T09:30",
+                    Instant.parse("2026-11-08T09:30:04Z").toEpochMilli(), "2026-11-08T09:40"
+                )
+            )
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 18, true, MIGRATION_17_18).close()
+
+        val task = openAndReadTasks().single { it.id == "told" }
+        assertEquals(Instant.parse("2026-11-08T09:30:04Z"), task.reminderDeliveredAt)
+        assertEquals(java.time.LocalDateTime.of(2026, 11, 8, 9, 40), task.followUpAt)
+        assertNull(task.inShadeSince)
     }
 
 }

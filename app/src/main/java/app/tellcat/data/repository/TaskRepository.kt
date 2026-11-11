@@ -137,11 +137,29 @@ class TaskRepository(private val dao: TaskDao) {
     }
 
     /**
-     * Forgets [id]'s pending follow-up: it was posted, or the user answered the
-     * reminder some other way. D-108.
+     * Forgets [id]'s pending follow-up without posting it, because it could not
+     * be shown. Whatever was in the shade stays there. D-108.
      */
     suspend fun clearFollowUp(id: String) {
         dao.setFollowUp(id = id, followUpAt = null)
+    }
+
+    /** [id]'s follow-up was posted at [postedAt], and is what the shade holds. D-108, D-125. */
+    suspend fun recordFollowUpPosted(id: String, postedAt: Instant) {
+        dao.recordFollowUpPosted(id = id, postedAt = postedAt.toEpochMilli())
+    }
+
+    /**
+     * [id] was opened, which answers its reminder: no follow-up, and nothing
+     * put back after a restart. D-108, D-125.
+     */
+    suspend fun answerReminder(id: String) {
+        dao.answerReminder(id)
+    }
+
+    /** [id]'s notification was swiped away, so a restart leaves it gone. D-125. */
+    suspend fun dismissFromShade(id: String) {
+        dao.setInShade(id = id, since = null)
     }
 
     /** The early reminder for [id] was told at [at]. D-115. */

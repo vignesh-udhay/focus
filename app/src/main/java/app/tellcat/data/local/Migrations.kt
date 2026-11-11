@@ -313,6 +313,16 @@ val MIGRATION_16_17 = Migration(16, 17) { database ->
     )
 }
 
+/**
+ * Version 18, D-125: since when an unanswered reminder has sat in the shade.
+ * An `Instant`, stored as epoch milliseconds like `reminderDeliveredAt`. Null
+ * on every existing row: nothing is posted again after the first restart
+ * following the update, which is the safe side of a column nobody wrote yet.
+ */
+val MIGRATION_17_18 = Migration(17, 18) { database ->
+    database.execSQL("ALTER TABLE tasks ADD COLUMN inShadeSince INTEGER")
+}
+
 /** Every migration, in order, for the builder and the migration test. */
 val TellcatMigrations = arrayOf(
     MIGRATION_1_2,
@@ -330,5 +340,6 @@ val TellcatMigrations = arrayOf(
     MIGRATION_13_14,
     MIGRATION_14_15,
     MIGRATION_15_16,
-    MIGRATION_16_17
+    MIGRATION_16_17,
+    MIGRATION_17_18
 )

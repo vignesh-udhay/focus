@@ -30,6 +30,7 @@ import app.tellcat.core.domain.hasLiveReminder
 import java.time.LocalDateTime
 import app.tellcat.core.domain.pendingFollowUp
 import app.tellcat.core.domain.pendingEarlyReminder
+import app.tellcat.core.domain.remindersToRestore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -396,6 +397,10 @@ class ReminderReceiver : BroadcastReceiver() {
  *
  * `MY_PACKAGE_REPLACED` is here for the same reason, and it is the one that
  * shows up in development: updating the app cancels its alarms.
+ *
+ * A restart also clears the shade, so on `BOOT_COMPLETED`, which comes after the
+ * first unlock, the reminders that were in it are posted again. D-125. Only
+ * then: an update or a clock change leaves the shade as it was.
  */
 class ReminderRecoveryReceiver : BroadcastReceiver() {
 
@@ -411,6 +416,7 @@ class ReminderRecoveryReceiver : BroadcastReceiver() {
             try {
                 if (UserManagerCompat.isUserUnlocked(context)) {
                     application.reconcileReminders()
+                    if (intent.action == Intent.ACTION_BOOT_COMPLETED) context.restoreShade(application)
                 } else {
                     // Before the first unlock: set the alarms from the copy, which
                     // is all that can be read. The unlock reconciles properly.
@@ -440,6 +446,36 @@ class ReminderRecoveryReceiver : BroadcastReceiver() {
             // literal, because the constant is API 31 and this runs from 29.
             "android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED"
         )
+    }
+}
+
+/**
+ * Puts back every reminder the restart took off the shade, quietly. D-125.
+ *
+ * After the reconcile, so a follow-up owed while the phone was off is D-108's
+ * to post, with sound, and what was told before the unlock is in storage. Never
+ * as an alarm: one that rang comes back as the notification its Stop leaves,
+ * D-102. Each is posted alone, so one that cannot be shown does not stop the
+ * rest; that failure is Reminder health's Notifications row to report.
+ */
+private suspend fun Context.restoreShade(application: TellcatApplication) {
+    val bootedAt = Instant.now().minusMillis(SystemClock.elapsedRealtime())
+    val tasks = application.taskRepository.observeTasks().first()
+
+    remindersToRestore(tasks, bootedAt, LocalDateTime.now()).forEach { restored ->
+        val task = restored.task
+        val first = task.inShadeSince ?: return@forEach
+        try {
+            if (restored.followedUp) {
+                ensureFollowUpChannel()
+                postFollowUp(task, restoredFrom = first)
+            } else {
+                ensureReminderChannel()
+                postReminder(task, restoredFrom = first)
+            }
+        } catch (error: Exception) {
+            Log.e(LogTag, "Could not put back the reminder for ${task.id}.", error)
+        }
     }
 }
 
@@ -493,14 +529,18 @@ private suspend fun Context.deliverFollowUp(
         return
     }
 
-    if (canPostFollowUps()) {
+    val posted = canPostFollowUps() && run {
         ensureFollowUpChannel()
         postFollowUp(task)
-    } else {
-        Log.w(LogTag, "Follow-ups are off or cannot be shown. Not posting one for ${task.id}.")
     }
 
-    application.taskRepository.clearFollowUp(task.id)
+    if (posted) {
+        // What the shade now holds, for a restart to put back. D-125.
+        application.taskRepository.recordFollowUpPosted(task.id, arrivedWallAt)
+    } else {
+        Log.w(LogTag, "Follow-ups are off or cannot be shown. Not posting one for ${task.id}.")
+        application.taskRepository.clearFollowUp(task.id)
+    }
     application.reconcileReminders()
 }
 

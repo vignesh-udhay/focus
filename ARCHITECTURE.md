@@ -112,7 +112,7 @@ the platform.
 
 ## Persistence
 
-Room, two entities, at schema version 17. `TaskEntity` is the task;
+Room, two entities, at schema version 18. `TaskEntity` is the task;
 `ReminderDeliveryEntity` records when each reminder was due and when it
 actually arrived, which is what Reminder health reads.
 
@@ -295,6 +295,17 @@ is posted from the copy. Its off switch is the "Reminders again" channel and
 nothing else: Settings' row of that name reads it through `followUpChannelOn`
 on every resume and opens Android's page for it (D-110), so the app stores no
 copy that could disagree.
+
+**What a restart takes off the shade comes back (D-125).** `inShadeSince` on
+the task is when the notification now standing for its reminder was posted:
+written with the announcement in `TaskDao.recordAnnounced`, moved on by
+`recordFollowUpPosted`, and cleared by every answer that clears `followUpAt`
+and by a swipe, which reaches `ReminderActionReceiver` as the notification's
+delete intent. On `BOOT_COMPLETED`, after its reconcile, `ReminderRecoveryReceiver`
+asks `remindersToRestore` in `core/domain/ShadeRestore.kt` which to put back and
+posts each quietly, the reminder through `postReminder` and the follow-up
+through `postFollowUp`, with `restoredFrom`. Not in the backup, like
+`followUpAt`.
 
 **Revoking the exact-alarm grant (D-103)** cancels the exact alarms and kills
 the app, and nothing is broadcast. So every pass also keeps one inexact

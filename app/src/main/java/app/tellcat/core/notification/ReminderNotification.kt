@@ -60,9 +60,12 @@ internal fun Context.postReminder(
     // Posted without sound or a heads-up: what an alarm leaves behind after
     // Stop, or after ringing unanswered for `AlarmRingLimit`. The alarm already
     // made the noise; this is the record with Done and Snooze on it. D-102.
-    silent: Boolean = false
+    silent: Boolean = false,
+    // Put back after a restart, D-125: first posted at this moment, which the
+    // shade shows again. Quiet, and the line names the day when it was not today.
+    restoredFrom: Instant? = null
 ): Boolean {
-    val summary = task.reminderSummary(this)
+    val summary = task.reminderSummary(this, nameDay = restoredFrom != null)
 
     fun action(label: Int, action: String) = NotificationCompat.Action.Builder(
         0,
@@ -73,7 +76,9 @@ internal fun Context.postReminder(
     val builder = reminderBuilder(task, summary)
         .addAction(action(R.string.reminder_action_done, ReminderActionReceiver.ACTION_DONE))
         .addAction(action(R.string.reminder_action_snooze, ReminderActionReceiver.ACTION_SNOOZE))
-        .setSilent(silent)
+        .setSilent(silent || restoredFrom != null)
+        .setDeleteIntent(dismissIntent(task))
+    restoredFrom?.let { first -> builder.setWhen(first.toEpochMilli()) }
 
     // The expanded form is where the notes live. Collapsed shows the title and
     // the summary line, which is what the frame draws.
@@ -98,8 +103,15 @@ internal fun Context.postReminder(
  * The same notification id, so it takes the reminder's place in the shade rather
  * than stacking beside it. On its own channel, so Android's settings can turn
  * follow-ups off without touching reminders.
+ *
+ * With [restoredFrom], put back after a restart, D-125: quiet, and showing the
+ * moment it was first posted.
  */
-internal fun Context.postFollowUp(task: Task, requireUnlockForActions: Boolean = false): Boolean {
+internal fun Context.postFollowUp(
+    task: Task,
+    requireUnlockForActions: Boolean = false,
+    restoredFrom: Instant? = null
+): Boolean {
     // The day too when it was not today: posted after a night with the phone
     // off, "set for 9:30 PM" alone would read as tonight.
     val set = task.reminderAt?.let { at -> formatReminderMoment(at) } ?: return false
@@ -114,6 +126,8 @@ internal fun Context.postFollowUp(task: Task, requireUnlockForActions: Boolean =
     val builder = reminderBuilder(task, summary, channelId = FollowUpChannelId)
         .addAction(action(R.string.reminder_action_done, ReminderActionReceiver.ACTION_DONE))
         .addAction(action(R.string.reminder_action_snooze, ReminderActionReceiver.ACTION_SNOOZE))
+        .setDeleteIntent(dismissIntent(task))
+    restoredFrom?.let { first -> builder.setSilent(true).setWhen(first.toEpochMilli()) }
 
     task.notes?.takeIf { it.isNotBlank() }?.let { notes ->
         builder.setStyle(NotificationCompat.BigTextStyle().bigText("$summary\n$notes"))
@@ -233,6 +247,8 @@ internal fun Context.earlyReminderSummary(main: LocalDateTime, now: LocalDateTim
 internal fun Context.postSnoozeOptions(task: Task, now: LocalDateTime): Boolean {
     val builder = reminderBuilder(task, task.reminderSummary(this))
         .setSubText(getString(R.string.reminder_snooze_until))
+        // Still the reminder, so swiping the choice away dismisses it. D-125.
+        .setDeleteIntent(dismissIntent(task))
 
     availableSnoozeOptions(now).forEach { option ->
         builder.addAction(
@@ -498,8 +514,11 @@ private fun Context.reminderBuilder(task: Task, summary: String, channelId: Stri
  * than a pattern of ours, because a reminder that says 3:30 PM to someone
  * whose phone says 15:30 everywhere else reads as a different app's
  * notification.
+ *
+ * With [nameDay], the day too when it was not today, as a reminder put back
+ * after a restart says it. D-125.
  */
-private fun Task.reminderSummary(context: Context): String {
+private fun Task.reminderSummary(context: Context, nameDay: Boolean = false): String {
     // **A snooze says so, and names the time the reminder was set for.** D-109.
     // The line used to give the snooze's own time, which is the moment it is
     // ringing, so it read as the reminder's time and hid that it was late.
@@ -509,7 +528,7 @@ private fun Task.reminderSummary(context: Context): String {
     } else {
         // When it rang. D-078.
         val at = ringsAt ?: return ""
-        context.formatTime(at.toLocalTime())
+        if (nameDay) context.formatReminderMoment(at) else context.formatTime(at.toLocalTime())
     }
     // Sentence form: "Every week" rather than "Weekly", which is how a line
     // read at a glance mid-task should phrase itself. `strings.xml` used to
@@ -599,6 +618,13 @@ private fun Context.actionIntent(
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     )
 }
+
+/**
+ * What Android sends when the user swipes [task]'s reminder or follow-up away,
+ * so a restart does not put it back. D-125. Not sent for the app's own cancels.
+ */
+private fun Context.dismissIntent(task: Task): PendingIntent =
+    actionIntent(task.id, ReminderActionReceiver.ACTION_DISMISSED, postedFor = task.ringsAt)
 
 private fun Context.openIntent(taskId: String): PendingIntent = PendingIntent.getActivity(
     this,

@@ -30,7 +30,7 @@ import java.time.ZoneOffset
  * test here is the code production runs, over rows rather than SQLite.
  * `TaskDaoTest` checks the same writes against Room on a device.
  */
-private class ListTaskDao : TaskDao {
+internal class ListTaskDao : TaskDao {
 
     val rows = MutableStateFlow<List<TaskEntity>>(emptyList())
 
@@ -56,10 +56,21 @@ private class ListTaskDao : TaskDao {
     override suspend fun update(task: TaskEntity) = change(task.id) { task }
 
     override suspend fun softDelete(id: String, deletedAt: Long) =
-        change(id) { row -> row.copy(deletedAt = Instant.ofEpochMilli(deletedAt), followUpAt = null) }
+        change(id) { row ->
+            row.copy(deletedAt = Instant.ofEpochMilli(deletedAt), followUpAt = null, inShadeSince = null)
+        }
 
     override suspend fun setFollowUp(id: String, followUpAt: String?) =
         change(id) { row -> row.copy(followUpAt = TaskConverters.textToLocalDateTime(followUpAt)) }
+
+    override suspend fun setInShade(id: String, since: Long?) =
+        change(id) { row -> row.copy(inShadeSince = since?.let(Instant::ofEpochMilli)) }
+
+    override suspend fun answerReminder(id: String) =
+        change(id) { row -> row.copy(followUpAt = null, inShadeSince = null) }
+
+    override suspend fun recordFollowUpPosted(id: String, postedAt: Long) =
+        change(id) { row -> row.copy(followUpAt = null, inShadeSince = Instant.ofEpochMilli(postedAt)) }
 
     override suspend fun markEarlyDelivered(id: String, deliveredAt: Long) =
         change(id) { row -> row.copy(earlyDeliveredAt = Instant.ofEpochMilli(deliveredAt)) }
@@ -76,7 +87,8 @@ private class ListTaskDao : TaskDao {
         row.copy(
             snoozedUntil = TaskConverters.textToLocalDateTime(snoozedUntil),
             reminderDeliveredAt = null,
-            followUpAt = null
+            followUpAt = null,
+            inShadeSince = null
         )
     }
 

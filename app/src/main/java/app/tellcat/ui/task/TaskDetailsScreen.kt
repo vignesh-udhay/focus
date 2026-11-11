@@ -211,10 +211,12 @@ fun TaskDetailsScreen(
     // **Opening the task answers its reminder.** D-108. A follow-up still
     // pending is forgotten, here or from the notification that brought the user
     // in. Keyed on the pending moment, so one that comes due while the screen
-    // is open is answered too: the user is looking at the task.
+    // is open is answered too: the user is looking at the task. And a restart
+    // no longer puts its notification back, D-125.
     val followUp = current.pendingFollowUp
-    LaunchedEffect(current.id, followUp) {
-        if (followUp != null) viewModel.acknowledgeFollowUp(current.id)
+    val inShade = current.inShadeSince
+    LaunchedEffect(current.id, followUp, inShade) {
+        if (followUp != null || inShade != null) viewModel.acknowledgeFollowUp(current.id)
     }
 
     val context = LocalContext.current

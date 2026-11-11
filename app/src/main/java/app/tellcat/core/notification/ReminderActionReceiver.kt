@@ -44,7 +44,17 @@ class ReminderActionReceiver : BroadcastReceiver() {
                 // was posted, so what it offers no longer describes the task.
                 // Taken off screen instead, since it is out of date.
                 val postedFor = intent.getStringExtra(EXTRA_POSTED_FOR)?.let(LocalDateTime::parse)
-                if (!isCurrentAction(application.taskRepository.findTask(taskId), postedFor)) {
+                val current = isCurrentAction(application.taskRepository.findTask(taskId), postedFor)
+
+                // **Swiped away.** D-125. Dismissed, so a restart leaves it gone.
+                // Nothing else: the follow-up is still owed, D-108, and the
+                // notification has already left the shade.
+                if (intent.action == ACTION_DISMISSED) {
+                    if (current) application.taskRepository.dismissFromShade(taskId)
+                    return@launch
+                }
+
+                if (!current) {
                     context.cancelReminder(taskId)
                     return@launch
                 }
@@ -127,6 +137,9 @@ class ReminderActionReceiver : BroadcastReceiver() {
         const val ACTION_SNOOZE_UNTIL = "app.tellcat.action.REMINDER_SNOOZE_UNTIL"
         const val ACTION_SNOOZE_EARLY = "app.tellcat.action.EARLY_REMINDER_SNOOZE"
         const val ACTION_SNOOZE_EARLY_UNTIL = "app.tellcat.action.EARLY_REMINDER_SNOOZE_UNTIL"
+
+        /** The reminder or its follow-up was swiped away. D-125. */
+        const val ACTION_DISMISSED = "app.tellcat.action.REMINDER_DISMISSED"
 
         const val EXTRA_TASK_ID = "tellcat.extra.taskId"
         const val EXTRA_SNOOZE_OPTION = "tellcat.extra.snoozeOption"
