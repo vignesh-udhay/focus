@@ -32,6 +32,11 @@ instrumented tests are written and not run.
 press-and-hold becomes a tap to Snooze and a slide to Stop, brought from the
 calendar branch to `feature/slide-to-stop` for 1.4.1. Its instrumented tests
 are written and compiled, not run.
+
+**D-131 was approved on 2026-11-10** from a tester's report: Today's Completed
+kept every task ever finished, and now holds only what was completed today or
+scheduled for today. Built on `fix/today-completed-today` for 1.4.1; its
+instrumented test is written and compiled, not run.
 `feature/calendar-today` stays out: the live privacy policy still says the app
 does not read the calendar.
 

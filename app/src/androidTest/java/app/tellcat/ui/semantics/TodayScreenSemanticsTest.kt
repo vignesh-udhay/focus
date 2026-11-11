@@ -26,6 +26,7 @@ import app.tellcat.ui.today.TodayScreen
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDateTime
+import java.time.ZoneId
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -536,6 +537,33 @@ class TodayScreenSemanticsTest {
     }
 
     /**
+     * D-131. A task scheduled and finished a week ago is in the Logbook, not
+     * under Today's Completed, so the band is not there at all.
+     */
+    @Test
+    fun aTaskFinishedOnAnEarlierDay_isNotOnToday() {
+        val weekAgo = TestToday.minusDays(7)
+        setToday(
+            FontScale100,
+            FakeTaskDao(
+                listOf(
+                    testTask(id = "1", title = TITLE, scheduledDate = TestToday),
+                    testTask(
+                        id = "2",
+                        title = OLD_TITLE,
+                        scheduledDate = weekAgo,
+                        completedAt = weekAgo.atTime(12, 0).atZone(ZoneId.systemDefault()).toInstant()
+                    )
+                )
+            )
+        )
+
+        rule.waitUntilExactlyOneExists(hasText(TITLE), TIMEOUT_MILLIS)
+        rule.onNodeWithText(OLD_TITLE).assertDoesNotExist()
+        rule.onNodeWithText(COMPLETED_ONE).assertDoesNotExist()
+    }
+
+    /**
      * The banner says which check failed, not that something is wrong.
      *
      * The sentence is the health screen's own, which is the point: a user who
@@ -809,7 +837,10 @@ class TodayScreenSemanticsTest {
         const val NO_REMINDER_BAND = "No reminder set"
 
         /** D-012's Completed disclosure, which carries a count and collapses. */
-        const val COMPLETED_ONE = "Completed · 1"
+        const val COMPLETED_ONE = "Completed (1)"
+
+        /** A task finished a week ago, D-131. */
+        const val OLD_TITLE = "Renew the library card"
 
         /** The same action label the task rows carry, because it is the same act. */
         const val OPEN_TASK = "Open task details"

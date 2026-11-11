@@ -8167,3 +8167,70 @@ and compiled, not run: they need the owner's word for a phone or emulator run.
 
 **What would reverse this.** Testers stopping alarms by accident with the
 slide, which would argue for a longer threshold before it argues for the hold.
+
+## D-131. Today's Completed holds what was finished today
+
+**Decided on 2026-11-10**, at the owner's word, from a tester's report that
+Today's Completed shows old tasks. A fix to D-012 and D-076, which already
+described this band as the day's; the query never said so. For 1.4.1, beside
+D-125, D-129 and D-130. On `fix/today-completed-today`, from `main`. Numbered
+after D-130, which is on `feature/slide-to-stop`.
+
+**What was wrong.** `todayTasks` kept every task scheduled for today or
+earlier and dropped only deleted ones. A completed task went to the Completed
+band whenever it had been completed. So a task scheduled and ticked off last
+Tuesday was still under Completed today, and would be every day after, and the
+count beside "Completed" grew for as long as the app was used. The JVM tests
+never caught it, because every completed task in them was completed on the
+test's own day.
+
+**What the design always said.** D-012 collapses the band because "a plain
+completed list grows through the day", and calls its count the day's
+progress. D-076 calls it "how a task finished today is reopened". The Logbook
+(`PRODUCT.md`, "a record of completed work") is where everything finished
+lives. Today was meant to hold the day.
+
+**Decision.** A completed task is on Today when it was completed today, by the
+phone's date, or is scheduled for today. Everything else finished is in the
+Logbook only.
+
+- **A task finished yesterday leaves Today at midnight.** Today already moves
+  to the new day at midnight, so the band empties with it.
+- **An overdue task finished today is under Completed today**, as now: it was
+  on Today until it was done.
+- **A task scheduled for today and finished ahead of it is under Completed
+  today**, because it is today's plan, already done. The widget's "everything
+  done" line already reads these same two dates, so the two now agree.
+- **A task still settling after its tick (D-086) stays until it settles**, so a
+  tick a moment before midnight is still seen before the row goes.
+- **Outstanding work is untouched.** An overdue task stays however old it is;
+  nothing on Today may quietly disappear.
+
+**Why "completed today" and not "the last 24 hours".** Today is a date on the
+user's clock, and every other band is cut by date. A rolling window would hold
+last night's tasks this morning and drop them mid-afternoon, with nothing on
+screen to say why.
+
+**What is not changed.** Undo, reopening from the band, and the band's order,
+count and collapse. Nothing is deleted: the Logbook still holds every completed
+task, newest first. Inbox and Upcoming never showed completed tasks and still
+do not.
+
+**Tests.** `TaskQueriesTest`: a task scheduled and completed on an earlier day
+is not on Today; nor one completed weeks ago; an overdue task completed today
+is; a task scheduled for today and completed ahead of it is; a task completed
+today leaves at midnight; an outstanding overdue task stays however old; the
+day of completion is read on the phone's clock (20:00 UTC on the 30th is the
+31st in India); a settling task stays; Completed counts only today's finished
+work. `TodayScreenSemanticsTest.aTaskFinishedOnAnEarlierDay_isNotOnToday` is
+written and compiled, not run: it needs the owner's word for a phone or
+emulator run.
+
+**What would reverse this.** Users going to Today to find something they
+finished yesterday, which would argue for a way into the Logbook from the
+band, not for keeping old tasks in it.
+
+**Amended 2026-11-10, at the owner's word: the count is in brackets.** The
+band's header reads "Completed (3)", not "Completed · 3". Only the format
+changes: the count, the collapse and what TalkBack is told stay as D-012 set
+them. Earlier entries that quote "Completed · N" are history and keep it.
