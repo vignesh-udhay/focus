@@ -20,23 +20,17 @@ go out in the 14 days. **1.4 went to review on the closed test on
 skipped, 5 failed while the emulator was stuck on system dialogs, and all 5
 passed alone after a cold boot. Bumped to 1.4, versionCode 6 (9f8f4c4), same
 upload key, `main` pushed, and sent to the Alpha closed test as release 6
-(1.4), full rollout, on 2026-11-09, at the owner's word. **D-125 was approved on 2026-11-09** and is built on
-`fix/restore-after-restart` (a4c2880, schema 18, 1146 JVM tests pass), for
-1.4.1; it needs the restart check on the phone before it merges.
-**D-129 was decided on 2026-11-10**, from a tester's request in Play on 1.4: Quick
-Add's When offers Ring like an alarm and the early reminder. Built on
-`feature/quick-add-alarm`, also for 1.4.1; 1130 JVM tests pass, the
-instrumented tests are written and not run.
-
-**D-130 was approved on 2026-11-10** from a tester's Play request: the alarm's
-press-and-hold becomes a tap to Snooze and a slide to Stop, brought from the
-calendar branch to `feature/slide-to-stop` for 1.4.1. Its instrumented tests
-are written and compiled, not run.
-
-**D-131 was approved on 2026-11-10** from a tester's report: Today's Completed
-kept every task ever finished, and now holds only what was completed today or
-scheduled for today. Built on `fix/today-completed-today` for 1.4.1; its
-instrumented test is written and compiled, not run.
+(1.4), full rollout, on 2026-11-09, at the owner's word. **1.4.1 is merged on local `main`
+on 2026-11-11, at the owner's word**, not pushed, not bumped, no bundle yet. It
+holds four changes: D-125, a restart puts unanswered reminders back in the
+shade quietly (schema 18); D-129, Quick Add's When offers Ring like an alarm
+and the early reminder; D-130, the alarm stops with a slide and snoozes with a
+tap; D-131, Today's Completed holds what was finished today, counted in
+brackets. D-129, D-130 and D-131 each answer a tester's entry in Play's testing
+feedback on 1.4. 1158 JVM tests pass on the merge. On the owner's phone on
+2026-11-10 each branch's own instrumented classes passed and D-125's restart
+check passed. Next, each on the owner's word: the full instrumented suite on
+the merged build, the bump to 1.4.1, the bundle and the upload.
 `feature/calendar-today` stays out: the live privacy policy still says the app
 does not read the calendar.
 
