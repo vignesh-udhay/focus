@@ -20,9 +20,8 @@ go out in the 14 days. **1.4 went to review on the closed test on
 skipped, 5 failed while the emulator was stuck on system dialogs, and all 5
 passed alone after a cold boot. Bumped to 1.4, versionCode 6 (9f8f4c4), same
 upload key, `main` pushed, and sent to the Alpha closed test as release 6
-(1.4), full rollout, on 2026-11-09, at the owner's word. **1.4.1 is merged on local `main`
-on 2026-11-11, at the owner's word**, not pushed, not bumped, no bundle yet. It
-holds four changes: D-125, a restart puts unanswered reminders back in the
+(1.4), full rollout, on 2026-11-09, at the owner's word. **1.4.1 went to review on the closed test on 2026-11-11, at the owner's
+word.** It holds four changes: D-125, a restart puts unanswered reminders back in the
 shade quietly (schema 18); D-129, Quick Add's When offers Ring like an alarm
 and the early reminder; D-130, the alarm stops with a slide and snoozes with a
 tap; D-131, Today's Completed holds what was finished today, counted in
@@ -32,8 +31,9 @@ feedback on 1.4. 1158 JVM tests pass on the merge. On the owner's phone on
 check passed. Full instrumented suite on the merged build, on the owner's
 phone on 2026-11-11: 518 run, 515 passed, 2 skipped, 1 failed
 (`ShareSemanticsTest.addHandsOverTheCorrectedTitle`, in code 1.4.1 does not
-touch; its class then passed three times alone). Next, each on the owner's
-word: the bump to 1.4.1, the bundle and the upload.
+touch; its class then passed three times alone). Bumped to 1.4.1, versionCode
+7 (f095df2), same upload key, `main` pushed, and sent to the Alpha closed test
+as release 7 (1.4.1) on 2026-11-11, by the owner; in review.
 `feature/calendar-today` stays out: the live privacy policy still says the app
 does not read the calendar.
 
