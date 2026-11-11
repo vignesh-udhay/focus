@@ -6364,7 +6364,8 @@ apps ring; between them they failed every way an alarm can
    ignores Back.
 3. **Stop and Snooze only, and not by accident.** Todoist's biggest button was
    Complete and To Do Reminder's Dismiss completed. On the full screen both are
-   press-and-hold controls, so a half-asleep tap does nothing.
+   ~~press-and-hold controls~~ a slide to Stop and a tap to Snooze (amended
+   by D-130, below), so a half-asleep tap never stops it.
 4. **The task's time, not the clock.** Todoist showed 7:10 for a 7:08 task. The
    alarm shows the time the reminder was set for.
 5. **Other reminders are never touched.** Todoist's dismiss wiped unrelated
@@ -6467,6 +6468,11 @@ the switch goes and the reminder rings normally. Or testers turning it on and
 being woken by tasks they meant as quiet, which would argue for a stronger
 warning on the switch, not for removing it.
 
+**Amended by D-130, 2026-11-10: the hold is a slide to Stop and a tap to
+Snooze.** The owner and then a closed tester found the 800ms hold slow on real
+alarms. Snooze 10 min is a full-width tap button, and below it a slide that
+only ever means Stop acts past 70% of the way; a tap on it does nothing. D-130
+has the detail. The normal notification keeps plain taps.
 
 **Amended 2026-11-03, at the owner's word: the switch is a list row, and the
 line says nothing about Silent.** The switch was a bare row flush with the
@@ -8095,3 +8101,69 @@ title takes it away.
 
 **What would reverse this.** Alarms switched on by accident from Quick Add, or
 When getting slower for the common case of a day and a time.
+
+## D-130. The alarm stops with a slide, brought forward from the meeting work
+
+**Decided on 2026-11-10**, at the owner's word. Amends D-102. For 1.4.1, beside
+D-125 and D-129. On `feature/slide-to-stop`, from `main`.
+
+**What changed the answer.** The slide was decided on 2026-10-31 as an
+amendment to D-102 inside D-120, the meeting reminders, after the owner found
+the 800ms hold annoying on real alarms: a deliberate gesture is right, a delay
+is not. It was built and tried by the owner on `feature/calendar-today`, which
+reaches `main` only after the production launch and once the privacy policy is
+live, so it was waiting on the calendar for no reason of its own. On 2026-11-10
+a closed tester, who had first asked the owner directly, wrote in Play's
+testing feedback on 1.4 (Nov 10, 6:49 PM): "When my alarm went off, I had to
+press and hold the Stop button, which felt a bit slow when I just wanted to
+turn it off. Having a slide to stop option would be easier." A second person
+finding the hold slow is the reason it ships now. The slide was built before
+that feedback; the feedback is why it goes out in the next update, not why it
+exists.
+
+**Decision.** The task alarm screen's two held pills become one tap and one
+slide:
+
+- **Snooze 10 min** is one full-width `FilledTonalButton`, a plain tap.
+- **Below it, `md` clear at every font scale, `AlarmSlide`, which only ever
+  means Stop.** The handle starts at the left and "Slide to stop" is centred on
+  the whole track. It acts only past 70% of the way, by position alone; let go
+  before that and it springs back on `reveal`, or snaps back under reduced
+  motion. A tap does nothing, and a quick flick short of the threshold does
+  nothing. One haptic as it crosses the threshold, and "Stop" shows in the fill
+  past it.
+- **Both are 72dp tall and the same width**, `TellcatDimensions.AlarmSlideHeight`.
+  At large text the button grows to fit its label, and the slide's label moves
+  to a line above the track rather than being clipped.
+- **TalkBack** gets the button as a button and Stop as a custom action on the
+  slide, both answered at once.
+
+**Why this split.** The slide only ever stops, so the gesture a half-asleep hand
+learns always stops the alarm. A snooze rings again, so it is the forgiving
+answer and can be a tap. Stop is the one that cannot be undone, so it keeps the
+deliberate gesture. A two-way slide, Stop at one end and Snooze at the other,
+was drawn for D-120 and dropped: in the mock its handle covered "Snooze 10 min".
+
+**Taken as it is from the calendar branch.** `AlarmSlide` and its tests are the
+calendar branch's, at their last owner-approved state (the label centred on the
+whole track, and the button matched to the slide's 72dp after the owner's trial
+on 2026-10-31), less the meeting screen's Join and Snooze 5 min. When
+`feature/calendar-today` merges, its amendment to D-102 and this one say the
+same thing; the merge keeps this one and D-120 points at it.
+
+**What is not changed.** The notification's Stop and Snooze stay plain taps.
+Back still does nothing. The screen still shows the reminder's time, not the
+clock's, and nothing on it completes the task. How the alarm rings and when it
+stops, D-102's service, is untouched.
+
+**Tests.** `AlarmScreenSemanticsTest` is rewritten as on the calendar branch,
+without the meeting cases: the screen shows the task, its time, the button and
+the slide at 100% and 200%; nothing completes the task; a tap on the slide, a
+short slide and a fast short flick do nothing; sliding all the way stops it;
+TalkBack's custom action stops it; the button snoozes with one tap; the button
+and the slide are the same width and 72dp, 16dp apart at 100% and 200%; a drag
+starting on the button stops nothing; a slide never fires the button. Written
+and compiled, not run: they need the owner's word for a phone or emulator run.
+
+**What would reverse this.** Testers stopping alarms by accident with the
+slide, which would argue for a longer threshold before it argues for the hold.

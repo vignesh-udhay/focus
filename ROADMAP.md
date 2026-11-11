@@ -27,6 +27,11 @@ upload key, `main` pushed, and sent to the Alpha closed test as release 6
 Add's When offers Ring like an alarm and the early reminder. Built on
 `feature/quick-add-alarm`, also for 1.4.1; 1130 JVM tests pass, the
 instrumented tests are written and not run.
+
+**D-130 was approved on 2026-11-10** from a tester's Play request: the alarm's
+press-and-hold becomes a tap to Snooze and a slide to Stop, brought from the
+calendar branch to `feature/slide-to-stop` for 1.4.1. Its instrumented tests
+are written and compiled, not run.
 `feature/calendar-today` stays out: the live privacy policy still says the app
 does not read the calendar.
 

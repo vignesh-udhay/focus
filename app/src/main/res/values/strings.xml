@@ -740,7 +740,8 @@
     <string name="alarm_snooze">Snooze 10 min</string>
     <string name="alarm_stop">Stop</string>
     <!-- Under each answer on the full screen: a tap does nothing. -->
-    <string name="alarm_hold_hint">Press and hold</string>
+    <!-- The alarm slide, D-102 as amended by D-130: it always means Stop. -->
+    <string name="alarm_slide_to_stop">Slide to stop</string>
     <string name="reminder_action_done">Done</string>
     <string name="reminder_action_snooze">Snooze</string>
     <string name="reminder_snooze_until">Snooze until</string>

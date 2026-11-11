@@ -134,6 +134,17 @@ object TellcatDimensions {
     val WeekdayChipSize = 48.dp
 
     /**
+     * The alarm slide's track, D-102 as amended by D-130, and the floor of the
+     * Snooze button above it too, so the two answers are one size. Taller than
+     * [ActionHeight] because the handle travels inside it and has to be a
+     * thumb's width; the handle is this less [TellcatSpacing.sm], 6dp clear of
+     * the track all round. A floor: at large font scales the button grows to
+     * fit its label, and the slide's label moves above the track rather than
+     * growing it.
+     */
+    val AlarmSlideHeight = 72.dp
+
+    /**
      * Vertical space a list reserves below its last row when the screen has a
      * floating action button.
      *

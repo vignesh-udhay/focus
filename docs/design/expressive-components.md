@@ -934,10 +934,34 @@ stays on either way.
 
 **The alarm screen.** Always dark. "Tellcat alarm", the reminder's own time in
 `displayLarge` (never the clock's), its day, the title in `headlineMedium`, the
-notes, and two full-width pill controls: Snooze 10 min in `primary` and Stop in
-`secondaryContainer`. Both are press-and-hold, with a fill across the control
-for the 800ms it takes, so a half-asleep tap does nothing; TalkBack's double tap
-answers at once. Nothing on it completes the task. Back does nothing.
+notes, and two answers at the bottom. Nothing on it completes the task. Back
+does nothing.
+
+**The alarm's answers: one tap and one slide.** D-102 as amended by D-130,
+replacing two press-and-hold pills that the owner and a tester found slow on
+real alarms. Above, Snooze 10 min, one full-width `FilledTonalButton` with the
+same 72dp height and `labelLarge` type as the slide, growing rather than
+truncating at large text. Below it, `md` clear of it at every font scale,
+**`AlarmSlide`, which always means Stop**: a track
+`TellcatDimensions.AlarmSlideHeight` tall on `surfaceContainerHigh`, the handle
+at the start, "Slide to stop" centred on the whole track (not on the space
+beside the handle, which put it off to the right). Slid right past 70% it stops
+the alarm; anything short springs back, and a tap does nothing. The handle warms
+from `secondaryContainer` to `primary` as it travels, a fill grows behind it,
+and past the threshold "Stop" shows in the fill. One semantics node with Stop
+as a custom action. Where the label does not fit beside the handle (200%), it
+moves to a line above the track.
+
+[CD] **Why the split.** The slide means only Stop, so the gesture a half-asleep
+hand learns always stops; the forgiving answer, a snooze that rings again, is a
+tap. A two-way slide was drawn first and dropped: its handle covered the
+"Snooze 10 min" label.
+
+[CD] **Not Material's `Slider`**, which picks a value: a tap jumps it, and
+TalkBack announces a range. **Not `anchoredDraggable`** either, though Material's
+swipe-to-dismiss is built on it: it settles a fling by velocity, so a quick flick
+would stop the alarm before the threshold. `draggable` with the settle decided by
+position alone is what keeps the threshold a threshold.
 
 **Rows** draw the `ic_alarm` glyph, the text's size and colour, in front of
 the reminder time, and TalkBack reads the time as "Alarm 5:30 PM" where a

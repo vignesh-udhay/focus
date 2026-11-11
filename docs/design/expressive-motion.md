@@ -115,7 +115,9 @@ licence to invent a fifth.
 | The focused task changing on Focus | `stateColor` | Restrained |
 | Entering or leaving the Focus session | `focusSession` | Deliberate |
 | The Focus cat, settling or getting up | `mascotSettle` | Restrained |
-| Holding Stop or Snooze on the alarm screen | a linear fill over the 800ms hold, snapping back if released early (D-102) | Functional: it measures time |
+| The alarm slide's handle following the finger, toward Stop | none: it is the finger (D-130) | Direct manipulation |
+| The alarm slide's handle springing back when released short of the threshold | `reveal`, a snap under reduced motion (D-130) | Restrained |
+| The handle warming and the fill growing behind it as it travels | none: a function of the handle's position | Direct manipulation |
 | Pressing a row or button | Material ripple and state layer | Material default |
 | Sheets opening and closing | Material default | Material default |
 | The undo snackbar | Material default | Material default |
@@ -327,6 +329,7 @@ it is listed here so it cannot spread one helpful buzz at a time.
 | Completing a task, anywhere it can be done in the app | `HapticFeedbackType.Confirm` |
 | Reopening a task | `HapticFeedbackType.ToggleOff` |
 | Ticking or unticking a checklist item | `HapticFeedbackType.ToggleOn` / `ToggleOff` |
+| The alarm slide's handle crossing the threshold toward Stop (D-130) | `HapticFeedbackType.GestureThresholdActivate` |
 
 [IMPL] `TellcatHaptics` in `core/design` is this table in code, as
 `TellcatMotion` is the motion table: screens ask for an interaction by name and
