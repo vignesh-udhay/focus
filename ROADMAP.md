@@ -33,7 +33,8 @@ phone on 2026-11-11: 518 run, 515 passed, 2 skipped, 1 failed
 (`ShareSemanticsTest.addHandsOverTheCorrectedTitle`, in code 1.4.1 does not
 touch; its class then passed three times alone). Bumped to 1.4.1, versionCode
 7 (f095df2), same upload key, `main` pushed, and sent to the Alpha closed test
-as release 7 (1.4.1) on 2026-11-11, by the owner; in review.
+as release 7 (1.4.1) on 2026-11-11, by the owner. Approved and live to
+testers the same day (released 11:47 AM).
 `feature/calendar-today` stays out: the live privacy policy still says the app
 does not read the calendar.
 
