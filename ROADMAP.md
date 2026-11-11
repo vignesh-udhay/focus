@@ -29,8 +29,11 @@ tap; D-131, Today's Completed holds what was finished today, counted in
 brackets. D-129, D-130 and D-131 each answer a tester's entry in Play's testing
 feedback on 1.4. 1158 JVM tests pass on the merge. On the owner's phone on
 2026-11-10 each branch's own instrumented classes passed and D-125's restart
-check passed. Next, each on the owner's word: the full instrumented suite on
-the merged build, the bump to 1.4.1, the bundle and the upload.
+check passed. Full instrumented suite on the merged build, on the owner's
+phone on 2026-11-11: 518 run, 515 passed, 2 skipped, 1 failed
+(`ShareSemanticsTest.addHandsOverTheCorrectedTitle`, in code 1.4.1 does not
+touch; its class then passed three times alone). Next, each on the owner's
+word: the bump to 1.4.1, the bundle and the upload.
 `feature/calendar-today` stays out: the live privacy policy still says the app
 does not read the calendar.
 
