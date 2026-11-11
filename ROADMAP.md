@@ -23,6 +23,10 @@ upload key, `main` pushed, and sent to the Alpha closed test as release 6
 (1.4), full rollout, on 2026-11-09, at the owner's word. **D-125 was approved on 2026-11-09** and is built on
 `fix/restore-after-restart` (a4c2880, schema 18, 1146 JVM tests pass), for
 1.4.1; it needs the restart check on the phone before it merges.
+**D-129 was decided on 2026-11-10**, from a tester's request in Play on 1.4: Quick
+Add's When offers Ring like an alarm and the early reminder. Built on
+`feature/quick-add-alarm`, also for 1.4.1; 1130 JVM tests pass, the
+instrumented tests are written and not run.
 `feature/calendar-today` stays out: the live privacy policy still says the app
 does not read the calendar.
 

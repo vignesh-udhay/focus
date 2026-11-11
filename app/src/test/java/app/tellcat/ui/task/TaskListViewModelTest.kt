@@ -830,6 +830,58 @@ class TaskListViewModelTest {
         assertEquals(PrimaryList.UPCOMING, landed)
     }
 
+    // --- D-129: the alarm and the early reminder from When -------------------
+
+    @Test
+    fun anAlarmAndAnEarlyReminderAreSavedWithTheCapturesReminder() {
+        viewModel().capture(
+            parse("Call the bank at 5pm"),
+            fallbackDate = today,
+            now = morning(),
+            ringsLikeAlarm = true,
+            earlyReminder = EarlyReminder.FifteenMinutes
+        )
+
+        val stored = awaitInsert().toDomain()
+        assertEquals(today.atTime(17, 0), stored.reminderAt)
+        assertTrue(stored.ringsLikeAlarm)
+        assertEquals(EarlyReminder.FifteenMinutes, stored.earlyReminder)
+        // Still to ring at 4:45, so owed.
+        assertNull(stored.earlyDeliveredAt)
+    }
+
+    /** No reminder for them to belong to: neither is stored. D-102, D-115. */
+    @Test
+    fun anAlarmAndAnEarlyReminderWithoutAReminderAreDropped() {
+        viewModel().capture(
+            parse("Call the bank"),
+            fallbackDate = today,
+            now = morning(),
+            ringsLikeAlarm = true,
+            earlyReminder = EarlyReminder.OneHour
+        )
+
+        val stored = awaitInsert().toDomain()
+        assertNull(stored.reminderAt)
+        assertFalse(stored.ringsLikeAlarm)
+        assertNull(stored.earlyReminder)
+    }
+
+    /** At 10:00, an hour before 10:30 has gone: settled, as Task Details saves it. */
+    @Test
+    fun anEarlyReminderWhoseMomentHasGoneIsSettledAtCapture() {
+        viewModel().capture(
+            parse("Call the bank at 10:30am"),
+            fallbackDate = today,
+            now = morning(),
+            earlyReminder = EarlyReminder.OneHour
+        )
+
+        val stored = awaitInsert().toDomain()
+        assertEquals(EarlyReminder.OneHour, stored.earlyReminder)
+        assertNotNull(stored.earlyDeliveredAt)
+    }
+
     @Test
     fun aCaptureWithoutARepeatFromInboxStaysUndated() {
         viewModel().capture(parse("Find a dentist"), fallbackDate = null, now = morning(), checklist = listOf("Ask Sam"))

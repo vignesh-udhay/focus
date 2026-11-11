@@ -555,6 +555,10 @@
       change it.
     -->
     <string name="task_reminder_alarm">Ring like an alarm</string>
+    <!-- D-129: Quick Add's supporting line, under the day and time, while When holds these. -->
+    <string name="quick_add_rings_like_alarm">Rings like an alarm</string>
+    <!-- %1$s is the early reminder's choice, "15 min before". -->
+    <string name="quick_add_also_early">Also %1$s</string>
     <string name="task_reminder_alarm_full_screen">Rings full screen until you stop or snooze it.</string>
     <string name="task_reminder_alarm_banner">Rings as a banner until you answer. Full screen needs permission.</string>
     <string name="task_reminder_alarm_off">Alarms are off for Tellcat, so this arrives as a normal reminder.</string>

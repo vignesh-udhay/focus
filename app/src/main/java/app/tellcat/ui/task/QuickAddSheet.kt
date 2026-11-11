@@ -106,6 +106,7 @@ import app.tellcat.ui.component.tellcatFieldColors
 import app.tellcat.ui.component.TellcatFieldShape
 import app.tellcat.core.design.TellcatSpacing
 import app.tellcat.core.domain.CapturedTask
+import app.tellcat.core.domain.EarlyReminder
 import app.tellcat.core.domain.splitTrailingCapture
 import app.tellcat.core.domain.endsInBareHour
 import app.tellcat.ui.component.scheduledDateLabel
@@ -158,16 +159,24 @@ import kotlinx.coroutines.delay
  * day and a time, so the field stays the one setter of both. Repeat and the
  * checklist have no typed form, so the sheet holds them and Add hands them over
  * with the title. Every tool is optional; typing stays the fast path.
+ *
+ * **Since D-129 When also offers Ring like an alarm and the early reminder**,
+ * which a tester asked for. They have no words either, so they are held the way
+ * Repeat is, beside the time When wrote, and dropped once the title no longer
+ * has a reminder for them to belong to.
  */
 /**
  * What Quick Add hands its host: the parsed title, and since D-121 the repeat
- * and the checklist the sheet holds, which have no typed form.
+ * and the checklist the sheet holds, which have no typed form. Since D-129 also
+ * the alarm and the early reminder, only ever with a reminder in [parsed].
  */
 data class QuickAddCapture(
     val parsed: CapturedTask,
     val recurrence: Recurrence? = null,
     // The lines as typed, blank ones already dropped.
-    val checklist: List<String> = emptyList()
+    val checklist: List<String> = emptyList(),
+    val ringsLikeAlarm: Boolean = false,
+    val earlyReminder: EarlyReminder? = null
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -210,6 +219,11 @@ fun QuickAddSheet(
     // after trying it. Off hides the lines rather than dropping them, so a stray
     // tap loses nothing, and only lines showing when Add is pressed are saved.
     var checklistOn by rememberSaveable { mutableStateOf(false) }
+    // **What When holds beside the words it writes**, D-129: whether the
+    // reminder rings like an alarm, and its early reminder. Part of the
+    // reminder, so they go when it does, below.
+    var ringsAsAlarm by rememberSaveable { mutableStateOf(false) }
+    var early by rememberSaveable { mutableStateOf<EarlyReminder?>(null) }
     // The checklist line to give focus to next, or -1 for none.
     var focusItem by remember { mutableIntStateOf(-1) }
     // **Words a tool wrote before any title was typed**, D-121 as amended: the
@@ -234,10 +248,30 @@ fun QuickAddSheet(
     }
     val hasTitle = parsed.title.isNotBlank()
 
+    // **No reminder, no alarm and no early reminder**, D-129. The time deleted
+    // from the title, or the reminder cleared, takes both with it, and typing a
+    // time back does not return them: what the line says is what Add saves.
+    LaunchedEffect(parsed.hasReminder) {
+        if (!parsed.hasReminder) {
+            ringsAsAlarm = false
+            early = null
+        }
+    }
+
     fun save() {
         if (!hasTitle) return
         val checklist = if (checklistOn) items.map(String::trim).filter(String::isNotEmpty) else emptyList()
-        onSave(QuickAddCapture(parsed, recurrence, checklist))
+        onSave(
+            QuickAddCapture(
+                parsed = parsed,
+                recurrence = recurrence,
+                checklist = checklist,
+                // Guarded here too: the effect above runs after a frame, and
+                // Done can be pressed in it.
+                ringsLikeAlarm = ringsAsAlarm && parsed.hasReminder,
+                earlyReminder = early.takeIf { parsed.hasReminder }
+            )
+        )
     }
 
     // What the tools write against: the title, or with none yet a stand-in,
@@ -382,6 +416,8 @@ fun QuickAddSheet(
                                 now = now,
                                 fallbackDate = fallbackDate,
                                 recurrence = recurrence,
+                                ringsLikeAlarm = ringsAsAlarm && parsed.hasReminder,
+                                earlyReminder = early.takeIf { parsed.hasReminder },
                                 // D-101: "at six" is refused, D-070, and used to
                                 // save without a word.
                                 noMeridiem = !parsed.hasReminder && endsInBareHour(parsed.title)
@@ -526,8 +562,9 @@ fun QuickAddSheet(
     // D-121. It opens on the reminder the field holds, or on the day it names,
     // with the time optional: a day alone is written as the day, a day and a
     // time as both. Its Clear does what clearing a reminder always did, unmark
-    // the time. No "Ring like an alarm" and no early reminder: the field has no
-    // words for them, and Task Details is the place to set them.
+    // the time. Since D-129 it offers "Ring like an alarm" and the early
+    // reminder as well, once it has a time: they have no words, so the sheet
+    // holds them rather than the field, as it holds Repeat.
     if (isWhenOpen) {
         val held = parsed.reminderAt(today, now)
         ReminderSheet(
@@ -535,13 +572,15 @@ fun QuickAddSheet(
             defaultDay = held?.toLocalDate() ?: parsed.date ?: fallbackDate ?: today,
             today = today,
             now = clock(),
-            offersAlarm = false,
-            offersEarly = false,
+            ringsLikeAlarm = ringsAsAlarm,
+            earlyReminder = early,
             timeOptional = true,
             // A day the tool wrote before any title can be cleared too: there
             // is no reminder, but there are words to take back out.
             canClear = held != null || (!hasTitle && toolRun != null),
-            onSet = { at, _, _ ->
+            onSet = { at, alarm, chosenEarly ->
+                ringsAsAlarm = alarm
+                early = chosenEarly
                 writeIn(
                     writeReminder(
                         text = writeText,
@@ -557,11 +596,16 @@ fun QuickAddSheet(
                 sheetClosed++
             },
             onSetDay = { day ->
+                // A day with no time is no reminder, so nothing to ring.
+                ringsAsAlarm = false
+                early = null
                 writeIn(writeDay(writeText, writeMark, day, today, writesDayFirst(locale)))
                 isWhenOpen = false
                 sheetClosed++
             },
             onClear = {
+                ringsAsAlarm = false
+                early = null
                 if (hasTitle) {
                     reminderDismissed = true
                 } else {
@@ -930,7 +974,10 @@ private fun QuickAddSupportingText(
     fallbackDate: LocalDate?,
     noMeridiem: Boolean,
     // The repeat the sheet holds, said in words under the day. D-121.
-    recurrence: Recurrence? = null
+    recurrence: Recurrence? = null,
+    // What When holds beside the time, said under it. D-129.
+    ringsLikeAlarm: Boolean = false,
+    earlyReminder: EarlyReminder? = null
 ) {
     val at = parsed.reminderAt(today, now)
     val timeFormat = rememberTimeFormat()
@@ -976,6 +1023,13 @@ private fun QuickAddSupportingText(
 
         recurrence?.let { rule ->
             Text(text = recurrenceSummary(rule, today, RecurrenceStyle.Sentence))
+        }
+
+        // **What else the reminder does**, D-129, in words, since the When tool
+        // shows only the day and the time.
+        if (ringsLikeAlarm) Text(text = stringResource(R.string.quick_add_rings_like_alarm))
+        earlyReminder?.let { chosen ->
+            Text(text = stringResource(R.string.quick_add_also_early, earlyLabel(chosen)))
         }
 
         // **What did not happen, and how to make it.** D-101. An hour with no am or
