@@ -7,6 +7,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.CreationExtras
 import app.tellcat.core.domain.CapturedTask
+import app.tellcat.core.domain.captureScheduledDate
+import app.tellcat.core.domain.newTask
 import app.tellcat.core.domain.EarlyReminder
 import app.tellcat.core.domain.earlyDeliveredAtSave
 import app.tellcat.core.domain.checklistItem
@@ -21,7 +23,6 @@ import app.tellcat.core.domain.PrimaryList
 import app.tellcat.core.domain.primaryListFor
 import app.tellcat.core.domain.StoredFocusSession
 import app.tellcat.core.domain.Recurrence
-import app.tellcat.core.domain.firstOccurrenceFrom
 import app.tellcat.core.domain.anchorFor
 import app.tellcat.core.domain.nextRecurringInstance
 import app.tellcat.core.domain.Task
@@ -65,7 +66,6 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
-import java.util.UUID
 
 /**
  * An action the user can still take back.
@@ -1063,8 +1063,7 @@ class TaskListViewModel(
         // **A repeating task always has a day**, D-121. The sheet writes the
         // first day into the title when Repeat is set without one; this is the
         // same rule held where the task is made, so no path can save one undated.
-        val scheduledDate = parsed.scheduledDate(fallbackDate, day, now)
-            ?: recurrence?.firstOccurrenceFrom(day)
+        val scheduledDate = captureScheduledDate(parsed, fallbackDate, day, now, recurrence)
 
         val captured = createTask(
             title = parsed.title,
@@ -1110,29 +1109,19 @@ class TaskListViewModel(
         // settled at save, as the sheet said before Save. D-115.
         now: LocalDateTime = LocalDateTime.now()
     ): Boolean {
-        val trimmed = title.trim()
-        if (trimmed.isEmpty()) return false
+        // Built where the window over the home screen builds it too, D-132.
+        val task = newTask(
+            title = title,
+            scheduledDate = scheduledDate,
+            reminderAt = reminderAt,
+            recurrence = recurrence,
+            checklist = checklist,
+            ringsLikeAlarm = ringsLikeAlarm,
+            earlyReminder = earlyReminder,
+            now = now
+        ) ?: return false
 
-        val early = earlyReminder.takeIf { reminderAt != null }
-
-        write {
-            repository.insert(
-                Task(
-                    id = UUID.randomUUID().toString(),
-                    title = trimmed,
-                    createdAt = Instant.now(),
-                    scheduledDate = scheduledDate,
-                    reminderAt = reminderAt,
-                    recurrence = recurrence,
-                    // The day the series keeps, D-122, from the day it starts.
-                    recurrenceAnchor = recurrence?.anchorFor(scheduledDate),
-                    checklist = checklist.map { ChecklistItem(it) },
-                    ringsLikeAlarm = ringsLikeAlarm && reminderAt != null,
-                    earlyReminder = early,
-                    earlyDeliveredAt = earlyDeliveredAtSave(reminderAt, early, now, Instant.now())
-                )
-            )
-        }
+        write { repository.insert(task) }
 
         // A promise has been made and stored, and nothing here knows whether
         // the app is allowed to keep it. The same flag every other reminder

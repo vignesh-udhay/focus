@@ -8,6 +8,9 @@ import app.tellcat.MainActivity
 /** A home-widget target, kept explicit instead of smuggling navigation strings. */
 sealed interface WidgetLaunchCommand {
     data object Today : WidgetLaunchCommand
+    // No longer drawn: since D-132 the add button opens `QuickAddActivity`
+    // over the home screen. Still read, because a widget drawn by the version
+    // before keeps this intent until it next redraws, and it should still add.
     data object Add : WidgetLaunchCommand
     data class TaskDetails(val taskId: String) : WidgetLaunchCommand
 }

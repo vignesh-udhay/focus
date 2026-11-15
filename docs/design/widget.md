@@ -320,7 +320,7 @@ lead card in D-049.
 |---|---|
 | checkbox | completes, in place, without leaving |
 | row | opens Task Details for that task |
-| add button | opens Quick Add |
+| add button | opens Quick Add over the home screen, without the app (D-132) |
 | anywhere else | opens Today |
 
 **"Anywhere else" is harder to keep true than it looks**, because most of the
@@ -336,7 +336,7 @@ Anything new drawn inside that list needs its own action, or it is dead.
 
 The checkbox is the only one that does not launch the app, and it is the reason
 the widget is worth a home-screen slot at all. **It is drawn quieter than the
-add button, which only launches.** The add button remains at Compact after
+add button, which only opens Quick Add.** The add button remains at Compact after
 consultation: capture from the home screen is useful enough to keep the direct
 target. Its visible circle is 32dp, aligned to the visual height of the Today
 title, while its Android touch area remains 48dp. The checkbox also keeps its

@@ -202,6 +202,15 @@ and returns to it. It parses with `sharedTask` in `core/domain` and writes
 through `taskRepository` directly: one insert, no reminder, nothing for a view
 model to hold. D-097.
 
+Quick Add from the home screen enters through `ui/quickadd/QuickAddActivity`,
+the same kind of see-through activity, started by the launcher's "New task"
+shortcut (`res/xml/shortcuts.xml`, with a copy in `src/debug` naming the debug
+package) and by the widget's add button. It hosts `QuickAddSheet` itself and
+saves with `newTask` and `captureScheduledDate` in `core/domain`, the builders
+`TaskListViewModel` uses, awaiting the insert in its own scope before it
+closes. A reminder saved there goes through `ReminderPermissionGate` as in the
+app. D-132.
+
 Launcher-widget intents enter through the single-top `MainActivity` and become
 one-shot `WidgetLaunchCommand`s. Navigation owns routing to Today, Quick Add,
 Task Details, or a persisted paused Focus session; the widget never constructs

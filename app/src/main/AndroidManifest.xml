@@ -77,7 +77,27 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!-- "New task" on a long press of the icon. D-132. -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
+
+        <!-- Quick Add over the home screen, from the "New task" shortcut and
+             the widget's add button. D-132. See-through and left out of
+             Recents like "Add to Tellcat", and with no task affinity, so
+             Tellcat's own screens never come up behind it. Not exported: the
+             launcher starts a shortcut as this app, and the widget's is our
+             own PendingIntent. -->
+        <activity
+            android:name=".ui.quickadd.QuickAddActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:label="@string/shortcut_new_task"
+            android:theme="@style/Theme.Tellcat.Translucent"
+            android:windowSoftInputMode="adjustResize" />
 
         <!-- "Add to Tellcat" in other apps' share sheets, over the app shared
              from. D-097. Left out of Recents: it is a moment inside that app.

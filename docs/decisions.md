@@ -8237,7 +8237,7 @@ them. Earlier entries that quote "Completed · N" are history and keep it.
 
 ## D-132. "New task" adds over the home screen, from the icon and the widget
 
-**Proposed on 2026-11-15, waiting on the owner's word.** From a closed
+**Decided on 2026-11-15, at the owner's word.** From a closed
 tester's entry in Play's testing feedback on 1.4.1 (Nov 15, 7:41 PM, 4 stars):
 "Please add a "New Task" shortcut when long pressing the app icon so we can
 quickly add tasks without opening the app." The tester told the owner first and
@@ -8261,12 +8261,16 @@ writing, and asked for the app not to open.
    left out of Recents, no task affinity, so Tellcat's own screens never come
    up behind it. The sheet is `QuickAddSheet` itself, not a copy: When, Repeat,
    the checklist, the alarm and the early reminder (D-121, D-129), the
-   keyboard on arrival (D-073). Saving goes through the same capture path as
-   Today's, so the two cannot drift.
+   keyboard on arrival (D-073). Saving builds the task with the same
+   functions as Today's (`captureScheduledDate`, `newTask`, moved out of
+   `TaskListViewModel` into `core/domain`), so the two cannot drift. The window
+   waits for the insert before it closes: the view model's write is not
+   awaited, and closing would clear it.
 2. **A long press on the icon offers "New task".** One static launcher
    shortcut, declared in the manifest, so it is there from install. It can be
    dragged to the home screen as its own icon, as launchers allow. It opens
-   the window in 1.
+   the window in 1. A static shortcut names its package, so `src/debug` has
+   its own `shortcuts.xml` naming `app.tellcat.debug`.
 3. **The widget's add button opens the same window.** It used to open Tellcat
    on Today with Quick Add up. Now the task is added over the home screen and
    shows up in the widget beneath it, which reads the tasks as a stream (D-045).
@@ -8301,11 +8305,16 @@ for, and the shortcut setup this adds makes each a small job later if one is.
 The share sheet keeps its own small sheet and Inbox, D-097: a shared link is
 usually something to read later, not to do today.
 
-**Tests.** JVM: the shortcut's and the widget's intents both open the new
-window, and a capture with no day is saved for today. Instrumented: the window
-shows Quick Add with the keyboard, Add saves and closes, Back saves nothing,
-and a failed save keeps the text. The long press itself is the launcher's and
-is checked by hand.
+**Tests.** `QuickAddSaveTest` (JVM): a capture with no day is saved for
+Today, a day or a reminder goes where it says, a time already gone lands on
+the day it rings, a blank title saves nothing, the tools come along, and the
+alarm is dropped without a reminder. `QuickAddWindowSemanticsTest`
+(instrumented, written and compiled, not run): the window is Quick Add, says
+"Saved to Today" for an undated task at 100% and 200%, and Done hands over the
+capture. It writes nothing, so a run on the owner's phone leaves the dev
+build's tasks alone. By hand on a phone, on the owner's word: the long press,
+the widget's button, Add closing with the toast, and a reminder set before any
+permission was granted.
 
 **What would reverse this.** Testers wanting to see the task in Tellcat after
 adding it, which would argue for a View on the confirmation before it argues
