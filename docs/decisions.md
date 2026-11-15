@@ -8235,7 +8235,7 @@ band's header reads "Completed (3)", not "Completed · 3". Only the format
 changes: the count, the collapse and what TalkBack is told stay as D-012 set
 them. Earlier entries that quote "Completed · N" are history and keep it.
 
-## D-132. A long press on the icon offers "New task"
+## D-132. "New task" adds over the home screen, from the icon and the widget
 
 **Proposed on 2026-11-15, waiting on the owner's word.** From a closed
 tester's entry in Play's testing feedback on 1.4.1 (Nov 15, 7:41 PM, 4 stars):
@@ -8243,47 +8243,70 @@ tester's entry in Play's testing feedback on 1.4.1 (Nov 15, 7:41 PM, 4 stars):
 quickly add tasks without opening the app." The tester told the owner first and
 was asked to write it in Play; the entry came before any decision or code. This
 is candidate 5 of the competitor study (`docs/research/competitors.md`,
-"Candidates to pick up, 2026-11-02"), which was listed and not decided. Numbered
-after D-131; D-126 is on a branch not yet on `main`. On
-`feature/new-task-shortcut`, from `main`.
+"Candidates to pick up, 2026-11-02"), which was listed and not decided. Amends
+the widget's add button in `docs/design/widget.md`. Numbered after D-131;
+D-126 is on a branch not yet on `main`. On `feature/new-task-shortcut`, from
+`main`.
 
 **What changed the answer.** Nothing was decided against it; it had simply not
 been taken up. The study found it as an Android convention Tellcat lacks, which
-`PRODUCT.md` principle 5 asks for, and it serves "capture should be
-effortless". What it lacked was someone asking. Now a tester has, in writing.
+`PRODUCT.md` principle 5 asks for, and it serves principle 3, "Capture should
+be effortless". What it lacked was someone asking. Now a tester has, in
+writing, and asked for the app not to open.
 
 **The decision.**
 
-1. **One static launcher shortcut, "New task".** A long press on Tellcat's icon
-   shows it, and it can be dragged to the home screen as its own icon, as
-   launchers allow. It is declared in the manifest, so it is there from install,
-   with nothing to set up.
-2. **It does what the widget's Add does.** It opens Tellcat on Today with Quick
-   Add already up and the keyboard with it (D-073), through the same route the
-   widget uses (`WidgetLaunchCommand.Add`). A task added this way is a Quick Add
-   capture in every respect: When, Repeat, the checklist, the alarm (D-121,
-   D-129), and the landing notice (D-053).
-3. **The full Quick Add, not the share sheet's.** "Add to Tellcat" (D-097)
-   opens over the other app and has no tools, because there the moment belongs
-   to that app. Here the user has come to Tellcat to add a task, so they get
-   everything Quick Add has. Strictly, the app does open; what the tester is
-   after is skipping the screen-then-Add step, and this removes it.
-4. **Wording and icon.** The label is "New task", as the tester wrote it, with
-   no longer label. The icon is the Add icon Quick Add already uses, drawn as
-   an adaptive shortcut icon in Tellcat's colours.
+1. **Quick Add gets a window of its own, over whatever is behind it.** A
+   see-through activity holding one sheet, as "Add to Tellcat" has (D-097):
+   left out of Recents, no task affinity, so Tellcat's own screens never come
+   up behind it. The sheet is `QuickAddSheet` itself, not a copy: When, Repeat,
+   the checklist, the alarm and the early reminder (D-121, D-129), the
+   keyboard on arrival (D-073). Saving goes through the same capture path as
+   Today's, so the two cannot drift.
+2. **A long press on the icon offers "New task".** One static launcher
+   shortcut, declared in the manifest, so it is there from install. It can be
+   dragged to the home screen as its own icon, as launchers allow. It opens
+   the window in 1.
+3. **The widget's add button opens the same window.** It used to open Tellcat
+   on Today with Quick Add up. Now the task is added over the home screen and
+   shows up in the widget beneath it, which reads the tasks as a stream (D-045).
+4. **A capture with no day goes to Today**, as the widget's Add always sent it
+   and as Today's own Quick Add does (D-053). Someone adding from the home
+   screen means to do it. A title with a day or a reminder goes where that
+   says, as everywhere (D-075). The supporting line under the field still says
+   where it will land.
+5. **Add closes the window and a toast says where it went**: "Saved to Today",
+   "Saved to Upcoming", "Saved to Inbox", the words the landing notice already
+   uses. A toast, because there is no screen of ours for a snackbar to sit on,
+   as D-097 found. It has no View: a toast cannot carry an action. If the save
+   fails the sheet stays open with the text, as the share sheet's does.
+6. **Back or a tap outside closes it with nothing saved**, as Quick Add's sheet
+   already does.
 
-**Not in this.** A Quick Settings tile, the study's other half: nobody has asked
-for it, and it is a separate piece of work. More shortcuts (a list, a search):
-none are asked for. A shortcut that opens a sheet over the launcher without
-Tellcat behind it: possible later with the share sheet's translucent activity,
-but it would be a second Quick Add to keep in step with the first.
+**Wording and icon.** The shortcut's label is "New task", as the tester wrote
+it. Its icon is the Add icon Quick Add already uses, as an adaptive shortcut
+icon in Tellcat's colours.
 
-**Tests.** None cover the widget's launch route today, so this adds them: a
-JVM test that the shortcut's intent is read as `WidgetLaunchCommand.Add`, and
-an instrumented test that launching with it opens Today with Quick Add showing. The long press
-itself is the launcher's and is checked by hand on a phone, on the owner's word.
+**To check on a phone, on the owner's word.** A reminder or alarm set from this
+window before the app has ever been granted notifications or alarms: the
+permission asks must work from here, or the task must be saved and the ask
+left to the next time Tellcat opens, and said so. A reminder that silently
+cannot ring is the worst bug this product has.
 
-**What would reverse this.** Nothing much: it costs nothing to someone who
-never long-presses the icon. If testers expect it to add without Tellcat
-appearing at all, that is the over-the-launcher sheet above, and a decision of
-its own.
+**Not in this.** A Quick Settings tile, the study's other half: nobody has
+asked for it. Other launcher shortcuts (opening Inbox, Upcoming, the Logbook or
+Reminder health; "New reminder" or "New alarm" with When or the alarm already
+set; the next reminder or recent tasks as changing shortcuts): none are asked
+for, and the shortcut setup this adds makes each a small job later if one is.
+The share sheet keeps its own small sheet and Inbox, D-097: a shared link is
+usually something to read later, not to do today.
+
+**Tests.** JVM: the shortcut's and the widget's intents both open the new
+window, and a capture with no day is saved for today. Instrumented: the window
+shows Quick Add with the keyboard, Add saves and closes, Back saves nothing,
+and a failed save keeps the text. The long press itself is the launcher's and
+is checked by hand.
+
+**What would reverse this.** Testers wanting to see the task in Tellcat after
+adding it, which would argue for a View on the confirmation before it argues
+for opening the app every time.
