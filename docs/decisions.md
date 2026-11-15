@@ -8278,9 +8278,9 @@ none are asked for. A shortcut that opens a sheet over the launcher without
 Tellcat behind it: possible later with the share sheet's translucent activity,
 but it would be a second Quick Add to keep in step with the first.
 
-**Tests.** The launch command is read from the shortcut's intent as the
-widget's is (`WidgetLaunchCommandTest` or its equivalent), and a semantics test
-that the shortcut's intent opens Today with Quick Add showing. The long press
+**Tests.** None cover the widget's launch route today, so this adds them: a
+JVM test that the shortcut's intent is read as `WidgetLaunchCommand.Add`, and
+an instrumented test that launching with it opens Today with Quick Add showing. The long press
 itself is the launcher's and is checked by hand on a phone, on the owner's word.
 
 **What would reverse this.** Nothing much: it costs nothing to someone who
