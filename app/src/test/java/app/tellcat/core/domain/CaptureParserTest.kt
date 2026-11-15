@@ -774,4 +774,113 @@ class CaptureParserTest {
         assertTrue(!result.hasReminder)
         assertTrue(endsInBareHour(result.title))
     }
+
+    // --- D-133: "for" a clock time, a day after the time ----------------------
+
+    /** The owner's own capture, which saved "Create an alarm today for". */
+    @Test
+    fun `for before a clock time reads as at, and the day before it is taken too`() {
+        val result = capture("Create an alarm today for 10 am")
+
+        assertEquals("Create an alarm", result.title)
+        assertEquals(today, result.date)
+        assertEquals(LocalTime.of(10, 0), result.time)
+        assertEquals(today.atTime(10, 0), result.reminderAt(today, morning))
+    }
+
+    @Test
+    fun `for reads every clock form at reads`() {
+        assertEquals(LocalTime.of(10, 0), capture("Call Sam for 10am").time)
+        assertEquals(LocalTime.of(10, 0), capture("Call Sam for 10:00").time)
+        assertEquals(LocalTime.of(18, 0), capture("Call Sam for six pm").time)
+        assertEquals(LocalTime.of(21, 30), capture("Call Sam for 9.30 p.m.").time)
+        assertEquals("Call Sam", capture("Call Sam for 10am").title)
+    }
+
+    /** A quantity or a length after "for" is never a time. */
+    @Test
+    fun `for before a number or a length stays in the title`() {
+        listOf("Table for 4", "Run for 10 minutes", "Study for 2 hours", "Rice for 6", "Pay for 10").forEach { text ->
+            val result = capture(text)
+            assertEquals(text, result.title)
+            assertFalse(text, result.hasReminder)
+        }
+    }
+
+    /** The time words were read after "for" already, D-069; the "for" now goes with them. */
+    @Test
+    fun `for before a time word takes the for as well`() {
+        val result = capture("Dinner for tonight")
+
+        assertEquals("Dinner", result.title)
+        assertEquals(LocalTime.of(20, 0), result.time)
+    }
+
+    /** "at six" is still refused after "for", D-070. */
+    @Test
+    fun `for before a bare hour is refused like at`() {
+        assertFalse(capture("Call Sam for six").hasReminder)
+        assertFalse(capture("Call Sam for 6:00").hasReminder)
+    }
+
+    /** These set no reminder at all before D-133, with the time left in the title. */
+    @Test
+    fun `a day after the time is read`() {
+        val today10 = capture("Call Sam at 10 am today")
+        assertEquals("Call Sam", today10.title)
+        assertEquals(today, today10.date)
+        assertEquals(today.atTime(10, 0), today10.reminderAt(today, morning))
+
+        val tomorrow9 = capture("Call Sam at 9pm tomorrow")
+        assertEquals("Call Sam", tomorrow9.title)
+        assertEquals(tomorrow.atTime(21, 0), tomorrow9.reminderAt(today, morning))
+
+        val noSpace = capture("Call Sam at 10am tomorrow")
+        assertEquals("Call Sam", noSpace.title)
+        assertEquals(tomorrow.atTime(10, 0), noSpace.reminderAt(today, morning))
+
+        val forFirst = capture("Call Sam for 10 am tomorrow")
+        assertEquals("Call Sam", forFirst.title)
+        assertEquals(tomorrow.atTime(10, 0), forFirst.reminderAt(today, morning))
+    }
+
+    /** The two runs are marked apart, so dismissing the reminder leaves the day. */
+    @Test
+    fun `a day after the time marks each where it is`() {
+        val text = "Call Sam at 10 am today"
+        val result = capture(text)
+
+        assertEquals("at 10 am", text.substring(result.timeRange!!))
+        assertEquals("today", text.substring(result.dateRange!!))
+
+        val dismissed = result.withoutReminder()
+        assertEquals(today, dismissed.date)
+        assertFalse(dismissed.hasReminder)
+    }
+
+    /** Nothing to call the task: it stays a title, as a time and a day the other way round do. */
+    @Test
+    fun `a time and a day with nothing before them stay the title`() {
+        val result = capture("at 10 am today")
+
+        assertFalse(result.hasReminder)
+    }
+
+    /** Two moments asked for; neither is taken, as D-069 decides the other way round. */
+    @Test
+    fun `an offset with a day after it is not read as a time`() {
+        val result = capture("Call Sam in 2 hours tomorrow")
+
+        assertFalse(result.hasReminder)
+    }
+
+    /** D-030 still moves a passed time forward; the line, not the parser, says so. */
+    @Test
+    fun `today with a time already gone still resolves to tomorrow`() {
+        val result = capture("Call Sam today at 9am")
+        val eleven = today.atTime(11, 0)
+
+        assertEquals(today, result.date)
+        assertEquals(tomorrow.atTime(9, 0), result.reminderAt(today, eleven))
+    }
 }

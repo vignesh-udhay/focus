@@ -147,4 +147,46 @@ class QuickAddCaptureTest {
 
         assertEquals(0, saves)
     }
+
+    /**
+     * "today" typed with a time already gone says so, D-133, rather than only
+     * naming tomorrow. The time is written the phone's way, so only the words
+     * around it are matched.
+     */
+    @Test
+    fun todayWithATimeAlreadyGoneSaysItHasPassed() {
+        rule.setTellcatContent(fontScale = 1f) {
+            QuickAddSheet(
+                today = today,
+                fallbackDate = today,
+                onDismiss = {},
+                onSave = {},
+                clock = { today.atTime(11, 0) }
+            )
+        }
+        rule.waitUntilExactlyOneExists(hasText(SHEET_NAME), 5_000)
+
+        type("Call Sam today at 9am")
+
+        rule.onNodeWithText("has passed, set for tomorrow", substring = true).assertExists()
+    }
+
+    /** With no day typed, a passed time is tomorrow's as before, and the line just names it. */
+    @Test
+    fun aPassedTimeWithNoDayTypedIsNotFlagged() {
+        rule.setTellcatContent(fontScale = 1f) {
+            QuickAddSheet(
+                today = today,
+                fallbackDate = today,
+                onDismiss = {},
+                onSave = {},
+                clock = { today.atTime(11, 0) }
+            )
+        }
+        rule.waitUntilExactlyOneExists(hasText(SHEET_NAME), 5_000)
+
+        type("Call Sam at 9am")
+
+        rule.onNodeWithText("has passed", substring = true).assertDoesNotExist()
+    }
 }

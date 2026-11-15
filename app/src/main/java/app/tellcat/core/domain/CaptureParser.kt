@@ -68,9 +68,9 @@ data class CapturedTask(
     /**
      * Everything the field should mark, as one span.
      *
-     * The two ranges are adjacent whenever both exist, because the time is read
-     * off the end and the day off what is left, so the union is a run rather
-     * than two islands.
+     * The two ranges are adjacent whenever both exist, because one is read off
+     * the end and the other off what is left, in either order since D-133, so
+     * the union is a run rather than two islands.
      */
     val markRange: IntRange?
         get() = when {
@@ -170,17 +170,13 @@ data class CapturedTask(
  * estimate would erase the no-estimate state `focus.md` designs for.
  */
 fun splitTrailingCapture(text: String, today: LocalDate): CapturedTask {
-    val words = Word.findAll(text).toList()
-
-    // The time first. Longest-first, so "at 3pm" wins over "3pm" and the mark
-    // covers the preposition the user typed rather than orphaning it.
-    for (count in minOf(MaxTimeWords, words.size) downTo 1) {
-        val start = words[words.size - count].range.first
-        val candidate = text.substring(start)
+    // The time first, because it is last in "tomorrow at 3pm".
+    peelTrailingTime(text)?.let { peeled ->
+        val start = peeled.start
         val head = text.substring(0, start)
 
         // "in 2 hours", which names no clock time and so reads no day. D-069.
-        parseRelativeTime(candidate)?.let { offset ->
+        peeled.offset?.let { offset ->
             // A day and an offset ask for two different moments and neither one
             // is obviously right, so nothing is taken. The same line also holds
             // the rule every other branch keeps: a title is never emptied.
@@ -196,8 +192,6 @@ fun splitTrailingCapture(text: String, today: LocalDate): CapturedTask {
             )
         }
 
-        val time = parseTimeOfDay(candidate) ?: continue
-
         // Nothing left to call the task: the whole capture was a time, or a day
         // and a time. It stays a title, unparsed and unmarked.
         if (head.isBlank() || parseDate(head, today) is ParsedDate.Recognized) {
@@ -210,15 +204,37 @@ fun splitTrailingCapture(text: String, today: LocalDate): CapturedTask {
         return CapturedTask(
             title = day.title,
             date = day.date,
-            time = time,
+            time = peeled.time,
             offset = null,
             dateRange = day.dateStart?.let { at -> at until head.trimEnd().length },
             timeRange = start until text.trimEnd().length
         )
     }
 
-    // No time. The day on its own, which is what Quick Add always did.
+    // No time at the end. The day, which is what Quick Add always did.
     val day = splitTrailingDate(text, today)
+
+    // **A day after the time**, D-133: "at 10 am today", "at 9pm tomorrow". The
+    // same two peels in the other order. Until D-133 the day came off and the
+    // time stayed in the title, so a typed time set no reminder at all, under a
+    // line that named the day as if it had all been read. Only a clock time:
+    // "in 2 hours tomorrow" asks for two moments, as above, and takes neither.
+    day.dateStart?.let { dateStart ->
+        val head = text.substring(0, dateStart)
+        val peeled = peelTrailingTime(head) ?: return@let
+        val time = peeled.time ?: return@let
+        val title = head.substring(0, peeled.start)
+        if (title.isBlank() || parseDate(title, today) is ParsedDate.Recognized) return@let
+
+        return CapturedTask(
+            title = title.trim(),
+            date = day.date,
+            time = time,
+            offset = null,
+            dateRange = dateStart until text.trimEnd().length,
+            timeRange = peeled.start until head.trimEnd().length
+        )
+    }
 
     return CapturedTask(
         title = day.title,
@@ -228,6 +244,54 @@ fun splitTrailingCapture(text: String, today: LocalDate): CapturedTask {
         dateRange = day.dateStart?.let { at -> at until text.trimEnd().length },
         timeRange = null
     )
+}
+
+/** A time read off the end of a text: where it starts, and either a clock time or an offset. */
+private class TrailingTime(val start: Int, val time: LocalTime?, val offset: Duration?)
+
+/**
+ * The longest time at the end of [text], or null.
+ *
+ * Longest-first, so "at 3pm" wins over "3pm" and the mark covers the
+ * preposition the user typed rather than orphaning it. Each candidate has to
+ * match whole, so nothing is taken from the middle of a phrase.
+ */
+private fun peelTrailingTime(text: String): TrailingTime? {
+    val words = Word.findAll(text).toList()
+    for (count in minOf(MaxTimeWords, words.size) downTo 1) {
+        val start = words[words.size - count].range.first
+        val candidate = text.substring(start)
+
+        parseRelativeTime(candidate)?.let { return TrailingTime(start, time = null, offset = it) }
+        (parseTimeOfDay(candidate) ?: forClockTime(candidate))?.let {
+            return TrailingTime(start, time = it, offset = null)
+        }
+    }
+    return null
+}
+
+/**
+ * "for 10 am", "for 10:00", "for six pm": a time after "for", read as "at" is.
+ * D-133, from "Create an alarm today for 10 am", which saved the title "Create
+ * an alarm today for".
+ *
+ * Only what [parseTimeOfDay] already reads, so **a bare number after "for" is
+ * never a time**: "table for 4", "run for 10 minutes" and "for 2 hours" stay in
+ * the title, as D-070 keeps "at 7" there. The time words were already read
+ * after "for" ("dinner for tonight" rang at eight, D-069) and left the "for"
+ * behind in the title; now it goes with them.
+ *
+ * Here and not in [parseTimeOfDay], which Task Details' fields share, where
+ * nobody types "for".
+ */
+private fun forClockTime(text: String): LocalTime? {
+    val cleaned = text.trim().lowercase(Locale.ROOT)
+    if (!cleaned.startsWith("for ")) return null
+
+    val rest = cleaned.removePrefix("for ").trim()
+    if (rest.startsWith("at ")) return null
+
+    return parseTimeOfDay(rest)
 }
 
 /** A capture that parsed to nothing: all of it is the title. */

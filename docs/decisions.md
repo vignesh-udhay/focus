@@ -8322,7 +8322,7 @@ for opening the app every time.
 
 ## D-133. Quick Add reads "for 10 am", a day after the time, and says when today's time has gone
 
-**Proposed on 2026-11-16, waiting on the owner's word.** From a capture the
+**Decided on 2026-11-16, at the owner's word.** From a capture the
 owner typed, "Create an alarm today for 10 am". For 1.4.2 beside D-132, on
 `feature/new-task-shortcut`. Amends D-011, D-030 and D-069.
 
@@ -8343,10 +8343,11 @@ the field naming the day, which reads as understood.
 
 **The decision.**
 
-1. **"for" before a clock time reads as "at"**: "for 10 am", "for 10:00",
-   "for 9pm". Only with a clock time: an am or pm, or hours and minutes. A bare
-   number after "for" stays in the title ("table for 4", "for 10 minutes",
-   "for 2 hours"), as now.
+1. **"for" before a time reads as "at"**: "for 10 am", "for 10:00",
+   "for 9pm". Only what "at" already reads, so a bare number after "for" stays
+   in the title ("table for 4", "for 10 minutes", "for 2 hours"), as now. The
+   time words were already read after "for" ("dinner for tonight" rang at
+   eight, D-069) and left "Dinner for" as the title; the "for" now goes too.
 2. **A day after the time is read**, "at 10 am today", "at 9pm tomorrow",
    "at 10:00 on Friday", as the same day and time typed the other way round.
 3. **"today" with a time already gone says so.** The reminder still goes to
@@ -8358,9 +8359,20 @@ the field naming the day, which reads as understood.
 words for the alarm itself: "alarm" in the title stays a word in the title,
 D-129.
 
-**Tests.** `CaptureParserTest`: every row of the table above, plus "for 4",
-"for 10 minutes" and "for 2 hours" staying in the title. `QuickAddCaptureTest`:
-the passed-time line.
+**How.** The time peel is one function, `peelTrailingTime`, run first on the
+whole text as before and, when only a day comes off the end, again on what is
+left before the day. "for" is read in Quick Add's parser only
+(`forClockTime`), not in `parseTimeOfDay`, which Task Details shares. The line
+is drawn in `tertiary`, as D-101's no-meridiem line is.
+
+**Tests.** `CaptureParserTest` (JVM): every row of the table above; "for" in
+each clock form; "table for 4", "run for 10 minutes", "study for 2 hours",
+"rice for 6" and "pay for 10" staying in the title; "for six" refused as "at
+six" is; the time and the day marked apart, so dismissing the reminder keeps
+the day; nothing taken when nothing is left to call the task, or from "in 2
+hours tomorrow". The When tool's writer tests pass unchanged, so what it writes
+still reads back. `QuickAddCaptureTest` (instrumented, written and compiled,
+not run): the passed-time line with "today", and none without it.
 
 **What would reverse this.** A title that means "for" with a clock time and
 not a reminder, which nobody has typed yet.

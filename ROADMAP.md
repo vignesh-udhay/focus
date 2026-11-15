@@ -38,9 +38,10 @@ testers the same day (released 11:47 AM).
 **1.4.2 is being built on `feature/new-task-shortcut`, not merged.** D-132,
 "New task" adds over the home screen from a long press on the icon and the
 widget's add button, decided and built on 2026-11-15/16 at the owner's word,
-from a tester's Play entry on 1.4.1 (Nov 15); 1165 JVM tests pass, not yet
-tried on a phone. D-133, Quick Add reading "for 10 am" and a day after the
-time, is proposed and waiting on the owner's word.
+from a tester's Play entry on 1.4.1 (Nov 15). D-133, Quick Add reading "for 10 am" and a day after the
+time ("at 10 am today" set no reminder at all before it), and saying when
+today's time has passed, decided and built 2026-11-16 at the owner's word.
+1175 JVM tests pass; nothing tried on a phone yet.
 `feature/calendar-today` stays out: the live privacy policy still says the app
 does not read the calendar.
 
