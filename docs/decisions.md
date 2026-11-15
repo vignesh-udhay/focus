@@ -8319,3 +8319,48 @@ permission was granted.
 **What would reverse this.** Testers wanting to see the task in Tellcat after
 adding it, which would argue for a View on the confirmation before it argues
 for opening the app every time.
+
+## D-133. Quick Add reads "for 10 am", a day after the time, and says when today's time has gone
+
+**Proposed on 2026-11-16, waiting on the owner's word.** From a capture the
+owner typed, "Create an alarm today for 10 am". For 1.4.2 beside D-132, on
+`feature/new-task-shortcut`. Amends D-011, D-030 and D-069.
+
+**What the parser does now**, checked on 1.4.1's code with the clock at 11:00:
+
+| Typed | Title saved | Reminder |
+|---|---|---|
+| Create an alarm today for 10 am | "Create an alarm today for" | tomorrow 10:00 |
+| Call Sam for 10 am | "Call Sam for" | tomorrow 10:00 |
+| Call Sam at 10 am today | "Call Sam at 10 am" | **none** |
+| Call Sam at 10am tomorrow | "Call Sam at 10am" | **none** |
+| Call Sam today at 9am | "Call Sam" | tomorrow 9:00, said only as "Tomorrow" |
+| Table for 4, Run for 10 minutes | as typed | none (right) |
+
+The second group is the serious one: a time typed and no reminder set. It is
+the failure `PRODUCT.md` ranks above a crash, made more likely by the line under
+the field naming the day, which reads as understood.
+
+**The decision.**
+
+1. **"for" before a clock time reads as "at"**: "for 10 am", "for 10:00",
+   "for 9pm". Only with a clock time: an am or pm, or hours and minutes. A bare
+   number after "for" stays in the title ("table for 4", "for 10 minutes",
+   "for 2 hours"), as now.
+2. **A day after the time is read**, "at 10 am today", "at 9pm tomorrow",
+   "at 10:00 on Friday", as the same day and time typed the other way round.
+3. **"today" with a time already gone says so.** The reminder still goes to
+   tomorrow, as D-030 resolves it, but the line under the field says "10 AM
+   has passed, set for tomorrow" rather than only "Tomorrow", so the user can
+   change it before Add. With no day typed the line stays as it is.
+
+**Not changed.** "at" and the offsets ("in 2 hours", D-069) read as now. No new
+words for the alarm itself: "alarm" in the title stays a word in the title,
+D-129.
+
+**Tests.** `CaptureParserTest`: every row of the table above, plus "for 4",
+"for 10 minutes" and "for 2 hours" staying in the title. `QuickAddCaptureTest`:
+the passed-time line.
+
+**What would reverse this.** A title that means "for" with a clock time and
+not a reminder, which nobody has typed yet.
