@@ -35,13 +35,18 @@ touch; its class then passed three times alone). Bumped to 1.4.1, versionCode
 7 (f095df2), same upload key, `main` pushed, and sent to the Alpha closed test
 as release 7 (1.4.1) on 2026-11-11, by the owner. Approved and live to
 testers the same day (released 11:47 AM).
-**1.4.2 is being built on `feature/new-task-shortcut`, not merged.** D-132,
-"New task" adds over the home screen from a long press on the icon and the
-widget's add button, decided and built on 2026-11-15/16 at the owner's word,
-from a tester's Play entry on 1.4.1 (Nov 15). D-133, Quick Add reading "for 10 am" and a day after the
-time ("at 10 am today" set no reminder at all before it), and saying when
-today's time has passed, decided and built 2026-11-16 at the owner's word.
-1175 JVM tests pass; nothing tried on a phone yet.
+**1.4.2 is merged on `main` and bumped, at the owner's word on 2026-11-16;
+not yet uploaded.** D-132, "New task" adds over the home screen from a long
+press on the icon and the widget's add button, from a tester's Play entry on
+1.4.1 (Nov 15). D-133, Quick Add reading "for 10 am" and a day after the time
+("at 10 am today" set no reminder at all before it), and saying when today's
+time has passed. Merged as 60cc766, bumped to 1.4.2, versionCode 8 (e503643);
+1175 JVM tests pass on the merge. On the owner's phone on 2026-11-16 the full
+instrumented suite ran 523: 490 passed and 33 failed while a phone call was on
+screen; the 8 failing classes rerun gave 110 of 114, and the last 4 had each
+passed in another run that day. The owner checked the shortcut, the widget's
+add button, the toasts and the "has passed" line by hand: all right. The signed
+bundle (same upload key as 1.4.1) is in `workspaceeleases.4.2\`.
 `feature/calendar-today` stays out: the live privacy policy still says the app
 does not read the calendar.
 
