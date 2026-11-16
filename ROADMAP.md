@@ -46,7 +46,7 @@ instrumented suite ran 523: 490 passed and 33 failed while a phone call was on
 screen; the 8 failing classes rerun gave 110 of 114, and the last 4 had each
 passed in another run that day. The owner checked the shortcut, the widget's
 add button, the toasts and the "has passed" line by hand: all right. The signed
-bundle (same upload key as 1.4.1) is in `workspaceeleases.4.2\`.
+bundle (same upload key as 1.4.1) is in `workspace\releases\1.4.2\`.
 `feature/calendar-today` stays out: the live privacy policy still says the app
 does not read the calendar.
 
