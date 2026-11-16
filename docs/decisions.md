@@ -8234,3 +8234,145 @@ band, not for keeping old tasks in it.
 band's header reads "Completed (3)", not "Completed · 3". Only the format
 changes: the count, the collapse and what TalkBack is told stay as D-012 set
 them. Earlier entries that quote "Completed · N" are history and keep it.
+
+## D-132. "New task" adds over the home screen, from the icon and the widget
+
+**Decided on 2026-11-15, at the owner's word.** From a closed
+tester's entry in Play's testing feedback on 1.4.1 (Nov 15, 7:41 PM, 4 stars):
+"Please add a "New Task" shortcut when long pressing the app icon so we can
+quickly add tasks without opening the app." The tester told the owner first and
+was asked to write it in Play; the entry came before any decision or code. This
+is candidate 5 of the competitor study (`docs/research/competitors.md`,
+"Candidates to pick up, 2026-11-02"), which was listed and not decided. Amends
+the widget's add button in `docs/design/widget.md`. Numbered after D-131;
+D-126 is on a branch not yet on `main`. On `feature/new-task-shortcut`, from
+`main`.
+
+**What changed the answer.** Nothing was decided against it; it had simply not
+been taken up. The study found it as an Android convention Tellcat lacks, which
+`PRODUCT.md` principle 5 asks for, and it serves principle 3, "Capture should
+be effortless". What it lacked was someone asking. Now a tester has, in
+writing, and asked for the app not to open.
+
+**The decision.**
+
+1. **Quick Add gets a window of its own, over whatever is behind it.** A
+   see-through activity holding one sheet, as "Add to Tellcat" has (D-097):
+   left out of Recents, no task affinity, so Tellcat's own screens never come
+   up behind it. The sheet is `QuickAddSheet` itself, not a copy: When, Repeat,
+   the checklist, the alarm and the early reminder (D-121, D-129), the
+   keyboard on arrival (D-073). Saving builds the task with the same
+   functions as Today's (`captureScheduledDate`, `newTask`, moved out of
+   `TaskListViewModel` into `core/domain`), so the two cannot drift. The window
+   waits for the insert before it closes: the view model's write is not
+   awaited, and closing would clear it.
+2. **A long press on the icon offers "New task".** One static launcher
+   shortcut, declared in the manifest, so it is there from install. It can be
+   dragged to the home screen as its own icon, as launchers allow. It opens
+   the window in 1. A static shortcut names its package, so `src/debug` has
+   its own `shortcuts.xml` naming `app.tellcat.debug`.
+3. **The widget's add button opens the same window.** It used to open Tellcat
+   on Today with Quick Add up. Now the task is added over the home screen and
+   shows up in the widget beneath it, which reads the tasks as a stream (D-045).
+4. **A capture with no day goes to Today**, as the widget's Add always sent it
+   and as Today's own Quick Add does (D-053). Someone adding from the home
+   screen means to do it. A title with a day or a reminder goes where that
+   says, as everywhere (D-075). The supporting line under the field still says
+   where it will land.
+5. **Add closes the window and a toast says where it went**: "Saved to Today",
+   "Saved to Upcoming", "Saved to Inbox", the words the landing notice already
+   uses. A toast, because there is no screen of ours for a snackbar to sit on,
+   as D-097 found. It has no View: a toast cannot carry an action. If the save
+   fails the sheet stays open with the text, as the share sheet's does.
+6. **Back or a tap outside closes it with nothing saved**, as Quick Add's sheet
+   already does.
+
+**Wording and icon.** The shortcut's label is "New task", as the tester wrote
+it. Its icon is the Add icon Quick Add already uses, as an adaptive shortcut
+icon in Tellcat's colours.
+
+**To check on a phone, on the owner's word.** A reminder or alarm set from this
+window before the app has ever been granted notifications or alarms: the
+permission asks must work from here, or the task must be saved and the ask
+left to the next time Tellcat opens, and said so. A reminder that silently
+cannot ring is the worst bug this product has.
+
+**Not in this.** A Quick Settings tile, the study's other half: nobody has
+asked for it. Other launcher shortcuts (opening Inbox, Upcoming, the Logbook or
+Reminder health; "New reminder" or "New alarm" with When or the alarm already
+set; the next reminder or recent tasks as changing shortcuts): none are asked
+for, and the shortcut setup this adds makes each a small job later if one is.
+The share sheet keeps its own small sheet and Inbox, D-097: a shared link is
+usually something to read later, not to do today.
+
+**Tests.** `QuickAddSaveTest` (JVM): a capture with no day is saved for
+Today, a day or a reminder goes where it says, a time already gone lands on
+the day it rings, a blank title saves nothing, the tools come along, and the
+alarm is dropped without a reminder. `QuickAddWindowSemanticsTest`
+(instrumented, written and compiled, not run): the window is Quick Add, says
+"Saved to Today" for an undated task at 100% and 200%, and Done hands over the
+capture. It writes nothing, so a run on the owner's phone leaves the dev
+build's tasks alone. By hand on a phone, on the owner's word: the long press,
+the widget's button, Add closing with the toast, and a reminder set before any
+permission was granted.
+
+**What would reverse this.** Testers wanting to see the task in Tellcat after
+adding it, which would argue for a View on the confirmation before it argues
+for opening the app every time.
+
+## D-133. Quick Add reads "for 10 am", a day after the time, and says when today's time has gone
+
+**Decided on 2026-11-16, at the owner's word.** From a capture the
+owner typed, "Create an alarm today for 10 am". For 1.4.2 beside D-132, on
+`feature/new-task-shortcut`. Amends D-011, D-030 and D-069.
+
+**What the parser does now**, checked on 1.4.1's code with the clock at 11:00:
+
+| Typed | Title saved | Reminder |
+|---|---|---|
+| Create an alarm today for 10 am | "Create an alarm today for" | tomorrow 10:00 |
+| Call Sam for 10 am | "Call Sam for" | tomorrow 10:00 |
+| Call Sam at 10 am today | "Call Sam at 10 am" | **none** |
+| Call Sam at 10am tomorrow | "Call Sam at 10am" | **none** |
+| Call Sam today at 9am | "Call Sam" | tomorrow 9:00, said only as "Tomorrow" |
+| Table for 4, Run for 10 minutes | as typed | none (right) |
+
+The second group is the serious one: a time typed and no reminder set. It is
+the failure `PRODUCT.md` ranks above a crash, made more likely by the line under
+the field naming the day, which reads as understood.
+
+**The decision.**
+
+1. **"for" before a time reads as "at"**: "for 10 am", "for 10:00",
+   "for 9pm". Only what "at" already reads, so a bare number after "for" stays
+   in the title ("table for 4", "for 10 minutes", "for 2 hours"), as now. The
+   time words were already read after "for" ("dinner for tonight" rang at
+   eight, D-069) and left "Dinner for" as the title; the "for" now goes too.
+2. **A day after the time is read**, "at 10 am today", "at 9pm tomorrow",
+   "at 10:00 on Friday", as the same day and time typed the other way round.
+3. **"today" with a time already gone says so.** The reminder still goes to
+   tomorrow, as D-030 resolves it, but the line under the field says "10 AM
+   has passed, set for tomorrow" rather than only "Tomorrow", so the user can
+   change it before Add. With no day typed the line stays as it is.
+
+**Not changed.** "at" and the offsets ("in 2 hours", D-069) read as now. No new
+words for the alarm itself: "alarm" in the title stays a word in the title,
+D-129.
+
+**How.** The time peel is one function, `peelTrailingTime`, run first on the
+whole text as before and, when only a day comes off the end, again on what is
+left before the day. "for" is read in Quick Add's parser only
+(`forClockTime`), not in `parseTimeOfDay`, which Task Details shares. The line
+is drawn in `tertiary`, as D-101's no-meridiem line is.
+
+**Tests.** `CaptureParserTest` (JVM): every row of the table above; "for" in
+each clock form; "table for 4", "run for 10 minutes", "study for 2 hours",
+"rice for 6" and "pay for 10" staying in the title; "for six" refused as "at
+six" is; the time and the day marked apart, so dismissing the reminder keeps
+the day; nothing taken when nothing is left to call the task, or from "in 2
+hours tomorrow". The When tool's writer tests pass unchanged, so what it writes
+still reads back. `QuickAddCaptureTest` (instrumented, written and compiled,
+not run): the passed-time line with "today", and none without it.
+
+**What would reverse this.** A title that means "for" with a clock time and
+not a reminder, which nobody has typed yet.

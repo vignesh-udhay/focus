@@ -54,6 +54,7 @@ import androidx.glance.text.TextDecoration
 import androidx.glance.text.TextStyle
 import app.tellcat.TellcatApplication
 import app.tellcat.R
+import app.tellcat.ui.quickadd.QuickAddActivity
 import app.tellcat.core.design.TellcatDarkColorScheme
 import app.tellcat.core.design.TellcatLightColorScheme
 import app.tellcat.core.domain.TodayBand
@@ -256,7 +257,8 @@ private fun WidgetHeader(context: Context) {
         Box(
             modifier = GlanceModifier
                 .size(48.dp)
-                .clickable(actionStartActivity(widgetLaunchIntent(context, WidgetLaunchCommand.Add))),
+                // Quick Add over the home screen, not the app. D-132.
+                .clickable(actionStartActivity(QuickAddActivity.intent(context))),
             contentAlignment = Alignment.Center
         ) {
             Box(

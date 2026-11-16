@@ -40,6 +40,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -991,9 +992,19 @@ private fun QuickAddSupportingText(
     // Stacked: the supporting slot does not lay out more than one child. A
     // polite live region, D-112's, moved here from the chip by D-121: this is
     // now where the whole capture is said in words.
+    // **"today" typed with a time already gone**, D-133. D-030 still moves it
+    // to tomorrow, since a past moment is never stored, but the user said
+    // today, so the line says what happened rather than only "Tomorrow".
+    val timePassed = at != null && parsed.date == today && at.toLocalDate().isAfter(today)
+
     Column(modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) {
         Text(
             text = when {
+                timePassed -> stringResource(
+                    R.string.quick_add_time_passed,
+                    at!!.toLocalTime().format(timeFormat)
+                )
+
                 // The day and the time together, now that no chip names the
                 // reminder. D-121.
                 at != null -> stringResource(
@@ -1018,7 +1029,10 @@ private fun QuickAddSupportingText(
                 // it undated.
                 fallbackDate != null -> stringResource(R.string.quick_add_saved_to_today)
                 else -> stringResource(R.string.quick_add_saved_to_inbox)
-            }
+            },
+            // `tertiary`, as the no-meridiem line below: attention without
+            // alarm, for a reminder that is not where the user said. D-101.
+            color = if (timePassed) MaterialTheme.colorScheme.tertiary else Color.Unspecified
         )
 
         recurrence?.let { rule ->

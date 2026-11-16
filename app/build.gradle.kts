@@ -48,7 +48,9 @@ android {
         // package cannot install over a Play-signed one without uninstalling
         // it, which would delete those tasks. Nothing in the app is tied to the
         // package name: there are no content providers, every PendingIntent is
-        // explicit, and the backup file name does not use it.
+        // explicit, and the backup file name does not use it. The one exception
+        // is res/xml/shortcuts.xml, D-132: a static shortcut names its package,
+        // so src/debug carries its own copy naming app.tellcat.debug.
         debug {
             applicationIdSuffix = ".debug"
         }

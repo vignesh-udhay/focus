@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    "New task" on a long press of Tellcat's icon. D-132. It opens Quick Add over
+    the home screen.
+
+    A static shortcut has to name its package, and the debug build is
+    app.tellcat.debug, so src/debug has its own copy of this file. Keep the two
+    the same apart from targetPackage.
+-->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="new_task"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_new_task"
+        android:shortcutShortLabel="@string/shortcut_new_task"
+        android:shortcutLongLabel="@string/shortcut_new_task">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="app.tellcat.debug"
+            android:targetClass="app.tellcat.ui.quickadd.QuickAddActivity" />
+    </shortcut>
+</shortcuts>
